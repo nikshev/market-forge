@@ -1,0 +1,12 @@
+{
+  "paths": {},
+  "strictMode": false,
+  "offlineMode": false,
+  "indexOnOpen": true,
+  "sensitivePatterns": [
+    "**/*.env",
+    "**/secrets/**"
+  ],
+  "devenvLicenceAccepted": true,
+  "devenvPort": 65188
+}

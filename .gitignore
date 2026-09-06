@@ -1,0 +1,3 @@
+.traceforge/cache/
+.traceforge/ui-state.json
+.venv/
