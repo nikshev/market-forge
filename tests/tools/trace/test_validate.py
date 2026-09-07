@@ -1,5 +1,6 @@
 import pytest
 
+from tools.trace.collect import PRD_NODE_ID
 from tools.trace.graph import build_graph
 from tools.trace.model import Node, TraceGraph
 from tools.trace.validate import Violation, validate
@@ -72,6 +73,37 @@ def test_r3_passes_when_every_reference_resolves(vault):
     assert "R3" not in rules(validate(build_graph(vault.root)))
 
 
+@pytest.mark.parametrize(
+    "kind",
+    ["DEPENDS_ON", "SPECIFIES", "VERIFIES", "IMPLEMENTS", "RECORDS", "DECIDES"],
+)
+def test_r3_fires_for_every_requirement_targeted_kind(kind):
+    """Pins REQUIREMENT_TARGETED itself, not just the branch that reads it.
+
+    If a kind were ever dropped from that tuple, this conditional would still
+    be "correct" and R3 would silently stop checking it.
+    """
+    graph = TraceGraph()
+    graph.add(Node(id="REQ-WP-001", kind="requirement", path="a.md"))
+    graph.link("REQ-WP-001", "REQ-WP-999", kind)
+    violations = validate(graph)
+    assert any(v.rule == "R3" and "REQ-WP-999" in v.message for v in violations)
+
+
+def test_r3_ignores_derived_from_edges_to_the_prd(vault):
+    """Every requirement carries a DERIVED_FROM edge to PRD, a non-requirement
+    node. If DERIVED_FROM were ever added to REQUIREMENT_TARGETED, every
+    requirement in the project would trip R3 at once.
+    """
+    vault.requirement("REQ-WP-001")
+    assert "R3" not in rules(validate(build_graph(vault.root)))
+    graph = build_graph(vault.root)
+    assert any(
+        e.src == "REQ-WP-001" and e.dst == PRD_NODE_ID and e.kind == "DERIVED_FROM"
+        for e in graph.edges
+    )
+
+
 # --- R4: outcome recorded ---
 
 def test_r4_fails_when_an_advanced_requirement_has_no_outcome(vault):
@@ -126,6 +158,20 @@ def test_r6_passes_on_a_chain(vault):
     vault.requirement("REQ-WP-002", depends_on=["REQ-WP-003"])
     vault.requirement("REQ-WP-003")
     assert "R6" not in rules(validate(build_graph(vault.root)))
+
+
+def test_r6_detects_a_self_loop(vault):
+    """A requirement depending on itself is a one-node cycle. This must not
+    rely solely on the third-party detail that nx.simple_cycles reports
+    self-edges; the message must name the requirement on both sides so a
+    truncated report (e.g. a bare "REQ-WP-001") cannot pass silently.
+    """
+    vault.requirement("REQ-WP-001", depends_on=["REQ-WP-001"])
+    violations = validate(build_graph(vault.root))
+    assert "R6" in rules(violations)
+    assert any(
+        v.rule == "R6" and v.message.count("REQ-WP-001") >= 2 for v in violations
+    )
 
 
 # --- R7: unique ids ---
