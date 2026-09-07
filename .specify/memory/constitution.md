@@ -2,6 +2,9 @@
 
 The PRD (`channel_flow_prd_codex_ua_v5.md`) is the source of truth. These
 principles are non-negotiable and apply to every spec, plan and implementation.
+Principles I-XIII restate PRD §0's fourteen instructions. Principle XIV is a
+house rule of this repository's SDD process, not a PRD instruction; its
+origin is noted under its own heading below.
 
 ## I. No look-ahead, ever
 
@@ -38,8 +41,9 @@ policy. An undocumented feature is not done.
 
 ## VII. Live and replay are the same code
 
-Code is deterministic in backtest mode and maximally identical between live
-and replay. Divergence between the two is a defect, not a configuration.
+Code is testable, deterministic in backtest mode and maximally identical
+between live and replay. Divergence between the two is a defect, not a
+configuration.
 
 ## VIII. Connectors share one interface
 
@@ -71,5 +75,17 @@ defines, not ahead of them.
 
 ## XIV. Everything is traceable
 
+Source: `docs/superpowers/specs/2026-09-07-sdd-traceability-infra-design.md`
+(not a PRD §0 instruction).
+
 Every unit of work carries a requirement ID from `vault/10-requirements/`
 through spec, test and implementation. Work that cannot be traced is not done.
+
+## Governance
+
+This constitution supersedes conflicting practices in specs, plans and
+implementation notes. Amendments require a documented rationale, review
+approval and, where applicable, a migration plan for affected specs. Every
+spec and plan must verify compliance with these principles before merge.
+
+**Version**: 1.0.0 | **Ratified**: 2026-09-07 | **Last Amended**: 2026-09-07
