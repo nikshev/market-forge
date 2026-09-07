@@ -17,9 +17,16 @@ END = "<!-- trace:end -->"
 
 
 def replace_between_markers(text: str, block: str) -> str:
+    begin_count = text.count(BEGIN)
+    end_count = text.count(END)
+    if begin_count != 1 or end_count != 1:
+        raise ValueError(
+            f"marker pair not found: expected exactly one {BEGIN} and one {END}, "
+            f"found {begin_count} of the former and {end_count} of the latter"
+        )
     start = text.find(BEGIN)
     end = text.find(END)
-    if start == -1 or end == -1 or end < start:
+    if end < start:
         raise ValueError(f"marker pair not found: expected {BEGIN} before {END}")
     return text[: start + len(BEGIN)] + "\n" + block.rstrip("\n") + "\n" + text[end:]
 
@@ -112,4 +119,6 @@ def render_dashboard(graph: TraceGraph, violations: list[Violation]) -> str:
 def write_dashboard(graph: TraceGraph, violations: list[Violation], path: Path) -> None:
     path = Path(path)
     text = path.read_text()
-    path.write_text(replace_between_markers(text, render_dashboard(graph, violations)))
+    new_text = replace_between_markers(text, render_dashboard(graph, violations))
+    if new_text != text:
+        path.write_text(new_text)

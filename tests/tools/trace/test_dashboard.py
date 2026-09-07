@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pytest
 
 from tools.trace.dashboard import (
@@ -39,6 +41,83 @@ def test_replace_between_markers_rejects_reversed_markers():
         replace_between_markers(f"{END}\nx\n{BEGIN}\n", "new")
 
 
+def test_replace_between_markers_rejects_a_begin_marker_with_no_end():
+    with pytest.raises(ValueError, match="marker pair not found"):
+        replace_between_markers(f"{BEGIN}\nx\n", "new")
+
+
+def test_replace_between_markers_rejects_an_end_marker_with_no_begin():
+    with pytest.raises(ValueError, match="marker pair not found"):
+        replace_between_markers(f"{END}\nx\n", "new")
+
+
+def test_replace_between_markers_rejects_prose_that_mentions_both_markers_in_one_sentence():
+    """Variant A: a sentence explaining the convention contains both markers as
+    literal text, ahead of the real, separate trace block. A naive first-`find()`
+    implementation would splice the new block into the middle of that sentence
+    and leave the real block stale and untouched -- silent corruption. This must
+    raise instead.
+    """
+    text = (
+        "## Convention\n"
+        f"The generated block goes between {BEGIN} and {END} in every note.\n\n"
+        "## Trace\n"
+        f"{BEGIN}\n"
+        "_Not yet generated._\n"
+        f"{END}\n"
+    )
+    with pytest.raises(ValueError, match="marker pair not found"):
+        replace_between_markers(text, "new")
+
+
+def test_replace_between_markers_rejects_a_stray_begin_mention_before_the_real_pair():
+    """Variant B: prose mentions only BEGIN, ahead of the real pair further down.
+    A naive first-`find()` implementation would treat the prose mention as the
+    start of the block and the real END as its close, silently eating every
+    hand-written section in between -- here, the whole '## Acceptance' section.
+    This must raise instead of destroying that content.
+    """
+    text = (
+        "## Requirement\n"
+        f"The generated block starts at {BEGIN} and the tool never writes outside it.\n\n"
+        "## Acceptance\n"
+        "- Nothing outside the markers is modified.\n\n"
+        "## Trace\n"
+        f"{BEGIN}\n"
+        "_No linked artifacts yet._\n"
+        f"{END}\n"
+    )
+    with pytest.raises(ValueError, match="marker pair not found"):
+        replace_between_markers(text, "new")
+
+
+def test_update_requirement_notes_skips_and_preserves_a_note_that_mentions_markers_in_prose(vault):
+    """The content-preservation half of variant B: run it through the real
+    entry point and assert the file on disk is byte-for-byte untouched, not
+    merely that an exception was raised somewhere.
+    """
+    path = vault.vault / "10-requirements" / "REQ-WP-001.md"
+    original = (
+        "---\nid: REQ-WP-001\nstatus: draft\n---\n\n"
+        "## Requirement\n"
+        f"The generated block starts at {BEGIN} and the tool never writes outside it.\n\n"
+        "## Acceptance\n"
+        "- Nothing outside the markers is modified.\n\n"
+        "## Trace\n"
+        f"{BEGIN}\n"
+        "_No linked artifacts yet._\n"
+        f"{END}\n"
+    )
+    path.write_text(original)
+    graph = build_graph(vault.root)
+
+    updated, skipped = update_requirement_notes(graph)
+
+    assert updated == []
+    assert skipped == [path]
+    assert path.read_text() == original
+
+
 def test_dashboard_lists_every_requirement_with_counts(vault, tmp_path):
     vault.requirement("REQ-WP-001", status="specified")
     vault.spec("001-bootstrap", ["REQ-WP-001"])
@@ -64,6 +143,41 @@ def test_dashboard_says_so_when_everything_passes(vault):
     assert "No violations." in text
 
 
+def _write_requirement_with_phase(vault, req_id: str, phase: str) -> Path:
+    """VaultBuilder.requirement() hardcodes `phase: 0`, so a requirement note is
+    built directly here to exercise this project's real phase vocabulary
+    (0-8 plus 1A and 7A), without touching conftest.py.
+    """
+    path = vault.vault / "10-requirements" / f"{req_id}.md"
+    path.write_text(
+        "---\n"
+        f"id: {req_id}\n"
+        "title: A requirement\n"
+        "type: work-package\n"
+        'prd_ref: "§1"\n'
+        f"phase: {phase}\n"
+        "status: draft\n"
+        "depends_on: []\n"
+        "---\n\n"
+        "## Requirement\n\nBody.\n\n"
+        "## Trace\n\n<!-- trace:begin -->\n_Not yet generated._\n<!-- trace:end -->\n\n"
+        "## Notes\n\nHand-written.\n"
+    )
+    return path
+
+
+def test_dashboard_groups_this_projects_real_phases_in_sane_order(vault):
+    phases = ["0", "1", "1A", "2", "3", "4", "5", "6", "7", "7A", "8"]
+    for index, phase in enumerate(phases):
+        _write_requirement_with_phase(vault, f"REQ-WP-{index:03d}", phase)
+    graph = build_graph(vault.root)
+
+    text = render_dashboard(graph, validate(graph))
+
+    positions = [text.index(f"### Phase {phase}") for phase in phases]
+    assert positions == sorted(positions)
+
+
 def test_write_dashboard_preserves_handwritten_text(vault, tmp_path):
     target = tmp_path / "Traceability Dashboard.md"
     target.write_text(
@@ -77,6 +191,34 @@ def test_write_dashboard_preserves_handwritten_text(vault, tmp_path):
     assert "A hand-written preamble." in result
     assert "stale" not in result
     assert "REQ-WP-001" in result
+
+
+def test_write_dashboard_does_not_rewrite_when_content_is_unchanged(vault, tmp_path, monkeypatch):
+    """update_requirement_notes already guards its write with `if new_text != text`;
+    write_dashboard must do the same, or every `make graph` run touches the
+    dashboard's mtime and dirties the tree even when nothing changed.
+
+    A monkeypatched `Path.write_text` is used instead of comparing mtimes: on
+    some filesystems (e.g. HFS+'s one-second mtime resolution) two writes made
+    within the same test could report an unchanged mtime even if a write did
+    happen, making an mtime-based assertion flaky. Forbidding the call outright
+    is deterministic.
+    """
+    target = tmp_path / "Traceability Dashboard.md"
+    target.write_text(f"# Traceability Dashboard\n\n{BEGIN}\nstale\n{END}\n")
+    vault.requirement("REQ-WP-001")
+    graph = build_graph(vault.root)
+    violations = validate(graph)
+
+    write_dashboard(graph, violations, target)
+    first_write = target.read_text()
+    assert "REQ-WP-001" in first_write
+
+    def _forbid_write(self, *args, **kwargs):
+        raise AssertionError(f"write_text called unexpectedly on unchanged content: {self}")
+
+    monkeypatch.setattr(Path, "write_text", _forbid_write)
+    write_dashboard(graph, violations, target)
 
 
 def test_requirement_trace_lists_linked_artifacts(vault, tmp_path):
