@@ -10,6 +10,14 @@ Rebuild the graph and report.
    requirement note's `## Trace` section via `tools.trace.cli dashboard` —
    only the text between `<!-- trace:begin -->` and `<!-- trace:end -->` is
    touched).
+
+   If this step hard-fails instead of completing — printing
+   `trace: cannot build graph: duplicate node id: '<id>'` and exiting 1,
+   with no violation list at all — two requirement notes share the same
+   `id:` in their frontmatter. Find both (`grep -rl "^id: <id>"
+   vault/10-requirements/`) and fix whichever one was misnumbered. IDs are
+   permanent once correctly assigned, so the fix is to correct the
+   duplicate, not to renumber both.
 2. Run `make validate` (`tools.trace.cli validate`; exits 1 if there are
    violations).
 3. If `$ARGUMENTS` names a requirement, also run:

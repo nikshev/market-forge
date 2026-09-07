@@ -27,16 +27,17 @@ naming a real requirement has no place in the traceability graph, and
 
 ## The rules that are not negotiable
 
-`.specify/memory/constitution.md` holds the PRD's fourteen governing
-principles (I-XIII restate PRD §0; XIV is this repository's own traceability
-rule). Two catch people out most:
+`.specify/memory/constitution.md` holds fourteen governing principles:
+I-XIII restate PRD §0, and XIV is this repository's own traceability rule.
+Two catch people out most:
 
 - **No look-ahead, ever** (Principle I). A feature computed at time `t` uses
   only data with `event_time <= t` that was actually available then. A
   better backtest is never a justification for looking further ahead.
-- **Correctness constraints need a test before they can advance** (Principle
-  XIV, enforced as validator rule **R5**). A requirement whose `type` is
-  `constraint` (anti-bias rules, non-repainting tests, PRD §0 principles
+- **Correctness constraints need a test before they can advance** (PRD §0.2 —
+  no future leakage, look-ahead or repainting even if it improves the
+  backtest — enforced as validator rule **R5**). A requirement whose `type`
+  is `constraint` (anti-bias rules, non-repainting tests, PRD §0 principles
   themselves) cannot hold a status past `specified` without a linked test.
   This is the one validator rule that is never waived — write the test.
 
@@ -60,6 +61,12 @@ rule). Two catch people out most:
 | R4 | status is past `draft`, no outcome note `RECORDS` the requirement |
 | R5 | a `constraint`-type requirement is past `specified` with no test |
 | R6 | a `depends_on` cycle among requirements |
+
+A duplicate `id:` across two requirement notes is caught earlier than this
+table, while the graph is still being built (`TraceGraph.add` refuses the
+second node) — it surfaces as `trace: cannot build graph: duplicate node id:
+'<id>'` with exit 1, before any violation list is printed, not as a row in
+the table above.
 
 `make graph` rebuilds `.trace/graph.json` and regenerates the dashboard
 (`vault/00-index/Traceability Dashboard.md`) and each requirement note's
