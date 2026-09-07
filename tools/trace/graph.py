@@ -101,7 +101,12 @@ def _label(node: Node) -> str:
     return text.replace('"', "'").replace("[", "(").replace("]", ")")
 
 
-def to_mermaid(graph: TraceGraph, *, phase: int | str | None = None) -> str:
+def to_mermaid(
+    graph: TraceGraph,
+    *,
+    phase: int | str | None = None,
+    exclude_edge_kinds: frozenset[str] = frozenset(),
+) -> str:
     if phase is None:
         included = set(graph.nodes)
     else:
@@ -123,6 +128,8 @@ def to_mermaid(graph: TraceGraph, *, phase: int | str | None = None) -> str:
             continue
         lines.append(f'  {_safe(node.id)}["{_label(node)}"]')
     for edge in graph.edges:
+        if edge.kind in exclude_edge_kinds:
+            continue
         if edge.src not in included or edge.dst not in included:
             continue
         if edge.dst not in graph.nodes:

@@ -55,15 +55,26 @@ Two catch people out most:
   notes) cannot hold a status past `specified` without a linked test. This
   is the one validator rule that is never waived — write the test. The 14
   `REQ-PRIN-*` notes are also `type: constraint` (they restate PRD §0) but
-  are deliberately not `hard_gated`: several are process instructions
-  ("build incrementally", "correctness before performance") that can never
-  have a test, and gating them would only produce token tests.
+  are deliberately not `hard_gated`: several restate PRD §0 process
+  instructions (item 1: implement incrementally, by phases; item 14:
+  correctness, replay parity and data integrity before performance
+  optimization) — a paraphrase of the Ukrainian original, not a verbatim
+  quote — that can never have a test, and gating them would only produce
+  token tests.
+
+  R5's coverage is narrower than PRD §0.13/§0.14 could support: the design
+  intended it to also reach §35.3 (repaint regression) and §35.4 (future
+  leak), but no requirement notes have been extracted for those sections
+  yet, so today R5 only gates §13A.28 and §41. This is deferred requirement
+  work, not a tooling bug — extract `REQ-*` notes for §35.3/§35.4 and flag
+  them `hard_gated: true` when that work happens.
 
 ## Traceability
 
 | Artifact | Carries |
 |---|---|
 | Requirement note | `id:` frontmatter in `vault/10-requirements/` |
+| Requirement note (constraint) | `hard_gated: true/false` frontmatter, **required** on every `type: constraint` note — `collect_requirements` raises rather than defaulting a missing field to `false`, because a silent default there would let a note escape R5 just by omitting a line (see `vault/_templates/requirement.md`) |
 | Spec Kit spec | `traces: [REQ-...]` frontmatter in `specs/<NNN-slug>/spec.md` |
 | Test | `@pytest.mark.trace("REQ-...")` |
 | Source file | `# @trace: REQ-...` (or `// @trace: REQ-...` for `.ts`/`.js`) |

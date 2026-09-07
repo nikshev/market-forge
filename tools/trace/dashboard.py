@@ -118,10 +118,15 @@ def render_dashboard(graph: TraceGraph, violations: list[Violation]) -> str:
     lines.append(
         "Every node currently in the graph, regardless of `phase:` -- the "
         "only view below that includes a requirement whose phase is unset, "
-        "and anything linked only to one."
+        "and anything linked only to one. `DERIVED_FROM` edges (every "
+        "requirement points back to the PRD) are omitted here: with ~100 "
+        "requirements they are most of the edges in this view and carry no "
+        'information beyond "this is a requirement" -- they still render '
+        "in each per-phase diagram below, where the smaller edge count "
+        "keeps them legible."
     )
     lines.append("")
-    lines.append(to_mermaid(graph))
+    lines.append(to_mermaid(graph, exclude_edge_kinds=frozenset({"DERIVED_FROM"})))
     lines.append("")
     for phase in phases:
         lines.append(f"### Phase {phase}")

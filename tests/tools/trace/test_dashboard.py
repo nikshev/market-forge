@@ -204,6 +204,23 @@ def test_dashboard_all_requirements_diagram_includes_a_phaseless_requirement(vau
     assert "REQ_INFRA_001" not in phase_0_section
 
 
+def test_all_requirements_diagram_omits_derived_from_but_phase_diagram_keeps_it(vault):
+    """With ~100 requirements, every one of them has a `DERIVED_FROM` edge to
+    the PRD -- 64% of the unfiltered diagram's edges in the real vault, all
+    carrying no information beyond "this is a requirement". They should not
+    clutter the one diagram meant to show everything at a glance; the
+    smaller per-phase diagrams can afford to keep them.
+    """
+    _write_requirement_with_phase(vault, "REQ-WP-000", "0")
+    graph = build_graph(vault.root)
+    dashboard = render_dashboard(graph, validate(graph))
+
+    all_section = dashboard.split("### All requirements", 1)[1].split("### Phase", 1)[0]
+    phase_0_section = dashboard.split("### Phase 0", 1)[1]
+    assert "|DERIVED_FROM|" not in all_section
+    assert "|DERIVED_FROM|" in phase_0_section
+
+
 def test_write_dashboard_preserves_handwritten_text(vault, tmp_path):
     target = tmp_path / "Traceability Dashboard.md"
     target.write_text(

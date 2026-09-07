@@ -62,6 +62,16 @@ def test_mermaid_of_an_empty_graph_is_still_valid(vault):
     assert diagram.rstrip().endswith("```")
 
 
+def test_mermaid_exclude_edge_kinds_drops_only_the_named_kind(vault):
+    vault.requirement("REQ-WP-001", depends_on=["REQ-WP-002"])
+    vault.requirement("REQ-WP-002")
+    diagram = to_mermaid(build_graph(vault.root), exclude_edge_kinds=frozenset({"DERIVED_FROM"}))
+    assert "|DERIVED_FROM|" not in diagram
+    assert "|DEPENDS_ON|" in diagram
+    # Nodes stay even though their only other edge kind was excluded.
+    assert "PRD[" in diagram
+
+
 def test_mermaid_escapes_quotes_in_titles(vault):
     vault.requirement("REQ-WP-001", title="A quoted title")
     (vault.vault / "10-requirements" / "REQ-WP-001.md").write_text(
