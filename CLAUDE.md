@@ -17,8 +17,21 @@ transition.
     /sdd-spec <REQ-ID>           → speckit-specify + outcome note, status: specified
     /sdd-plan <REQ-ID>           → speckit-plan + outcome note, status: planned
     /sdd-tasks <REQ-ID>          → speckit-tasks + speckit-analyze + outcome note
-    /sdd-implement <REQ-ID>      → tests first, then speckit-implement, status: implemented
+    /sdd-implement <REQ-ID>      → failing tests + commit (status: tested),
+                                   then speckit-implement + commit (status: implemented)
     /sdd-trace [REQ-ID]          → rebuild the graph, report gaps
+
+The status ladder is `draft → specified → planned → tested → implemented →
+verified`. `/sdd-implement` passes through `tested` as its own commit,
+*before* touching implementation code — that commit is what proves a test
+was written first, not the requirement's frontmatter alone. The rung is a
+discipline the commands follow, not a gate the tooling enforces: no
+validator rule reads `status: tested` or checks that a requirement ever held
+it. Rule R2 only requires a verifying test by the time status reaches
+`implemented` — a requirement that jumped straight from `planned` to
+`implemented` in one step, skipping the `tested` commit, would still pass
+`make validate` today. Follow the rung anyway; the tooling not catching a
+skip is a gap, not permission.
 
 Do not skip straight to code. Code without a `# @trace: REQ-...` comment
 naming a real requirement has no place in the traceability graph, and
@@ -88,7 +101,7 @@ regenerate it from `vault/` instead.
 
     make install     # venv (.venv, Python 3.12) + dependencies
     make test        # pytest -q
-    make lint        # ruff check tools tests
+    make lint        # ruff check + ruff format --check, tools tests
     make markers     # collect @pytest.mark.trace markers into .trace/tests.json
     make trace       # markers + rebuild .trace/graph.json
     make dashboard   # markers + rewrite the dashboard and notes' Trace sections

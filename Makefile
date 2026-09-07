@@ -15,6 +15,7 @@ test:
 
 lint:
 	$(VENV)/bin/ruff check tools tests
+	$(VENV)/bin/ruff format --check tools tests
 
 markers:
 	$(PY) -m pytest -p tools.trace.pytest_plugin --trace-dump=.trace/tests.json \

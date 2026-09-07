@@ -16,7 +16,12 @@ Implement `$ARGUMENTS`.
    (registered in `pyproject.toml`'s `[tool.pytest.ini_options]`; multiple
    requirement IDs may be passed to one marker). Run
    `.venv/bin/python -m pytest -q` and confirm the new tests fail for the
-   right reason.
+   right reason. If the requirement instead annotates pre-existing,
+   already-passing behavior (dogfooding the pipeline on its own tooling,
+   for example), there is no red test to watch fail — skip this step's
+   red-test cycle, mark the existing passing test(s), and say plainly in
+   `tasks.md` and the outcome note that the step was skipped and why, rather
+   than fabricating a failure that didn't happen.
 3. Set the requirement's `status: tested`, run `make graph && make validate`,
    and commit. `make graph` reads the markers via
    `tools.trace.pytest_plugin` (that's what `make markers` does under the
