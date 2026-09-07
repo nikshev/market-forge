@@ -65,8 +65,6 @@ market-forge/
 ├── .gitignore
 ├── .pre-commit-config.yaml
 ├── .specify/                         # GitHub Spec Kit, integration: claude
-├── .traceforge/integrations.json     # restored from HEAD
-├── traceforge-init.sh                # restored from HEAD
 ├── .claude/
 │   ├── settings.json                 # permissions for uv / graphify / make
 │   └── commands/
@@ -297,10 +295,13 @@ status. All are thin wrappers that delegate the actual SDD work to Spec Kit.
 
 ## 10. Bootstrap sequence
 
-1. Restore `traceforge-init.sh` and `.traceforge/integrations.json` from HEAD.
-   Both are currently deleted in the working tree. Extend `.gitignore` with
-   `.trace/`, `.graphify/` and `__pycache__/`; it already covers `.venv/`,
-   `.traceforge/cache/` and `.traceforge/ui-state.json`.
+1. Commit `channel_flow_prd_codex_ua_v5.md`, which is currently untracked. The
+   request document must be in history before anything traces to it. In the
+   same commit, record the removal of the TraceForge scaffold
+   (`traceforge-init.sh`, `.traceforge/`), which is dropped deliberately: this
+   design carries out the install itself, in steps 2-3 below. Rewrite
+   `.gitignore` to cover `.venv/`, `.trace/`, `.graphify/` and `__pycache__/`,
+   dropping the now-meaningless `.traceforge/` entries.
 2. Create `.venv` on **Python 3.12**, not the system 3.14: the PRD targets
    3.12+, and `graphifyy` pulls ~25 tree-sitter packages whose 3.14 wheels are
    not guaranteed. If `uv` must download 3.12 into its cache, that is a change
