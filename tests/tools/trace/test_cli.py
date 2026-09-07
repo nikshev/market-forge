@@ -1,5 +1,7 @@
 import json
 
+import pytest
+
 from tools.trace.cli import main
 
 
@@ -17,6 +19,7 @@ def test_validate_exits_zero_when_clean(vault, capsys):
     assert "clean" in capsys.readouterr().out.lower()
 
 
+@pytest.mark.trace("REQ-INFRA-001")
 def test_validate_exits_one_and_names_the_rule(vault, capsys):
     vault.requirement("REQ-WP-001", status="specified")
     code = main(["validate", "--repo-root", str(vault.root)])

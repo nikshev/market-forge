@@ -1,5 +1,7 @@
 import json
 
+import pytest
+
 
 def test_dump_records_marked_tests(pytester):
     pytester.makepyfile(
@@ -36,6 +38,7 @@ def test_dump_records_marked_tests(pytester):
     }
 
 
+@pytest.mark.trace("REQ-INFRA-001")
 def test_parametrized_tests_are_recorded_once_per_case(pytester):
     pytester.makepyfile(
         test_param="""

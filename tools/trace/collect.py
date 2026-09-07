@@ -3,6 +3,7 @@
 One collector per artifact kind. Every collector returns (nodes, edges) and
 never touches the graph, so each can be tested against a directory alone.
 """
+# @trace: REQ-INFRA-001
 
 from __future__ import annotations
 

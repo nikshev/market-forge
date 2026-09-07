@@ -1,4 +1,5 @@
 """Coverage rules over a trace graph. Returns findings; never prints or exits."""
+# @trace: REQ-INFRA-001
 
 from __future__ import annotations
 
@@ -43,9 +44,7 @@ def validate(graph: TraceGraph) -> list[Violation]:
             )
         if status > Status.DRAFT and not has_outcome:
             found.append(
-                Violation(
-                    "R4", req_id, f"status {label!r} requires an outcome note, found none"
-                )
+                Violation("R4", req_id, f"status {label!r} requires an outcome note, found none")
             )
         if req_type in CONSTRAINT_TYPES and status > Status.SPECIFIED and not has_test:
             found.append(

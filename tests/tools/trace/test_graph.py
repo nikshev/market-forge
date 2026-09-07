@@ -1,5 +1,7 @@
 import json
 
+import pytest
+
 from tools.trace.collect import PRD_NODE_ID
 from tools.trace.graph import build_graph, to_dict, to_mermaid, to_networkx, write_json
 
@@ -10,6 +12,7 @@ def test_build_graph_includes_the_prd_as_a_request_node(vault):
     assert graph.nodes[PRD_NODE_ID].kind == "request"
 
 
+@pytest.mark.trace("REQ-INFRA-001")
 def test_build_graph_wires_every_edge_kind(vault, tmp_path):
     vault.requirement("REQ-WP-001", depends_on=["REQ-WP-002"])
     vault.requirement("REQ-WP-002")
@@ -62,7 +65,7 @@ def test_mermaid_of_an_empty_graph_is_still_valid(vault):
 def test_mermaid_escapes_quotes_in_titles(vault):
     vault.requirement("REQ-WP-001", title="A quoted title")
     (vault.vault / "10-requirements" / "REQ-WP-001.md").write_text(
-        '---\nid: REQ-WP-001\ntitle: \'A "quoted" title\'\nstatus: draft\n---\n\nbody\n'
+        "---\nid: REQ-WP-001\ntitle: 'A \"quoted\" title'\nstatus: draft\n---\n\nbody\n"
     )
     diagram = to_mermaid(build_graph(vault.root))
     label_line = next(
@@ -180,8 +183,6 @@ def test_mermaid_ids_for_test_nodes_avoid_forbidden_characters(vault, tmp_path):
 
     diagram = to_mermaid(build_graph(vault.root, test_dump=dump))
 
-    node_line = next(
-        line for line in diagram.split("\n") if "tests/test_a.py::test_x" in line
-    )
+    node_line = next(line for line in diagram.split("\n") if "tests/test_a.py::test_x" in line)
     mermaid_id = node_line.strip().split("[", 1)[0]
     assert not any(forbidden in mermaid_id for forbidden in (":", "/", ".", " "))

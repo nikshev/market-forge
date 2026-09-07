@@ -12,6 +12,7 @@ def rules(violations) -> set[str]:
 
 # --- R1: spec coverage ---
 
+
 def test_r1_passes_for_a_draft_requirement_without_a_spec(vault):
     vault.requirement("REQ-WP-001", status="draft")
     assert "R1" not in rules(validate(build_graph(vault.root)))
@@ -21,11 +22,14 @@ def test_r1_fails_for_a_specified_requirement_without_a_spec(vault):
     vault.requirement("REQ-WP-001", status="specified")
     vault.outcome("OUT-2026-09-07-spec-a", step="spec", records=["REQ-WP-001"])
     violations = validate(build_graph(vault.root))
-    assert Violation(
-        rule="R1",
-        node_id="REQ-WP-001",
-        message="status 'specified' requires at least one spec, found none",
-    ) in violations
+    assert (
+        Violation(
+            rule="R1",
+            node_id="REQ-WP-001",
+            message="status 'specified' requires at least one spec, found none",
+        )
+        in violations
+    )
 
 
 def test_r1_passes_once_a_spec_traces_it(vault):
@@ -36,6 +40,7 @@ def test_r1_passes_once_a_spec_traces_it(vault):
 
 
 # --- R2: test coverage ---
+
 
 def test_r2_fails_for_an_implemented_requirement_without_a_test(vault):
     vault.requirement("REQ-WP-001", status="implemented")
@@ -54,6 +59,7 @@ def test_r2_passes_with_a_verifying_test(vault, tmp_path):
 
 
 # --- R3: dangling references ---
+
 
 def test_r3_fails_on_a_spec_tracing_an_unknown_requirement(vault):
     vault.spec("001-bootstrap", ["REQ-WP-999"])
@@ -106,6 +112,7 @@ def test_r3_ignores_derived_from_edges_to_the_prd(vault):
 
 # --- R4: outcome recorded ---
 
+
 def test_r4_fails_when_an_advanced_requirement_has_no_outcome(vault):
     vault.requirement("REQ-WP-001", status="specified")
     vault.spec("001-bootstrap", ["REQ-WP-001"])
@@ -119,6 +126,8 @@ def test_r4_passes_for_a_draft_requirement(vault):
 
 # --- R5: correctness constraints are hard-gated ---
 
+
+@pytest.mark.trace("REQ-INFRA-001")
 def test_r5_fails_for_a_planned_constraint_without_a_test(vault):
     """R5 bites where R2 does not: 'planned' is below 'implemented'."""
     vault.requirement("REQ-BIAS-002", status="planned", type_="constraint")
@@ -145,6 +154,7 @@ def test_r5_ignores_non_constraint_types(vault):
 
 # --- R6: dependency cycles ---
 
+
 def test_r6_detects_a_two_node_cycle(vault):
     vault.requirement("REQ-WP-001", depends_on=["REQ-WP-002"])
     vault.requirement("REQ-WP-002", depends_on=["REQ-WP-001"])
@@ -169,12 +179,11 @@ def test_r6_detects_a_self_loop(vault):
     vault.requirement("REQ-WP-001", depends_on=["REQ-WP-001"])
     violations = validate(build_graph(vault.root))
     assert "R6" in rules(violations)
-    assert any(
-        v.rule == "R6" and v.message.count("REQ-WP-001") >= 2 for v in violations
-    )
+    assert any(v.rule == "R6" and v.message.count("REQ-WP-001") >= 2 for v in violations)
 
 
 # --- R7: unique ids ---
+
 
 def test_r7_is_raised_by_the_graph_itself(vault):
     graph = TraceGraph()
@@ -184,6 +193,7 @@ def test_r7_is_raised_by_the_graph_itself(vault):
 
 
 # --- ordering ---
+
 
 def test_violations_are_sorted_by_rule_then_node(vault):
     vault.requirement("REQ-WP-002", status="specified")

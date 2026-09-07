@@ -1,4 +1,5 @@
 """Assemble collector output into one graph and export it."""
+# @trace: REQ-INFRA-001
 
 from __future__ import annotations
 

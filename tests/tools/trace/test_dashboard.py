@@ -255,6 +255,7 @@ def test_update_requirement_notes_preserves_the_notes_section(vault):
     assert len(updated) == 1
 
 
+@pytest.mark.trace("REQ-INFRA-001")
 def test_update_requirement_notes_is_idempotent(vault):
     vault.requirement("REQ-WP-001")
     vault.spec("001-bootstrap", ["REQ-WP-001"])

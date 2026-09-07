@@ -1,4 +1,5 @@
 """Command line entry point. The only module here that prints or chooses exit codes."""
+# @trace: REQ-INFRA-001
 
 from __future__ import annotations
 

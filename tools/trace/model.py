@@ -1,4 +1,5 @@
 """Value types for the traceability graph. No I/O lives here."""
+# @trace: REQ-INFRA-001
 
 from __future__ import annotations
 

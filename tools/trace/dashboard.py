@@ -3,6 +3,7 @@
 Everything this module writes lives between marker comments. Text outside them
 is hand-written and is never touched.
 """
+# @trace: REQ-INFRA-001
 
 from __future__ import annotations
 

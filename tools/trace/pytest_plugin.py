@@ -6,6 +6,7 @@ dynamically generated tests are counted individually and correctly.
 Usage:
     pytest -p tools.trace.pytest_plugin --trace-dump=.trace/tests.json --collect-only -q
 """
+# @trace: REQ-INFRA-001
 
 from __future__ import annotations
 
