@@ -124,6 +124,12 @@ similar) export of it ever appears under `graphify-out/obsidian/`, that copy
 is generated and gitignored — never edit it and never cite it as a source;
 regenerate it from `vault/` instead.
 
+Constraint notes derived from PRD §0 (`REQ-PRIN-*`) and §41 (`REQ-BIAS-*`)
+carry their rule text as their `## Acceptance` verbatim, by design — the
+prohibition itself is the checkable condition. This is distinct from, and
+must not be confused with, the 10 notes that genuinely lack acceptance
+criteria and carry the `ACCEPTANCE-NOT-SPECIFIED` marker.
+
 ## Commands
 
     make install     # venv (.venv, Python 3.12) + dependencies

@@ -22,6 +22,12 @@ so every note carries the same history as the code it describes.
   never by renumbering or deleting it.
 - `Trace` sections are generated between `trace:begin`/`trace:end` markers.
   Everything else in a note is hand-written and is never machine-rewritten.
+- Constraint notes derived from PRD §0 (`REQ-PRIN-*`) and §41 (`REQ-BIAS-*`)
+  carry their rule text as their `## Acceptance` verbatim, by design: for a
+  flat prohibition ("no random train/test primary split"), the prohibition
+  *is* the checkable condition, so there is nothing further to extract. This
+  is distinct from the 10 notes that genuinely lack acceptance criteria and
+  carry the `ACCEPTANCE-NOT-SPECIFIED` marker instead.
 - `graphify-out/obsidian/` is a *different*, generated, gitignored vault. This
   one is authoritative.
 
