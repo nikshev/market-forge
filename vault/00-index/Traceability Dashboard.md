@@ -106,7 +106,10 @@ No violations.
 graph LR
   PRD["PRD: ChannelFlow PRD"]
   REQ_PHASE_0["REQ-PHASE-0: Repository + correctness skeleton"]
+  REQ_PHASE_1["REQ-PHASE-1: CEX channel MVP"]
+  REQ_PHASE_1 -->|DEPENDS_ON| REQ_PHASE_0
   REQ_PHASE_0 -.->|DERIVED_FROM| PRD
+  REQ_PHASE_1 -.->|DERIVED_FROM| PRD
 ```
 
 
@@ -115,8 +118,14 @@ graph LR
 ```mermaid
 graph LR
   PRD["PRD: ChannelFlow PRD"]
+  REQ_PHASE_0["REQ-PHASE-0: Repository + correctness skeleton"]
   REQ_PHASE_1["REQ-PHASE-1: CEX channel MVP"]
+  REQ_PHASE_1A["REQ-PHASE-1A: Extremum baseline"]
+  REQ_PHASE_1 -->|DEPENDS_ON| REQ_PHASE_0
+  REQ_PHASE_1A -->|DEPENDS_ON| REQ_PHASE_1
+  REQ_PHASE_0 -.->|DERIVED_FROM| PRD
   REQ_PHASE_1 -.->|DERIVED_FROM| PRD
+  REQ_PHASE_1A -.->|DERIVED_FROM| PRD
 ```
 
 
@@ -125,8 +134,14 @@ graph LR
 ```mermaid
 graph LR
   PRD["PRD: ChannelFlow PRD"]
+  REQ_PHASE_1["REQ-PHASE-1: CEX channel MVP"]
   REQ_PHASE_1A["REQ-PHASE-1A: Extremum baseline"]
+  REQ_PHASE_2["REQ-PHASE-2: CEX microstructure"]
+  REQ_PHASE_1A -->|DEPENDS_ON| REQ_PHASE_1
+  REQ_PHASE_2 -->|DEPENDS_ON| REQ_PHASE_1A
+  REQ_PHASE_1 -.->|DERIVED_FROM| PRD
   REQ_PHASE_1A -.->|DERIVED_FROM| PRD
+  REQ_PHASE_2 -.->|DERIVED_FROM| PRD
 ```
 
 
@@ -135,8 +150,14 @@ graph LR
 ```mermaid
 graph LR
   PRD["PRD: ChannelFlow PRD"]
+  REQ_PHASE_1A["REQ-PHASE-1A: Extremum baseline"]
   REQ_PHASE_2["REQ-PHASE-2: CEX microstructure"]
+  REQ_PHASE_3["REQ-PHASE-3: Derivatives"]
+  REQ_PHASE_2 -->|DEPENDS_ON| REQ_PHASE_1A
+  REQ_PHASE_3 -->|DEPENDS_ON| REQ_PHASE_2
+  REQ_PHASE_1A -.->|DERIVED_FROM| PRD
   REQ_PHASE_2 -.->|DERIVED_FROM| PRD
+  REQ_PHASE_3 -.->|DERIVED_FROM| PRD
 ```
 
 
@@ -145,8 +166,14 @@ graph LR
 ```mermaid
 graph LR
   PRD["PRD: ChannelFlow PRD"]
+  REQ_PHASE_2["REQ-PHASE-2: CEX microstructure"]
   REQ_PHASE_3["REQ-PHASE-3: Derivatives"]
+  REQ_PHASE_4["REQ-PHASE-4: DeFi ingestion + AMM market structure"]
+  REQ_PHASE_3 -->|DEPENDS_ON| REQ_PHASE_2
+  REQ_PHASE_4 -->|DEPENDS_ON| REQ_PHASE_3
+  REQ_PHASE_2 -.->|DERIVED_FROM| PRD
   REQ_PHASE_3 -.->|DERIVED_FROM| PRD
+  REQ_PHASE_4 -.->|DERIVED_FROM| PRD
 ```
 
 
@@ -155,8 +182,14 @@ graph LR
 ```mermaid
 graph LR
   PRD["PRD: ChannelFlow PRD"]
+  REQ_PHASE_3["REQ-PHASE-3: Derivatives"]
   REQ_PHASE_4["REQ-PHASE-4: DeFi ingestion + AMM market structure"]
+  REQ_PHASE_5["REQ-PHASE-5: Cross-venue"]
+  REQ_PHASE_4 -->|DEPENDS_ON| REQ_PHASE_3
+  REQ_PHASE_5 -->|DEPENDS_ON| REQ_PHASE_4
+  REQ_PHASE_3 -.->|DERIVED_FROM| PRD
   REQ_PHASE_4 -.->|DERIVED_FROM| PRD
+  REQ_PHASE_5 -.->|DERIVED_FROM| PRD
 ```
 
 
@@ -165,8 +198,14 @@ graph LR
 ```mermaid
 graph LR
   PRD["PRD: ChannelFlow PRD"]
+  REQ_PHASE_4["REQ-PHASE-4: DeFi ingestion + AMM market structure"]
   REQ_PHASE_5["REQ-PHASE-5: Cross-venue"]
+  REQ_PHASE_6["REQ-PHASE-6: Research-grade validation"]
+  REQ_PHASE_5 -->|DEPENDS_ON| REQ_PHASE_4
+  REQ_PHASE_6 -->|DEPENDS_ON| REQ_PHASE_5
+  REQ_PHASE_4 -.->|DERIVED_FROM| PRD
   REQ_PHASE_5 -.->|DERIVED_FROM| PRD
+  REQ_PHASE_6 -.->|DERIVED_FROM| PRD
 ```
 
 
@@ -175,8 +214,14 @@ graph LR
 ```mermaid
 graph LR
   PRD["PRD: ChannelFlow PRD"]
+  REQ_PHASE_5["REQ-PHASE-5: Cross-venue"]
   REQ_PHASE_6["REQ-PHASE-6: Research-grade validation"]
+  REQ_PHASE_7["REQ-PHASE-7: ML/GMDH"]
+  REQ_PHASE_6 -->|DEPENDS_ON| REQ_PHASE_5
+  REQ_PHASE_7 -->|DEPENDS_ON| REQ_PHASE_6
+  REQ_PHASE_5 -.->|DERIVED_FROM| PRD
   REQ_PHASE_6 -.->|DERIVED_FROM| PRD
+  REQ_PHASE_7 -.->|DERIVED_FROM| PRD
 ```
 
 
@@ -185,8 +230,14 @@ graph LR
 ```mermaid
 graph LR
   PRD["PRD: ChannelFlow PRD"]
+  REQ_PHASE_6["REQ-PHASE-6: Research-grade validation"]
   REQ_PHASE_7["REQ-PHASE-7: ML/GMDH"]
+  REQ_PHASE_7A["REQ-PHASE-7A: Adaptive position / stop management (shadow → paper)"]
+  REQ_PHASE_7 -->|DEPENDS_ON| REQ_PHASE_6
+  REQ_PHASE_7A -->|DEPENDS_ON| REQ_PHASE_7
+  REQ_PHASE_6 -.->|DERIVED_FROM| PRD
   REQ_PHASE_7 -.->|DERIVED_FROM| PRD
+  REQ_PHASE_7A -.->|DERIVED_FROM| PRD
 ```
 
 
@@ -195,8 +246,14 @@ graph LR
 ```mermaid
 graph LR
   PRD["PRD: ChannelFlow PRD"]
+  REQ_PHASE_7["REQ-PHASE-7: ML/GMDH"]
   REQ_PHASE_7A["REQ-PHASE-7A: Adaptive position / stop management (shadow → paper)"]
+  REQ_PHASE_8["REQ-PHASE-8: Production hardening"]
+  REQ_PHASE_7A -->|DEPENDS_ON| REQ_PHASE_7
+  REQ_PHASE_8 -->|DEPENDS_ON| REQ_PHASE_7A
+  REQ_PHASE_7 -.->|DERIVED_FROM| PRD
   REQ_PHASE_7A -.->|DERIVED_FROM| PRD
+  REQ_PHASE_8 -.->|DERIVED_FROM| PRD
 ```
 
 
@@ -205,7 +262,10 @@ graph LR
 ```mermaid
 graph LR
   PRD["PRD: ChannelFlow PRD"]
+  REQ_PHASE_7A["REQ-PHASE-7A: Adaptive position / stop management (shadow → paper)"]
   REQ_PHASE_8["REQ-PHASE-8: Production hardening"]
+  REQ_PHASE_8 -->|DEPENDS_ON| REQ_PHASE_7A
+  REQ_PHASE_7A -.->|DERIVED_FROM| PRD
   REQ_PHASE_8 -.->|DERIVED_FROM| PRD
 ```
 <!-- trace:end -->
