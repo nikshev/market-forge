@@ -122,6 +122,7 @@ graph LR
   OUT_2026_09_07_plan_traceability_tooling["OUT-2026-09-07-plan-traceability-tooling"]
   OUT_2026_09_07_spec_project_bootstrap["OUT-2026-09-07-spec-project-bootstrap"]
   OUT_2026_09_07_spec_traceability_tooling["OUT-2026-09-07-spec-traceability-tooling"]
+  OUT_2026_09_07_tasks_project_bootstrap["OUT-2026-09-07-tasks-project-bootstrap"]
   OUT_2026_09_07_tasks_traceability_tooling["OUT-2026-09-07-tasks-traceability-tooling"]
   PRD["PRD: ChannelFlow PRD"]
   REQ_BIAS_001["REQ-BIAS-001: No random train/test primary split."]
@@ -264,6 +265,7 @@ graph LR
   OUT_2026_09_07_plan_traceability_tooling -.->|RECORDS| REQ_INFRA_001
   OUT_2026_09_07_spec_project_bootstrap -.->|RECORDS| REQ_WP_001
   OUT_2026_09_07_spec_traceability_tooling -.->|RECORDS| REQ_INFRA_001
+  OUT_2026_09_07_tasks_project_bootstrap -.->|RECORDS| REQ_WP_001
   OUT_2026_09_07_tasks_traceability_tooling -.->|RECORDS| REQ_INFRA_001
   SPEC_001_traceability_tooling ==>|SPECIFIES| REQ_INFRA_001
   SPEC_002_project_bootstrap ==>|SPECIFIES| REQ_WP_001
