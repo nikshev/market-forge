@@ -12,11 +12,11 @@ tags: []
 
 ## Requirement
 
-Як researcher, я хочу порівняти historical snapshot каналу, який реально існував у той момент, із пізнішим станом моделі.
+As a researcher, I want to compare the historical snapshot of the channel that actually existed at that moment against the model's later state.
 
 ## Acceptance
 
-_ACCEPTANCE-NOT-SPECIFIED: the PRD states no explicit acceptance criteria for this section. They must be written before this requirement leaves `draft`._
+- the historical channel snapshot as it existed at the time is available for comparison against the model's current/later state.
 
 ## Trace
 

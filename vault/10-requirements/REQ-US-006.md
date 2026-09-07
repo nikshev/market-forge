@@ -12,7 +12,7 @@ tags: []
 
 ## Requirement
 
-Як researcher, я хочу провести ablation:
+As a researcher, I want to run an ablation:
 
 - channel only;
 - channel + order flow;
@@ -22,7 +22,7 @@ tags: []
 
 ## Acceptance
 
-_ACCEPTANCE-NOT-SPECIFIED: the PRD states no explicit acceptance criteria for this section. They must be written before this requirement leaves `draft`._
+- an ablation report exists comparing: channel only; channel + order flow; channel + derivatives; channel + DEX; all combined.
 
 ## Trace
 

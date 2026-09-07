@@ -12,11 +12,11 @@ tags: []
 
 ## Requirement
 
-Як користувач, я хочу бачити contribution factors: channel, OFI, volume profile, derivatives, DeFi.
+As a user, I want to see the contribution factors: channel, OFI, volume profile, derivatives, DeFi.
 
 ## Acceptance
 
-_ACCEPTANCE-NOT-SPECIFIED: the PRD states no explicit acceptance criteria for this section. They must be written before this requirement leaves `draft`._
+- contribution factors are shown for a setup, covering channel, OFI, volume profile, derivatives, and DeFi.
 
 ## Trace
 

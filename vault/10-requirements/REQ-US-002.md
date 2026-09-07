@@ -12,11 +12,12 @@ tags: []
 
 ## Requirement
 
-Як користувач, я хочу натиснути кнопку в Telegram і відкрити графік саме на timestamp сигналу з усіма active overlays.
+As a user, I want to click a button in Telegram and open the chart at exactly the signal's timestamp, with all active overlays.
 
 ## Acceptance
 
-_ACCEPTANCE-NOT-SPECIFIED: the PRD states no explicit acceptance criteria for this section. They must be written before this requirement leaves `draft`._
+- clicking the Telegram button opens the chart at exactly the signal's timestamp;
+- all overlays active at signal time are restored.
 
 ## Trace
 

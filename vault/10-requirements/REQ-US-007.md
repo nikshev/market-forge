@@ -12,13 +12,11 @@ tags: []
 
 ## Requirement
 
-Як researcher, я хочу гарантію, що training dataset не містить feature leakage.
-
----
+As a researcher, I want a guarantee that the training dataset contains no feature leakage.
 
 ## Acceptance
 
-_ACCEPTANCE-NOT-SPECIFIED: the PRD states no explicit acceptance criteria for this section. They must be written before this requirement leaves `draft`._
+- the training dataset passes leakage assertions before being used for ML/GMDH training.
 
 ## Trace
 

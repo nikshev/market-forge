@@ -12,11 +12,11 @@ tags: []
 
 ## Requirement
 
-Як користувач, я хочу бачити список markets, відсортований за setup score, щоб швидко знайти найцікавіші ситуації.
+As a user, I want to see a list of markets, sorted by setup score, so that I can quickly find the most interesting situations.
 
 ## Acceptance
 
-_ACCEPTANCE-NOT-SPECIFIED: the PRD states no explicit acceptance criteria for this section. They must be written before this requirement leaves `draft`._
+- the markets list is sorted by setup score.
 
 ## Trace
 

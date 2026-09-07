@@ -12,11 +12,11 @@ tags: []
 
 ## Requirement
 
-Як researcher, я хочу backtest-ити `upper_rejection_short` окремо від `middle_continuation_short`.
+As a researcher, I want to backtest `upper_rejection_short` separately from `middle_continuation_short`.
 
 ## Acceptance
 
-_ACCEPTANCE-NOT-SPECIFIED: the PRD states no explicit acceptance criteria for this section. They must be written before this requirement leaves `draft`._
+- `upper_rejection_short` and `middle_continuation_short` can each be backtested independently, as separate setup families.
 
 ## Trace
 
