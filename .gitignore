@@ -1,3 +1,8 @@
-.traceforge/cache/
-.traceforge/ui-state.json
 .venv/
+.trace/
+graphify-out/
+.superpowers/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.DS_Store
