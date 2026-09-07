@@ -2,7 +2,7 @@ VENV := .venv
 PY   := $(VENV)/bin/python
 PIP  := uv pip install --python $(PY)
 
-.PHONY: venv install test lint trace validate dashboard graph clean
+.PHONY: venv install test lint markers trace validate dashboard graph clean
 
 venv:
 	uv venv $(VENV) --python 3.12 --no-python-downloads
@@ -16,13 +16,17 @@ test:
 lint:
 	$(VENV)/bin/ruff check tools tests
 
-trace:
+markers:
+	$(PY) -m pytest -p tools.trace.pytest_plugin --trace-dump=.trace/tests.json \
+	    --collect-only -q > /dev/null
+
+trace: markers
 	$(PY) -m tools.trace.cli build
 
-validate:
+validate: markers
 	$(PY) -m tools.trace.cli validate
 
-dashboard:
+dashboard: markers
 	$(PY) -m tools.trace.cli dashboard
 
 graph: trace dashboard
