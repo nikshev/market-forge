@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "WP-001 Project bootstrap"
 prd_lines: "6920-6936"
 phase: null
-status: draft
+status: specified
 depends_on: []
 tags: []
 ---
@@ -34,7 +34,8 @@ Done when:
 ## Trace
 
 <!-- trace:begin -->
-_No linked artifacts yet._
+- **Specs:** [[SPEC-002-project-bootstrap]]
+- **Outcomes:** [[OUT-2026-09-07-spec-project-bootstrap]]
 <!-- trace:end -->
 
 ## Notes
