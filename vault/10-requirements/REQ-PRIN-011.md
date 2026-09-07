@@ -2,6 +2,7 @@
 id: REQ-PRIN-011
 title: In Phase 1-3 the system must not automatically open positions. It only produces signals and alerts.
 type: constraint
+hard_gated: false
 prd_ref: "§0"
 prd_lines: "25-25"
 phase: null

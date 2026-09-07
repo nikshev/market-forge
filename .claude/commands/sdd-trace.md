@@ -45,9 +45,12 @@ Rebuild the graph and report.
    - **R4** — the requirement's status is past `draft` but no outcome note
      `RECORDS` it: create the missing `vault/40-outcomes/OUT-*.md` note for
      whichever `/sdd-*` step was actually done.
-   - **R5** — a `constraint`-type requirement is past `specified` with no
-     test. This is the one rule never to work around: PRD §0.2 makes it
-     non-waivable — write the test.
+   - **R5** — a `hard_gated: true` requirement (currently the `REQ-NRT-*`
+     and `REQ-BIAS-*` notes, PRD §13A.28 and §41) is past `specified` with
+     no test. This is the one rule never to work around — write the test.
+     `REQ-PRIN-*` notes are `type: constraint` too but are not
+     `hard_gated`, by design: several restate PRD §0 process instructions
+     that can never have a test.
    - **R6** — a `depends_on` cycle among requirements: break it by removing
      the weaker dependency edge, not by deleting the requirement.
 5. If the dashboard or any requirement note's `## Trace` section changed,

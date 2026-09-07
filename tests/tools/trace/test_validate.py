@@ -124,13 +124,13 @@ def test_r4_passes_for_a_draft_requirement(vault):
     assert "R4" not in rules(validate(build_graph(vault.root)))
 
 
-# --- R5: correctness constraints are hard-gated ---
+# --- R5: hard-gated correctness constraints ---
 
 
 @pytest.mark.trace("REQ-INFRA-001")
-def test_r5_fails_for_a_planned_constraint_without_a_test(vault):
+def test_r5_fails_for_a_planned_hard_gated_constraint_without_a_test(vault):
     """R5 bites where R2 does not: 'planned' is below 'implemented'."""
-    vault.requirement("REQ-BIAS-002", status="planned", type_="constraint")
+    vault.requirement("REQ-BIAS-002", status="planned", type_="constraint", hard_gated=True)
     vault.spec("001-no-centered-filters", ["REQ-BIAS-002"])
     vault.outcome("OUT-2026-09-07-plan-a", step="plan", records=["REQ-BIAS-002"])
     violations = validate(build_graph(vault.root))
@@ -138,8 +138,8 @@ def test_r5_fails_for_a_planned_constraint_without_a_test(vault):
     assert "R2" not in rules(violations)
 
 
-def test_r5_passes_for_a_specified_constraint_without_a_test(vault):
-    vault.requirement("REQ-BIAS-002", status="specified", type_="constraint")
+def test_r5_passes_for_a_specified_hard_gated_constraint_without_a_test(vault):
+    vault.requirement("REQ-BIAS-002", status="specified", type_="constraint", hard_gated=True)
     vault.spec("001-no-centered-filters", ["REQ-BIAS-002"])
     vault.outcome("OUT-2026-09-07-spec-a", step="spec", records=["REQ-BIAS-002"])
     assert "R5" not in rules(validate(build_graph(vault.root)))
@@ -149,6 +149,20 @@ def test_r5_ignores_non_constraint_types(vault):
     vault.requirement("REQ-WP-001", status="planned", type_="work-package")
     vault.spec("001-bootstrap", ["REQ-WP-001"])
     vault.outcome("OUT-2026-09-07-plan-a", step="plan", records=["REQ-WP-001"])
+    assert "R5" not in rules(validate(build_graph(vault.root)))
+
+
+def test_r5_ignores_a_constraint_that_is_not_hard_gated(vault):
+    """The 14 REQ-PRIN-* notes are `type: constraint` (they restate PRD §0)
+    but are not hard-gated: several are process instructions ("implement
+    incrementally", "correctness before performance") that can never have a
+    test. R5 must key off `hard_gated`, not off `type` alone, or these would
+    be pinned below `implemented` forever and the path of least resistance
+    becomes a token test.
+    """
+    vault.requirement("REQ-PRIN-001", status="planned", type_="constraint", hard_gated=False)
+    vault.spec("001-incremental", ["REQ-PRIN-001"])
+    vault.outcome("OUT-2026-09-07-plan-a", step="plan", records=["REQ-PRIN-001"])
     assert "R5" not in rules(validate(build_graph(vault.root)))
 
 

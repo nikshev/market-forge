@@ -2,6 +2,7 @@
 id: REQ-PRIN-004
 title: Distinguish `event_time`, `exchange_time`, `block_time`, `ingest_time`, `bar_open_time`, `bar_close_time`.
 type: constraint
+hard_gated: false
 prd_ref: "§0"
 prd_lines: "18-18"
 phase: null

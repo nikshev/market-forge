@@ -2,6 +2,7 @@
 id: REQ-BIAS-003
 title: No pivot that requires future bars unless the feature availability time is shifted to confirmation time.
 type: constraint
+hard_gated: true
 prd_ref: "§41"
 prd_lines: "5319-5319"
 phase: null

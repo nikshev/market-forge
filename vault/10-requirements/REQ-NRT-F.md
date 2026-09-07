@@ -2,6 +2,7 @@
 id: REQ-NRT-F
 title: GMDH derivative root stability
 type: constraint
+hard_gated: true
 prd_ref: "Test F — GMDH derivative root stability"
 prd_lines: "2248-2251"
 phase: null

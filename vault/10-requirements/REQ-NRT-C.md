@@ -2,6 +2,7 @@
 id: REQ-NRT-C
 title: confirmation legality
 type: constraint
+hard_gated: true
 prd_ref: "Test C — confirmation legality"
 prd_lines: "2232-2239"
 phase: null

@@ -73,6 +73,7 @@ def collect_requirements(vault_dir: Path) -> tuple[list[Node], list[Edge]]:
                     "phase": meta.get("phase"),
                     "prd_ref": str(meta.get("prd_ref", "")),
                     "tags": _id_list(meta, "tags"),
+                    "hard_gated": bool(meta.get("hard_gated", False)),
                 },
             )
         )

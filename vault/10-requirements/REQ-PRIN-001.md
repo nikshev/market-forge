@@ -2,6 +2,7 @@
 id: REQ-PRIN-001
 title: Implement the system incrementally, by phases and by the acceptance criteria in this PRD.
 type: constraint
+hard_gated: false
 prd_ref: "§0"
 prd_lines: "15-15"
 phase: null

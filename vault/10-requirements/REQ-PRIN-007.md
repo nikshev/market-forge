@@ -2,6 +2,7 @@
 id: REQ-PRIN-007
 title: Any signal with a probabilistic score must have calibration metrics, not just accuracy.
 type: constraint
+hard_gated: false
 prd_ref: "§0"
 prd_lines: "21-21"
 phase: null

@@ -2,6 +2,7 @@
 id: REQ-NRT-A
 title: future-bar invariance
 type: constraint
+hard_gated: true
 prd_ref: "Test A — future-bar invariance"
 prd_lines: "2220-2227"
 phase: null

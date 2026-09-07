@@ -2,6 +2,7 @@
 id: REQ-NRT-D
 title: centered filter prohibition
 type: constraint
+hard_gated: true
 prd_ref: "Test D — centered filter prohibition"
 prd_lines: "2240-2243"
 phase: null

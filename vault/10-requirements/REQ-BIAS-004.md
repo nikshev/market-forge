@@ -2,6 +2,7 @@
 id: REQ-BIAS-004
 title: No using final daily high/low before daily close.
 type: constraint
+hard_gated: true
 prd_ref: "§41"
 prd_lines: "5320-5320"
 phase: null

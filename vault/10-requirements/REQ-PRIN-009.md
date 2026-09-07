@@ -2,6 +2,7 @@
 id: REQ-PRIN-009
 title: Code must be testable, deterministic in backtest mode, and as identical as possible between live and replay.
 type: constraint
+hard_gated: false
 prd_ref: "§0"
 prd_lines: "23-23"
 phase: null

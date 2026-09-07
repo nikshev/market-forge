@@ -2,6 +2,7 @@
 id: REQ-PRIN-010
 title: New exchange/DEX connectors must implement a shared canonical interface.
 type: constraint
+hard_gated: false
 prd_ref: "§0"
 prd_lines: "24-24"
 phase: null

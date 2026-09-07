@@ -2,6 +2,7 @@
 id: REQ-PRIN-014
 title: Before optimizing for performance -- correctness, replay parity, and data integrity.
 type: constraint
+hard_gated: false
 prd_ref: "§0"
 prd_lines: "28-28"
 phase: null

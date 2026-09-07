@@ -33,6 +33,7 @@ class VaultBuilder:
         depends_on: list[str] | None = None,
         prd_ref: str = "§46",
         title: str = "A requirement",
+        hard_gated: bool = False,
     ) -> Path:
         deps = "[]" if not depends_on else "[" + ", ".join(depends_on) + "]"
         path = self.vault / "10-requirements" / f"{req_id}.md"
@@ -42,6 +43,7 @@ class VaultBuilder:
                 id: {req_id}
                 title: {title}
                 type: {type_}
+                hard_gated: {"true" if hard_gated else "false"}
                 prd_ref: "{prd_ref}"
                 phase: 0
                 status: {status}

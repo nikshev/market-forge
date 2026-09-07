@@ -2,6 +2,7 @@
 id: REQ-BIAS-005
 title: No using current funding settlement before it becomes known.
 type: constraint
+hard_gated: true
 prd_ref: "§41"
 prd_lines: "5321-5321"
 phase: null

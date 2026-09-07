@@ -11,21 +11,30 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
-HEADING_PATTERNS: list[tuple[str, re.Pattern[str], str]] = [
-    ("US", re.compile(r"^## US-(\d{3}) — (.+)$"), "user-story"),
-    ("WP", re.compile(r"^## WP-(\d{3}) (.+)$"), "work-package"),
-    ("EXP", re.compile(r"^## EXP-(\d{3}) (.+)$"), "experiment"),
-    ("PHASE", re.compile(r"^#{2,3} Phase (\d[A-Z]?) — (.+)$"), "phase"),
-    ("NRT", re.compile(r"^### Test ([A-F]) — (.+)$"), "constraint"),
+# The trailing bool is `hard_gated`: whether validator rule R5 (a
+# correctness constraint cannot hold status past `specified` without a
+# linked test, never waivable) applies to notes of this kind. Only the
+# non-repainting tests (NRT, PRD §13A.28) and anti-bias rules (BIAS, PRD
+# §41) are hard-gated; the PRD §0 principles (PRIN, in NUMBERED_BLOCKS
+# below) are also `type: constraint` but include process instructions that
+# can never have a test ("implement incrementally"), so gating them would
+# only produce token tests.
+HEADING_PATTERNS: list[tuple[str, re.Pattern[str], str, bool]] = [
+    ("US", re.compile(r"^## US-(\d{3}) — (.+)$"), "user-story", False),
+    ("WP", re.compile(r"^## WP-(\d{3}) (.+)$"), "work-package", False),
+    ("EXP", re.compile(r"^## EXP-(\d{3}) (.+)$"), "experiment", False),
+    ("PHASE", re.compile(r"^#{2,3} Phase (\d[A-Z]?) — (.+)$"), "phase", False),
+    ("NRT", re.compile(r"^### Test ([A-F]) — (.+)$"), "constraint", True),
 ]
 
 NUMBERED = re.compile(r"^(\d{1,2})\. (.+)$")
 SECTION = re.compile(r"^#{1,3} .+$")
 
-# Numbered-list blocks that become constraints, keyed by the heading that opens them.
-NUMBERED_BLOCKS: list[tuple[str, str, str]] = [
-    ("PRIN", "## 0. Інструкція для Codex", "§0"),
-    ("BIAS", "# 41. Anti-Bias Rules", "§41"),
+# Numbered-list blocks that become constraints, keyed by the heading that
+# opens them. The trailing bool is `hard_gated` (see above).
+NUMBERED_BLOCKS: list[tuple[str, str, str, bool]] = [
+    ("PRIN", "## 0. Інструкція для Codex", "§0", False),
+    ("BIAS", "# 41. Anti-Bias Rules", "§41", True),
 ]
 
 # Explicit acceptance-criteria cues that may appear in a heading's body, in
@@ -60,6 +69,7 @@ class Requirement:
     phase: str | None
     body: str
     acceptance: str
+    hard_gated: bool = False
 
 
 def _section_body(lines: list[str], start: int) -> tuple[str, int]:
@@ -109,7 +119,7 @@ def extract(prd_path: Path) -> list[Requirement]:
     found: list[Requirement] = []
 
     for index, line in enumerate(lines):
-        for kind, pattern, type_ in HEADING_PATTERNS:
+        for kind, pattern, type_, hard_gated in HEADING_PATTERNS:
             match = pattern.match(line)
             if not match:
                 continue
@@ -126,11 +136,12 @@ def extract(prd_path: Path) -> list[Requirement]:
                     phase=phase,
                     body=body,
                     acceptance=_extract_acceptance(body),
+                    hard_gated=hard_gated,
                 )
             )
             break
 
-    for kind, heading, ref in NUMBERED_BLOCKS:
+    for kind, heading, ref, hard_gated in NUMBERED_BLOCKS:
         try:
             start = lines.index(heading)
         except ValueError:
@@ -154,6 +165,7 @@ def extract(prd_path: Path) -> list[Requirement]:
                     body=title,
                     # A constraint one-liner *is* its own acceptance criterion.
                     acceptance=title,
+                    hard_gated=hard_gated,
                 )
             )
 
@@ -169,6 +181,7 @@ NOTE_TEMPLATE = """---
 id: {id}
 title: {title}
 type: {type}
+hard_gated: {hard_gated}
 prd_ref: "{prd_ref}"
 prd_lines: "{prd_lines}"
 phase: {phase}
@@ -211,6 +224,7 @@ def write_notes(requirements: list[Requirement], vault_dir: Path) -> list[Path]:
                 id=req.id,
                 title=req.title.replace('"', "'"),
                 type=req.type,
+                hard_gated="true" if req.hard_gated else "false",
                 prd_ref=req.prd_ref.replace('"', "'"),
                 prd_lines=req.prd_lines,
                 phase=req.phase if req.phase is not None else "null",

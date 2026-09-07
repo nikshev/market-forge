@@ -47,12 +47,17 @@ Two catch people out most:
 - **No look-ahead, ever** (Principle I). A feature computed at time `t` uses
   only data with `event_time <= t` that was actually available then. A
   better backtest is never a justification for looking further ahead.
-- **Correctness constraints need a test before they can advance** (PRD §0.2 —
-  no future leakage, look-ahead or repainting even if it improves the
-  backtest — enforced as validator rule **R5**). A requirement whose `type`
-  is `constraint` (anti-bias rules, non-repainting tests, PRD §0 principles
-  themselves) cannot hold a status past `specified` without a linked test.
-  This is the one validator rule that is never waived — write the test.
+- **Correctness constraints need a test before they can advance** (PRD
+  §13A.28's non-repainting tests and §41's anti-bias rules — no future
+  leakage, look-ahead or repainting even if it improves the backtest —
+  enforced as validator rule **R5**). A requirement flagged `hard_gated:
+  true` in its frontmatter (currently the 6 `REQ-NRT-*` and 11 `REQ-BIAS-*`
+  notes) cannot hold a status past `specified` without a linked test. This
+  is the one validator rule that is never waived — write the test. The 14
+  `REQ-PRIN-*` notes are also `type: constraint` (they restate PRD §0) but
+  are deliberately not `hard_gated`: several are process instructions
+  ("build incrementally", "correctness before performance") that can never
+  have a test, and gating them would only produce token tests.
 
 ## Traceability
 
@@ -72,7 +77,7 @@ Two catch people out most:
 | R2 | status is `implemented` or later, no test `VERIFIES` the requirement |
 | R3 | an edge names a requirement ID that doesn't exist as a node |
 | R4 | status is past `draft`, no outcome note `RECORDS` the requirement |
-| R5 | a `constraint`-type requirement is past `specified` with no test |
+| R5 | a `hard_gated: true` requirement is past `specified` with no test |
 | R6 | a `depends_on` cycle among requirements |
 
 A duplicate `id:` across two requirement notes is caught earlier than this

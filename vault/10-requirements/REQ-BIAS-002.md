@@ -2,6 +2,7 @@
 id: REQ-BIAS-002
 title: No centered moving filters in live features.
 type: constraint
+hard_gated: true
 prd_ref: "§41"
 prd_lines: "5318-5318"
 phase: null

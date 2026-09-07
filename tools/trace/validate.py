@@ -9,8 +9,6 @@ import networkx as nx
 
 from tools.trace.model import Status, TraceGraph
 
-CONSTRAINT_TYPES = frozenset({"constraint"})
-
 # Edge kinds whose destination must be a requirement that exists.
 REQUIREMENT_TARGETED = ("SPECIFIES", "VERIFIES", "IMPLEMENTS", "RECORDS", "DECIDES", "DEPENDS_ON")
 
@@ -28,7 +26,7 @@ def validate(graph: TraceGraph) -> list[Violation]:
 
     for req_id, node in requirements.items():
         status = Status.parse(node.attrs.get("status"))
-        req_type = str(node.attrs.get("type", ""))
+        hard_gated = bool(node.attrs.get("hard_gated"))
         has_spec = bool(graph.edges_into(req_id, "SPECIFIES"))
         has_test = bool(graph.edges_into(req_id, "VERIFIES"))
         has_outcome = bool(graph.edges_into(req_id, "RECORDS"))
@@ -46,13 +44,13 @@ def validate(graph: TraceGraph) -> list[Violation]:
             found.append(
                 Violation("R4", req_id, f"status {label!r} requires an outcome note, found none")
             )
-        if req_type in CONSTRAINT_TYPES and status > Status.SPECIFIED and not has_test:
+        if hard_gated and status > Status.SPECIFIED and not has_test:
             found.append(
                 Violation(
                     "R5",
                     req_id,
-                    f"correctness constraint at {label!r} has no test; PRD section 0.2 "
-                    "makes this non-waivable",
+                    f"hard-gated correctness constraint at {label!r} has no test; PRD "
+                    "§13A.28/§41 make this non-waivable",
                 )
             )
 

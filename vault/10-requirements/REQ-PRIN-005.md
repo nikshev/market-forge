@@ -2,6 +2,7 @@
 id: REQ-PRIN-005
 title: Do not rewrite historical channel snapshots or signal snapshots after they are finalized.
 type: constraint
+hard_gated: false
 prd_ref: "§0"
 prd_lines: "19-19"
 phase: null

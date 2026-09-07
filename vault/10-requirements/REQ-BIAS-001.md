@@ -2,6 +2,7 @@
 id: REQ-BIAS-001
 title: No random train/test primary split.
 type: constraint
+hard_gated: true
 prd_ref: "§41"
 prd_lines: "5317-5317"
 phase: null

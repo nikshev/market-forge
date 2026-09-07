@@ -47,6 +47,34 @@ def test_constraints_are_typed_as_constraints(requirements):
             assert req.type == "constraint", req.id
 
 
+def test_hard_gated_is_scoped_to_nrt_and_bias_not_prin(requirements):
+    """R5 (never-waivable, correctness constraints need a test) is scoped by
+    design to PRD §13A.28 (NRT) and §41 (BIAS), not to every `type:
+    constraint` note: the §0 principles (PRIN) include process instructions
+    like "implement incrementally" that can never have a test.
+    """
+    by_kind: dict[str, set[bool]] = {}
+    for req in requirements:
+        kind = req.id.split("-")[1]
+        by_kind.setdefault(kind, set()).add(req.hard_gated)
+    assert by_kind["NRT"] == {True}
+    assert by_kind["BIAS"] == {True}
+    assert by_kind["PRIN"] == {False}
+    for kind in ("US", "WP", "EXP", "PHASE"):
+        assert by_kind[kind] == {False}
+
+
+def test_written_note_carries_the_hard_gated_flag(requirements, tmp_path):
+    bias001 = _by_id(requirements, "REQ-BIAS-001")
+    prin001 = _by_id(requirements, "REQ-PRIN-001")
+    vault_dir = tmp_path / "vault"
+    (vault_dir / "10-requirements").mkdir(parents=True)
+    written = write_notes([bias001, prin001], vault_dir)
+    texts = {path.stem: path.read_text() for path in written}
+    assert "hard_gated: true" in texts["REQ-BIAS-001"]
+    assert "hard_gated: false" in texts["REQ-PRIN-001"]
+
+
 def test_every_requirement_carries_a_prd_reference(requirements):
     for req in requirements:
         assert req.prd_ref, req.id

@@ -2,6 +2,7 @@
 id: REQ-NRT-E
 title: replay parity
 type: constraint
+hard_gated: true
 prd_ref: "Test E — replay parity"
 prd_lines: "2244-2247"
 phase: null

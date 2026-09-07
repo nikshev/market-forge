@@ -2,6 +2,7 @@
 id: REQ-BIAS-009
 title: Fees/slippage must be included in economic evaluation.
 type: constraint
+hard_gated: true
 prd_ref: "§41"
 prd_lines: "5325-5325"
 phase: null

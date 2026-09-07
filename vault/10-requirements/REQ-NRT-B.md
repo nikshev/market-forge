@@ -2,6 +2,7 @@
 id: REQ-NRT-B
 title: candidate chronology
 type: constraint
+hard_gated: true
 prd_ref: "Test B — candidate chronology"
 prd_lines: "2228-2231"
 phase: null

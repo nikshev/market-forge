@@ -2,6 +2,7 @@
 id: REQ-BIAS-006
 title: No using later corrected/reconstructed DEX state as if known earlier unless audit semantics explicitly allow it.
 type: constraint
+hard_gated: true
 prd_ref: "§41"
 prd_lines: "5322-5322"
 phase: null

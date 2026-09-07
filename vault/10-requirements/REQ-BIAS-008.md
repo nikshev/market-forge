@@ -2,6 +2,7 @@
 id: REQ-BIAS-008
 title: No using current top-volume coin list for historical universe backtest without point-in-time universe reconstruction.
 type: constraint
+hard_gated: true
 prd_ref: "§41"
 prd_lines: "5324-5324"
 phase: null

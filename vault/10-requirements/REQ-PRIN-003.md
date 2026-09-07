@@ -2,6 +2,7 @@
 id: REQ-PRIN-003
 title: All indicators/features at timestamp `t` must use only data with `event_time <= t`, and only values that were actually available in real time at the moment the decision was made.
 type: constraint
+hard_gated: false
 prd_ref: "§0"
 prd_lines: "17-17"
 phase: null

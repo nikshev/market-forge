@@ -2,6 +2,7 @@
 id: REQ-BIAS-010
 title: Optimize parameters on train/validation; locked test remains untouched.
 type: constraint
+hard_gated: true
 prd_ref: "§41"
 prd_lines: "5326-5326"
 phase: null

@@ -2,6 +2,7 @@
 id: REQ-PRIN-013
 title: All backtest/research results must be reproducible from a versioned dataset + config + code commit hash + model artifact hash.
 type: constraint
+hard_gated: false
 prd_ref: "§0"
 prd_lines: "27-27"
 phase: null

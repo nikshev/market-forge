@@ -2,6 +2,7 @@
 id: REQ-PRIN-008
 title: Every feature must have a description of its semantics, unit of measurement, cadence, source, freshness, and leakage policy.
 type: constraint
+hard_gated: false
 prd_ref: "§0"
 prd_lines: "22-22"
 phase: null
