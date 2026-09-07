@@ -41,6 +41,10 @@ the annotation and closure work, not a from-scratch build.
 - [ ] T010 [P] Add `# @trace: REQ-INFRA-001` near the top of `tools/trace/dashboard.py`.
 - [ ] T011 [P] Add `# @trace: REQ-INFRA-001` near the top of `tools/trace/cli.py`.
 - [ ] T012 [P] Add `# @trace: REQ-INFRA-001` near the top of `tools/trace/pytest_plugin.py`.
+- [ ] T012a [P] Add `# @trace: REQ-INFRA-001` near the top of
+      `tools/trace/frontmatter.py`. Missed in the original pass (an eighth
+      `tools/trace/*.py` module, not seven) — added during the final
+      whole-branch review's fix wave.
 
 ## Phase 3: Close the loop
 
@@ -59,7 +63,7 @@ the annotation and closure work, not a from-scratch build.
 
 ## Dependencies & Execution Order
 
-Phase 1 (T001-T005) before Phase 2 (T006-T012): a source file's `IMPLEMENTS`
+Phase 1 (T001-T005) before Phase 2 (T006-T012a): a source file's `IMPLEMENTS`
 edge is only meaningful once there is at least one `VERIFIES` edge for the
 same requirement to point at the same claim. Phase 2 tasks are independent of
 each other (`[P]`, different files). Phase 3 is strictly sequential and

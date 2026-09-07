@@ -126,8 +126,11 @@ outcome note ids for that requirement alone.
 - **FR-003**: The system MUST read test-to-requirement links from pytest's
   own collection output, not from regexing test source, so parametrized and
   dynamically generated tests are counted per case.
-- **FR-004**: The system MUST apply seven coverage rules (R1-R7) over the
-  assembled graph and return every violation, never just the first.
+- **FR-004**: The system MUST apply six coverage rules (R1-R6) over the
+  assembled graph and return every violation, never just the first. A
+  seventh rule, R7 (unique requirement ids), is enforced structurally by
+  `TraceGraph.add` refusing a second node with an id already taken, rather
+  than as a rule inside `validate.py`.
 - **FR-005**: The system MUST exit non-zero exactly when at least one
   violation exists, and 0 otherwise (`tools.trace.cli validate`).
 - **FR-006**: The system MUST regenerate the dashboard file and each
@@ -136,10 +139,13 @@ outcome note ids for that requirement alone.
   not exactly one begin and one end, in the right order.
 - **FR-007**: The system MUST provide a `show <ID>` command that prints
   exactly the artifacts linked to one requirement.
-- **FR-008**: Rule R5 MUST fire for a `constraint`-typed requirement past
+- **FR-008**: Rule R5 MUST fire for a `hard_gated: true` requirement past
   `specified` with no test, independent of R2, which only fires at
-  `implemented` or later — a `planned` constraint with no test must fail R5
-  while passing R2.
+  `implemented` or later — a `planned` hard-gated requirement with no test
+  must fail R5 while passing R2. (Scoped to `hard_gated` rather than to
+  every `type: constraint` requirement so that constraint notes which can
+  never have a test, such as the PRD §0 process principles, are not pinned
+  below `implemented` forever.)
 - **FR-009**: `make graph` MUST be idempotent: running it twice with no
   intervening change to source artifacts MUST leave the working tree clean.
 
@@ -150,8 +156,8 @@ outcome note ids for that requirement alone.
 - **Edge**: `src`, `dst`, `kind` (one of DERIVED_FROM, DEPENDS_ON, SPECIFIES,
   VERIFIES, IMPLEMENTS, RECORDS, DECIDES). Targets need not exist as nodes;
   rule R3 is what reports a dangling one.
-- **Violation**: `rule` (R1-R7), `node_id`, `message` — the validator's only
-  output shape.
+- **Violation**: `rule` (R1-R6 — R7 never produces a `Violation`; it raises
+  instead), `node_id`, `message` — the validator's only output shape.
 
 ## Success Criteria *(mandatory)*
 
@@ -159,20 +165,26 @@ outcome note ids for that requirement alone.
 
 - **SC-001**: `make validate` exits 0 on the repository as committed and 1
   the moment any one of R1-R7 is deliberately violated in a test fixture.
-- **SC-002**: Every one of the seven rules has at least one passing and one
-  failing unit test (`tests/tools/trace/test_validate.py`).
+- **SC-002**: Every one of the six `validate.py` rules (R1-R6) has at least
+  one passing and one failing unit test (`tests/tools/trace/test_validate.py`);
+  R7 has a dedicated test asserting the raise
+  (`test_r7_is_raised_by_the_graph_itself`).
 - **SC-003**: Two consecutive runs of `make graph` produce an empty
   `git status --short`.
 - **SC-004**: `tools.trace.cli show REQ-INFRA-001` prints its own spec, its
-  five verifying tests, its seven implementing source files, and at least
+  five verifying tests, its eight implementing source files, and at least
   four recording outcome notes, once this feature's own implementation
   outcome is recorded — the tool proving itself against its own requirement.
 
 ## Assumptions
 
-- The vault (`vault/10-requirements/`, `vault/30-specs/`, `vault/40-outcomes/`,
+- The vault (`vault/10-requirements/`, `vault/40-outcomes/`,
   `vault/20-decisions/`) and `specs/<NNN-slug>/spec.md` are the only sources
-  of graph data; there is no database or external store.
+  of graph data; there is no database or external store. `vault/30-specs/`
+  notes exist only so specs are visible in Obsidian (see
+  `.claude/commands/sdd-spec.md`) — no collector reads that directory, and
+  the graph links a spec through the `traces:` field in
+  `specs/<NNN-slug>/spec.md` instead.
 - Requirement ids are permanent once assigned; the tool never renumbers or
   reuses one.
 - `networkx` is an acceptable dependency for cycle detection (R6) and for the

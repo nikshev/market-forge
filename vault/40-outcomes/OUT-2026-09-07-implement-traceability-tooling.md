@@ -14,10 +14,16 @@ one each in `tests/tools/trace/test_validate.py`
 (`test_update_requirement_notes_is_idempotent`), `test_cli.py`
 (`test_validate_exits_one_and_names_the_rule`), and `test_pytest_plugin.py`
 (`test_parametrized_tests_are_recorded_once_per_case`) — and added
-`# @trace: REQ-INFRA-001` near the top of all seven `tools/trace/*.py`
+`# @trace: REQ-INFRA-001` near the top of all eight `tools/trace/*.py`
 modules (`model.py`, `collect.py`, `graph.py`, `validate.py`, `dashboard.py`,
-`cli.py`, `pytest_plugin.py`). Ran the full suite (`make test`, 125 tests) to
-confirm nothing broke, then `make graph && make validate`.
+`cli.py`, `pytest_plugin.py`, `frontmatter.py`). Ran the full suite
+(`make test`, 125 tests) to confirm nothing broke, then `make graph &&
+make validate`.
+
+**Correction (final review pass):** `frontmatter.py` was in fact missed at
+the time — this note originally said "seven" and did not list it. The
+marker has since been added and this note corrected; see the fix-wave
+report for the adversarial finding that caught it.
 
 ## What was decided
 
@@ -32,7 +38,7 @@ confirm nothing broke, then `make graph && make validate`.
   requirement (R5/R2 independence, every edge kind wired, idempotent
   regeneration, the CLI's exit-code contract, per-case parametrized
   counting) rather than marking every test that happens to touch the module.
-- `tools/trace/collect.py` itself is one of the seven source files carrying
+- `tools/trace/collect.py` itself is one of the eight source files carrying
   the marker, and it is also the collector whose own regex
   (`@trace:\s*(REQ-[A-Z]+-[0-9A-Z]+)`) finds that very marker when
   `make graph` scans `tools/` — a small, deliberate bit of the tool

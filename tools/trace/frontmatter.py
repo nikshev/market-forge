@@ -2,6 +2,7 @@
 
 Knows nothing about requirements; it only understands the fence format.
 """
+# @trace: REQ-INFRA-001
 
 from __future__ import annotations
 
