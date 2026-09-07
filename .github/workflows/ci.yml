@@ -34,18 +34,10 @@ jobs:
           --health-timeout 3s
           --health-retries 15
 
-      minio:
-        image: minio/minio:RELEASE.2025-09-07T16-13-09Z
-        env:
-          MINIO_ROOT_USER: channelflow
-          MINIO_ROOT_PASSWORD: channelflow_dev_only
-        ports:
-          - 9000:9000
-        options: >-
-          --health-cmd "mc ready local || exit 1"
-          --health-interval 2s
-          --health-timeout 3s
-          --health-retries 15
+      # MinIO is NOT a service here. GitHub Actions job services run a
+      # container's default entrypoint with no way to pass a command, and MinIO
+      # needs `server /data` -- without it the image prints usage and exits,
+      # failing the job before any step runs. It is started as a step below.
 
     steps:
       - uses: actions/checkout@v4
@@ -61,6 +53,25 @@ jobs:
           # a developer's machine would then be a bug in one file, not two.
           cp .env.example .env
           make install
+
+      - name: Start the object store
+        run: |
+          docker run -d --name minio \
+            -p 9000:9000 \
+            -e MINIO_ROOT_USER=channelflow \
+            -e MINIO_ROOT_PASSWORD=channelflow_dev_only \
+            minio/minio:RELEASE.2025-09-07T16-13-09Z server /data
+          # Wait for it to answer, rather than sleeping a guessed interval --
+          # the same reasoning as the healthcheck in docker-compose.yml.
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:9000/minio/health/live >/dev/null 2>&1; then
+              echo "object store ready after ${i}s"; break
+            fi
+            if [ "$i" = "30" ]; then
+              echo "object store did not become ready in 30s"; docker logs minio; exit 1
+            fi
+            sleep 1
+          done
 
       - name: Create the object store bucket
         run: |
