@@ -6,7 +6,7 @@ prd_ref: "WP-018 GMDH"
 prd_lines: "7062-7071"
 phase: null
 status: draft
-depends_on: []
+depends_on: ["REQ-WP-017"]
 tags: []
 ---
 
@@ -21,7 +21,12 @@ tags: []
 
 ## Acceptance
 
-_ACCEPTANCE-NOT-SPECIFIED: the PRD states no explicit acceptance criteria for this section. They must be written before this requirement leaves `draft`._
+- a model abstraction exists;
+- polynomial node search is implemented;
+- complexity constraints are enforced;
+- a validation criterion selects/prunes candidates;
+- feature interactions can be exported;
+- a comparison report against baselines exists.
 
 ## Trace
 

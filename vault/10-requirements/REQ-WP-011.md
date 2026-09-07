@@ -6,7 +6,7 @@ prd_ref: "WP-011 OFI/LOB features"
 prd_lines: "7011-7019"
 phase: null
 status: draft
-depends_on: []
+depends_on: ["REQ-WP-004", "REQ-WP-005"]
 tags: []
 ---
 
@@ -21,7 +21,12 @@ tags: []
 
 ## Acceptance
 
-_ACCEPTANCE-NOT-SPECIFIED: the PRD states no explicit acceptance criteria for this section. They must be written before this requirement leaves `draft`._
+- queue imbalance (QI) is computed;
+- depth imbalance is computed;
+- microprice is computed;
+- OFI is computed;
+- CVD is computed;
+- wall persistence/cancellation is tracked.
 
 ## Trace
 

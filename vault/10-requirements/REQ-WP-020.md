@@ -6,7 +6,7 @@ prd_ref: "WP-020 Adaptive stop management"
 prd_lines: "7100-7136"
 phase: null
 status: draft
-depends_on: []
+depends_on: ["REQ-WP-006", "REQ-WP-011", "REQ-WP-013", "REQ-WP-019"]
 tags: []
 ---
 

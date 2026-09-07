@@ -19,7 +19,10 @@ tags: []
 
 ## Acceptance
 
-_ACCEPTANCE-NOT-SPECIFIED: the PRD states no explicit acceptance criteria for this section. They must be written before this requirement leaves `draft`._
+- as-of joins are used to build the dataset;
+- leakage assertions run against the dataset;
+- labels are attached;
+- folds are purged/chronological (no shuffled cross-validation).
 
 ## Trace
 

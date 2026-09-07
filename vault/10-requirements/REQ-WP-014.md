@@ -20,7 +20,11 @@ tags: []
 
 ## Acceptance
 
-_ACCEPTANCE-NOT-SPECIFIED: the PRD states no explicit acceptance criteria for this section. They must be written before this requirement leaves `draft`._
+- raw logs are ingested;
+- a finality policy is applied;
+- reorgs are handled;
+- an ABI decoder is available;
+- RPC health is reported.
 
 ## Trace
 

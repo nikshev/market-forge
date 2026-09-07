@@ -6,7 +6,7 @@ prd_ref: "WP-015 Uniswap v3 adapter"
 prd_lines: "7041-7048"
 phase: null
 status: draft
-depends_on: []
+depends_on: ["REQ-WP-014"]
 tags: []
 ---
 
@@ -20,7 +20,11 @@ tags: []
 
 ## Acceptance
 
-_ACCEPTANCE-NOT-SPECIFIED: the PRD states no explicit acceptance criteria for this section. They must be written before this requirement leaves `draft`._
+- pool math is implemented;
+- swaps are decoded;
+- mint/burn events are decoded;
+- tick state is tracked;
+- depth is simulated.
 
 ## Trace
 

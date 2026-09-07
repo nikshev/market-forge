@@ -6,7 +6,7 @@ prd_ref: "WP-012 Volume profile"
 prd_lines: "7020-7026"
 phase: null
 status: draft
-depends_on: []
+depends_on: ["REQ-WP-003", "REQ-WP-009"]
 tags: []
 ---
 
@@ -19,7 +19,10 @@ tags: []
 
 ## Acceptance
 
-_ACCEPTANCE-NOT-SPECIFIED: the PRD states no explicit acceptance criteria for this section. They must be written before this requirement leaves `draft`._
+- volume is binned at the trade level;
+- POC/VAH/VAL are computed;
+- HVN/LVN are identified;
+- a chart plugin renders the profile.
 
 ## Trace
 

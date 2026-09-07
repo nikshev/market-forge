@@ -6,7 +6,7 @@ prd_ref: "WP-013 Derivatives"
 prd_lines: "7027-7032"
 phase: null
 status: draft
-depends_on: []
+depends_on: ["REQ-WP-003"]
 tags: []
 ---
 
@@ -18,7 +18,9 @@ tags: []
 
 ## Acceptance
 
-_ACCEPTANCE-NOT-SPECIFIED: the PRD states no explicit acceptance criteria for this section. They must be written before this requirement leaves `draft`._
+- funding, OI, basis, and liquidations are ingested;
+- z-scores are computed for these features;
+- derivatives state is joined onto the signal/feature pipeline.
 
 ## Trace
 
