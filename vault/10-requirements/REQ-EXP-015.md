@@ -24,7 +24,7 @@ Use strict ablation and same walk-forward folds.
 
 ## Acceptance
 
-- the ablation is strict (one factor at a time) and uses the same walk-forward folds across OI/funding/liquidations, DEX-CEX executable basis, DEX depth asymmetry, swap imbalance, and LP liquidity migration variants.
+- the ablation is strict and uses the same walk-forward folds across OI/funding/liquidations, DEX-CEX executable basis, DEX depth asymmetry, swap imbalance, and LP liquidity migration variants.
 
 ## Trace
 

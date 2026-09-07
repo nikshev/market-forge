@@ -26,7 +26,7 @@ tags: []
 - complexity constraints are enforced;
 - a validation criterion selects/prunes candidates;
 - feature interactions can be exported;
-- a comparison report against baselines exists.
+- a comparison report against baselines exists (per REQ-PRIN-006).
 
 ## Trace
 

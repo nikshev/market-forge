@@ -20,7 +20,7 @@ tags: []
 
 - funding, OI, basis, and liquidations are ingested;
 - z-scores are computed for these features;
-- derivatives state is joined onto the signal/feature pipeline.
+- derivatives state joins are performed.
 
 ## Trace
 

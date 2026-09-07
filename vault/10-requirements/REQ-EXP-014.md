@@ -25,7 +25,7 @@ Then repeat point-in-time as a predictive experiment to avoid confusing contempo
 
 ## Acceptance
 
-- the conditional study is repeated in a strict point-in-time (predictive) form, separate from the contemporaneous conditional study, so that explanatory value around extrema is not confused with forecast value.
+- the conditional study is repeated in a point-in-time (predictive) form, separate from the contemporaneous conditional study, so that explanatory value around extrema is not confused with forecast value.
 
 ## Trace
 
