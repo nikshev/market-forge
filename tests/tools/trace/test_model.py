@@ -6,6 +6,10 @@ from tools.trace.model import Edge, Node, Status, TraceGraph
 def test_status_is_ordered():
     assert Status.DRAFT < Status.SPECIFIED < Status.PLANNED
     assert Status.PLANNED < Status.TESTED < Status.IMPLEMENTED < Status.VERIFIED
+    # Tasks 8 and 9 gate on >= and > directly, so exercise those operators too.
+    assert Status.VERIFIED > Status.IMPLEMENTED
+    assert Status.IMPLEMENTED >= Status.IMPLEMENTED
+    assert Status.IMPLEMENTED >= Status.TESTED
 
 
 @pytest.mark.parametrize(
@@ -32,6 +36,15 @@ def test_nodes_are_hashable_and_frozen():
     assert {node}
     with pytest.raises(AttributeError):
         node.id = "REQ-US-002"
+
+
+def test_node_attrs_are_excluded_from_equality_and_hash():
+    # attrs must not affect compare/hash, or nodes could not stay hashable
+    # while carrying a mutable dict.
+    a = Node(id="REQ-US-001", kind="requirement", path="a.md", attrs={"owner": "alice"})
+    b = Node(id="REQ-US-001", kind="requirement", path="a.md", attrs={"owner": "bob"})
+    assert a == b
+    assert hash(a) == hash(b)
 
 
 def test_add_and_lookup_by_kind():
