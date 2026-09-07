@@ -22,7 +22,7 @@ Measure incremental value, not visual appeal.
 
 ## Acceptance
 
-_ACCEPTANCE-NOT-SPECIFIED: the PRD states no explicit acceptance criteria for this section. They must be written before this requirement leaves `draft`._
+- incremental value of nested/multi-scale extrema (5m-inside-15m zone, 15m-vs-1h slope alignment, multi-scale directional-change thresholds) is measured quantitatively, not judged by visual appeal.
 
 ## Trace
 

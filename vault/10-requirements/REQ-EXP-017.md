@@ -49,11 +49,12 @@ Ablations:
 
 The experiment must be able to conclude `NO_EDGE`: a sophisticated trailing policy is rejected if it only looks better visually but does not improve OOS economics or risk-adjusted outcomes.
 
----
-
 ## Acceptance
 
-_ACCEPTANCE-NOT-SPECIFIED: the PRD states no explicit acceptance criteria for this section. They must be written before this requirement leaves `draft`._
+- the seven policies (fixed initial stop; naive fixed-percent trailing; ATR/volatility trailing; confirmed-swing structural trailing; channel-conditioned structural stop; structural stop + order-flow confirmation; full Adaptive Stop Management Engine) are compared on identical immutable entry signals;
+- primary metrics are reported: expectancy after fees/slippage, realized R multiple, profit factor, stop-out rate, percentage of trades stopped before later reaching original target, give-back from MFE to realized exit, MAE before stop, median/95p stop distance, average holding time, turnover/stop modification count, tail loss/worst gap or slippage event, regime stability;
+- the listed ablations (swing confirmation, volatility/noise floor, order-flow veto, channel context, extremum/turning-point forecast, DeFi/cross-venue context, hysteresis/cooldown) are each removed and evaluated in turn;
+- the experiment can conclude `NO_EDGE` and reject the policy if it only looks better visually without improving OOS economics or risk-adjusted outcomes.
 
 ## Trace
 

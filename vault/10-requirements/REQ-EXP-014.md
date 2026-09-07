@@ -25,7 +25,7 @@ Then repeat point-in-time as a predictive experiment to avoid confusing contempo
 
 ## Acceptance
 
-_ACCEPTANCE-NOT-SPECIFIED: the PRD states no explicit acceptance criteria for this section. They must be written before this requirement leaves `draft`._
+- the conditional study is repeated in a strict point-in-time (predictive) form, separate from the contemporaneous conditional study, so that explanatory value around extrema is not confused with forecast value.
 
 ## Trace
 

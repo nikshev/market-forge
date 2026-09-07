@@ -33,7 +33,14 @@ Reject the derivative method if roots are unstable or add no OOS value.
 
 ## Acceptance
 
-_ACCEPTANCE-NOT-SPECIFIED: the PRD states no explicit acceptance criteria for this section. They must be written before this requirement leaves `draft`._
+- root presence rate is reported;
+- root horizon IQR is reported;
+- turn-type agreement is reported;
+- time-to-turn MAE is reported;
+- extreme-price error is reported;
+- calibration is reported;
+- incremental expectancy after costs is reported;
+- the derivative method is rejected if roots are unstable or add no OOS value.
 
 ## Trace
 

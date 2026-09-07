@@ -26,7 +26,8 @@ Centered filters are allowed only as retrospective label references, never as li
 
 ## Acceptance
 
-_ACCEPTANCE-NOT-SPECIFIED: the PRD states no explicit acceptance criteria for this section. They must be written before this requirement leaves `draft`._
+- maximum/minimum forecast precision is evaluated at horizons 3/6/12/24 bars for each candidate method;
+- centered filters (e.g. the Savitzky-Golay-equivalent variant) are used only as retrospective label references, never as live candidates.
 
 ## Trace
 
