@@ -165,6 +165,29 @@ criteria and carry the `ACCEPTANCE-NOT-SPECIFIED` marker.
 A pre-commit hook runs `ruff` and `make validate` on every commit. Do not
 bypass it with `--no-verify`; if it fails, fix the underlying gap.
 
+## Two gates
+
+The checks are split, because a requirement verified by an integration test
+would otherwise make every commit depend on a running container runtime
+(REQ-INFRA-002).
+
+**Fast gate — the pre-commit hook, runs on every commit.** ruff check, ruff
+format, and `make test-fast` (`pytest -m "not integration"`). Needs no services.
+It is not the authority; it is the cheap check that catches most mistakes.
+
+**Full gate — `.github/workflows/ci.yml`, runs on every push and pull request.**
+Provisions PostgreSQL and MinIO, then `make lint`, `make typecheck`, `make test`
+(including integration) and `make validate`. Every step calls the same `make`
+target you run locally, so the two cannot drift.
+
+**CI is where `implemented` is earned** for any requirement whose verification
+needs a live service. A green local commit is not the same claim.
+
+The rule that keeps this honest: **no check may be absent from both gates.** If
+you remove something from `.pre-commit-config.yaml`, confirm it runs in the
+workflow first. Run the full gate locally any time with `make validate` — it
+still works, it just needs the stack up.
+
 ## Language
 
 Artifacts — notes, specs, code, comments, commit messages — are in English.

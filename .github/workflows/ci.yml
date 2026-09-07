@@ -1,0 +1,85 @@
+# The FULL gate for ChannelFlow (REQ-INFRA-002).
+#
+# The local pre-commit hook runs only what needs no live service, so committing
+# never requires a container runtime. Everything it stopped running happens
+# here -- that is FR-009, and it is the property that keeps the split honest.
+#
+# Every step calls the same `make` target a developer runs locally. Nothing in
+# this file reimplements a check, so the two gates cannot drift apart.
+
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+
+    services:
+      # Image tags match docker-compose.yml, pinned for the same reason:
+      # Principle XI wants a checkout to resolve to the same stack later.
+      postgres:
+        image: postgres:16-alpine3.24
+        env:
+          POSTGRES_USER: channelflow
+          POSTGRES_PASSWORD: channelflow_dev_only
+          POSTGRES_DB: channelflow
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U channelflow -d channelflow"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 15
+
+      minio:
+        image: minio/minio:RELEASE.2025-09-07T16-13-09Z
+        env:
+          MINIO_ROOT_USER: channelflow
+          MINIO_ROOT_PASSWORD: channelflow_dev_only
+        ports:
+          - 9000:9000
+        options: >-
+          --health-cmd "mc ready local || exit 1"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.5.11"
+
+      - name: Set up the environment
+        run: |
+          # The same defaults the local stack uses. A divergence between CI and
+          # a developer's machine would then be a bug in one file, not two.
+          cp .env.example .env
+          make install
+
+      - name: Create the object store bucket
+        run: |
+          # What `make up` does locally via the minio_init one-shot container.
+          curl -fsSL https://dl.min.io/client/mc/release/linux-amd64/mc -o /tmp/mc
+          chmod +x /tmp/mc
+          /tmp/mc alias set local http://127.0.0.1:9000 channelflow channelflow_dev_only
+          /tmp/mc mb --ignore-existing local/channelflow-dev
+
+      # Four separately named steps, so a failure says which check failed
+      # without anyone reading the raw log end to end (FR-004).
+      - name: Lint
+        run: make lint
+
+      - name: Type check
+        run: make typecheck
+
+      - name: Tests (including integration)
+        run: make test
+
+      - name: Traceability coverage
+        run: make validate

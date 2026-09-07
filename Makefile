@@ -13,6 +13,13 @@ install: venv
 test:
 	$(PY) -m pytest -q
 
+# The fast gate: everything that needs no live service. This is what the
+# pre-commit hook runs, so committing does not require a container runtime.
+# The full gate -- including integration tests and traceability coverage --
+# runs in CI. See REQ-INFRA-002.
+test-fast:
+	$(PY) -m pytest -q -m "not integration"
+
 lint:
 	$(VENV)/bin/ruff check tools tests src
 	$(VENV)/bin/ruff format --check tools tests src

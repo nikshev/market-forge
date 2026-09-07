@@ -8,15 +8,15 @@ repos:
 
   - repo: local
     hooks:
-      - id: trace-validate
-        name: traceability coverage
-        # `make validate` depends on `markers`, which regenerates
-        # .trace/tests.json from a real test run before the coverage rules
-        # are checked. Calling `tools.trace.cli validate` directly here would
-        # validate whatever stale (or absent) dump happens to be on disk,
-        # which is exactly the gap that let every trace marker be deleted
-        # and still pass this hook. Do not shortcut this back to the CLI.
-        entry: make validate
+      # The FAST gate. Everything here runs without a container runtime, so a
+      # commit never requires Docker. The full gate -- integration tests and
+      # traceability coverage -- runs in .github/workflows/ci.yml.
+      #
+      # REQ-INFRA-002's FR-009: no check may be absent from BOTH gates. If you
+      # remove something here, it must already run in the workflow.
+      - id: test-fast
+        name: fast tests (no live services)
+        entry: make test-fast
         language: system
         pass_filenames: false
         always_run: true

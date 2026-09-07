@@ -37,6 +37,7 @@ where = [".", "src"]
 testpaths = ["tests"]
 markers = [
     "trace(*requirement_ids): link this test to one or more requirement IDs",
+    "integration: needs live services; deselected by the fast local gate, run in CI",
 ]
 
 [tool.mypy]

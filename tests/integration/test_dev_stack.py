@@ -39,6 +39,7 @@ def _env() -> dict[str, str]:
     return values
 
 
+@pytest.mark.integration
 @pytest.mark.trace("REQ-WP-001")
 def test_postgres_answers_a_query() -> None:
     """PostgreSQL is reachable and serves queries, not merely accepting TCP."""
@@ -69,6 +70,7 @@ def test_postgres_answers_a_query() -> None:
     assert result == 1
 
 
+@pytest.mark.integration
 @pytest.mark.trace("REQ-WP-001")
 def test_object_store_lists_buckets() -> None:
     """The object store answers the S3 API and the development bucket exists."""
