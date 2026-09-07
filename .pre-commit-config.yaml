@@ -1,13 +1,17 @@
 repos:
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.6.9
-    hooks:
-      - id: ruff
-        args: [--fix]
-      - id: ruff-format
-
   - repo: local
     hooks:
+      # ruff comes from the project's own environment, not from a pinned
+      # pre-commit rev. Two ruff versions formatting the same file differently
+      # is how a commit passes the hook and fails CI forever, each fixing what
+      # the other undoes. One ruff, pinned by uv.lock, used by both gates.
+      - id: lint
+        name: ruff check + format
+        entry: make lint
+        language: system
+        pass_filenames: false
+        always_run: true
+
       # The FAST gate. Everything here runs without a container runtime, so a
       # commit never requires Docker. The full gate -- integration tests and
       # traceability coverage -- runs in .github/workflows/ci.yml.

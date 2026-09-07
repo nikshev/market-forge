@@ -54,6 +54,19 @@ PostgreSQL and MinIO.
   Principle XI failure that had been latent since Task 2. Both are now a
   `tooling` extra carried by the lockfile, and `make install` pulls them.
 
+- **The two gates ran different ruff versions, and CI caught it.** The
+  pre-commit config pinned `ruff-pre-commit` at `v0.6.9` while `make lint` used
+  the project's ruff 0.16.6. They format the same file differently, so a commit
+  passed the hook and failed CI — and would have ping-ponged forever, each gate
+  undoing the other's formatting. Fixed by making the hook call `make lint`, so
+  one ruff, pinned by `uv.lock`, serves both. This is the same principle the
+  workflow already followed and the hook did not.
+- **`make install` ignored the lockfile.** It ran `uv pip install -e`, which
+  resolves afresh; `uv.lock` existed and was not consulted. Now `uv sync
+  --frozen`. Without this the lockfile added an hour earlier was decorative,
+  and CI and a developer's machine would drift onto different tool versions —
+  exactly the divergence that produced the ruff conflict above.
+
 ## What is still open
 
 - **No branch protection.** The workflow runs, but nothing requires it to pass

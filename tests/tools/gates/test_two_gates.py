@@ -75,9 +75,9 @@ def test_the_workflow_runs_the_full_suite_not_the_fast_one() -> None:
     gates at once -- the exact failure FR-009 exists to prevent, and one that
     would look green everywhere.
     """
-    assert (
-        "test-fast" not in _workflow_make_targets()
-    ), "the workflow runs `make test-fast`; integration tests would then run in neither gate"
+    assert "test-fast" not in _workflow_make_targets(), (
+        "the workflow runs `make test-fast`; integration tests would then run in neither gate"
+    )
 
 
 @pytest.mark.trace("REQ-INFRA-002")

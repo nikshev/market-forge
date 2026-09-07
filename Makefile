@@ -7,8 +7,11 @@ PIP  := uv pip install --python $(PY)
 venv:
 	uv venv $(VENV) --python 3.12 --no-python-downloads
 
-install: venv
-	$(PIP) -e ".[dev,tooling]"
+# --frozen installs exactly what uv.lock pins. `uv pip install -e` would
+# resolve afresh and quietly ignore the lockfile, which is how CI and a
+# developer's machine drift onto different versions of the same tool.
+install:
+	uv sync --frozen --extra dev --extra tooling
 
 test:
 	$(PY) -m pytest -q
