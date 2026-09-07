@@ -16,9 +16,12 @@ Plan `$ARGUMENTS`.
 3. Create `vault/40-outcomes/OUT-<today>-plan-<slug>.md` with `step: plan` and
    `records: [$ARGUMENTS]`. Record the approach chosen and what was rejected
    — not a summary of `plan.md`.
-4. Check the requirement's `type` in its frontmatter:
-   - If `type` is **not** `constraint`: set `status: planned`.
-   - If `type` **is** `constraint`: rule R5 forbids this requirement from
+4. Check the requirement's `hard_gated` field in its frontmatter (not
+   `type` — `type: constraint` alone no longer triggers this; the 14
+   `REQ-PRIN-*` notes are `type: constraint` but not `hard_gated`, and must
+   be allowed to reach `planned` normally):
+   - If `hard_gated` is **not** `true`: set `status: planned`.
+   - If `hard_gated` **is** `true`: rule R5 forbids this requirement from
      holding any status past `specified` without a linked test. Do not set
      `status: planned`. Instead write the failing test now — see
      `/sdd-implement` step 2 for the `@pytest.mark.trace("$ARGUMENTS")`
