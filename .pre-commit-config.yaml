@@ -10,7 +10,13 @@ repos:
     hooks:
       - id: trace-validate
         name: traceability coverage
-        entry: .venv/bin/python -m tools.trace.cli validate
+        # `make validate` depends on `markers`, which regenerates
+        # .trace/tests.json from a real test run before the coverage rules
+        # are checked. Calling `tools.trace.cli validate` directly here would
+        # validate whatever stale (or absent) dump happens to be on disk,
+        # which is exactly the gap that let every trace marker be deleted
+        # and still pass this hook. Do not shortcut this back to the CLI.
+        entry: make validate
         language: system
         pass_filenames: false
         always_run: true
