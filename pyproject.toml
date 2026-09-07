@@ -14,6 +14,13 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# The SDD toolchain. Declared here rather than installed ad hoc: anything not
+# in this file is one `uv sync` away from vanishing, which is how `specify` and
+# `graphify` disappeared the first time a lockfile was generated.
+tooling = [
+    "specify-cli>=1.0.4",
+    "graphifyy>=0.9.55",
+]
 dev = [
     "pytest>=8.0",
     "pytest-cov>=5.0",

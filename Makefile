@@ -8,7 +8,7 @@ venv:
 	uv venv $(VENV) --python 3.12 --no-python-downloads
 
 install: venv
-	$(PIP) -e ".[dev]"
+	$(PIP) -e ".[dev,tooling]"
 
 test:
 	$(PY) -m pytest -q
