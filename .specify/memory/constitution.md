@@ -1,50 +1,75 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+# ChannelFlow Constitution
 
-## Core Principles
+The PRD (`channel_flow_prd_codex_ua_v5.md`) is the source of truth. These
+principles are non-negotiable and apply to every spec, plan and implementation.
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+## I. No look-ahead, ever
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+Any feature computed at timestamp `t` uses only data with `event_time <= t`,
+and only values that were actually available in real time at the moment of
+decision. This holds even when violating it would improve a backtest.
+A backtest improvement is never evidence that a leak is acceptable.
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+## II. Time is not one thing
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+`event_time`, `exchange_time`, `block_time`, `ingest_time`, `bar_open_time`
+and `bar_close_time` are distinct and never conflated. Every model carrying a
+timestamp names which one it holds.
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+## III. History is immutable
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+Finalized channel snapshots and signal snapshots are never rewritten. A
+correction is a new record, not an edit.
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+## IV. Baselines before models
 
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
+No ML or GMDH layer is added until deterministic baselines exist and leakage
+tests pass. A model that cannot beat a deterministic baseline is not a result.
 
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+## V. Calibration, not accuracy
 
-## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
+Any signal carrying a probabilistic score reports calibration metrics.
+Accuracy alone is not an acceptable evaluation of a probability.
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
+## VI. Every feature is documented
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+A feature declares its semantics, unit, cadence, source, freshness and leakage
+policy. An undocumented feature is not done.
+
+## VII. Live and replay are the same code
+
+Code is deterministic in backtest mode and maximally identical between live
+and replay. Divergence between the two is a defect, not a configuration.
+
+## VIII. Connectors share one interface
+
+Every new exchange or DEX connector implements the common canonical interface.
+
+## IX. No automatic execution
+
+Phases 1-3 form signals and alerts only. The system does not open positions.
+
+## X. Thresholds are configuration
+
+All numeric thresholds are configurable. Hard-coded trading thresholds are
+forbidden outside test fixtures.
+
+## XI. Results are reproducible
+
+Every backtest and research result is reproducible from a versioned dataset,
+config, code commit hash and model artifact hash.
+
+## XII. Correctness precedes performance
+
+Correctness, replay parity and data integrity are settled before any
+performance optimization.
+
+## XIII. Work is incremental
+
+The system is built in the phases and against the acceptance criteria the PRD
+defines, not ahead of them.
+
+## XIV. Everything is traceable
+
+Every unit of work carries a requirement ID from `vault/10-requirements/`
+through spec, test and implementation. Work that cannot be traced is not done.
