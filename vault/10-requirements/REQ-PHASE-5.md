@@ -24,13 +24,7 @@ Deliverables:
 
 ## Acceptance
 
-- Bybit;
-- OKX;
-- normalized symbol mapping;
-- consensus mid;
-- cross-venue basis;
-- depth comparison;
-- funding dispersion.
+_ACCEPTANCE-NOT-SPECIFIED: the PRD states no explicit acceptance criteria for this section. They must be written before this requirement leaves `draft`._
 
 ## Trace
 

@@ -24,7 +24,7 @@ Use strict ablation and same walk-forward folds.
 
 ## Acceptance
 
-_The PRD states no explicit acceptance criteria for this section. They must be written before this requirement leaves `draft`._
+_ACCEPTANCE-NOT-SPECIFIED: the PRD states no explicit acceptance criteria for this section. They must be written before this requirement leaves `draft`._
 
 ## Trace
 

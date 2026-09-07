@@ -26,7 +26,7 @@ Centered filters are allowed only as retrospective label references, never as li
 
 ## Acceptance
 
-_The PRD states no explicit acceptance criteria for this section. They must be written before this requirement leaves `draft`._
+_ACCEPTANCE-NOT-SPECIFIED: the PRD states no explicit acceptance criteria for this section. They must be written before this requirement leaves `draft`._
 
 ## Trace
 

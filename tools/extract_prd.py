@@ -28,19 +28,25 @@ NUMBERED_BLOCKS: list[tuple[str, str, str]] = [
     ("BIAS", "# 41. Anti-Bias Rules", "§41"),
 ]
 
-# Explicit acceptance-criteria cues that may appear in a heading's body, in the
-# order they take priority when a section carries more than one (a Phase
+# Explicit acceptance-criteria cues that may appear in a heading's body, in
+# the order they take priority when a section carries more than one (a Phase
 # section states both Deliverables: and Acceptance: — Acceptance wins).
 ACCEPTANCE_CUES: list[re.Pattern[str]] = [
     re.compile(r"^Acceptance:\s*$"),
     re.compile(r"^Done when:\s*$"),
     re.compile(r"^Metrics?:\s*$"),
-    re.compile(r"^Deliverables:\s*$"),
 ]
 
+# A list of things to build is not a criterion for knowing they work, so
+# Deliverables: must never be picked as the *source* of acceptance text.
+# It still marks where a higher-priority cue's block ends when it appears
+# right after one (see _extract_acceptance).
+DELIVERABLES_CUE = re.compile(r"^Deliverables:\s*$")
+
 NO_ACCEPTANCE_MARKER = (
-    "_The PRD states no explicit acceptance criteria for this section. "
-    "They must be written before this requirement leaves `draft`._"
+    "_ACCEPTANCE-NOT-SPECIFIED: the PRD states no explicit acceptance "
+    "criteria for this section. They must be written before this "
+    "requirement leaves `draft`._"
 )
 
 
@@ -67,28 +73,34 @@ def _section_body(lines: list[str], start: int) -> tuple[str, int]:
 def _extract_acceptance(body: str) -> str:
     """Pull the explicit acceptance criteria out of a section's body, if any.
 
-    Finds every cue line (Acceptance:, Done when:, Metric(s):, Deliverables:),
+    Finds every selectable cue line (Acceptance:, Done when:, Metric(s):),
     picks the highest-priority one present, and returns the text between it
-    and whichever cue (of any kind) comes next, or the end of the body.
+    and whichever cue -- selectable or Deliverables: -- comes next, or the
+    end of the body. Deliverables: is a boundary only; a section that carries
+    Deliverables: and nothing else yields no acceptance text at all.
     """
     lines = body.split("\n")
-    cue_hits: list[tuple[int, int]] = []  # (line index, priority rank)
+    selectable: list[tuple[int, int]] = []  # (line index, priority rank)
+    boundaries: list[int] = []  # every cue line, selectable or not
+
     for index, line in enumerate(lines):
         stripped = line.strip()
+        is_boundary = False
         for rank, pattern in enumerate(ACCEPTANCE_CUES):
             if pattern.match(stripped):
-                cue_hits.append((index, rank))
+                selectable.append((index, rank))
+                is_boundary = True
                 break
+        if not is_boundary and DELIVERABLES_CUE.match(stripped):
+            is_boundary = True
+        if is_boundary:
+            boundaries.append(index)
 
-    if not cue_hits:
+    if not selectable:
         return ""
 
-    chosen_index, _ = min(cue_hits, key=lambda hit: hit[1])
-    end = len(lines)
-    for index, _ in cue_hits:
-        if index > chosen_index:
-            end = index
-            break
+    chosen_index, _ = min(selectable, key=lambda hit: hit[1])
+    end = next((b for b in boundaries if b > chosen_index), len(lines))
     return "\n".join(lines[chosen_index + 1 : end]).strip()
 
 
@@ -148,6 +160,11 @@ def extract(prd_path: Path) -> list[Requirement]:
     return found
 
 
+# ## Requirement below is the frozen, verbatim PRD excerpt (provenance, never
+# rewritten); ## Acceptance is the maintained field the extractor (and later,
+# hand review) actually curates -- the two sections legitimately overlap for
+# a section whose PRD text already reads as its own criteria, and that is not
+# a copy-paste bug.
 NOTE_TEMPLATE = """---
 id: {id}
 title: {title}

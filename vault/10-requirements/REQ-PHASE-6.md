@@ -24,13 +24,7 @@ Deliverables:
 
 ## Acceptance
 
-- point-in-time dataset builder;
-- event replay;
-- walk-forward runner;
-- ablation reports;
-- experiment registry;
-- dataset hashes;
-- reproducible reports.
+_ACCEPTANCE-NOT-SPECIFIED: the PRD states no explicit acceptance criteria for this section. They must be written before this requirement leaves `draft`._
 
 ## Trace
 

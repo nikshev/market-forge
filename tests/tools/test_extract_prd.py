@@ -126,4 +126,32 @@ def test_written_note_for_a_no_cue_section_carries_the_marker_line(requirements,
     [path] = write_notes([us001], vault_dir)
     text = path.read_text()
     assert "no explicit acceptance criteria" in text
+    assert "ACCEPTANCE-NOT-SPECIFIED" in text
     assert "draft" in text.split("## Acceptance")[1].split("## Trace")[0]
+
+
+# A "Deliverables:" block is a list of things to build, not a criterion for
+# knowing they work, so it must never be selected as the acceptance source on
+# its own -- even though it is one of the cue lines the extractor recognizes
+# as a section boundary. Phases 5, 6 and 8 are the entire population of
+# phases that carry Deliverables: and no Acceptance:/Done when:/Metric(s):,
+# so all three are checked, not just one.
+@pytest.mark.parametrize("phase_id", ["REQ-PHASE-5", "REQ-PHASE-6", "REQ-PHASE-8"])
+def test_deliverables_only_section_does_not_become_acceptance(requirements, tmp_path, phase_id):
+    phase = _by_id(requirements, phase_id)
+    assert phase.acceptance == ""
+
+    vault_dir = tmp_path / "vault"
+    (vault_dir / "10-requirements").mkdir(parents=True)
+    [path] = write_notes([phase], vault_dir)
+    text = path.read_text()
+    assert "ACCEPTANCE-NOT-SPECIFIED" in text
+
+    acceptance_section = text.split("## Acceptance")[1].split("## Trace")[0]
+    deliverables_section = text.split("## Requirement")[1].split("## Acceptance")[0]
+    # The Deliverables bullets belong to ## Requirement (the frozen PRD
+    # excerpt) and must not leak into ## Acceptance.
+    for bullet in deliverables_section.strip().splitlines()[1:]:
+        bullet = bullet.strip()
+        if bullet:
+            assert bullet not in acceptance_section

@@ -25,7 +25,7 @@ Then repeat point-in-time as a predictive experiment to avoid confusing contempo
 
 ## Acceptance
 
-_The PRD states no explicit acceptance criteria for this section. They must be written before this requirement leaves `draft`._
+_ACCEPTANCE-NOT-SPECIFIED: the PRD states no explicit acceptance criteria for this section. They must be written before this requirement leaves `draft`._
 
 ## Trace
 
