@@ -5,7 +5,7 @@ type: infrastructure
 prd_ref: "§0.9, §0.13"
 prd_lines: "23-27"
 phase: null
-status: specified
+status: implemented
 depends_on: [REQ-WP-001, REQ-INFRA-001]
 tags: [tooling, ci]
 ---
@@ -52,7 +52,12 @@ requirement whose verification needs a network or a service.
 
 <!-- trace:begin -->
 - **Specs:** [[SPEC-003-ci-full-gate]]
-- **Outcomes:** [[OUT-2026-09-07-spec-ci-full-gate]]
+- **Tests:**
+    - `tests/tools/gates/test_two_gates.py::test_no_check_is_absent_from_both_gates`
+    - `tests/tools/gates/test_two_gates.py::test_the_fast_gate_deselects_exactly_the_integration_tests`
+    - `tests/tools/gates/test_two_gates.py::test_the_workflow_runs_every_check_of_the_full_gate`
+    - `tests/tools/gates/test_two_gates.py::test_the_workflow_runs_the_full_suite_not_the_fast_one`
+- **Outcomes:** [[OUT-2026-09-07-implement-ci-full-gate]], [[OUT-2026-09-07-plan-ci-full-gate]], [[OUT-2026-09-07-spec-ci-full-gate]], [[OUT-2026-09-07-tasks-ci-full-gate]]
 <!-- trace:end -->
 
 ## Notes
