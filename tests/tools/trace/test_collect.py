@@ -131,3 +131,25 @@ def test_requirement_token_with_a_letter_is_not_truncated_to_digits(vault):
     vault.source("channelflow/phases.py", ["REQ-PHASE-1A"])
     _, edges = collect_code([vault.root / "src"])
     assert [e.dst for e in edges] == ["REQ-PHASE-1A"]
+
+
+def test_collect_tests_reads_the_plugin_dump(vault, tmp_path):
+    from tools.trace.collect import collect_tests
+
+    dump = tmp_path / "tests.json"
+    dump.write_text(
+        '[{"nodeid": "tests/unit/test_bars.py::test_close", "requirements": ["REQ-WP-005"]}]'
+    )
+    nodes, edges = collect_tests(dump)
+    assert nodes[0].kind == "test"
+    assert nodes[0].path == "tests/unit/test_bars.py"
+    assert [(e.src, e.dst, e.kind) for e in edges] == [
+        ("tests/unit/test_bars.py::test_close", "REQ-WP-005", "VERIFIES")
+    ]
+
+
+def test_collect_tests_tolerates_a_missing_dump(tmp_path):
+    from tools.trace.collect import collect_tests
+
+    nodes, edges = collect_tests(tmp_path / "absent.json")
+    assert (nodes, edges) == ([], [])
