@@ -44,7 +44,7 @@ Collectors are split from the graph so each can be tested against a fixture dire
 ## Task 1: Repository baseline
 
 **Files:**
-- Create: `pyproject.toml`, `.python-version`, `Makefile`, `tools/__init__.py`, `tools/trace/__init__.py`, `tests/__init__.py`, `tests/tools/__init__.py`, `tests/tools/trace/__init__.py`
+- Create: `pyproject.toml`, `.python-version`, `Makefile`, `conftest.py`, `tools/__init__.py`, `tools/trace/__init__.py`, `tests/__init__.py`, `tests/tools/__init__.py`, `tests/tools/trace/__init__.py`
 - Modify: `.gitignore`
 - Delete: `traceforge-init.sh`, `.traceforge/integrations.json`
 
@@ -62,6 +62,7 @@ cat > .gitignore <<'EOF'
 .venv/
 .trace/
 graphify-out/
+.superpowers/
 __pycache__/
 *.py[cod]
 .pytest_cache/
@@ -147,6 +148,15 @@ touch tools/__init__.py tools/trace/__init__.py
 touch tests/__init__.py tests/tools/__init__.py tests/tools/trace/__init__.py
 ```
 
+Also create a rootdir `conftest.py`. pytest honours `pytest_plugins` only in the
+rootdir conftest; declared anywhere else it is unreliable, and Task 6 needs the
+`pytester` fixture:
+
+```python
+# conftest.py at the repository root
+pytest_plugins = ["pytester"]
+```
+
 - [ ] **Step 5: Write the Makefile**
 
 Note the literal tab indentation Make requires.
@@ -198,7 +208,7 @@ Expected: `no tests ran` and exit code 5 (pytest's "no tests collected"), not an
 - [ ] **Step 7: Commit**
 
 ```bash
-git add pyproject.toml .python-version Makefile tools tests
+git add pyproject.toml .python-version Makefile conftest.py tools tests
 git commit -m "Add Python 3.12 tooling baseline
 
 pyproject with the trace package, the registered 'trace' pytest marker,
@@ -233,9 +243,16 @@ Expected: version `1.0.4` or later.
 ```bash
 .venv/bin/specify init --here --force --non-interactive --integration claude
 git status --short
+git diff -- .gitignore
 ```
 
-Inspect the diff before committing. Expected new paths: `.specify/`, `.claude/commands/speckit.*.md`. If it touched `docs/` or the PRD, stop and report.
+Inspect the diff before committing. Expected new paths: `.specify/`,
+`.claude/commands/speckit.*.md`. If it touched `docs/` or the PRD, stop and report.
+
+`--force` can replace `.gitignore`. Confirm it still carries every Task 1 entry —
+`.venv/`, `.trace/`, `graphify-out/`, `.superpowers/`, `__pycache__/`, `*.py[cod]`,
+`.pytest_cache/`, `.DS_Store` — and restore any that went missing before committing.
+A clobbered ignore file silently commits the virtualenv.
 
 - [ ] **Step 3: Commit the scaffold on its own**
 
@@ -1413,10 +1430,11 @@ Markers are read from pytest's own collection rather than by parsing Python sour
 
 `tests/tools/trace/test_pytest_plugin.py`:
 
+The `pytester` fixture comes from the rootdir `conftest.py` created in Task 1.
+Do not redeclare `pytest_plugins` here — pytest ignores it outside the rootdir.
+
 ```python
 import json
-
-pytest_plugins = ["pytester"]
 
 
 def test_dump_records_marked_tests(pytester):
