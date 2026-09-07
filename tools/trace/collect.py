@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import re
+import subprocess
 from collections.abc import Sequence
 from pathlib import Path
 
@@ -16,7 +17,13 @@ from tools.trace.frontmatter import split_frontmatter
 from tools.trace.model import Edge, Node
 
 PRD_NODE_ID = "PRD"
-REQ_ID = r"REQ-[A-Z]+-[0-9A-Z]+"
+# The trailing negative lookahead stops the greedy [0-9A-Z]+ from truncating
+# a malformed id at a real, shorter existing requirement: unanchored, a typo
+# like "REQ-WP-001b" would match "REQ-WP-001" and silently credit the code to
+# a different requirement. With the lookahead, a trailing character that
+# isn't a valid separator makes the whole token fail to match instead.
+REQ_ID = r"REQ-[A-Z]+-[0-9A-Z]+(?![A-Za-z0-9])"
+REQ_ID_RE = re.compile(rf"^{REQ_ID}$")
 TRACE_COMMENT = re.compile(rf"@trace:\s*({REQ_ID})")
 
 SKIP_DIRS = {"__pycache__", ".git", ".venv", "node_modules", ".pytest_cache"}
@@ -33,9 +40,12 @@ def _require_id(meta: dict, path: Path) -> str:
     node_id = meta.get("id")
     if not node_id:
         raise ValueError(f"{path.name}: missing 'id' in frontmatter")
+    node_id = str(node_id)
     if node_id != path.stem:
         raise ValueError(f"{path.name}: id {node_id!r} does not match filename {path.stem!r}")
-    return str(node_id)
+    if node_id.startswith("REQ-") and not REQ_ID_RE.fullmatch(node_id):
+        raise ValueError(f"{path.name}: id {node_id!r} does not match the requirement id grammar")
+    return node_id
 
 
 def _id_list(meta: dict, field: str) -> list[str]:
@@ -133,17 +143,45 @@ def collect_specs(specs_dir: Path) -> tuple[list[Node], list[Edge]]:
     return nodes, edges
 
 
+def _git_tracked_files(root: Path) -> set[Path] | None:
+    """Absolute paths `git` tracks under `root`, or None if git/the repo is
+    unavailable — callers must treat None as "cannot filter", not "nothing
+    tracked".
+    """
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(root), "ls-files"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+    except OSError:
+        return None
+    if result.returncode != 0:
+        return None
+    return {(root / line).resolve() for line in result.stdout.splitlines() if line}
+
+
 def collect_code(roots: Sequence[Path]) -> tuple[list[Node], list[Edge]]:
-    """One node per source file containing at least one `# @trace:` marker."""
+    """One node per git-tracked source file containing a `# @trace:` marker.
+
+    An untracked scratch file must never become a node: it would change the
+    committed dashboard from something nobody else can see or reproduce. If
+    git is unavailable or `root` isn't a repo, fall back to unfiltered
+    collection rather than raising or silently finding nothing.
+    """
     nodes: list[Node] = []
     edges: list[Edge] = []
     for root in roots:
         if not root.is_dir():
             continue
+        tracked = _git_tracked_files(root)
         for path in sorted(root.rglob("*")):
             if not path.is_file() or path.suffix not in CODE_SUFFIXES:
                 continue
             if SKIP_DIRS & set(path.parts):
+                continue
+            if tracked is not None and path.resolve() not in tracked:
                 continue
             targets = TRACE_COMMENT.findall(path.read_text(errors="replace"))
             if not targets:

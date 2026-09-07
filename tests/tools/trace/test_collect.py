@@ -1,3 +1,5 @@
+import subprocess
+
 import pytest
 
 from tools.trace.collect import (
@@ -116,11 +118,64 @@ def test_files_without_markers_produce_no_nodes(vault):
     assert edges == []
 
 
+def test_collect_code_ignores_untracked_files_in_a_git_repo(vault):
+    """A local scratch file with a marker must not become a node just
+    because it happens to sit under a collected root: it changes the
+    committed dashboard for something nobody else can see or reproduce.
+    """
+    subprocess.run(["git", "init", "-q"], cwd=vault.root, check=True)
+    vault.source("channelflow/tracked.py", ["REQ-WP-005"])
+    subprocess.run(["git", "add", "src/channelflow/tracked.py"], cwd=vault.root, check=True)
+    vault.source("channelflow/scratch.py", ["REQ-WP-006"])  # never added
+
+    nodes, _ = collect_code([vault.root / "src"])
+
+    ids = {n.id for n in nodes}
+    assert "src/channelflow/tracked.py" in ids
+    assert "src/channelflow/scratch.py" not in ids
+
+
+def test_collect_code_falls_back_to_unfiltered_outside_a_git_repo(vault):
+    """`vault.root` here is a bare tmp_path, not a git repository -- git
+    filtering must fail closed (no filtering) rather than crash or find
+    nothing.
+    """
+    vault.source("channelflow/bars.py", ["REQ-WP-005"])
+    nodes, _ = collect_code([vault.root / "src"])
+    assert {n.id for n in nodes} == {"src/channelflow/bars.py"}
+
+
 def test_code_collection_skips_pycache(vault):
     cache = vault.root / "src" / "__pycache__"
     cache.mkdir()
     (cache / "stale.py").write_text("# @trace: REQ-WP-001\n")
     nodes, _ = collect_code([vault.root / "src"])
+    assert nodes == []
+
+
+def test_requirement_id_grammar_is_enforced_even_when_filename_matches(vault):
+    """id == filename stem is not enough: a malformed id like REQ-WP-001b
+    would otherwise slip into the graph as a real node, and no source
+    comment could ever correctly reference it (see the TRACE_COMMENT
+    anchoring fix below) -- an invisible dead end. Catching it at collection
+    time fails loud instead of leaving it silently unlinkable forever.
+    """
+    bad = vault.vault / "10-requirements" / "REQ-WP-001b.md"
+    bad.write_text("---\nid: REQ-WP-001b\n---\n\nbody\n")
+    with pytest.raises(ValueError, match="does not match the requirement id grammar"):
+        collect_requirements(vault.vault)
+
+
+def test_trace_comment_with_a_malformed_trailing_letter_matches_nothing(vault):
+    """Unanchored, [0-9A-Z]+ would greedily match "001" and stop before the
+    lowercase "b", crediting the code to the real, but different,
+    REQ-WP-001 -- a silent misattribution to an existing requirement. The
+    trailing negative lookahead must make the whole token fail to match
+    instead, rather than truncate it.
+    """
+    vault.source("channelflow/thing.py", ["REQ-WP-001b"])
+    nodes, edges = collect_code([vault.root / "src"])
+    assert edges == []
     assert nodes == []
 
 
