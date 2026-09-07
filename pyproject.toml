@@ -1,0 +1,40 @@
+[project]
+name = "market-forge-tools"
+version = "0.1.0"
+description = "Traceability tooling for the ChannelFlow project"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "networkx>=3.4",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+    "ruff>=0.6",
+    "pre-commit>=3.8",
+]
+
+[project.scripts]
+trace = "tools.trace.cli:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["tools*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "trace(*requirement_ids): link this test to one or more requirement IDs",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
