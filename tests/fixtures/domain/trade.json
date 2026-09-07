@@ -1,0 +1,1 @@
+{"aggressor_side":"sell","is_buyer_maker":true,"meta":{"event_time_ns":"1788794605256368000","ingest_time_ns":"1788794605256400123","market_type":"perp","sequence":"98765","source":"binance-ws","source_event_id":"evt-1","symbol":"BTCUSDT","venue":"binance"},"notional_quote":"0.0005012345678901234567","price":"50123.45678901234567890123","qty_base":"1E-8","trade_id":"t-1"}

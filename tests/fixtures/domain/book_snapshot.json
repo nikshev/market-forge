@@ -1,0 +1,1 @@
+{"asks":[{"price":"50001.9","qty":"1.25"}],"bids":[{"price":"50000.1","qty":"2.5"}],"meta":{"event_time_ns":"1788794605256368000","ingest_time_ns":"1788794605256400123","market_type":"perp","sequence":"98765","source":"binance-ws","source_event_id":"evt-1","symbol":"BTCUSDT","venue":"binance"},"update_id":"3"}

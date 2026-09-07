@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "WP-002 Domain model"
 prd_lines: "6937-6944"
 phase: null
-status: specified
+status: implemented
 depends_on: []
 tags: []
 ---
@@ -26,7 +26,35 @@ Done when:
 
 <!-- trace:begin -->
 - **Specs:** [[SPEC-004-domain-model]]
-- **Outcomes:** [[OUT-2026-09-07-spec-domain-model]]
+- **Tests:**
+    - `tests/unit/domain/test_fixtures.py::test_every_kind_round_trips[book_delta]`
+    - `tests/unit/domain/test_fixtures.py::test_every_kind_round_trips[book_snapshot]`
+    - `tests/unit/domain/test_fixtures.py::test_every_kind_round_trips[derivatives_state]`
+    - `tests/unit/domain/test_fixtures.py::test_every_kind_round_trips[dex_liquidity]`
+    - `tests/unit/domain/test_fixtures.py::test_every_kind_round_trips[dex_swap]`
+    - `tests/unit/domain/test_fixtures.py::test_every_kind_round_trips[liquidation]`
+    - `tests/unit/domain/test_fixtures.py::test_every_kind_round_trips[trade]`
+    - `tests/unit/domain/test_fixtures.py::test_serialization_matches_the_committed_fixture[book_delta]`
+    - `tests/unit/domain/test_fixtures.py::test_serialization_matches_the_committed_fixture[book_snapshot]`
+    - `tests/unit/domain/test_fixtures.py::test_serialization_matches_the_committed_fixture[derivatives_state]`
+    - `tests/unit/domain/test_fixtures.py::test_serialization_matches_the_committed_fixture[dex_liquidity]`
+    - `tests/unit/domain/test_fixtures.py::test_serialization_matches_the_committed_fixture[dex_swap]`
+    - `tests/unit/domain/test_fixtures.py::test_serialization_matches_the_committed_fixture[liquidation]`
+    - `tests/unit/domain/test_fixtures.py::test_serialization_matches_the_committed_fixture[trade]`
+    - `tests/unit/domain/test_identity.py::test_a_dex_log_is_identified_by_chain_tx_and_log_index`
+    - `tests/unit/domain/test_identity.py::test_a_different_trade_id_is_a_different_identity`
+    - `tests/unit/domain/test_identity.py::test_the_same_trade_received_twice_has_one_identity`
+    - `tests/unit/domain/test_round_trip.py::test_a_decimal_beyond_double_precision_survives`
+    - `tests/unit/domain/test_round_trip.py::test_a_nanosecond_timestamp_survives_a_double_parsing_consumer`
+    - `tests/unit/domain/test_round_trip.py::test_event_meta_round_trips_exactly`
+    - `tests/unit/domain/test_round_trip.py::test_serializing_twice_is_byte_identical`
+    - `tests/unit/domain/test_validation.py::test_a_book_level_may_have_zero_quantity`
+    - `tests/unit/domain/test_validation.py::test_a_constructed_event_cannot_be_mutated`
+    - `tests/unit/domain/test_validation.py::test_a_negative_trade_price_is_rejected`
+    - `tests/unit/domain/test_validation.py::test_an_aggressor_side_outside_the_permitted_set_is_rejected`
+    - `tests/unit/domain/test_validation.py::test_an_unknown_field_is_rejected`
+    - `tests/unit/domain/test_validation.py::test_omitting_ingest_time_is_rejected_and_the_field_is_named`
+- **Outcomes:** [[OUT-2026-09-07-implement-domain-model]], [[OUT-2026-09-07-plan-domain-model]], [[OUT-2026-09-07-spec-domain-model]], [[OUT-2026-09-07-tasks-domain-model]]
 <!-- trace:end -->
 
 ## Notes
