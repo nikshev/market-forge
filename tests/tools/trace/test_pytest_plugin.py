@@ -18,13 +18,15 @@ def test_dump_records_marked_tests(pytester):
             pass
         """
     )
-    pytester.makeini("[pytest]\nmarkers =\n    trace(*requirement_ids): link a test to requirements\n")
+    pytester.makeini(
+        "[pytest]\nmarkers =\n    trace(*requirement_ids): link a test to requirements\n"
+    )
     dump = pytester.path / "out" / "tests.json"
 
-    result = pytester.runpytest(
+    # Collection only: the exit code is not what this test asserts.
+    pytester.runpytest(
         "-p", "tools.trace.pytest_plugin", f"--trace-dump={dump}", "--collect-only", "-q"
     )
-    result.ret  # collection only; exit code is not the assertion
 
     entries = json.loads(dump.read_text())
     by_id = {e["nodeid"].split("::")[-1]: e["requirements"] for e in entries}
@@ -45,10 +47,14 @@ def test_parametrized_tests_are_recorded_once_per_case(pytester):
             pass
         """
     )
-    pytester.makeini("[pytest]\nmarkers =\n    trace(*requirement_ids): link a test to requirements\n")
+    pytester.makeini(
+        "[pytest]\nmarkers =\n    trace(*requirement_ids): link a test to requirements\n"
+    )
     dump = pytester.path / "tests.json"
 
-    pytester.runpytest("-p", "tools.trace.pytest_plugin", f"--trace-dump={dump}", "--collect-only", "-q")
+    pytester.runpytest(
+        "-p", "tools.trace.pytest_plugin", f"--trace-dump={dump}", "--collect-only", "-q"
+    )
 
     entries = json.loads(dump.read_text())
     assert len(entries) == 3
@@ -65,7 +71,9 @@ def test_no_dump_option_writes_nothing(pytester):
             pass
         """
     )
-    pytester.makeini("[pytest]\nmarkers =\n    trace(*requirement_ids): link a test to requirements\n")
+    pytester.makeini(
+        "[pytest]\nmarkers =\n    trace(*requirement_ids): link a test to requirements\n"
+    )
 
     pytester.runpytest("-p", "tools.trace.pytest_plugin", "--collect-only", "-q")
 
@@ -82,9 +90,13 @@ def test_dump_creates_missing_parent_directories(pytester):
             pass
         """
     )
-    pytester.makeini("[pytest]\nmarkers =\n    trace(*requirement_ids): link a test to requirements\n")
+    pytester.makeini(
+        "[pytest]\nmarkers =\n    trace(*requirement_ids): link a test to requirements\n"
+    )
     dump = pytester.path / "a" / "b" / "tests.json"
 
-    pytester.runpytest("-p", "tools.trace.pytest_plugin", f"--trace-dump={dump}", "--collect-only", "-q")
+    pytester.runpytest(
+        "-p", "tools.trace.pytest_plugin", f"--trace-dump={dump}", "--collect-only", "-q"
+    )
 
     assert dump.is_file()
