@@ -19,7 +19,10 @@ tags: []
 
 ## Acceptance
 
-_ACCEPTANCE-NOT-SPECIFIED: the PRD states no explicit acceptance criteria for this section. They must be written before this requirement leaves `draft`._
+- bars aggregate on event-time windows;
+- a late-event policy is enforced;
+- a finalized-bar callback fires on close;
+- trade-side aggregates are produced per bar.
 
 ## Trace
 

@@ -6,7 +6,7 @@ prd_ref: "WP-008 Telegram"
 prd_lines: "6987-6994"
 phase: null
 status: draft
-depends_on: []
+depends_on: ["REQ-WP-007"]
 tags: []
 ---
 
@@ -20,7 +20,11 @@ tags: []
 
 ## Acceptance
 
-_ACCEPTANCE-NOT-SPECIFIED: the PRD states no explicit acceptance criteria for this section. They must be written before this requirement leaves `draft`._
+- alert message is formatted;
+- alert carries an inline deep-link button;
+- duplicate alerts are deduped;
+- delivery is retried on failure;
+- delivery is audited.
 
 ## Trace
 

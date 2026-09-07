@@ -26,7 +26,12 @@ Requirements:
 
 ## Acceptance
 
-_ACCEPTANCE-NOT-SPECIFIED: the PRD states no explicit acceptance criteria for this section. They must be written before this requirement leaves `draft`._
+- connector reconnects before/at the 24h stream lifecycle limit;
+- connector complies with ping/pong keepalive;
+- combined streams are configurable;
+- connector delivers trades, book deltas, mark/funding, and OI (polled);
+- connector delivers liquidations when available from the venue;
+- connector exposes error metrics.
 
 ## Trace
 

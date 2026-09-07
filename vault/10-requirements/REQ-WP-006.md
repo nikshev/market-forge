@@ -6,7 +6,7 @@ prd_ref: "WP-006 Channel baseline"
 prd_lines: "6975-6982"
 phase: null
 status: draft
-depends_on: []
+depends_on: ["REQ-WP-005"]
 tags: []
 ---
 
@@ -20,7 +20,11 @@ tags: []
 
 ## Acceptance
 
-_ACCEPTANCE-NOT-SPECIFIED: the PRD states no explicit acceptance criteria for this section. They must be written before this requirement leaves `draft`._
+- channel is computed via rolling OLS on log price;
+- residual quantile bands are produced;
+- a normalized slope is reported;
+- a quality score is reported;
+- channel snapshots are append-only storage.
 
 ## Trace
 

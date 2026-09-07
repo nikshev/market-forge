@@ -6,7 +6,7 @@ prd_ref: "WP-010 Backtest v1"
 prd_lines: "7004-7010"
 phase: null
 status: draft
-depends_on: []
+depends_on: ["REQ-WP-005", "REQ-WP-007"]
 tags: []
 ---
 
@@ -19,7 +19,10 @@ tags: []
 
 ## Acceptance
 
-_ACCEPTANCE-NOT-SPECIFIED: the PRD states no explicit acceptance criteria for this section. They must be written before this requirement leaves `draft`._
+- backtest runs on a virtual clock;
+- backtest replays bars;
+- backtest reuses the live strategy/signal engine rather than a separate implementation;
+- backtest produces reports.
 
 ## Trace
 

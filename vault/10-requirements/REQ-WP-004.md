@@ -6,7 +6,7 @@ prd_ref: "WP-004 Order book service"
 prd_lines: "6959-6967"
 phase: null
 status: draft
-depends_on: []
+depends_on: ["REQ-WP-003"]
 tags: []
 ---
 
@@ -21,7 +21,12 @@ tags: []
 
 ## Acceptance
 
-_ACCEPTANCE-NOT-SPECIFIED: the PRD states no explicit acceptance criteria for this section. They must be written before this requirement leaves `draft`._
+- book bootstraps from a buffered snapshot;
+- sequence numbers are validated exactly;
+- book rebuilds on a detected sequence gap;
+- top-N levels are accessible;
+- depth-at-bps can be queried;
+- book health state is reported.
 
 ## Trace
 

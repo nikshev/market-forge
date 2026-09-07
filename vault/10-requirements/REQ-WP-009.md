@@ -6,7 +6,7 @@ prd_ref: "WP-009 Chart"
 prd_lines: "6995-7003"
 phase: null
 status: draft
-depends_on: []
+depends_on: ["REQ-WP-005", "REQ-WP-006", "REQ-WP-007"]
 tags: []
 ---
 
@@ -21,7 +21,12 @@ tags: []
 
 ## Acceptance
 
-_ACCEPTANCE-NOT-SPECIFIED: the PRD states no explicit acceptance criteria for this section. They must be written before this requirement leaves `draft`._
+- chart renders candles;
+- chart renders the channel overlay;
+- chart renders zones;
+- chart renders markers;
+- chart supports a historical snapshot mode;
+- chart updates over a realtime WebSocket.
 
 ## Trace
 

@@ -6,7 +6,7 @@ prd_ref: "WP-007 Signal state machine"
 prd_lines: "6983-6986"
 phase: null
 status: draft
-depends_on: []
+depends_on: ["REQ-WP-006"]
 tags: []
 ---
 
@@ -16,7 +16,9 @@ Implement long/short boundary + middle setups with deterministic transitions and
 
 ## Acceptance
 
-_ACCEPTANCE-NOT-SPECIFIED: the PRD states no explicit acceptance criteria for this section. They must be written before this requirement leaves `draft`._
+- long/short boundary and middle setups are implemented;
+- state transitions are deterministic;
+- transitions are covered by tests.
 
 ## Trace
 
