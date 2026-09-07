@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "WP-001 Project bootstrap"
 prd_lines: "6920-6936"
 phase: null
-status: specified
+status: planned
 depends_on: []
 tags: []
 ---
@@ -35,7 +35,7 @@ Done when:
 
 <!-- trace:begin -->
 - **Specs:** [[SPEC-002-project-bootstrap]]
-- **Outcomes:** [[OUT-2026-09-07-spec-project-bootstrap]]
+- **Outcomes:** [[OUT-2026-09-07-plan-project-bootstrap]], [[OUT-2026-09-07-spec-project-bootstrap]]
 <!-- trace:end -->
 
 ## Notes
