@@ -1,6 +1,6 @@
 ---
 id: REQ-PRIN-008
-title: Кожен feature повинен мати опис семантики, одиниці виміру, cadence, source, freshness та leakage policy.
+title: Every feature must have a description of its semantics, unit of measurement, cadence, source, freshness, and leakage policy.
 type: constraint
 prd_ref: "§0"
 prd_lines: "22-22"
@@ -12,11 +12,11 @@ tags: []
 
 ## Requirement
 
-Кожен feature повинен мати опис семантики, одиниці виміру, cadence, source, freshness та leakage policy.
+Every feature must have a description of its semantics, unit of measurement, cadence, source, freshness, and leakage policy.
 
 ## Acceptance
 
-Кожен feature повинен мати опис семантики, одиниці виміру, cadence, source, freshness та leakage policy.
+Every feature must have a description of its semantics, unit of measurement, cadence, source, freshness, and leakage policy.
 
 ## Trace
 

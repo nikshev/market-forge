@@ -1,6 +1,6 @@
 ---
 id: REQ-PRIN-012
-title: Всі числові пороги повинні бути конфігурованими; hard-coded trading thresholds заборонені, крім test fixtures.
+title: All numeric thresholds must be configurable; hard-coded trading thresholds are forbidden, except in test fixtures.
 type: constraint
 prd_ref: "§0"
 prd_lines: "26-26"
@@ -12,11 +12,11 @@ tags: []
 
 ## Requirement
 
-Всі числові пороги повинні бути конфігурованими; hard-coded trading thresholds заборонені, крім test fixtures.
+All numeric thresholds must be configurable; hard-coded trading thresholds are forbidden, except in test fixtures.
 
 ## Acceptance
 
-Всі числові пороги повинні бути конфігурованими; hard-coded trading thresholds заборонені, крім test fixtures.
+All numeric thresholds must be configurable; hard-coded trading thresholds are forbidden, except in test fixtures.
 
 ## Trace
 

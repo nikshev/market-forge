@@ -1,6 +1,6 @@
 ---
 id: REQ-PRIN-010
-title: Нові exchange/DEX connectors мають реалізовувати спільний canonical interface.
+title: New exchange/DEX connectors must implement a shared canonical interface.
 type: constraint
 prd_ref: "§0"
 prd_lines: "24-24"
@@ -12,11 +12,11 @@ tags: []
 
 ## Requirement
 
-Нові exchange/DEX connectors мають реалізовувати спільний canonical interface.
+New exchange/DEX connectors must implement a shared canonical interface.
 
 ## Acceptance
 
-Нові exchange/DEX connectors мають реалізовувати спільний canonical interface.
+New exchange/DEX connectors must implement a shared canonical interface.
 
 ## Trace
 

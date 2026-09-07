@@ -1,6 +1,6 @@
 ---
 id: REQ-PRIN-005
-title: Не переписувати історичні channel snapshots і signal snapshots після їх фіналізації.
+title: Do not rewrite historical channel snapshots or signal snapshots after they are finalized.
 type: constraint
 prd_ref: "§0"
 prd_lines: "19-19"
@@ -12,11 +12,11 @@ tags: []
 
 ## Requirement
 
-Не переписувати історичні channel snapshots і signal snapshots після їх фіналізації.
+Do not rewrite historical channel snapshots or signal snapshots after they are finalized.
 
 ## Acceptance
 
-Не переписувати історичні channel snapshots і signal snapshots після їх фіналізації.
+Do not rewrite historical channel snapshots or signal snapshots after they are finalized.
 
 ## Trace
 

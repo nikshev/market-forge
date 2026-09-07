@@ -1,6 +1,6 @@
 ---
 id: REQ-PRIN-014
-title: Перед оптимізацією продуктивності — correctness, replay parity і data integrity.
+title: Before optimizing for performance -- correctness, replay parity, and data integrity.
 type: constraint
 prd_ref: "§0"
 prd_lines: "28-28"
@@ -12,11 +12,11 @@ tags: []
 
 ## Requirement
 
-Перед оптимізацією продуктивності — correctness, replay parity і data integrity.
+Before optimizing for performance -- correctness, replay parity, and data integrity.
 
 ## Acceptance
 
-Перед оптимізацією продуктивності — correctness, replay parity і data integrity.
+Before optimizing for performance -- correctness, replay parity, and data integrity.
 
 ## Trace
 

@@ -1,6 +1,6 @@
 ---
 id: REQ-PRIN-002
-title: Не додавати future leakage, look-ahead або repainting навіть якщо це покращує backtest.
+title: Do not introduce future leakage, look-ahead, or repainting even if it improves the backtest.
 type: constraint
 prd_ref: "§0"
 prd_lines: "16-16"
@@ -12,11 +12,11 @@ tags: []
 
 ## Requirement
 
-Не додавати future leakage, look-ahead або repainting навіть якщо це покращує backtest.
+Do not introduce future leakage, look-ahead, or repainting even if it improves the backtest.
 
 ## Acceptance
 
-Не додавати future leakage, look-ahead або repainting навіть якщо це покращує backtest.
+Do not introduce future leakage, look-ahead, or repainting even if it improves the backtest.
 
 ## Trace
 

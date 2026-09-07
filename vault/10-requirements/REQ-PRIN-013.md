@@ -1,6 +1,6 @@
 ---
 id: REQ-PRIN-013
-title: Усі результати backtest/research повинні відтворюватися з versioned dataset + config + code commit hash + model artifact hash.
+title: All backtest/research results must be reproducible from a versioned dataset + config + code commit hash + model artifact hash.
 type: constraint
 prd_ref: "§0"
 prd_lines: "27-27"
@@ -12,11 +12,11 @@ tags: []
 
 ## Requirement
 
-Усі результати backtest/research повинні відтворюватися з versioned dataset + config + code commit hash + model artifact hash.
+All backtest/research results must be reproducible from a versioned dataset + config + code commit hash + model artifact hash.
 
 ## Acceptance
 
-Усі результати backtest/research повинні відтворюватися з versioned dataset + config + code commit hash + model artifact hash.
+All backtest/research results must be reproducible from a versioned dataset + config + code commit hash + model artifact hash.
 
 ## Trace
 

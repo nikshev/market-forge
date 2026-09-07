@@ -1,6 +1,6 @@
 ---
 id: REQ-PRIN-004
-title: Розрізняти `event_time`, `exchange_time`, `block_time`, `ingest_time`, `bar_open_time`, `bar_close_time`.
+title: Distinguish `event_time`, `exchange_time`, `block_time`, `ingest_time`, `bar_open_time`, `bar_close_time`.
 type: constraint
 prd_ref: "§0"
 prd_lines: "18-18"
@@ -12,11 +12,11 @@ tags: []
 
 ## Requirement
 
-Розрізняти `event_time`, `exchange_time`, `block_time`, `ingest_time`, `bar_open_time`, `bar_close_time`.
+Distinguish `event_time`, `exchange_time`, `block_time`, `ingest_time`, `bar_open_time`, `bar_close_time`.
 
 ## Acceptance
 
-Розрізняти `event_time`, `exchange_time`, `block_time`, `ingest_time`, `bar_open_time`, `bar_close_time`.
+Distinguish `event_time`, `exchange_time`, `block_time`, `ingest_time`, `bar_open_time`, `bar_close_time`.
 
 ## Trace
 

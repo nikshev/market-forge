@@ -1,6 +1,6 @@
 ---
 id: REQ-PRIN-011
-title: У Phase 1–3 система не має автоматично відкривати позиції. Вона лише формує сигнали й alerts.
+title: In Phase 1-3 the system must not automatically open positions. It only produces signals and alerts.
 type: constraint
 prd_ref: "§0"
 prd_lines: "25-25"
@@ -12,11 +12,11 @@ tags: []
 
 ## Requirement
 
-У Phase 1–3 система не має автоматично відкривати позиції. Вона лише формує сигнали й alerts.
+In Phase 1-3 the system must not automatically open positions. It only produces signals and alerts.
 
 ## Acceptance
 
-У Phase 1–3 система не має автоматично відкривати позиції. Вона лише формує сигнали й alerts.
+In Phase 1-3 the system must not automatically open positions. It only produces signals and alerts.
 
 ## Trace
 

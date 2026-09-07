@@ -1,6 +1,6 @@
 ---
 id: REQ-PRIN-003
-title: Усі індикатори/ознаки на timestamp `t` повинні використовувати тільки дані з `event_time <= t` і тільки ті значення, які були доступні в реальному часі на момент прийняття рішення.
+title: All indicators/features at timestamp `t` must use only data with `event_time <= t`, and only values that were actually available in real time at the moment the decision was made.
 type: constraint
 prd_ref: "§0"
 prd_lines: "17-17"
@@ -12,11 +12,11 @@ tags: []
 
 ## Requirement
 
-Усі індикатори/ознаки на timestamp `t` повинні використовувати тільки дані з `event_time <= t` і тільки ті значення, які були доступні в реальному часі на момент прийняття рішення.
+All indicators/features at timestamp `t` must use only data with `event_time <= t`, and only values that were actually available in real time at the moment the decision was made.
 
 ## Acceptance
 
-Усі індикатори/ознаки на timestamp `t` повинні використовувати тільки дані з `event_time <= t` і тільки ті значення, які були доступні в реальному часі на момент прийняття рішення.
+All indicators/features at timestamp `t` must use only data with `event_time <= t`, and only values that were actually available in real time at the moment the decision was made.
 
 ## Trace
 

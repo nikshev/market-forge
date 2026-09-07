@@ -1,6 +1,6 @@
 ---
 id: REQ-PRIN-007
-title: Будь-який сигнал з probabilistic score повинен мати calibration metrics, а не лише accuracy.
+title: Any signal with a probabilistic score must have calibration metrics, not just accuracy.
 type: constraint
 prd_ref: "§0"
 prd_lines: "21-21"
@@ -12,11 +12,11 @@ tags: []
 
 ## Requirement
 
-Будь-який сигнал з probabilistic score повинен мати calibration metrics, а не лише accuracy.
+Any signal with a probabilistic score must have calibration metrics, not just accuracy.
 
 ## Acceptance
 
-Будь-який сигнал з probabilistic score повинен мати calibration metrics, а не лише accuracy.
+Any signal with a probabilistic score must have calibration metrics, not just accuracy.
 
 ## Trace
 

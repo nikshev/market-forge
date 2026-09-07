@@ -1,6 +1,6 @@
 ---
 id: REQ-PRIN-009
-title: Код повинен бути тестованим, deterministic у backtest mode та максимально однаковим між live і replay.
+title: Code must be testable, deterministic in backtest mode, and as identical as possible between live and replay.
 type: constraint
 prd_ref: "§0"
 prd_lines: "23-23"
@@ -12,11 +12,11 @@ tags: []
 
 ## Requirement
 
-Код повинен бути тестованим, deterministic у backtest mode та максимально однаковим між live і replay.
+Code must be testable, deterministic in backtest mode, and as identical as possible between live and replay.
 
 ## Acceptance
 
-Код повинен бути тестованим, deterministic у backtest mode та максимально однаковим між live і replay.
+Code must be testable, deterministic in backtest mode, and as identical as possible between live and replay.
 
 ## Trace
 

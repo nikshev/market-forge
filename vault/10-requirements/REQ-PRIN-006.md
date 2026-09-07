@@ -1,6 +1,6 @@
 ---
 id: REQ-PRIN-006
-title: Будь-яку модель ML/GMDH додавати лише після наявності сильних deterministic baselines та leakage tests.
+title: Add any ML/GMDH model only after strong deterministic baselines and leakage tests exist.
 type: constraint
 prd_ref: "§0"
 prd_lines: "20-20"
@@ -12,11 +12,11 @@ tags: []
 
 ## Requirement
 
-Будь-яку модель ML/GMDH додавати лише після наявності сильних deterministic baselines та leakage tests.
+Add any ML/GMDH model only after strong deterministic baselines and leakage tests exist.
 
 ## Acceptance
 
-Будь-яку модель ML/GMDH додавати лише після наявності сильних deterministic baselines та leakage tests.
+Add any ML/GMDH model only after strong deterministic baselines and leakage tests exist.
 
 ## Trace
 

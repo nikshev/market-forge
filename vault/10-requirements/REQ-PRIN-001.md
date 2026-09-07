@@ -1,6 +1,6 @@
 ---
 id: REQ-PRIN-001
-title: Реалізовувати систему інкрементально, за фазами та acceptance criteria з цього PRD.
+title: Implement the system incrementally, by phases and by the acceptance criteria in this PRD.
 type: constraint
 prd_ref: "§0"
 prd_lines: "15-15"
@@ -12,11 +12,11 @@ tags: []
 
 ## Requirement
 
-Реалізовувати систему інкрементально, за фазами та acceptance criteria з цього PRD.
+Implement the system incrementally, by phases and by the acceptance criteria in this PRD.
 
 ## Acceptance
 
-Реалізовувати систему інкрементально, за фазами та acceptance criteria з цього PRD.
+Implement the system incrementally, by phases and by the acceptance criteria in this PRD.
 
 ## Trace
 
