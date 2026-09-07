@@ -122,3 +122,12 @@ def test_code_collection_skips_pycache(vault):
     (cache / "stale.py").write_text("# @trace: REQ-WP-001\n")
     nodes, _ = collect_code([vault.root / "src"])
     assert nodes == []
+
+
+def test_requirement_token_with_a_letter_is_not_truncated_to_digits(vault):
+    # PRD phases 1A and 7A give requirement tokens that carry a trailing letter
+    # (REQ-PHASE-1A, REQ-PHASE-7A); the id must survive intact, not get chopped
+    # into a shorter, differently-meaning numeric id.
+    vault.source("channelflow/phases.py", ["REQ-PHASE-1A"])
+    _, edges = collect_code([vault.root / "src"])
+    assert [e.dst for e in edges] == ["REQ-PHASE-1A"]
