@@ -2,7 +2,7 @@ VENV := .venv
 PY   := $(VENV)/bin/python
 PIP  := uv pip install --python $(PY)
 
-.PHONY: venv install test lint markers trace validate dashboard graph clean
+.PHONY: venv install test lint markers trace validate dashboard graph clean index
 
 venv:
 	uv venv $(VENV) --python 3.12 --no-python-downloads
@@ -47,3 +47,6 @@ graph: trace dashboard
 clean:
 	rm -rf .trace .pytest_cache
 	find . -name __pycache__ -type d -prune -exec rm -rf {} +
+
+index:
+	$(VENV)/bin/graphify . --update
