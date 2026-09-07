@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "WP-002 Domain model"
 prd_lines: "6937-6944"
 phase: null
-status: draft
+status: specified
 depends_on: []
 tags: []
 ---
@@ -25,7 +25,8 @@ Done when:
 ## Trace
 
 <!-- trace:begin -->
-_No linked artifacts yet._
+- **Specs:** [[SPEC-004-domain-model]]
+- **Outcomes:** [[OUT-2026-09-07-spec-domain-model]]
 <!-- trace:end -->
 
 ## Notes
