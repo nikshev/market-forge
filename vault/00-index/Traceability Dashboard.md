@@ -115,6 +115,7 @@ graph LR
   tools_trace_model_py["tools/trace/model.py"]
   tools_trace_pytest_plugin_py["tools/trace/pytest_plugin.py"]
   tools_trace_validate_py["tools/trace/validate.py"]
+  ADR_001["ADR-001: Graphify provides semantic search, not traceability"]
   OUT_2026_09_07_implement_traceability_tooling["OUT-2026-09-07-implement-traceability-tooling"]
   OUT_2026_09_07_plan_traceability_tooling["OUT-2026-09-07-plan-traceability-tooling"]
   OUT_2026_09_07_spec_traceability_tooling["OUT-2026-09-07-spec-traceability-tooling"]
