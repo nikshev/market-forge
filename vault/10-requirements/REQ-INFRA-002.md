@@ -5,7 +5,7 @@ type: infrastructure
 prd_ref: "§0.9, §0.13"
 prd_lines: "23-27"
 phase: null
-status: draft
+status: specified
 depends_on: [REQ-WP-001, REQ-INFRA-001]
 tags: [tooling, ci]
 ---
@@ -51,7 +51,8 @@ requirement whose verification needs a network or a service.
 ## Trace
 
 <!-- trace:begin -->
-_No linked artifacts yet._
+- **Specs:** [[SPEC-003-ci-full-gate]]
+- **Outcomes:** [[OUT-2026-09-07-spec-ci-full-gate]]
 <!-- trace:end -->
 
 ## Notes
