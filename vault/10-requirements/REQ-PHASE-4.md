@@ -6,7 +6,7 @@ prd_ref: "Phase 4 — DeFi ingestion + AMM market structure"
 prd_lines: "6776-6820"
 phase: 4
 status: draft
-depends_on: []
+depends_on: ["REQ-PHASE-3"]
 tags: []
 ---
 

@@ -6,7 +6,7 @@ prd_ref: "Phase 7A — Adaptive position / stop management (shadow → paper)"
 prd_lines: "6871-6903"
 phase: 7A
 status: draft
-depends_on: []
+depends_on: ["REQ-PHASE-7"]
 tags: []
 ---
 

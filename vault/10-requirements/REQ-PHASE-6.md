@@ -6,7 +6,7 @@ prd_ref: "Phase 6 — Research-grade validation"
 prd_lines: "6833-6844"
 phase: 6
 status: draft
-depends_on: []
+depends_on: ["REQ-PHASE-5"]
 tags: []
 ---
 

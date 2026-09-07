@@ -6,7 +6,7 @@ prd_ref: "Phase 1A — Extremum baseline"
 prd_lines: "6720-6737"
 phase: 1A
 status: draft
-depends_on: []
+depends_on: ["REQ-PHASE-1"]
 tags: []
 ---
 

@@ -6,7 +6,7 @@ prd_ref: "Phase 1 — CEX channel MVP"
 prd_lines: "6695-6719"
 phase: 1
 status: draft
-depends_on: []
+depends_on: ["REQ-PHASE-0"]
 tags: []
 ---
 

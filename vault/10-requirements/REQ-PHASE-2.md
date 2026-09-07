@@ -6,7 +6,7 @@ prd_ref: "Phase 2 — CEX microstructure"
 prd_lines: "6738-6758"
 phase: 2
 status: draft
-depends_on: []
+depends_on: ["REQ-PHASE-1A"]
 tags: []
 ---
 

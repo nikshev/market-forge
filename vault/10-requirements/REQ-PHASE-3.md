@@ -6,7 +6,7 @@ prd_ref: "Phase 3 — Derivatives"
 prd_lines: "6759-6775"
 phase: 3
 status: draft
-depends_on: []
+depends_on: ["REQ-PHASE-2"]
 tags: []
 ---
 

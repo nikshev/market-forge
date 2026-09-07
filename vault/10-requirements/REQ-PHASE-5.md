@@ -6,7 +6,7 @@ prd_ref: "Phase 5 — Cross-venue"
 prd_lines: "6821-6832"
 phase: 5
 status: draft
-depends_on: []
+depends_on: ["REQ-PHASE-4"]
 tags: []
 ---
 

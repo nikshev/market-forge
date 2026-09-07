@@ -6,7 +6,7 @@ prd_ref: "Phase 8 — Production hardening"
 prd_lines: "6904-6917"
 phase: 8
 status: draft
-depends_on: []
+depends_on: ["REQ-PHASE-7A"]
 tags: []
 ---
 

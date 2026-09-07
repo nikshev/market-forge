@@ -6,7 +6,7 @@ prd_ref: "Phase 7 — ML/GMDH"
 prd_lines: "6845-6870"
 phase: 7
 status: draft
-depends_on: []
+depends_on: ["REQ-PHASE-6"]
 tags: []
 ---
 
