@@ -20,7 +20,8 @@ and the confirmation logic must not read events with `available_at > known_at`.
 
 ## Acceptance
 
-_ACCEPTANCE-NOT-SPECIFIED: the PRD states no explicit acceptance criteria for this section. They must be written before this requirement leaves `draft`._
+- `known_at >= extremum_time` holds for every confirmed extremum;
+- confirmation logic never reads events with `available_at > known_at`.
 
 ## Trace
 

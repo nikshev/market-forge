@@ -20,7 +20,7 @@ Assert all finalized outputs with `available_at <= t` remain byte-equivalent.
 
 ## Acceptance
 
-_ACCEPTANCE-NOT-SPECIFIED: the PRD states no explicit acceptance criteria for this section. They must be written before this requirement leaves `draft`._
+- given live outputs computed up to `t`, appending arbitrary bars after `t` does not change any finalized output with `available_at <= t` (byte-equivalent before and after).
 
 ## Trace
 

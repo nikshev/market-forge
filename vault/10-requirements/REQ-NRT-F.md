@@ -16,7 +16,8 @@ Small perturbations within a configured tolerance must not create silently unsta
 
 ## Acceptance
 
-_ACCEPTANCE-NOT-SPECIFIED: the PRD states no explicit acceptance criteria for this section. They must be written before this requirement leaves `draft`._
+- small perturbations within a configured tolerance do not silently produce unstable promoted roots;
+- root sensitivity metrics are recorded.
 
 ## Trace
 

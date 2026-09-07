@@ -16,7 +16,7 @@ A candidate may be invalidated later, but its original snapshot cannot change.
 
 ## Acceptance
 
-_ACCEPTANCE-NOT-SPECIFIED: the PRD states no explicit acceptance criteria for this section. They must be written before this requirement leaves `draft`._
+- a candidate's original snapshot never changes, even when the candidate is later invalidated.
 
 ## Trace
 

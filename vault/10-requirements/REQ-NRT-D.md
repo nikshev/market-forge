@@ -16,7 +16,7 @@ Production feature path fails validation if a transform declares symmetric/cente
 
 ## Acceptance
 
-_ACCEPTANCE-NOT-SPECIFIED: the PRD states no explicit acceptance criteria for this section. They must be written before this requirement leaves `draft`._
+- the production feature path fails validation if any transform declares symmetric/centered future dependence.
 
 ## Trace
 

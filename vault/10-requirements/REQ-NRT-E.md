@@ -16,7 +16,7 @@ Live recorded outputs and deterministic replay outputs must match for the same e
 
 ## Acceptance
 
-_ACCEPTANCE-NOT-SPECIFIED: the PRD states no explicit acceptance criteria for this section. They must be written before this requirement leaves `draft`._
+- live recorded outputs and deterministic replay outputs match for the same event stream, config, and model artifact.
 
 ## Trace
 
