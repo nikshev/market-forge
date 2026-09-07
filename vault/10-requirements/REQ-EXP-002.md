@@ -25,7 +25,9 @@ Do not select solely on maximum PnL; evaluate stability plateau.
 
 ## Acceptance
 
-_ACCEPTANCE-NOT-SPECIFIED: the PRD states no explicit acceptance criteria for this section. They must be written before this requirement leaves `draft`._
+- lookbacks 40/60/80/100/150/200 bars are compared;
+- lookback selection is not based solely on maximum PnL;
+- a stability plateau across lookbacks is evaluated and reported.
 
 ## Trace
 

@@ -31,7 +31,12 @@ Evaluate:
 
 ## Acceptance
 
-_ACCEPTANCE-NOT-SPECIFIED: the PRD states no explicit acceptance criteria for this section. They must be written before this requirement leaves `draft`._
+- logistic, elastic net, gradient boosting, and GMDH are evaluated on the same point-in-time feature matrix;
+- Brier score is reported;
+- calibration is reported;
+- PR-AUC is reported;
+- expectancy by probability bucket is reported;
+- feature stability across walk-forward folds is reported.
 
 ## Trace
 
