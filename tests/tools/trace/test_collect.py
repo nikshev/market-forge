@@ -62,6 +62,30 @@ def test_requirement_id_must_match_its_filename(vault):
         collect_requirements(vault.vault)
 
 
+def test_constraint_requirement_without_hard_gated_field_raises(vault):
+    """`hard_gated` defaults to False when the collector merely reads a
+    missing key -- that default must never be reached silently for a
+    `type: constraint` note, or R5 (the one rule CLAUDE.md calls
+    non-waivable) can be escaped just by leaving a line out of the frontmatter.
+    """
+    bad = vault.vault / "10-requirements" / "REQ-BIAS-099.md"
+    bad.write_text(
+        "---\nid: REQ-BIAS-099\ntitle: t\ntype: constraint\nstatus: planned\n---\n\nbody\n"
+    )
+    with pytest.raises(ValueError, match="REQ-BIAS-099.md: type: constraint requires"):
+        collect_requirements(vault.vault)
+
+
+def test_constraint_requirement_with_explicit_hard_gated_false_is_fine(vault):
+    """The check is for an *absent* field, not for the value `false` --
+    REQ-PRIN-* notes are `type: constraint` with `hard_gated: false` on
+    purpose and must keep collecting normally.
+    """
+    vault.requirement("REQ-PRIN-001", type_="constraint", hard_gated=False)
+    nodes, _ = collect_requirements(vault.vault)
+    assert nodes[0].attrs["hard_gated"] is False
+
+
 def test_specs_produce_specifies_edges(vault):
     vault.spec("001-bootstrap", ["REQ-WP-001", "REQ-WP-002"])
     nodes, edges = collect_specs(vault.specs)
@@ -133,6 +157,23 @@ def test_collect_code_ignores_untracked_files_in_a_git_repo(vault):
     ids = {n.id for n in nodes}
     assert "src/channelflow/tracked.py" in ids
     assert "src/channelflow/scratch.py" not in ids
+
+
+def test_collect_code_finds_a_tracked_file_with_a_non_ascii_name(vault):
+    """Under git's default core.quotePath=true, plain `ls-files` prints a
+    non-ASCII filename as a C-quoted string (e.g. "caf\\303\\251.py"), which
+    never matches `(root / line)` -- a tracked file would then be silently
+    treated as untracked and its markers would vanish with no diagnostic.
+    `_git_tracked_files` must use `-z` so this keeps matching.
+    """
+    subprocess.run(["git", "init", "-q"], cwd=vault.root, check=True)
+    subprocess.run(["git", "config", "core.quotePath", "true"], cwd=vault.root, check=True)
+    vault.source("channelflow/café.py", ["REQ-WP-005"])
+    subprocess.run(["git", "add", "src/channelflow/café.py"], cwd=vault.root, check=True)
+
+    nodes, _ = collect_code([vault.root / "src"])
+
+    assert {n.id for n in nodes} == {"src/channelflow/café.py"}
 
 
 def test_collect_code_falls_back_to_unfiltered_outside_a_git_repo(vault):

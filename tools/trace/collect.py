@@ -61,6 +61,13 @@ def collect_requirements(vault_dir: Path) -> tuple[list[Node], list[Edge]]:
     for path in _notes(vault_dir / "10-requirements"):
         meta, _ = split_frontmatter(path.read_text())
         req_id = _require_id(meta, path)
+        req_type = str(meta.get("type", ""))
+        if req_type == "constraint" and "hard_gated" not in meta:
+            raise ValueError(
+                f"{path.name}: type: constraint requires an explicit 'hard_gated' "
+                "field (true or false) -- rule R5 reads a missing field as false, "
+                "so it must never be left implicit"
+            )
         nodes.append(
             Node(
                 id=req_id,
@@ -69,7 +76,7 @@ def collect_requirements(vault_dir: Path) -> tuple[list[Node], list[Edge]]:
                 title=str(meta.get("title", "")),
                 attrs={
                     "status": str(meta.get("status", "draft")),
-                    "type": str(meta.get("type", "")),
+                    "type": req_type,
                     "phase": meta.get("phase"),
                     "prd_ref": str(meta.get("prd_ref", "")),
                     "tags": _id_list(meta, "tags"),
@@ -148,10 +155,17 @@ def _git_tracked_files(root: Path) -> set[Path] | None:
     """Absolute paths `git` tracks under `root`, or None if git/the repo is
     unavailable — callers must treat None as "cannot filter", not "nothing
     tracked".
+
+    `-z` NUL-terminates each entry and disables the default C-quoting of
+    "unusual" (including non-ASCII) filenames -- with plain `ls-files`, a
+    tracked file like `café.py` prints as a quoted `"caf\\303\\251.py"`
+    string, which then never matches `(root / line)`, so a real tracked
+    file is silently treated as untracked and its markers vanish with no
+    diagnostic.
     """
     try:
         result = subprocess.run(
-            ["git", "-C", str(root), "ls-files"],
+            ["git", "-C", str(root), "ls-files", "-z"],
             capture_output=True,
             text=True,
             timeout=10,
@@ -160,7 +174,7 @@ def _git_tracked_files(root: Path) -> set[Path] | None:
         return None
     if result.returncode != 0:
         return None
-    return {(root / line).resolve() for line in result.stdout.splitlines() if line}
+    return {(root / line).resolve() for line in result.stdout.split("\0") if line}
 
 
 def collect_code(roots: Sequence[Path]) -> tuple[list[Node], list[Edge]]:
