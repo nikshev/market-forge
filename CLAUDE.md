@@ -24,7 +24,11 @@ transition.
 The status ladder is `draft → specified → planned → tested → implemented →
 verified`. `/sdd-implement` passes through `tested` as its own commit,
 *before* touching implementation code — that commit is what proves a test
-was written first, not the requirement's frontmatter alone. The rung is a
+was written first, not the requirement's frontmatter alone. Note that a red
+suite cannot be committed — `make validate` runs the suite for real and the
+pre-commit hook runs `make validate` — so `tested` is recorded in the same
+commit as the implementation, and the RED output in the outcome note is what
+proves the tests came first. The rung is a
 discipline the commands follow, not a gate the tooling enforces: no
 validator rule reads `status: tested` or checks that a requirement ever held
 it. Rule R2 only requires a verifying test by the time status reaches
@@ -144,8 +148,12 @@ criteria and carry the `ACCEPTANCE-NOT-SPECIFIED` marker.
 ## Commands
 
     make install     # venv (.venv, Python 3.12) + dependencies
+    make up          # start the dev stack (postgres + minio); waits for healthy
+    make down        # stop it; data volumes survive
+    make reset       # stop it AND delete the volumes -- destructive
     make test        # pytest -q
-    make lint        # ruff check + ruff format --check, tools tests
+    make lint        # ruff check + ruff format --check, over tools tests src
+    make typecheck   # mypy --strict over src/
     make markers     # run the suite for real; dump @pytest.mark.trace links
                      # for tests that passed into .trace/tests.json
     make trace       # markers + rebuild .trace/graph.json

@@ -22,11 +22,21 @@ Implement `$ARGUMENTS`.
    red-test cycle, mark the existing passing test(s), and say plainly in
    `tasks.md` and the outcome note that the step was skipped and why, rather
    than fabricating a failure that didn't happen.
-3. Set the requirement's `status: tested`, run `make graph && make validate`,
-   and commit. `make graph` reads the markers via
-   `tools.trace.pytest_plugin` (that's what `make markers` does under the
-   hood) — the requirement is now provably covered before any implementation
-   exists.
+3. Record the RED output — the command you ran and the failure, with enough of
+   it to show the failure was for the right reason. This is the evidence that
+   the tests came first, and it belongs in the outcome note from step 7.
+
+   **Do not try to commit at this point.** `make validate` depends on
+   `make markers`, which runs the suite for real, and the pre-commit hook runs
+   `make validate` — so a red suite cannot be committed, by design. That is the
+   property that stops a skipped test satisfying a coverage rule, and it is
+   worth more than a separate `tested` commit.
+
+   The consequence is that `status: tested` is recorded in the same commit as
+   the implementation rather than ahead of it. The rung still means what it
+   says — failing tests existed first — but the RED output is what proves it,
+   not the commit order. Nothing mechanical reads `Status.TESTED`; see
+   `CLAUDE.md` on the ladder being a discipline rather than a gate.
 4. Invoke the `speckit-implement` skill. It reads `tasks.md` (via
    `.specify/scripts/bash/check-prerequisites.sh`) and executes the tasks in
    order.

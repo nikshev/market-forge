@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "WP-001 Project bootstrap"
 prd_lines: "6920-6936"
 phase: null
-status: planned
+status: implemented
 depends_on: []
 tags: []
 ---
@@ -35,7 +35,10 @@ Done when:
 
 <!-- trace:begin -->
 - **Specs:** [[SPEC-002-project-bootstrap]]
-- **Outcomes:** [[OUT-2026-09-07-plan-project-bootstrap]], [[OUT-2026-09-07-spec-project-bootstrap]], [[OUT-2026-09-07-tasks-project-bootstrap]]
+- **Tests:**
+    - `tests/integration/test_dev_stack.py::test_object_store_lists_buckets`
+    - `tests/integration/test_dev_stack.py::test_postgres_answers_a_query`
+- **Outcomes:** [[OUT-2026-09-07-implement-project-bootstrap]], [[OUT-2026-09-07-plan-project-bootstrap]], [[OUT-2026-09-07-spec-project-bootstrap]], [[OUT-2026-09-07-tasks-project-bootstrap]]
 <!-- trace:end -->
 
 ## Notes

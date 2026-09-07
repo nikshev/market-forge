@@ -6,6 +6,11 @@ requires-python = ">=3.12,<3.13"
 dependencies = [
     "networkx>=3.4",
     "pyyaml>=6.0",
+    # Product dependencies. PRD section 7 names asyncpg for Postgres metadata;
+    # boto3 is the S3 client for the object store that ADR-002 makes the
+    # canonical data plane.
+    "asyncpg>=0.30",
+    "boto3>=1.35",
 ]
 
 [project.optional-dependencies]
@@ -13,6 +18,7 @@ dev = [
     "pytest>=8.0",
     "pytest-cov>=5.0",
     "ruff>=0.6",
+    "mypy>=1.11",
     "pre-commit>=3.8",
 ]
 
@@ -24,13 +30,22 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
-include = ["tools*"]
+include = ["tools*", "channelflow*"]
+where = [".", "src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 markers = [
     "trace(*requirement_ids): link this test to one or more requirement IDs",
 ]
+
+[tool.mypy]
+# Strict over the product tree only. tools/ predates this decision; see
+# specs/002-project-bootstrap/research.md for why retrofitting it is not
+# part of REQ-WP-001.
+files = ["src"]
+strict = true
+python_version = "3.12"
 
 [tool.ruff]
 line-length = 100

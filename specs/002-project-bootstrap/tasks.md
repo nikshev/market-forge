@@ -26,9 +26,9 @@ implemented and verified on its own.
 
 **Purpose**: the Python package and its tooling configuration.
 
-- [ ] T001 Create `src/channelflow/__init__.py` with a module docstring and the `# @trace: REQ-WP-001` marker. This is the only Python source this feature produces — see Notes on sparse code links.
-- [ ] T002 Extend `pyproject.toml`: add a `[tool.mypy]` section configured strict over `src`, and declare the product package under `[tool.setuptools.packages.find]` alongside the existing `tools*`. Confirm `requires-python` still pins 3.12 (FR-007).
-- [ ] T003 Generate and commit `uv.lock` (FR-007, Principle XI — a checkout must resolve to the same versions later).
+- [x] T001 Create `src/channelflow/__init__.py` with a module docstring and the `# @trace: REQ-WP-001` marker. This is the only Python source this feature produces — see Notes on sparse code links.
+- [x] T002 Extend `pyproject.toml`: add a `[tool.mypy]` section configured strict over `src`, and declare the product package under `[tool.setuptools.packages.find]` alongside the existing `tools*`. Confirm `requires-python` still pins 3.12 (FR-007).
+- [x] T003 Generate and commit `uv.lock` (FR-007, Principle XI — a checkout must resolve to the same versions later).
 
 ---
 
@@ -36,8 +36,8 @@ implemented and verified on its own.
 
 **Purpose**: configuration both the stack and the tests read. Blocks US1.
 
-- [ ] T004 Create `.env.example` declaring `POSTGRES_*` and `MINIO_*` credentials, ports and bucket name, with development-only defaults (FR-006).
-- [ ] T005 Add `.env` to `.gitignore` so real credentials cannot be committed (FR-006).
+- [x] T004 Create `.env.example` declaring `POSTGRES_*` and `MINIO_*` credentials, ports and bucket name, with development-only defaults (FR-006).
+- [x] T005 Add `.env` to `.gitignore` so real credentials cannot be committed (FR-006).
 
 **Checkpoint**: configuration exists; US1 can begin.
 
@@ -53,15 +53,15 @@ implemented and verified on its own.
 
 > Write these FIRST and confirm they FAIL — with no compose file there is nothing to connect to, which is the right reason to fail.
 
-- [ ] T006 [P] [US1] `tests/integration/test_dev_stack.py::test_postgres_answers_a_query` — connect using the values from `.env` and execute `SELECT 1`. Marker: `@pytest.mark.trace("REQ-WP-001")`.
-- [ ] T007 [P] [US1] `tests/integration/test_dev_stack.py::test_object_store_lists_buckets` — connect to MinIO over the S3 API and list buckets. Marker as above.
+- [x] T006 [P] [US1] `tests/integration/test_dev_stack.py::test_postgres_answers_a_query` — connect using the values from `.env` and execute `SELECT 1`. Marker: `@pytest.mark.trace("REQ-WP-001")`.
+- [x] T007 [P] [US1] `tests/integration/test_dev_stack.py::test_object_store_lists_buckets` — connect to MinIO over the S3 API and list buckets. Marker as above.
 
 ### Implementation for User Story 1
 
-- [ ] T008 [US1] Create `docker-compose.yml` with two services: PostgreSQL 16 and MinIO, both pinned to explicit tags (never `latest`, per research.md), both declaring a health condition, both reading ports and credentials from `.env`, both with a named volume (FR-002, FR-003, FR-006).
-- [ ] T009 [US1] Add `up`, `down` and `reset` targets to the `Makefile`. `up` waits for health before returning success; `down` preserves volumes; `reset` removes them and is the only destructive command (FR-001, FR-003, FR-005).
-- [ ] T010 [US1] Verify FR-004 and SC-004 by hand: run `make up` twice in succession and confirm the second run succeeds and leaves the same end state as one run. Record the observed output in the implement-step outcome note.
-- [ ] T011 [US1] Verify SC-005 by hand: write a row to PostgreSQL, `make down`, `make up`, confirm the row survives. Then confirm `make reset` discards it.
+- [x] T008 [US1] Create `docker-compose.yml` with two services: PostgreSQL 16 and MinIO, both pinned to explicit tags (never `latest`, per research.md), both declaring a health condition, both reading ports and credentials from `.env`, both with a named volume (FR-002, FR-003, FR-006).
+- [x] T009 [US1] Add `up`, `down` and `reset` targets to the `Makefile`. `up` waits for health before returning success; `down` preserves volumes; `reset` removes them and is the only destructive command (FR-001, FR-003, FR-005).
+- [x] T010 [US1] Verify FR-004 and SC-004 by hand: run `make up` twice in succession and confirm the second run succeeds and leaves the same end state as one run. Record the observed output in the implement-step outcome note.
+- [x] T011 [US1] Verify SC-005 by hand: write a row to PostgreSQL, `make down`, `make up`, confirm the row survives. Then confirm `make reset` discards it.
 
 **Checkpoint**: US1 complete — the acceptance criterion of REQ-WP-001 holds.
 
@@ -73,8 +73,8 @@ implemented and verified on its own.
 
 **Independent Test**: run the three commands on a clean checkout; all pass.
 
-- [ ] T012 [US2] Add a `typecheck` target to the `Makefile` running `mypy --strict` over `src` (FR-008, FR-009).
-- [ ] T013 [US2] Run `make lint`, `make typecheck` and `make test` and confirm all three are green with no warnings in output (FR-011, SC-003). Fix whatever is not.
+- [x] T012 [US2] Add a `typecheck` target to the `Makefile` running `mypy --strict` over `src` (FR-008, FR-009).
+- [x] T013 [US2] Run `make lint`, `make typecheck` and `make test` and confirm all three are green with no warnings in output (FR-011, SC-003). Fix whatever is not.
 
 **Checkpoint**: US2 complete — a red result from here on is a real change, not the environment.
 
@@ -86,9 +86,9 @@ implemented and verified on its own.
 
 **Independent Test**: install dependencies, build, type-check — all succeed.
 
-- [ ] T014 [US3] Scaffold `apps/web/` with Vite, React 18 and TypeScript: `package.json`, `tsconfig.json`, `vite.config.ts`, `index.html`, `src/main.tsx`, `src/App.tsx` rendering one empty page. No Lightweight Charts — that is REQ-WP-009 (FR-010).
-- [ ] T015 [US3] Add `apps/web/node_modules` and `apps/web/dist` to `.gitignore`.
-- [ ] T016 [US3] Run the frontend build and type-check and confirm both succeed (SC-006).
+- [x] T014 [US3] Scaffold `apps/web/` with Vite, React 18 and TypeScript: `package.json`, `tsconfig.json`, `vite.config.ts`, `index.html`, `src/main.tsx`, `src/App.tsx` rendering one empty page. No Lightweight Charts — that is REQ-WP-009 (FR-010).
+- [x] T015 [US3] Add `apps/web/node_modules` and `apps/web/dist` to `.gitignore`.
+- [x] T016 [US3] Run the frontend build and type-check and confirm both succeed (SC-006).
 
 **Checkpoint**: US3 complete — toolchain and versions fixed before any interface is designed.
 
@@ -96,8 +96,8 @@ implemented and verified on its own.
 
 ## Phase 6: Polish
 
-- [ ] T017 Walk `quickstart.md` end to end from a clean state and correct anything that does not match reality (FR-012, SC-001).
-- [ ] T018 Add the new `make` targets (`up`, `down`, `reset`, `typecheck`) to `CLAUDE.md`'s commands section so they are discoverable from the repository's own documentation, not only from this spec (FR-012).
+- [x] T017 Walk `quickstart.md` end to end from a clean state and correct anything that does not match reality (FR-012, SC-001).
+- [x] T018 Add the new `make` targets (`up`, `down`, `reset`, `typecheck`) to `CLAUDE.md`'s commands section so they are discoverable from the repository's own documentation, not only from this spec (FR-012).
 
 ---
 

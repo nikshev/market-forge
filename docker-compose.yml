@@ -1,0 +1,76 @@
+# Local development stack for ChannelFlow (REQ-WP-001).
+#
+# PostgreSQL for transactional metadata and control plane; MinIO as the
+# S3-compatible object store that ADR-002 makes the canonical data plane.
+# There is deliberately NO analytical database service -- ADR-002 drops
+# ClickHouse and adopts the PRD's target storage profile from the start.
+#
+# Image tags are pinned to explicit releases, never `latest`: Principle XI
+# requires a checkout to resolve to the same stack later. See
+# specs/002-project-bootstrap/research.md for why tags rather than digests.
+#
+# Ports and credentials come from .env (copy .env.example). Nothing here is
+# hardcoded, so a port clash is fixed by editing one file.
+
+name: channelflow
+
+services:
+  postgres:
+    image: postgres:16-alpine3.24
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "${POSTGRES_PORT}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      # pg_isready, not a TCP probe: Postgres accepts connections before it
+      # will serve queries, and reporting success into that gap is the race
+      # SC-002 exists to close.
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+      start_period: 3s
+
+  minio:
+    image: minio/minio:RELEASE.2025-09-07T16-13-09Z
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    ports:
+      - "${MINIO_PORT}:9000"
+      - "${MINIO_CONSOLE_PORT}:9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "mc ready local || exit 1"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+      start_period: 3s
+
+  # One-shot: creates the development bucket, then exits. `make up` waits for
+  # it to complete, so a healthy stack always has the bucket the tests expect.
+  minio_init:
+    image: minio/mc:RELEASE.2025-08-13T08-35-41Z
+    depends_on:
+      minio:
+        condition: service_healthy
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      MINIO_BUCKET: ${MINIO_BUCKET}
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 $${MINIO_ROOT_USER} $${MINIO_ROOT_PASSWORD} &&
+      mc mb --ignore-existing local/$${MINIO_BUCKET} &&
+      echo 'bucket ready: '$${MINIO_BUCKET}
+      "
+
+volumes:
+  postgres_data:
+  minio_data:
