@@ -176,6 +176,32 @@ def test_dashboard_groups_this_projects_real_phases_in_sane_order(vault):
 
     positions = [text.index(f"### Phase {phase}") for phase in phases]
     assert positions == sorted(positions)
+    # The unfiltered view comes first, ahead of every per-phase diagram.
+    assert text.index("### All requirements") < min(positions)
+
+
+def test_dashboard_all_requirements_diagram_includes_a_phaseless_requirement(vault):
+    """A requirement with `phase: null` (most of this project's real
+    requirements -- the PRD doesn't assign every requirement a phase) never
+    appears in any per-phase diagram. It must still be visible somewhere:
+    the unfiltered "All requirements" diagram is that somewhere.
+    """
+    _write_requirement_with_phase(vault, "REQ-WP-000", "0")
+    vault.requirement("REQ-INFRA-001")  # phase: 0 via the fixture default
+
+    path = vault.vault / "10-requirements" / "REQ-INFRA-001.md"
+    text = path.read_text().replace("phase: 0", "phase: null")
+    path.write_text(text)
+
+    graph = build_graph(vault.root)
+    dashboard = render_dashboard(graph, validate(graph))
+
+    all_section = dashboard.split("### All requirements", 1)[1].split("### Phase", 1)[0]
+    assert "REQ_INFRA_001[" in all_section
+    # And it must not show up in the phase-0 diagram, which only phase: 0
+    # requirements (and their neighbours) belong to.
+    phase_0_section = dashboard.split("### Phase 0", 1)[1]
+    assert "REQ_INFRA_001" not in phase_0_section
 
 
 def test_write_dashboard_preserves_handwritten_text(vault, tmp_path):

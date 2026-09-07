@@ -41,11 +41,12 @@ the graph or the validator depends on a fuzzy or LLM-derived edge.
     - `tests/tools/trace/test_dashboard.py::test_update_requirement_notes_is_idempotent`
     - `tests/tools/trace/test_graph.py::test_build_graph_wires_every_edge_kind`
     - `tests/tools/trace/test_pytest_plugin.py::test_parametrized_tests_are_recorded_once_per_case`
-    - `tests/tools/trace/test_validate.py::test_r5_fails_for_a_planned_constraint_without_a_test`
+    - `tests/tools/trace/test_validate.py::test_r5_fails_for_a_planned_hard_gated_constraint_without_a_test`
 - **Code:**
     - `tools/trace/cli.py`
     - `tools/trace/collect.py`
     - `tools/trace/dashboard.py`
+    - `tools/trace/frontmatter.py`
     - `tools/trace/graph.py`
     - `tools/trace/model.py`
     - `tools/trace/pytest_plugin.py`

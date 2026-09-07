@@ -105,14 +105,29 @@ def render_dashboard(graph: TraceGraph, violations: list[Violation]) -> str:
         {str(n.attrs.get("phase")) for n in requirements if n.attrs.get("phase") is not None}
     )
     lines += ["", "## Graph", ""]
-    if not phases:
-        lines.append(to_mermaid(graph))
-    else:
-        for phase in phases:
-            lines.append(f"### Phase {phase}")
-            lines.append("")
-            lines.append(to_mermaid(graph, phase=phase))
-            lines.append("")
+    # Per-phase diagrams only cover requirements that carry a `phase:` in
+    # frontmatter -- the PRD does not assign every requirement to a phase
+    # (work packages, user stories and constraints mostly don't get one), so
+    # a requirement with `phase: null` never appears in any phase diagram
+    # below, however real its spec/test/code/outcome edges are. Rather than
+    # invent a phase for it (which the PRD does not support), this
+    # unfiltered view always renders the whole graph first, so nothing is
+    # invisible just for lacking a phase.
+    lines.append("### All requirements")
+    lines.append("")
+    lines.append(
+        "Every node currently in the graph, regardless of `phase:` -- the "
+        "only view below that includes a requirement whose phase is unset, "
+        "and anything linked only to one."
+    )
+    lines.append("")
+    lines.append(to_mermaid(graph))
+    lines.append("")
+    for phase in phases:
+        lines.append(f"### Phase {phase}")
+        lines.append("")
+        lines.append(to_mermaid(graph, phase=phase))
+        lines.append("")
 
     return "\n".join(lines).rstrip("\n") + "\n"
 
