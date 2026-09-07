@@ -79,7 +79,29 @@ A duplicate `id:` across two requirement notes is caught earlier than this
 table, while the graph is still being built (`TraceGraph.add` refuses the
 second node) — it surfaces as `trace: cannot build graph: duplicate node id:
 '<id>'` with exit 1, before any violation list is printed, not as a row in
-the table above.
+the table above. In practice two *requirement* notes can't reach that guard
+in the first place: `_require_id` requires a note's `id:` to equal its own
+filename stem, and two files can't share a stem in one directory, so a
+copy-pasted frontmatter block that keeps the old `id:` fails first, and
+earlier, as a filename mismatch — `trace: cannot build graph: <file>.md: id
+'<id>' does not match filename '<stem>'`. The duplicate-node guard is real
+and still runs, but what it would actually catch is two *different* kinds of
+artifact colliding on one id (say a code file path and a test nodeid), not
+two requirement notes.
+
+A `VERIFIES` edge means the marked test **passed** the last time `make
+markers` ran the suite for real — not that it merely exists, was collected,
+or was skipped/xfailed. `make markers` runs `pytest` for real (not
+`--collect-only`) for exactly this reason; a red suite makes `markers` fail
+loudly with the failing tests printed, before `validate` ever runs, rather
+than surfacing as a confusing R2/R5 violation. What `VERIFIES` still does not
+mean: nothing checks that a `@pytest.mark.trace(...)` marker names a test
+that genuinely exercises the requirement it claims to verify — that link is
+self-asserted, exactly like the `tested` rung above. Nor is an `IMPLEMENTS`
+edge required by any rule — R3 only checks that one, if present, doesn't
+point at a nonexistent requirement — so code links are advisory: a
+requirement can reach `implemented` with zero linked source files and
+`make validate` will not notice.
 
 `make graph` rebuilds `.trace/graph.json` and regenerates the dashboard
 (`vault/00-index/Traceability Dashboard.md`) and each requirement note's
@@ -102,7 +124,8 @@ regenerate it from `vault/` instead.
     make install     # venv (.venv, Python 3.12) + dependencies
     make test        # pytest -q
     make lint        # ruff check + ruff format --check, tools tests
-    make markers     # collect @pytest.mark.trace markers into .trace/tests.json
+    make markers     # run the suite for real; dump @pytest.mark.trace links
+                     # for tests that passed into .trace/tests.json
     make trace       # markers + rebuild .trace/graph.json
     make dashboard   # markers + rewrite the dashboard and notes' Trace sections
     make graph       # trace + dashboard

@@ -18,8 +18,20 @@ lint:
 	$(VENV)/bin/ruff format --check tools tests
 
 markers:
-	$(PY) -m pytest -p tools.trace.pytest_plugin --trace-dump=.trace/tests.json \
-	    --collect-only -q > /dev/null
+	@mkdir -p .trace
+	@if $(PY) -m pytest -p tools.trace.pytest_plugin --trace-dump=.trace/tests.json -q \
+	    > .trace/.markers-run.log 2>&1; then \
+	    rm -f .trace/.markers-run.log; \
+	else \
+	    status=$$?; \
+	    echo "trace: the test suite failed; a VERIFIES edge requires a test that"; \
+	    echo "trace: actually passed, so markers cannot trust a red suite. Fix the"; \
+	    echo "trace: failures below, then re-run (this is not an R2/R5 violation):"; \
+	    echo; \
+	    cat .trace/.markers-run.log; \
+	    rm -f .trace/.markers-run.log; \
+	    exit $$status; \
+	fi
 
 trace: markers
 	$(PY) -m tools.trace.cli build

@@ -12,12 +12,18 @@ Rebuild the graph and report.
    touched).
 
    If this step hard-fails instead of completing — printing
-   `trace: cannot build graph: duplicate node id: '<id>'` and exiting 1,
-   with no violation list at all — two requirement notes share the same
-   `id:` in their frontmatter. Find both (`grep -rl "^id: <id>"
-   vault/10-requirements/`) and fix whichever one was misnumbered. IDs are
-   permanent once correctly assigned, so the fix is to correct the
-   duplicate, not to renumber both.
+   `trace: cannot build graph: <file>.md: id '<id>' does not match filename
+   '<stem>'` and exiting 1, with no violation list at all — a note's `id:`
+   in frontmatter no longer matches its own filename (usually a copy-pasted
+   note that kept the old `id:`). Fix the note so `id:` and filename agree
+   again. IDs are permanent once correctly assigned, so the fix is to
+   correct the mismatched note, not to renumber it.
+
+   (A literal `trace: cannot build graph: duplicate node id: '<id>'` is also
+   possible — `TraceGraph.add` refuses a second node with an id already
+   taken — but two requirement notes can't trigger it against each other,
+   since the filename-must-match-id rule above stops that first. It would
+   fire only if two different kinds of artifact collided on the same id.)
 2. Run `make validate` (`tools.trace.cli validate`; exits 1 if there are
    violations).
 3. If `$ARGUMENTS` names a requirement, also run:
