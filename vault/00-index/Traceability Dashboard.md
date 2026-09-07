@@ -116,6 +116,7 @@ graph LR
   tools_trace_pytest_plugin_py["tools/trace/pytest_plugin.py"]
   tools_trace_validate_py["tools/trace/validate.py"]
   ADR_001["ADR-001: Graphify provides semantic search, not traceability"]
+  ADR_002["ADR-002: Drop ClickHouse; adopt the PRD's target storage profile from the start"]
   OUT_2026_09_07_implement_traceability_tooling["OUT-2026-09-07-implement-traceability-tooling"]
   OUT_2026_09_07_plan_traceability_tooling["OUT-2026-09-07-plan-traceability-tooling"]
   OUT_2026_09_07_spec_traceability_tooling["OUT-2026-09-07-spec-traceability-tooling"]
@@ -215,6 +216,8 @@ graph LR
   tests_tools_trace_test_pytest_plugin_py__test_parametrized_tests_are_recorded_once_per_case["tests/tools/trace/test_pytest_plugin.py::test_parametrized_tests_are_recorded_once_per_case"]
   tests_tools_trace_test_validate_py__test_r5_fails_for_a_planned_hard_gated_constraint_without_a_test["tests/tools/trace/test_validate.py::test_r5_fails_for_a_planned_hard_gated_constraint_without_a_test"]
   tests_tools_trace_test_vault_hard_gated_py__test_every_bias_requirement_is_hard_gated["tests/tools/trace/test_vault_hard_gated.py::test_every_bias_requirement_is_hard_gated"]
+  ADR_002 -.->|DECIDES| REQ_PHASE_0
+  ADR_002 -.->|DECIDES| REQ_WP_001
   REQ_PHASE_1 -->|DEPENDS_ON| REQ_PHASE_0
   REQ_PHASE_1A -->|DEPENDS_ON| REQ_PHASE_1
   REQ_PHASE_2 -->|DEPENDS_ON| REQ_PHASE_1A
@@ -271,9 +274,11 @@ graph LR
 
 ```mermaid
 graph LR
+  ADR_002["ADR-002: Drop ClickHouse; adopt the PRD's target storage profile from the start"]
   PRD["PRD: ChannelFlow PRD"]
   REQ_PHASE_0["REQ-PHASE-0: Repository + correctness skeleton"]
   REQ_PHASE_1["REQ-PHASE-1: CEX channel MVP"]
+  ADR_002 -.->|DECIDES| REQ_PHASE_0
   REQ_PHASE_1 -->|DEPENDS_ON| REQ_PHASE_0
   REQ_PHASE_0 -.->|DERIVED_FROM| PRD
   REQ_PHASE_1 -.->|DERIVED_FROM| PRD

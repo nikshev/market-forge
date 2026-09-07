@@ -44,5 +44,10 @@ _No linked artifacts yet._
 
 ## Notes
 
+The requirement body above quotes PRD Phase 0 verbatim and lists
+"Postgres/ClickHouse connectivity". ClickHouse was subsequently dropped in favour of
+the PRD's own target storage profile — see [[ADR-002]]. The PRD text stands as
+provenance; the ADR is what the implementation follows.
+
 Generated from the PRD by `tools/extract_prd.py`. This section is human
 territory and is never machine-rewritten.
