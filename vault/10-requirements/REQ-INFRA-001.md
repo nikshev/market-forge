@@ -22,10 +22,15 @@ the graph or the validator depends on a fuzzy or LLM-derived edge.
 
 ## Acceptance
 
-- `make validate` exits 0 on a clean repository and 1 when any rule R1-R7 fails.
-- Each of the seven rules has a passing and a failing test.
-- Rule R5 is proven independent of R2: a `constraint` requirement at `planned`
-  with no test fails R5 while passing R2.
+- `make validate` exits 0 on a clean repository and 1 when any rule R1-R7 fails
+  (R1-R6 report as `Violation`s; R7, a duplicate `id:`, is caught earlier by
+  `TraceGraph.add` raising before validation runs).
+- Each of the six `Violation`-producing rules (R1-R6) has a passing and a
+  failing test; R7 has a dedicated test asserting the raise.
+- Rule R5 is proven independent of R2: a `hard_gated: true` requirement at
+  `planned` with no test fails R5 while passing R2. (`type: constraint` alone
+  does not trigger R5 — see the `REQ-PRIN-*` notes, which are `type:
+  constraint` but not `hard_gated`.)
 - `make graph` is idempotent: running it twice leaves the working tree clean.
 - Regenerating a requirement note preserves every line outside the
   generated-block markers.
@@ -42,6 +47,7 @@ the graph or the validator depends on a fuzzy or LLM-derived edge.
     - `tests/tools/trace/test_graph.py::test_build_graph_wires_every_edge_kind`
     - `tests/tools/trace/test_pytest_plugin.py::test_parametrized_tests_are_recorded_once_per_case`
     - `tests/tools/trace/test_validate.py::test_r5_fails_for_a_planned_hard_gated_constraint_without_a_test`
+    - `tests/tools/trace/test_vault_hard_gated.py::test_every_bias_requirement_is_hard_gated`
 - **Code:**
     - `tools/trace/cli.py`
     - `tools/trace/collect.py`
