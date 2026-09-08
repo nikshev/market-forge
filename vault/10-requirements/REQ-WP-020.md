@@ -96,6 +96,11 @@ Done when:
     - `tests/unit/stops/test_replay.py::test_the_premature_stop_metric_counts_targets_reached_after_the_stop`
     - `tests/unit/stops/test_replay.py::test_the_replay_counts_why_the_policy_held`
     - `tests/unit/stops/test_replay.py::test_the_stops_package_cannot_consult_a_clock`
+- **Code:**
+    - `src/channelflow/stops/__init__.py`
+    - `src/channelflow/stops/models.py`
+    - `src/channelflow/stops/policy.py`
+    - `src/channelflow/stops/replay.py`
 - **Outcomes:** [[OUT-2026-09-08-implement-adaptive-stops]], [[OUT-2026-09-08-spec-adaptive-stops]]
 <!-- trace:end -->
 
