@@ -26,6 +26,8 @@ Fees/slippage must be included in economic evaluation.
 - **Tests:**
     - `tests/unit/stops/test_replay.py::test_realized_r_is_net_of_fees_and_slippage`
     - `tests/unit/stops/test_replay.py::test_slippage_is_always_adverse`
+- **Code:**
+    - `src/channelflow/stops/replay.py`
 - **Outcomes:** [[OUT-2026-09-08-implement-adaptive-stops]], [[OUT-2026-09-08-spec-adaptive-stops]]
 <!-- trace:end -->
 

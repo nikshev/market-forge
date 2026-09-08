@@ -6,7 +6,7 @@ hard_gated: true
 prd_ref: "§41"
 prd_lines: "5322-5322"
 phase: null
-status: draft
+status: implemented
 depends_on: []
 tags: []
 ---
@@ -22,7 +22,13 @@ No using later corrected/reconstructed DEX state as if known earlier unless audi
 ## Trace
 
 <!-- trace:begin -->
-_No linked artifacts yet._
+- **Specs:** [[SPEC-020-evm-connector]]
+- **Tests:**
+    - `tests/unit/chain/test_ledger.py::test_a_read_before_the_reorg_still_returns_the_record`
+    - `tests/unit/chain/test_ledger.py::test_a_reorg_orphans_a_record_and_never_edits_it`
+- **Code:**
+    - `src/channelflow/chain/ledger.py`
+- **Outcomes:** [[OUT-2026-09-08-implement-evm-connector]], [[OUT-2026-09-08-spec-evm-connector]]
 <!-- trace:end -->
 
 ## Notes
