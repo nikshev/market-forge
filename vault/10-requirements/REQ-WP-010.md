@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "WP-010 Backtest v1"
 prd_lines: "7004-7010"
 phase: null
-status: draft
+status: specified
 depends_on: ["REQ-WP-005", "REQ-WP-007"]
 tags: []
 ---
@@ -27,7 +27,8 @@ tags: []
 ## Trace
 
 <!-- trace:begin -->
-_No linked artifacts yet._
+- **Specs:** [[SPEC-009-backtest-v1]]
+- **Outcomes:** [[OUT-2026-09-08-spec-backtest-v1]]
 <!-- trace:end -->
 
 ## Notes

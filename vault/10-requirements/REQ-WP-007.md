@@ -41,6 +41,11 @@ Implement long/short boundary + middle setups with deterministic transitions and
     - `tests/unit/signals/test_termination.py::test_a_confirmed_candidate_does_not_expire`
     - `tests/unit/signals/test_termination.py::test_a_second_detector_registers_without_touching_the_machine`
     - `tests/unit/signals/test_termination.py::test_an_expired_candidate_does_not_revive`
+- **Code:**
+    - `src/channelflow/signals/__init__.py`
+    - `src/channelflow/signals/machine.py`
+    - `src/channelflow/signals/models.py`
+    - `src/channelflow/signals/rejection.py`
 - **Outcomes:** [[OUT-2026-09-08-implement-signal-state-machine]], [[OUT-2026-09-08-plan-signal-state-machine]], [[OUT-2026-09-08-spec-signal-state-machine]], [[OUT-2026-09-08-tasks-signal-state-machine]]
 <!-- trace:end -->
 
