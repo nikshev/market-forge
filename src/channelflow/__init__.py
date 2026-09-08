@@ -10,5 +10,20 @@ domain model.
 """
 
 # @trace: REQ-WP-001
+# @trace: REQ-WP-002
 
-__all__: list[str] = []
+from decimal import getcontext
+
+# Python's default decimal context rounds every result to 28 significant
+# digits. That silently truncated a venue price in REQ-WP-005's VWAP test, and
+# the loss turned out to be in `price * quantity` -- affecting the connector's
+# notional_quote too, not just the division. REQ-WP-002 claims exact monetary
+# arithmetic, so the context is set to match the claim rather than the claim
+# narrowed to match the context. See ADR-006.
+#
+# Division remains inexact in general; 60 digits reduces loss, it does not
+# abolish it.
+DECIMAL_PRECISION = 60
+getcontext().prec = DECIMAL_PRECISION
+
+__all__: list[str] = ["DECIMAL_PRECISION"]

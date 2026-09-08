@@ -44,6 +44,9 @@ Done when:
     - `tests/unit/domain/test_identity.py::test_a_dex_log_is_identified_by_chain_tx_and_log_index`
     - `tests/unit/domain/test_identity.py::test_a_different_trade_id_is_a_different_identity`
     - `tests/unit/domain/test_identity.py::test_the_same_trade_received_twice_has_one_identity`
+    - `tests/unit/domain/test_precision_policy.py::test_a_venue_price_times_a_quantity_keeps_every_digit`
+    - `tests/unit/domain/test_precision_policy.py::test_division_is_still_not_claimed_to_be_exact`
+    - `tests/unit/domain/test_precision_policy.py::test_the_precision_policy_is_applied_on_import`
     - `tests/unit/domain/test_round_trip.py::test_a_decimal_beyond_double_precision_survives`
     - `tests/unit/domain/test_round_trip.py::test_a_nanosecond_timestamp_survives_a_double_parsing_consumer`
     - `tests/unit/domain/test_round_trip.py::test_event_meta_round_trips_exactly`
@@ -55,6 +58,7 @@ Done when:
     - `tests/unit/domain/test_validation.py::test_an_unknown_field_is_rejected`
     - `tests/unit/domain/test_validation.py::test_omitting_ingest_time_is_rejected_and_the_field_is_named`
 - **Code:**
+    - `src/channelflow/__init__.py`
     - `src/channelflow/domain/__init__.py`
     - `src/channelflow/domain/book.py`
     - `src/channelflow/domain/defi.py`
