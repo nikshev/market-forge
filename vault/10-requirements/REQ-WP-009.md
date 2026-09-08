@@ -6,7 +6,7 @@ prd_ref: "WP-009 Chart"
 prd_lines: "6995-7003"
 phase: null
 status: draft
-depends_on: ["REQ-WP-005", "REQ-WP-006", "REQ-WP-007"]
+depends_on: ["REQ-API-001", "REQ-WP-005", "REQ-WP-006", "REQ-WP-007"]
 tags: []
 ---
 
