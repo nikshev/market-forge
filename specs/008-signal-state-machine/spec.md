@@ -110,6 +110,7 @@ without confirmation, observe expiry.
 - **FR-014**: The machine MUST hold at most one candidate per symbol and timeframe.
 - **FR-015**: When no channel snapshot is available for a bar, no candidate MUST open and no open candidate MUST advance.
 - **FR-016**: Candidate state history MUST be immutable once recorded.
+- **FR-018**: After a candidate reaches a terminal state, a new candidate MUST NOT open until price has left every zone. Without this the machine churns: a candidate expires while price still sits in the zone, immediately reopens, and expires again.
 - **FR-017**: Every threshold MUST be configuration: zone bounds, minimum quality, slope threshold, rejection distance, outer tolerance, and expiry bars.
 
 ### Key Entities
@@ -130,6 +131,7 @@ without confirmation, observe expiry.
 - **SC-006**: Every terminal transition carries a reason that names its cause.
 - **SC-007**: No transition skips a lifecycle step, across every test sequence.
 - **SC-008**: A second rejection detector can be registered without modifying the machine.
+- **SC-009**: After a candidate terminates, holding price inside the same zone opens no new candidate until price has left it.
 
 ## Assumptions
 
