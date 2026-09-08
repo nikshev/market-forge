@@ -5,8 +5,8 @@ type: work-package
 prd_ref: "WP-005 Bar aggregation"
 prd_lines: "6968-6974"
 phase: null
-status: draft
-depends_on: []
+status: specified
+depends_on: [REQ-WP-002, REQ-WP-003]
 tags: []
 ---
 
@@ -27,7 +27,8 @@ tags: []
 ## Trace
 
 <!-- trace:begin -->
-_No linked artifacts yet._
+- **Specs:** [[SPEC-006-bar-aggregation]]
+- **Outcomes:** [[OUT-2026-09-08-spec-bar-aggregation]]
 <!-- trace:end -->
 
 ## Notes
