@@ -28,7 +28,7 @@ and the confirmation logic must not read events with `available_at > known_at`.
 
 <!-- trace:begin -->
 - **Specs:** [[SPEC-014-turning-points]]
-- **Outcomes:** [[OUT-2026-09-08-spec-turning-points]]
+- **Outcomes:** [[OUT-2026-09-08-plan-turning-points]], [[OUT-2026-09-08-spec-turning-points]], [[OUT-2026-09-08-tasks-turning-points]]
 <!-- trace:end -->
 
 ## Notes
