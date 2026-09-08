@@ -14,6 +14,8 @@ import { useEffect, useRef } from "react";
 
 import { buildSeries, markerFor } from "./series";
 import type { BarOut, ChannelOut, SignalOut } from "./types";
+import { profileBars } from "./volumeProfile";
+import type { Profile } from "./volumeProfile";
 
 const ZONE_COLOURS: Record<string, string> = {
   upper: "rgba(214, 69, 69, 0.10)",
@@ -25,10 +27,12 @@ export function Chart({
   bars,
   channel,
   signal,
+  profile = null,
 }: {
   bars: BarOut[];
   channel: ChannelOut | null;
   signal: SignalOut | null;
+  profile?: Profile | null;
 }): JSX.Element {
   const container = useRef<HTMLDivElement>(null);
   const chart = useRef<IChartApi | null>(null);
@@ -88,8 +92,30 @@ export function Chart({
       }
     }
 
+    // PRD section 27.2's volume profile overlay. lightweight-charts has no
+    // horizontal-histogram primitive, so each bin is a price line whose title
+    // carries its relative width -- the profile's shape read as labels rather
+    // than drawn as bars. A faked histogram out of stacked areas would put
+    // edges on the chart that do not mean what they look like, the same
+    // reasoning the channel zones follow.
+    for (const bar of profileBars(profile)) {
+      candlestick.createPriceLine({
+        price: (bar.low + bar.high) / 2,
+        color:
+          bar.role === "poc"
+            ? "#e8590c"
+            : bar.role === "value-area"
+              ? "rgba(232, 89, 12, 0.35)"
+              : "rgba(120, 120, 120, 0.2)",
+        lineWidth: bar.role === "poc" ? 2 : 1,
+        lineStyle: 0,
+        axisLabelVisible: bar.role === "poc",
+        title: `${bar.role} ${(bar.width * 100).toFixed(0)}%`,
+      });
+    }
+
     instance.timeScale().fitContent();
-  }, [bars, channel, signal]);
+  }, [bars, channel, signal, profile]);
 
   return <div ref={container} data-testid="chart" />;
 }

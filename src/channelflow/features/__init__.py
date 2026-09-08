@@ -21,11 +21,11 @@ def exposed_feature_names() -> tuple[str, ...]:
     A second package shipping unregistered features while the gate stayed green
     would be the gate quietly becoming about one module.
     """
-    from channelflow import derivatives
+    from channelflow import derivatives, volume
     from channelflow.features import flow, instant, ofi, walls
 
     names: list[str] = []
-    for module in (instant, ofi, flow, walls, derivatives):
+    for module in (instant, ofi, flow, walls, derivatives, volume):
         names.extend(module.FEATURES)
     return tuple(names)
 
