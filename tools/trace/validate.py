@@ -30,6 +30,7 @@ def validate(graph: TraceGraph) -> list[Violation]:
         has_spec = bool(graph.edges_into(req_id, "SPECIFIES"))
         has_test = bool(graph.edges_into(req_id, "VERIFIES"))
         has_outcome = bool(graph.edges_into(req_id, "RECORDS"))
+        has_code = bool(graph.edges_into(req_id, "IMPLEMENTS"))
         label = str(status.name).lower()
 
         if status >= Status.SPECIFIED and not has_spec:
@@ -39,6 +40,20 @@ def validate(graph: TraceGraph) -> list[Violation]:
         if status >= Status.IMPLEMENTED and not has_test:
             found.append(
                 Violation("R2", req_id, f"status {label!r} requires at least one test, found none")
+            )
+        # R8. Found by REQ-WP-010: a requirement marked implemented, with a
+        # full test suite and no `# @trace:` marker in any source file,
+        # validated clean. R2 asks whether tests exist, not whether anything
+        # they test is traceable -- so the request-to-implementation half of
+        # the graph could be empty and the gate would still say so.
+        if status >= Status.IMPLEMENTED and not has_code:
+            found.append(
+                Violation(
+                    "R8",
+                    req_id,
+                    f"status {label!r} requires at least one source file carrying "
+                    "`# @trace: <id>`, found none",
+                )
             )
         if status > Status.DRAFT and not has_outcome:
             found.append(

@@ -27,7 +27,10 @@ REQ_ID_RE = re.compile(rf"^{REQ_ID}$")
 TRACE_COMMENT = re.compile(rf"@trace:\s*({REQ_ID})")
 
 SKIP_DIRS = {"__pycache__", ".git", ".venv", "node_modules", ".pytest_cache"}
-CODE_SUFFIXES = {".py", ".ts", ".tsx", ".js", ".jsx"}
+#: A gate defined in a workflow file is as much an implementation as one
+#: defined in Python -- REQ-INFRA-002 is implemented by `.github/workflows`
+#: and nothing else. Leaving YAML out made R8 unsatisfiable for it.
+CODE_SUFFIXES = {".py", ".ts", ".tsx", ".js", ".jsx", ".yml", ".yaml"}
 
 
 def _notes(directory: Path) -> list[Path]:

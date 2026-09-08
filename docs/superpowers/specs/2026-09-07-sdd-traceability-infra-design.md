@@ -284,8 +284,14 @@ requirement ID, rule name, and what was missing.
    look-ahead non-negotiable, so this rule is not waivable by status alone.
 6. **R6 — no dependency cycles** among `DEPENDS_ON` edges.
 7. **R7 — unique IDs.** No two notes declare the same `id`.
+8. **R8 — implementation coverage.** A requirement at `implemented` or above
+   needs ≥1 `IMPLEMENTS` edge: some git-tracked source file must carry
+   `# @trace: <id>`. Added after REQ-WP-010 sat at `implemented` with sixteen
+   passing tests and no marker in any source file, and the gate said clean —
+   R2 asks whether tests exist, not whether what they test can be traced, so
+   the request-to-implementation half of the graph could be empty unnoticed.
 
-Rules R1, R2, R4 and R5 are *status-gated*: a `draft` requirement with no spec
+Rules R1, R2, R4, R5 and R8 are *status-gated*: a `draft` requirement with no spec
 is fine, which is what lets ~100 requirements be extracted up front without
 turning the build red.
 

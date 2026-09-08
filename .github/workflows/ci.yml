@@ -1,4 +1,5 @@
 # The FULL gate for ChannelFlow (REQ-INFRA-002).
+# @trace: REQ-INFRA-002
 #
 # The local pre-commit hook runs only what needs no live service, so committing
 # never requires a container runtime. Everything it stopped running happens

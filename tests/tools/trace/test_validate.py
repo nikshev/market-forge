@@ -206,6 +206,56 @@ def test_r7_is_raised_by_the_graph_itself(vault):
         graph.add(Node(id="REQ-WP-001", kind="requirement", path="b.md"))
 
 
+# --- R8: implementation coverage ---
+
+
+def _implemented(vault, tmp_path):
+    """A requirement that satisfies every rule but R8."""
+    vault.requirement("REQ-WP-001", status="implemented")
+    vault.spec("001-bootstrap", ["REQ-WP-001"])
+    vault.outcome("OUT-2026-09-07-impl-a", step="implement", records=["REQ-WP-001"])
+    dump = tmp_path / "tests.json"
+    dump.write_text('[{"nodeid": "tests/test_a.py::test_x", "requirements": ["REQ-WP-001"]}]')
+    return dump
+
+
+def test_r8_fails_for_an_implemented_requirement_no_source_file_claims(vault, tmp_path):
+    """Found in the field, by REQ-WP-010.
+
+    Its status said implemented, sixteen tests verified it, and not one source
+    file carried a marker -- the whole request-to-implementation half of the
+    graph was missing. `validate` reported clean, because R2 asks whether tests
+    exist, not whether anything they test can be traced.
+    """
+    dump = _implemented(vault, tmp_path)
+    violations = validate(build_graph(vault.root, test_dump=dump))
+    assert (
+        Violation(
+            rule="R8",
+            node_id="REQ-WP-001",
+            message=(
+                "status 'implemented' requires at least one source file carrying "
+                "`# @trace: <id>`, found none"
+            ),
+        )
+        in violations
+    )
+
+
+def test_r8_passes_once_a_source_file_carries_the_marker(vault, tmp_path):
+    dump = _implemented(vault, tmp_path)
+    vault.source("channelflow/thing.py", ["REQ-WP-001"])
+    assert "R8" not in rules(validate(build_graph(vault.root, test_dump=dump)))
+
+
+def test_r8_ignores_a_specified_requirement(vault):
+    """Nothing is implemented yet, so there is nothing to trace to."""
+    vault.requirement("REQ-WP-001", status="specified")
+    vault.spec("001-bootstrap", ["REQ-WP-001"])
+    vault.outcome("OUT-2026-09-07-spec-a", step="spec", records=["REQ-WP-001"])
+    assert "R8" not in rules(validate(build_graph(vault.root)))
+
+
 # --- ordering ---
 
 

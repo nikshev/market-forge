@@ -4,7 +4,13 @@
 """
 
 from channelflow.signals.machine import IllegalTransition, SignalMachine
-from channelflow.signals.models import ALLOWED, Candidate, CandidateState, Transition
+from channelflow.signals.models import (
+    ALLOWED,
+    TERMINAL,
+    Candidate,
+    CandidateState,
+    Transition,
+)
 from channelflow.signals.rejection import CloseBackInside, RejectionDetector
 
 __all__ = [
@@ -14,6 +20,7 @@ __all__ = [
     "CloseBackInside",
     "IllegalTransition",
     "RejectionDetector",
+    "TERMINAL",
     "SignalMachine",
     "Transition",
 ]
