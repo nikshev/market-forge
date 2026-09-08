@@ -1,6 +1,7 @@
 """The GMDH layered polynomial search (REQ-WP-018, PRD section 23).
 
 # @trace: REQ-WP-018
+# @trace: REQ-WP-019
 
 Each node is a quadratic in two inputs:
 
@@ -188,8 +189,14 @@ class GMDHNetwork:
             "Splitting here would choose a rule the caller should choose (ADR-030)"
         )
 
-    def predict_proba(self, x: np.ndarray) -> np.ndarray:
-        """Run the surviving path forward and squash to [0, 1]."""
+    def predict(self, x: np.ndarray) -> np.ndarray:
+        """Run the surviving path forward, unclipped.
+
+        The network fits by least squares against a continuous target, so its
+        output is continuous too. PRD section 13A.11 needs it that way: a
+        forward price path squashed into `[0, 1]` is not a price path
+        (REQ-WP-019).
+        """
         if self._result is None or not self._result.layers:
             raise NotEnoughData("the network has not been fitted")
         current = x
@@ -197,7 +204,12 @@ class GMDHNetwork:
             current = np.column_stack(
                 [n.predict(current[:, n.left], current[:, n.right]) for n in layer]
             )
-        clipped: np.ndarray = np.clip(current[:, 0], 0.0, 1.0)
+        output: np.ndarray = current[:, 0]
+        return output
+
+    def predict_proba(self, x: np.ndarray) -> np.ndarray:
+        """The same output, squashed to [0, 1] for a probability target."""
+        clipped: np.ndarray = np.clip(self.predict(x), 0.0, 1.0)
         return clipped
 
     def interactions(self) -> tuple[tuple[str, str, int], ...]:
