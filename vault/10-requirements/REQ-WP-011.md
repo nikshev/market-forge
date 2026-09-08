@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "WP-011 OFI/LOB features"
 prd_lines: "7011-7019"
 phase: null
-status: specified
+status: planned
 depends_on: ["REQ-WP-004", "REQ-WP-005"]
 tags: []
 ---
@@ -32,7 +32,7 @@ tags: []
 
 <!-- trace:begin -->
 - **Specs:** [[SPEC-011-ofi-lob-features]]
-- **Outcomes:** [[OUT-2026-09-08-spec-ofi-lob-features]]
+- **Outcomes:** [[OUT-2026-09-08-plan-ofi-lob-features]], [[OUT-2026-09-08-spec-ofi-lob-features]], [[OUT-2026-09-08-tasks-ofi-lob-features]]
 <!-- trace:end -->
 
 ## Notes

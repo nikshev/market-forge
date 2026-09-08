@@ -6,7 +6,7 @@ hard_gated: false
 prd_ref: "§0"
 prd_lines: "22-22"
 phase: null
-status: specified
+status: planned
 depends_on: []
 tags: []
 ---
@@ -23,7 +23,7 @@ Every feature must have a description of its semantics, unit of measurement, cad
 
 <!-- trace:begin -->
 - **Specs:** [[SPEC-011-ofi-lob-features]]
-- **Outcomes:** [[OUT-2026-09-08-spec-ofi-lob-features]]
+- **Outcomes:** [[OUT-2026-09-08-plan-ofi-lob-features]], [[OUT-2026-09-08-spec-ofi-lob-features]], [[OUT-2026-09-08-tasks-ofi-lob-features]]
 <!-- trace:end -->
 
 ## Notes
