@@ -48,6 +48,20 @@ jobs:
         with:
           version: "0.5.11"
 
+      # The frontend gate. ADR-021 keeps these out of the pre-commit hook --
+      # `npm ci` on every commit would break the property REQ-INFRA-002 exists
+      # to protect -- so CI is the only place they run. Removing any of the
+      # three steps below leaves that check running nowhere at all.
+      - name: Install Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+
+      - name: Install frontend dependencies
+        run: make web-install
+
       - name: Set up the environment
         run: |
           # The same defaults the local stack uses. A divergence between CI and
@@ -92,6 +106,15 @@ jobs:
 
       - name: Tests (including integration)
         run: make test
+
+      - name: Frontend type check
+        run: make web-typecheck
+
+      - name: Frontend tests
+        run: make web-test
+
+      - name: Frontend build
+        run: make web-build
 
       - name: Traceability coverage
         run: make validate
