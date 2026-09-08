@@ -16,11 +16,16 @@ def exposed_feature_names() -> tuple[str, ...]:
 
     Derived from the modules rather than from `REGISTRY`, so the two can
     disagree -- which is the whole point of comparing them (ADR-015).
+
+    Every package that produces features is enumerated here, not just this one.
+    A second package shipping unregistered features while the gate stayed green
+    would be the gate quietly becoming about one module.
     """
+    from channelflow import derivatives
     from channelflow.features import flow, instant, ofi, walls
 
     names: list[str] = []
-    for module in (instant, ofi, flow, walls):
+    for module in (instant, ofi, flow, walls, derivatives):
         names.extend(module.FEATURES)
     return tuple(names)
 
