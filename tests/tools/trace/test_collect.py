@@ -269,3 +269,41 @@ def test_a_workflow_file_can_carry_a_marker(vault):
     assert [(e.src, e.dst, e.kind) for e in edges] == [
         (".github/workflows/ci.yml", "REQ-INFRA-002", "IMPLEMENTS")
     ]
+
+
+def test_frontend_code_can_carry_a_marker(vault):
+    """PRD section 37 puts product web code under `apps/web`, and CODE_SUFFIXES
+    has always included `.tsx` -- but `apps/` was not a collector root, so a
+    marker there could never become an edge.
+
+    Recorded as an open gap by REQ-WP-001 and closed here, because REQ-WP-009's
+    implementation is largely TypeScript and R8 would otherwise be
+    unsatisfiable for it.
+    """
+    component = vault.root / "apps" / "web" / "src" / "Chart.tsx"
+    component.parent.mkdir(parents=True, exist_ok=True)
+    component.write_text("// @trace: REQ-WP-009\nexport const Chart = () => null;\n")
+
+    nodes, edges = collect_code([vault.root / "apps"])
+
+    assert [n.id for n in nodes] == ["apps/web/src/Chart.tsx"]
+    assert [(e.src, e.dst, e.kind) for e in edges] == [
+        ("apps/web/src/Chart.tsx", "REQ-WP-009", "IMPLEMENTS")
+    ]
+
+
+def test_a_built_bundle_is_not_collected(vault):
+    """`dist/` holds compiled output whose markers are copies of the source's.
+
+    Collecting both would double every frontend edge and put a build artifact
+    in the traceability graph. It is gitignored today, so the filter is belt
+    and braces -- but a repo that ever committed a bundle would silently
+    acquire duplicate nodes.
+    """
+    built = vault.root / "apps" / "web" / "dist" / "assets" / "index-abc123.js"
+    built.parent.mkdir(parents=True, exist_ok=True)
+    built.write_text("// @trace: REQ-WP-009\nconsole.log(1);\n")
+
+    nodes, _ = collect_code([vault.root / "apps"])
+
+    assert nodes == []

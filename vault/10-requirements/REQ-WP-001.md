@@ -39,8 +39,9 @@ Done when:
     - `tests/integration/test_dev_stack.py::test_object_store_lists_buckets`
     - `tests/integration/test_dev_stack.py::test_postgres_answers_a_query`
 - **Code:**
+    - `apps/web/src/App.tsx`
     - `src/channelflow/__init__.py`
-- **Outcomes:** [[OUT-2026-09-07-implement-project-bootstrap]], [[OUT-2026-09-07-plan-project-bootstrap]], [[OUT-2026-09-07-spec-project-bootstrap]], [[OUT-2026-09-07-tasks-project-bootstrap]]
+- **Outcomes:** [[OUT-2026-09-07-implement-project-bootstrap]], [[OUT-2026-09-07-plan-project-bootstrap]], [[OUT-2026-09-07-spec-project-bootstrap]], [[OUT-2026-09-07-tasks-project-bootstrap]], [[OUT-2026-09-08-implement-trace-apps-root]]
 <!-- trace:end -->
 
 ## Notes
