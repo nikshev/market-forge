@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "§28 API Specification"
 prd_lines: "4461-4545"
 phase: null
-status: draft
+status: specified
 depends_on: ["REQ-WP-005", "REQ-WP-006", "REQ-WP-007"]
 tags: []
 hard_gated: false
@@ -60,7 +60,8 @@ calculated now over current history, and the deep-link default is
 ## Trace
 
 <!-- trace:begin -->
-- **Outcomes:** [[OUT-2026-09-08-requirement-read-api]]
+- **Specs:** [[SPEC-013-chart-and-read-api]]
+- **Outcomes:** [[OUT-2026-09-08-requirement-read-api]], [[OUT-2026-09-08-spec-chart-and-read-api]]
 <!-- trace:end -->
 
 ## Notes
