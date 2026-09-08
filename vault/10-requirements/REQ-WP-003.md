@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "WP-003 Binance connector"
 prd_lines: "6945-6958"
 phase: null
-status: draft
+status: specified
 depends_on: [REQ-WP-002]
 tags: []
 ---
@@ -36,7 +36,10 @@ Requirements:
 ## Trace
 
 <!-- trace:begin -->
-_No linked artifacts yet._
+- **Specs:** [[SPEC-005-binance-connector]]
+- **Code:**
+    - `tools/record/binance_capture.py`
+- **Outcomes:** [[OUT-2026-09-08-spec-binance-connector]]
 <!-- trace:end -->
 
 ## Notes
