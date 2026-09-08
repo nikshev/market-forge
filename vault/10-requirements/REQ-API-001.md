@@ -44,10 +44,13 @@ calculated now over current history, and the deep-link default is
 
 ## Acceptance
 
+- markets are served, filterable by venue and market type;
 - bars are served for a venue, symbol and timeframe over a time range;
 - channel snapshots are served, and `as_seen_then` defaults to true;
 - a request for `as_seen_then=true` returns the snapshot as it was stored, not
   a refit;
+- a feature snapshot is served for a venue, symbol, timeframe and time, and a
+  feature time series over a range;
 - signals are served with the documented filters;
 - a signal's detail returns its decision, channel and feature snapshots, and
   returns any later outcome as a separate field;
