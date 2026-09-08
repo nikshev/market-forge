@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "§18.13 Asset identity and normalization"
 prd_lines: "3238-3277"
 phase: null
-status: draft
+status: implemented
 depends_on: []
 tags: []
 hard_gated: false
@@ -72,7 +72,38 @@ Asset mapping carries:
 ## Trace
 
 <!-- trace:begin -->
-- **Outcomes:** [[OUT-2026-09-08-requirement-cross-venue-acceptance]]
+- **Specs:** [[SPEC-022-asset-registry]]
+- **Tests:**
+    - `tests/unit/assets/test_registry.py::test_a_chain_deeper_than_any_real_wrapping_is_refused`
+    - `tests/unit/assets/test_registry.py::test_a_missing_confidence_is_refused`
+    - `tests/unit/assets/test_registry.py::test_a_native_marker_and_a_contract_address_are_mutually_exclusive`
+    - `tests/unit/assets/test_registry.py::test_a_pair_against_itself_is_refused`
+    - `tests/unit/assets/test_registry.py::test_a_pair_names_both_sides_and_its_venue`
+    - `tests/unit/assets/test_registry.py::test_a_pair_on_an_unregistered_venue_is_refused`
+    - `tests/unit/assets/test_registry.py::test_a_provenance_filter_is_expressible`
+    - `tests/unit/assets/test_registry.py::test_a_representation_naming_an_unregistered_asset_is_refused`
+    - `tests/unit/assets/test_registry.py::test_a_representation_without_a_declared_asset_cannot_be_built`
+    - `tests/unit/assets/test_registry.py::test_a_shared_ticker_does_not_make_two_assets_one`
+    - `tests/unit/assets/test_registry.py::test_a_tie_in_priority_is_broken_by_key`
+    - `tests/unit/assets/test_registry.py::test_a_wrapper_chain_resolves_to_its_root`
+    - `tests/unit/assets/test_registry.py::test_a_wrapper_cycle_is_refused`
+    - `tests/unit/assets/test_registry.py::test_a_wrapper_of_a_wrapper_resolves`
+    - `tests/unit/assets/test_registry.py::test_an_ambiguous_ticker_lookup_refuses`
+    - `tests/unit/assets/test_registry.py::test_an_onchain_venue_without_a_deployment_is_refused`
+    - `tests/unit/assets/test_registry.py::test_an_order_book_venue_with_a_deployment_is_refused`
+    - `tests/unit/assets/test_registry.py::test_an_unambiguous_ticker_lookup_works`
+    - `tests/unit/assets/test_registry.py::test_not_applicable_and_unknown_are_distinguishable`
+    - `tests/unit/assets/test_registry.py::test_omitting_a_three_state_field_is_refused`
+    - `tests/unit/assets/test_registry.py::test_registering_the_same_chain_and_contract_twice_is_refused`
+    - `tests/unit/assets/test_registry.py::test_representations_order_by_pricing_priority_totally_and_stably`
+    - `tests/unit/assets/test_registry.py::test_the_assets_package_cannot_consult_a_clock_or_open_a_socket`
+    - `tests/unit/assets/test_registry.py::test_the_prds_own_eth_example_resolves_to_one_asset`
+    - `tests/unit/assets/test_registry.py::test_two_tokens_sharing_a_ticker_on_different_chains_stay_distinct`
+- **Code:**
+    - `src/channelflow/assets/__init__.py`
+    - `src/channelflow/assets/models.py`
+    - `src/channelflow/assets/registry.py`
+- **Outcomes:** [[OUT-2026-09-08-implement-asset-registry]], [[OUT-2026-09-08-plan-asset-registry]], [[OUT-2026-09-08-requirement-cross-venue-acceptance]], [[OUT-2026-09-08-spec-asset-registry]]
 <!-- trace:end -->
 
 ## Notes
