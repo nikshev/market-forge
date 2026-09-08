@@ -4,5 +4,6 @@
 """
 
 from channelflow.book.book import BookHealth, BookInvalid, OrderBook
+from channelflow.book.service import BookService, BootstrapFailed
 
-__all__ = ["BookHealth", "BookInvalid", "OrderBook"]
+__all__ = ["BookHealth", "BookInvalid", "BookService", "BootstrapFailed", "OrderBook"]

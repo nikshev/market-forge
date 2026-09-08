@@ -33,7 +33,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from decimal import Decimal
 
-from channelflow.domain import BookDelta, BookSnapshot
+from channelflow.domain import BookDelta, BookSnapshot, PriceLevel
 
 
 class BookInvalid(RuntimeError):
@@ -59,11 +59,17 @@ class OrderBook:
     _last_sequence: int = 0
     _gap_count: int = 0
     _valid: bool = True
+    #: Event time of the last applied delta or snapshot. Never ingest time --
+    #: PRD section 9 forbids treating that as market information.
+    _last_event_time_ns: int = 0
 
     @classmethod
     def from_snapshot(cls, snapshot: BookSnapshot) -> OrderBook:
         """Start from a REST snapshot -- PRD section 11.1 step 2."""
-        book = cls(_last_sequence=snapshot.update_id)
+        book = cls(
+            _last_sequence=snapshot.update_id,
+            _last_event_time_ns=snapshot.meta.event_time_ns,
+        )
         for level in snapshot.bids:
             book.bids[level.price] = level.qty
         for level in snapshot.asks:
@@ -74,17 +80,55 @@ class OrderBook:
     def from_first_delta(cls, delta: BookDelta) -> OrderBook:
         """Start from a delta, for replaying a recorded stream without a
         snapshot. Real ingestion always uses `from_snapshot`."""
-        book = cls(_last_sequence=delta.final_update_id or 0)
+        book = cls(
+            _last_sequence=delta.final_update_id or 0,
+            _last_event_time_ns=delta.meta.event_time_ns,
+        )
         book._apply_levels(delta)
         return book
 
-    @property
-    def health(self) -> BookHealth:
+    def health(self, as_of_ns: int | None = None) -> BookHealth:
+        """Whether to trust this book, and how far behind it is.
+
+        `as_of_ns` is the caller's event time -- staleness is the distance from
+        the last applied event to it. Reading a clock here would make the same
+        recorded stream report different health on a second replay (ADR-012).
+        """
+        stale_ns = 0
+        if as_of_ns is not None and self._last_event_time_ns:
+            stale_ns = max(0, as_of_ns - self._last_event_time_ns)
         return BookHealth(
             valid=self._valid,
             gap_count=self._gap_count,
             last_sequence=self._last_sequence,
+            stale_ns=stale_ns,
         )
+
+    def apply_bootstrap(self, delta: BookDelta) -> None:
+        """Apply the first delta after a snapshot -- PRD section 11.1 step 4.
+
+        The steady-state rule in `apply` demands exact continuity. The first
+        delta after a snapshot is the one case where a venue does not promise
+        it: Binance documents that the first update to apply is the one whose
+        range *contains* `lastUpdateId + 1`, because a delta may straddle the
+        moment the snapshot was taken. Refusing that here would make every
+        bootstrap fail against a live feed.
+
+        This is the one place the exact rule is relaxed, and it is relaxed by
+        a narrower one -- the range must still contain the next sequence.
+        """
+        first = delta.first_update_id
+        final = delta.final_update_id
+        if first is None or final is None:
+            raise BookInvalid("delta carries no sequence range")
+        if not first <= self._last_sequence + 1 <= final:
+            raise BookInvalid(
+                f"delta [{first}, {final}] does not contain sequence "
+                f"{self._last_sequence + 1}; it cannot be the first after this snapshot"
+            )
+        self._apply_levels(delta)
+        self._last_sequence = final
+        self._last_event_time_ns = delta.meta.event_time_ns
 
     def apply(self, delta: BookDelta) -> None:
         """Apply one delta, or record why it could not be applied."""
@@ -106,6 +150,7 @@ class OrderBook:
 
         self._apply_levels(delta)
         self._last_sequence = final
+        self._last_event_time_ns = delta.meta.event_time_ns
 
     def _apply_levels(self, delta: BookDelta) -> None:
         for level in delta.bids:
@@ -119,16 +164,67 @@ class OrderBook:
             else:
                 self.asks[level.price] = level.qty
 
-    def best_bid_ask(self) -> tuple[Decimal | None, Decimal | None]:
-        """The top of book -- or a refusal.
+    def top(self, n: int) -> tuple[tuple[PriceLevel, ...], tuple[PriceLevel, ...]]:
+        """The n levels nearest the touch on each side, best price first.
 
-        PRD section 11.1 rule 6: never emit features from an invalid book.
+        Both sides start at the touch and walk outward, so index 0 is always
+        the most aggressive rung and the two sides are directly comparable.
+
+        Sorts each side per call. At the few thousand rungs a venue publishes
+        this is not worth a sorted structure, and PRD section 0.14 puts
+        correctness first -- but the cost is linear in the whole book, not in n.
         """
+        self._require_usable()
+        bids = sorted(self.bids.items(), key=lambda item: item[0], reverse=True)[:n]
+        asks = sorted(self.asks.items(), key=lambda item: item[0])[:n]
+        return (
+            tuple(PriceLevel(price=price, qty=qty) for price, qty in bids),
+            tuple(PriceLevel(price=price, qty=qty) for price, qty in asks),
+        )
+
+    def mid(self) -> Decimal:
+        """The reference price for every distance query -- ADR-011.
+
+        Raises when either side is empty: a distance from a price that does not
+        exist is not a smaller answer, it is a different question.
+        """
+        bid, ask = self.best_bid_ask()
+        if bid is None or ask is None:
+            raise BookInvalid(
+                "no mid price: one side of the book is empty, so there is no "
+                "reference to measure a distance from"
+            )
+        return (bid + ask) / 2
+
+    def depth_within_bps(self, bps: float) -> tuple[Decimal, Decimal]:
+        """Resting quantity per side within `bps` of the mid (PRD section 15.5).
+
+        The band is symmetric around one reference, which is what makes the two
+        numbers a ratio worth taking -- section 15.1's `DI_k`. Measured from
+        each side's own best price they would be two different distances
+        wearing one name, and the imbalance would move with the spread.
+        """
+        mid = self.mid()
+        distance = mid * Decimal(str(bps)) / Decimal(10_000)
+        floor = mid - distance
+        ceiling = mid + distance
+        bid_depth = sum((qty for price, qty in self.bids.items() if price >= floor), Decimal(0))
+        ask_depth = sum((qty for price, qty in self.asks.items() if price <= ceiling), Decimal(0))
+        return bid_depth, ask_depth
+
+    def _require_usable(self) -> None:
         if not self._valid:
             raise BookInvalid(
                 f"book is stale after {self._gap_count} sequence gap(s); "
                 "rebuild from a fresh snapshot before using it"
             )
+
+    def best_bid_ask(self) -> tuple[Decimal | None, Decimal | None]:
+        """The top of book -- or a refusal.
+
+        PRD section 11.1 rule 6: never emit features from an invalid book.
+        """
+        self._require_usable()
         return (
             max(self.bids) if self.bids else None,
             min(self.asks) if self.asks else None,
