@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "§28 API Specification"
 prd_lines: "4461-4545"
 phase: null
-status: planned
+status: implemented
 depends_on: ["REQ-WP-005", "REQ-WP-006", "REQ-WP-007"]
 tags: []
 hard_gated: false
@@ -100,7 +100,7 @@ calculated now over current history, and the deep-link default is
     - `src/channelflow/api/routes.py`
     - `src/channelflow/api/schemas.py`
     - `src/channelflow/api/ws.py`
-- **Outcomes:** [[OUT-2026-09-08-plan-chart-and-read-api]], [[OUT-2026-09-08-requirement-read-api]], [[OUT-2026-09-08-spec-chart-and-read-api]], [[OUT-2026-09-08-tasks-chart-and-read-api]]
+- **Outcomes:** [[OUT-2026-09-08-implement-chart-and-read-api]], [[OUT-2026-09-08-plan-chart-and-read-api]], [[OUT-2026-09-08-requirement-read-api]], [[OUT-2026-09-08-spec-chart-and-read-api]], [[OUT-2026-09-08-tasks-chart-and-read-api]]
 <!-- trace:end -->
 
 ## Notes
