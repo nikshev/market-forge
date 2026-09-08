@@ -249,3 +249,23 @@ def test_collect_tests_tolerates_a_missing_dump(tmp_path):
 
     nodes, edges = collect_tests(tmp_path / "absent.json")
     assert (nodes, edges) == ([], [])
+
+
+def test_a_workflow_file_can_carry_a_marker(vault):
+    """A gate defined in YAML is an implementation too.
+
+    REQ-INFRA-002 is implemented by `.github/workflows/ci.yml` and nothing
+    else. While collection was Python-only, R8 was unsatisfiable for it --
+    found when R8 was added and immediately flagged a requirement whose
+    implementation was real and simply invisible.
+    """
+    workflow = vault.root / ".github" / "workflows" / "ci.yml"
+    workflow.parent.mkdir(parents=True, exist_ok=True)
+    workflow.write_text("# @trace: REQ-INFRA-002\nname: CI\n")
+
+    nodes, edges = collect_code([vault.root / ".github"])
+
+    assert [n.id for n in nodes] == [".github/workflows/ci.yml"]
+    assert [(e.src, e.dst, e.kind) for e in edges] == [
+        (".github/workflows/ci.yml", "REQ-INFRA-002", "IMPLEMENTS")
+    ]

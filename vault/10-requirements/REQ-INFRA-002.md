@@ -57,6 +57,8 @@ requirement whose verification needs a network or a service.
     - `tests/tools/gates/test_two_gates.py::test_the_fast_gate_deselects_exactly_the_integration_tests`
     - `tests/tools/gates/test_two_gates.py::test_the_workflow_runs_every_check_of_the_full_gate`
     - `tests/tools/gates/test_two_gates.py::test_the_workflow_runs_the_full_suite_not_the_fast_one`
+- **Code:**
+    - `.github/workflows/ci.yml`
 - **Outcomes:** [[OUT-2026-09-07-implement-ci-full-gate]], [[OUT-2026-09-07-plan-ci-full-gate]], [[OUT-2026-09-07-spec-ci-full-gate]], [[OUT-2026-09-07-tasks-ci-full-gate]]
 <!-- trace:end -->
 
