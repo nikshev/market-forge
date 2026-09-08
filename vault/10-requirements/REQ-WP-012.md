@@ -55,6 +55,13 @@ tags: []
     - `tests/unit/volume/test_shape.py::test_distances_are_in_basis_points`
     - `tests/unit/volume/test_shape.py::test_entropy_is_lower_when_volume_is_concentrated`
     - `tests/unit/volume/test_shape.py::test_skew_is_positive_with_more_volume_above`
+- **Code:**
+    - `apps/web/src/__tests__/volumeProfile.test.ts`
+    - `apps/web/src/volumeProfile.ts`
+    - `src/channelflow/volume/__init__.py`
+    - `src/channelflow/volume/nodes.py`
+    - `src/channelflow/volume/profile.py`
+    - `src/channelflow/volume/shape.py`
 - **Outcomes:** [[OUT-2026-09-08-implement-volume-profile]], [[OUT-2026-09-08-spec-volume-profile]]
 <!-- trace:end -->
 

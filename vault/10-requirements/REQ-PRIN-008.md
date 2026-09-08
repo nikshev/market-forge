@@ -29,6 +29,7 @@ Every feature must have a description of its semantics, unit of measurement, cad
 - **Code:**
     - `src/channelflow/derivatives/registry_entries.py`
     - `src/channelflow/features/registry.py`
+    - `src/channelflow/volume/shape.py`
 - **Outcomes:** [[OUT-2026-09-08-implement-ofi-lob-features]], [[OUT-2026-09-08-plan-ofi-lob-features]], [[OUT-2026-09-08-spec-ofi-lob-features]], [[OUT-2026-09-08-tasks-ofi-lob-features]]
 <!-- trace:end -->
 
