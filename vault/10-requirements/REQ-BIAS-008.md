@@ -6,7 +6,7 @@ hard_gated: true
 prd_ref: "§41"
 prd_lines: "5324-5324"
 phase: null
-status: draft
+status: implemented
 depends_on: []
 tags: []
 ---
@@ -22,7 +22,13 @@ No using current top-volume coin list for historical universe backtest without p
 ## Trace
 
 <!-- trace:begin -->
-_No linked artifacts yet._
+- **Specs:** [[SPEC-015-pit-dataset]]
+- **Tests:**
+    - `tests/unit/dataset/test_universe.py::test_eligibility_uses_only_trailing_observations`
+    - `tests/unit/dataset/test_universe.py::test_rows_outside_the_universe_are_dropped_and_counted`
+- **Code:**
+    - `src/channelflow/dataset/join.py`
+- **Outcomes:** [[OUT-2026-09-08-implement-pit-dataset]], [[OUT-2026-09-08-spec-pit-dataset]]
 <!-- trace:end -->
 
 ## Notes

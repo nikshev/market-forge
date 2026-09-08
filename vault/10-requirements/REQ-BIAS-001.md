@@ -6,7 +6,7 @@ hard_gated: true
 prd_ref: "§41"
 prd_lines: "5317-5317"
 phase: null
-status: draft
+status: implemented
 depends_on: []
 tags: []
 ---
@@ -22,7 +22,14 @@ No random train/test primary split.
 ## Trace
 
 <!-- trace:begin -->
-_No linked artifacts yet._
+- **Specs:** [[SPEC-015-pit-dataset]]
+- **Tests:**
+    - `tests/unit/dataset/test_folds.py::test_folds_are_chronological`
+    - `tests/unit/dataset/test_folds.py::test_shuffling_is_refused`
+- **Code:**
+    - `src/channelflow/dataset/folds.py`
+    - `src/channelflow/dataset/leakage.py`
+- **Outcomes:** [[OUT-2026-09-08-implement-pit-dataset]], [[OUT-2026-09-08-spec-pit-dataset]]
 <!-- trace:end -->
 
 ## Notes
