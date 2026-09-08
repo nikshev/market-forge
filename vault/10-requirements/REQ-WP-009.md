@@ -5,8 +5,8 @@ type: work-package
 prd_ref: "WP-009 Chart"
 prd_lines: "6995-7003"
 phase: null
-status: draft
-depends_on: ["REQ-WP-005", "REQ-WP-006", "REQ-WP-007"]
+status: implemented
+depends_on: ["REQ-API-001", "REQ-WP-005", "REQ-WP-006", "REQ-WP-007"]
 tags: []
 ---
 
@@ -31,7 +31,27 @@ tags: []
 ## Trace
 
 <!-- trace:begin -->
-_No linked artifacts yet._
+- **Specs:** [[SPEC-013-chart-and-read-api]]
+- **Tests:**
+    - `tests/unit/api/test_channel_modes.py::test_the_parameter_defaults_to_as_seen_then`
+    - `tests/unit/api/test_channel_modes.py::test_the_two_modes_disagree_and_that_is_the_point`
+- **Code:**
+    - `apps/web/src/App.tsx`
+    - `apps/web/src/ChannelMode.tsx`
+    - `apps/web/src/Chart.tsx`
+    - `apps/web/src/LoadState.tsx`
+    - `apps/web/src/__tests__/ChannelMode.test.tsx`
+    - `apps/web/src/__tests__/Chart.test.tsx`
+    - `apps/web/src/__tests__/LoadState.test.tsx`
+    - `apps/web/src/__tests__/scaffold.test.tsx`
+    - `apps/web/src/api.ts`
+    - `apps/web/src/deepLink.ts`
+    - `apps/web/src/series.ts`
+    - `apps/web/src/test-setup.ts`
+    - `apps/web/src/types.ts`
+    - `apps/web/src/vite-env.d.ts`
+    - `apps/web/vite.config.ts`
+- **Outcomes:** [[OUT-2026-09-08-implement-chart-and-read-api]], [[OUT-2026-09-08-plan-chart-and-read-api]], [[OUT-2026-09-08-spec-chart-and-read-api]], [[OUT-2026-09-08-tasks-chart-and-read-api]]
 <!-- trace:end -->
 
 ## Notes

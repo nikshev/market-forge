@@ -26,7 +26,7 @@ REQ_ID = r"REQ-[A-Z]+-[0-9A-Z]+(?![A-Za-z0-9])"
 REQ_ID_RE = re.compile(rf"^{REQ_ID}$")
 TRACE_COMMENT = re.compile(rf"@trace:\s*({REQ_ID})")
 
-SKIP_DIRS = {"__pycache__", ".git", ".venv", "node_modules", ".pytest_cache"}
+SKIP_DIRS = {"__pycache__", ".git", ".venv", "node_modules", ".pytest_cache", "dist"}
 #: A gate defined in a workflow file is as much an implementation as one
 #: defined in Python -- REQ-INFRA-002 is implemented by `.github/workflows`
 #: and nothing else. Leaving YAML out made R8 unsatisfiable for it.

@@ -50,7 +50,14 @@ def build_graph(repo_root: Path, *, test_dump: Path | None = None) -> TraceGraph
         collect_outcomes(vault_dir),
         collect_decisions(vault_dir),
         collect_specs(repo_root / "specs"),
-        collect_code([repo_root / "src", repo_root / "tools", repo_root / ".github"]),
+        collect_code(
+            [
+                repo_root / "src",
+                repo_root / "tools",
+                repo_root / ".github",
+                repo_root / "apps",
+            ]
+        ),
         collect_tests(test_dump or repo_root / ".trace" / "tests.json"),
     ]
 

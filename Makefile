@@ -2,7 +2,8 @@ VENV := .venv
 PY   := $(VENV)/bin/python
 PIP  := uv pip install --python $(PY)
 
-.PHONY: venv install test lint markers trace validate dashboard graph clean index
+.PHONY: venv install test lint markers trace validate dashboard graph clean index \
+	web-install web-typecheck web-test web-build
 
 venv:
 	uv venv $(VENV) --python 3.12 --no-python-downloads
@@ -72,6 +73,24 @@ dashboard: markers
 	$(PY) -m tools.trace.cli dashboard
 
 graph: trace dashboard
+
+# The frontend gates. ADR-021: these run in CI only -- `npm ci` on every commit
+# would break the property REQ-INFRA-002 exists to protect, that the fast gate
+# needs no heavy setup. They are `make` targets so CI calls exactly what a
+# developer calls, which is what stops the two gates drifting.
+WEB := apps/web
+
+web-install:
+	cd $(WEB) && npm ci
+
+web-typecheck:
+	cd $(WEB) && npx tsc --noEmit
+
+web-test:
+	cd $(WEB) && npx vitest run
+
+web-build:
+	cd $(WEB) && npx vite build
 
 clean:
 	rm -rf .trace .pytest_cache

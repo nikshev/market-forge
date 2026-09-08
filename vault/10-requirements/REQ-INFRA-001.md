@@ -57,7 +57,7 @@ the graph or the validator depends on a fuzzy or LLM-derived edge.
     - `tools/trace/model.py`
     - `tools/trace/pytest_plugin.py`
     - `tools/trace/validate.py`
-- **Outcomes:** [[OUT-2026-09-07-implement-traceability-tooling]], [[OUT-2026-09-07-plan-traceability-tooling]], [[OUT-2026-09-07-spec-traceability-tooling]], [[OUT-2026-09-07-tasks-traceability-tooling]], [[OUT-2026-09-08-implement-trace-rule-r8]]
+- **Outcomes:** [[OUT-2026-09-07-implement-traceability-tooling]], [[OUT-2026-09-07-plan-traceability-tooling]], [[OUT-2026-09-07-spec-traceability-tooling]], [[OUT-2026-09-07-tasks-traceability-tooling]], [[OUT-2026-09-08-implement-trace-apps-root]], [[OUT-2026-09-08-implement-trace-rule-r8]]
 <!-- trace:end -->
 
 ## Notes

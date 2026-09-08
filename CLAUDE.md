@@ -162,6 +162,11 @@ criteria and carry the `ACCEPTANCE-NOT-SPECIFIED` marker.
     make validate    # markers + check the six coverage rules; exits 1 on violations
     make clean       # remove .trace, .pytest_cache, __pycache__
 
+    make web-install    # npm ci in apps/web
+    make web-typecheck  # tsc --noEmit
+    make web-test       # vitest run
+    make web-build      # vite build
+
 A pre-commit hook runs `ruff` and `make validate` on every commit. Do not
 bypass it with `--no-verify`; if it fails, fix the underlying gap.
 
@@ -176,9 +181,15 @@ format, and `make test-fast` (`pytest -m "not integration"`). Needs no services.
 It is not the authority; it is the cheap check that catches most mistakes.
 
 **Full gate — `.github/workflows/ci.yml`, runs on every push and pull request.**
-Provisions PostgreSQL and MinIO, then `make lint`, `make typecheck`, `make test`
-(including integration) and `make validate`. Every step calls the same `make`
-target you run locally, so the two cannot drift.
+Provisions PostgreSQL, MinIO and Node, then `make lint`, `make typecheck`,
+`make test` (including integration), `make web-typecheck`, `make web-test`,
+`make web-build` and `make validate`. Every step calls the same `make` target
+you run locally, so the two cannot drift.
+
+The three `web-*` steps run **only** in CI (ADR-021): `npm ci` on every commit
+would need a Node toolchain for commits that touch no frontend file, breaking
+the property REQ-INFRA-002 exists to protect. They are the clearest case of the
+rule below — remove one from the workflow and that check runs nowhere.
 
 **CI is where `implemented` is earned** for any requirement whose verification
 needs a live service. A green local commit is not the same claim.
