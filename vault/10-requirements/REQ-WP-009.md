@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "WP-009 Chart"
 prd_lines: "6995-7003"
 phase: null
-status: specified
+status: planned
 depends_on: ["REQ-API-001", "REQ-WP-005", "REQ-WP-006", "REQ-WP-007"]
 tags: []
 ---
@@ -32,7 +32,7 @@ tags: []
 
 <!-- trace:begin -->
 - **Specs:** [[SPEC-013-chart-and-read-api]]
-- **Outcomes:** [[OUT-2026-09-08-spec-chart-and-read-api]]
+- **Outcomes:** [[OUT-2026-09-08-plan-chart-and-read-api]], [[OUT-2026-09-08-spec-chart-and-read-api]], [[OUT-2026-09-08-tasks-chart-and-read-api]]
 <!-- trace:end -->
 
 ## Notes
