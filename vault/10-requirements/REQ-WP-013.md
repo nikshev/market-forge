@@ -64,6 +64,13 @@ tags: []
     - `tests/unit/derivatives/test_state.py::test_a_tie_on_both_times_is_refused`
     - `tests/unit/derivatives/test_state.py::test_no_state_at_all_is_a_named_refusal`
     - `tests/unit/derivatives/test_state.py::test_the_join_never_returns_a_later_state`
+- **Code:**
+    - `src/channelflow/derivatives/__init__.py`
+    - `src/channelflow/derivatives/funding.py`
+    - `src/channelflow/derivatives/liquidations.py`
+    - `src/channelflow/derivatives/openinterest.py`
+    - `src/channelflow/derivatives/registry_entries.py`
+    - `src/channelflow/derivatives/state.py`
 - **Outcomes:** [[OUT-2026-09-08-implement-derivatives]], [[OUT-2026-09-08-plan-derivatives]], [[OUT-2026-09-08-spec-derivatives]]
 <!-- trace:end -->
 

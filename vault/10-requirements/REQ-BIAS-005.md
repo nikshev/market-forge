@@ -26,6 +26,8 @@ No using current funding settlement before it becomes known.
 - **Tests:**
     - `tests/unit/derivatives/test_funding.py::test_an_unsettled_rate_is_not_used_at_t`
     - `tests/unit/derivatives/test_funding.py::test_the_unsettled_rate_becomes_usable_once_its_interval_closes`
+- **Code:**
+    - `src/channelflow/derivatives/funding.py`
 - **Outcomes:** [[OUT-2026-09-08-implement-derivatives]], [[OUT-2026-09-08-spec-derivatives]]
 <!-- trace:end -->
 

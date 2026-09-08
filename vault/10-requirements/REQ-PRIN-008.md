@@ -27,6 +27,7 @@ Every feature must have a description of its semantics, unit of measurement, cad
     - `tests/unit/features/test_registry.py::test_every_exposed_feature_is_registered`
     - `tests/unit/features/test_registry.py::test_no_required_field_is_blank`
 - **Code:**
+    - `src/channelflow/derivatives/registry_entries.py`
     - `src/channelflow/features/registry.py`
 - **Outcomes:** [[OUT-2026-09-08-implement-ofi-lob-features]], [[OUT-2026-09-08-plan-ofi-lob-features]], [[OUT-2026-09-08-spec-ofi-lob-features]], [[OUT-2026-09-08-tasks-ofi-lob-features]]
 <!-- trace:end -->

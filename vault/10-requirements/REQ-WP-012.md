@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "WP-012 Volume profile"
 prd_lines: "7020-7026"
 phase: null
-status: draft
+status: planned
 depends_on: ["REQ-WP-003", "REQ-WP-009"]
 tags: []
 ---
@@ -27,7 +27,8 @@ tags: []
 ## Trace
 
 <!-- trace:begin -->
-_No linked artifacts yet._
+- **Specs:** [[SPEC-017-volume-profile]]
+- **Outcomes:** [[OUT-2026-09-08-spec-volume-profile]]
 <!-- trace:end -->
 
 ## Notes
