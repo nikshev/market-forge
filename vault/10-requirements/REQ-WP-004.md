@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "WP-004 Order book service"
 prd_lines: "6959-6967"
 phase: null
-status: specified
+status: planned
 depends_on: ["REQ-WP-003"]
 tags: []
 ---
@@ -32,7 +32,7 @@ tags: []
 
 <!-- trace:begin -->
 - **Specs:** [[SPEC-010-order-book-service]]
-- **Outcomes:** [[OUT-2026-09-08-spec-order-book-service]]
+- **Outcomes:** [[OUT-2026-09-08-plan-order-book-service]], [[OUT-2026-09-08-spec-order-book-service]]
 <!-- trace:end -->
 
 ## Notes
