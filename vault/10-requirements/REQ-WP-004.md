@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "WP-004 Order book service"
 prd_lines: "6959-6967"
 phase: null
-status: draft
+status: specified
 depends_on: ["REQ-WP-003"]
 tags: []
 ---
@@ -31,7 +31,8 @@ tags: []
 ## Trace
 
 <!-- trace:begin -->
-_No linked artifacts yet._
+- **Specs:** [[SPEC-010-order-book-service]]
+- **Outcomes:** [[OUT-2026-09-08-spec-order-book-service]]
 <!-- trace:end -->
 
 ## Notes
