@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "WP-008 Telegram"
 prd_lines: "6987-6994"
 phase: null
-status: specified
+status: planned
 depends_on: ["REQ-WP-007"]
 tags: []
 ---
@@ -30,7 +30,7 @@ tags: []
 
 <!-- trace:begin -->
 - **Specs:** [[SPEC-012-telegram-alerting]]
-- **Outcomes:** [[OUT-2026-09-08-spec-telegram-alerting]]
+- **Outcomes:** [[OUT-2026-09-08-plan-telegram-alerting]], [[OUT-2026-09-08-spec-telegram-alerting]], [[OUT-2026-09-08-tasks-telegram-alerting]]
 <!-- trace:end -->
 
 ## Notes
