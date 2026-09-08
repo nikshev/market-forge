@@ -6,7 +6,7 @@ hard_gated: true
 prd_ref: "§41"
 prd_lines: "5323-5323"
 phase: null
-status: specified
+status: implemented
 depends_on: []
 tags: []
 ---
@@ -23,7 +23,12 @@ No survivor-only universe without point-in-time listing history.
 
 <!-- trace:begin -->
 - **Specs:** [[SPEC-015-pit-dataset]]
-- **Outcomes:** [[OUT-2026-09-08-spec-pit-dataset]]
+- **Tests:**
+    - `tests/unit/dataset/test_universe.py::test_a_delisted_symbol_is_absent_afterwards`
+    - `tests/unit/dataset/test_universe.py::test_a_symbol_listed_later_is_absent_earlier`
+- **Code:**
+    - `src/channelflow/dataset/join.py`
+- **Outcomes:** [[OUT-2026-09-08-implement-pit-dataset]], [[OUT-2026-09-08-spec-pit-dataset]]
 <!-- trace:end -->
 
 ## Notes

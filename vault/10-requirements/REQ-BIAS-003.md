@@ -6,7 +6,7 @@ hard_gated: true
 prd_ref: "§41"
 prd_lines: "5319-5319"
 phase: null
-status: specified
+status: implemented
 depends_on: []
 tags: []
 ---
@@ -23,7 +23,14 @@ No pivot that requires future bars unless the feature availability time is shift
 
 <!-- trace:begin -->
 - **Specs:** [[SPEC-015-pit-dataset]]
-- **Outcomes:** [[OUT-2026-09-08-spec-pit-dataset]]
+- **Tests:**
+    - `tests/unit/dataset/test_labels.py::test_a_label_cannot_claim_to_predate_its_extremum`
+    - `tests/unit/dataset/test_labels.py::test_a_labels_availability_is_the_confirmation_time_not_the_extremum`
+    - `tests/unit/dataset/test_leakage.py::test_a_label_available_before_its_extremum_is_caught`
+- **Code:**
+    - `src/channelflow/dataset/labels.py`
+    - `src/channelflow/dataset/leakage.py`
+- **Outcomes:** [[OUT-2026-09-08-implement-pit-dataset]], [[OUT-2026-09-08-spec-pit-dataset]]
 <!-- trace:end -->
 
 ## Notes

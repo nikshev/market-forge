@@ -6,7 +6,7 @@ hard_gated: true
 prd_ref: "§41"
 prd_lines: "5320-5320"
 phase: null
-status: specified
+status: implemented
 depends_on: []
 tags: []
 ---
@@ -23,7 +23,12 @@ No using final daily high/low before daily close.
 
 <!-- trace:begin -->
 - **Specs:** [[SPEC-015-pit-dataset]]
-- **Outcomes:** [[OUT-2026-09-08-spec-pit-dataset]]
+- **Tests:**
+    - `tests/unit/dataset/test_join.py::test_a_feature_from_an_unfinalized_bar_is_refused`
+- **Code:**
+    - `src/channelflow/dataset/join.py`
+    - `src/channelflow/dataset/leakage.py`
+- **Outcomes:** [[OUT-2026-09-08-implement-pit-dataset]], [[OUT-2026-09-08-spec-pit-dataset]]
 <!-- trace:end -->
 
 ## Notes
