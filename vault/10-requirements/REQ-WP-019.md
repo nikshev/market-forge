@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "WP-019 Price extrema / turning points"
 prd_lines: "7072-7099"
 phase: null
-status: tested
+status: implemented
 depends_on: []
 tags: []
 ---
@@ -48,7 +48,7 @@ Done when:
 ## Trace
 
 <!-- trace:begin -->
-- **Specs:** [[SPEC-014-turning-points]]
+- **Specs:** [[SPEC-014-turning-points]], [[SPEC-024-turning-derivative]]
 - **Tests:**
     - `tests/unit/extrema/test_directional_change.py::test_a_high_is_dated_to_its_peak_and_known_at_the_crossing`
     - `tests/unit/extrema/test_directional_change.py::test_a_low_is_detected_symmetrically`
@@ -78,6 +78,37 @@ Done when:
     - `tests/unit/extrema/test_thresholds.py::test_the_hybrid_survives_a_component_without_history`
     - `tests/unit/extrema/test_thresholds.py::test_the_realized_vol_mode_rises_with_volatility`
     - `tests/unit/extrema/test_thresholds.py::test_too_little_history_refuses_rather_than_approximating`
+    - `tests/unit/turning/test_direct.py::test_a_fold_whose_target_never_occurs_is_reported_not_scored`
+    - `tests/unit/turning/test_direct.py::test_a_learnable_target_beats_the_base_rate`
+    - `tests/unit/turning/test_direct.py::test_a_row_missing_a_declared_feature_is_refused`
+    - `tests/unit/turning/test_direct.py::test_a_signal_free_target_reports_that_it_does_not_beat_the_base_rate`
+    - `tests/unit/turning/test_direct.py::test_features_are_read_in_the_declared_order_not_the_dicts`
+    - `tests/unit/turning/test_direct.py::test_no_fold_is_fitted_and_scored_on_the_same_row`
+    - `tests/unit/turning/test_direct.py::test_the_aggregate_is_weighted_by_rows_not_by_fold_count`
+    - `tests/unit/turning/test_direct.py::test_the_direct_baseline_reports_metrics_per_fold_and_in_aggregate`
+    - `tests/unit/turning/test_direct.py::test_the_target_column_is_the_named_class_and_nothing_else`
+    - `tests/unit/turning/test_direct.py::test_the_target_is_one_of_section_23_5as_three_classes`
+    - `tests/unit/turning/test_experiment.py::test_a_caller_error_still_raises`
+    - `tests/unit/turning/test_experiment.py::test_a_row_without_a_forward_path_is_refused`
+    - `tests/unit/turning/test_experiment.py::test_a_signal_free_experiment_returns_no_edge_and_raises_nothing`
+    - `tests/unit/turning/test_experiment.py::test_an_experiment_with_an_edge_says_so`
+    - `tests/unit/turning/test_experiment.py::test_every_outcome_carries_its_report_and_its_stability_metrics`
+    - `tests/unit/turning/test_experiment.py::test_roots_that_no_gate_would_promote_are_reported_with_their_reasons`
+    - `tests/unit/turning/test_experiment.py::test_too_little_data_is_a_verdict_not_a_crash`
+    - `tests/unit/turning/test_path.py::test_a_flat_path_produces_no_candidate_rather_than_every_horizon`
+    - `tests/unit/turning/test_path.py::test_a_horizon_that_is_not_positive_is_refused`
+    - `tests/unit/turning/test_path.py::test_a_maximum_candidate_is_a_zero_slope_with_negative_curvature`
+    - `tests/unit/turning/test_path.py::test_a_minimum_candidate_is_the_mirror_image`
+    - `tests/unit/turning/test_path.py::test_a_root_at_zero_is_not_a_candidate`
+    - `tests/unit/turning/test_path.py::test_a_root_outside_the_horizon_is_not_a_candidate`
+    - `tests/unit/turning/test_path.py::test_a_straight_path_has_no_root`
+    - `tests/unit/turning/test_path.py::test_an_inflection_is_not_a_turn`
+    - `tests/unit/turning/test_path.py::test_both_roots_of_a_cubic_are_returned`
+    - `tests/unit/turning/test_path.py::test_every_solved_zero_really_zeroes_the_slope`
+    - `tests/unit/turning/test_path.py::test_the_excursion_is_measured_from_now_not_from_the_intercept`
+    - `tests/unit/turning/test_path.py::test_the_path_and_its_derivatives_are_the_prds_own_formulas`
+    - `tests/unit/turning/test_roots.py::test_every_assessment_records_the_three_section_13a12_metrics`
+    - `tests/unit/turning/test_roots.py::test_the_turning_package_consults_neither_a_clock_nor_a_random_source`
 - **Code:**
     - `src/channelflow/extrema/__init__.py`
     - `src/channelflow/extrema/causality.py`
@@ -85,7 +116,13 @@ Done when:
     - `src/channelflow/extrema/models.py`
     - `src/channelflow/extrema/prominence.py`
     - `src/channelflow/extrema/thresholds.py`
-- **Outcomes:** [[OUT-2026-09-08-implement-turning-points]], [[OUT-2026-09-08-plan-turning-points]], [[OUT-2026-09-08-spec-turning-points]], [[OUT-2026-09-08-tasks-turning-points]]
+    - `src/channelflow/models/gmdh.py`
+    - `src/channelflow/turning/__init__.py`
+    - `src/channelflow/turning/direct.py`
+    - `src/channelflow/turning/experiment.py`
+    - `src/channelflow/turning/path.py`
+    - `src/channelflow/turning/roots.py`
+- **Outcomes:** [[OUT-2026-09-08-implement-turning-derivative]], [[OUT-2026-09-08-implement-turning-points]], [[OUT-2026-09-08-plan-turning-derivative]], [[OUT-2026-09-08-plan-turning-points]], [[OUT-2026-09-08-spec-turning-derivative]], [[OUT-2026-09-08-spec-turning-points]], [[OUT-2026-09-08-tasks-turning-points]]
 <!-- trace:end -->
 
 ## Notes
