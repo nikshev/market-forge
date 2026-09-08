@@ -6,7 +6,7 @@ hard_gated: false
 prd_ref: "§0"
 prd_lines: "22-22"
 phase: null
-status: draft
+status: specified
 depends_on: []
 tags: []
 ---
@@ -22,7 +22,8 @@ Every feature must have a description of its semantics, unit of measurement, cad
 ## Trace
 
 <!-- trace:begin -->
-_No linked artifacts yet._
+- **Specs:** [[SPEC-011-ofi-lob-features]]
+- **Outcomes:** [[OUT-2026-09-08-spec-ofi-lob-features]]
 <!-- trace:end -->
 
 ## Notes

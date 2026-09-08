@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "WP-011 OFI/LOB features"
 prd_lines: "7011-7019"
 phase: null
-status: draft
+status: specified
 depends_on: ["REQ-WP-004", "REQ-WP-005"]
 tags: []
 ---
@@ -31,7 +31,8 @@ tags: []
 ## Trace
 
 <!-- trace:begin -->
-_No linked artifacts yet._
+- **Specs:** [[SPEC-011-ofi-lob-features]]
+- **Outcomes:** [[OUT-2026-09-08-spec-ofi-lob-features]]
 <!-- trace:end -->
 
 ## Notes
