@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "WP-006 Channel baseline"
 prd_lines: "6975-6982"
 phase: null
-status: draft
+status: specified
 depends_on: ["REQ-WP-005"]
 tags: []
 ---
@@ -29,7 +29,8 @@ tags: []
 ## Trace
 
 <!-- trace:begin -->
-_No linked artifacts yet._
+- **Specs:** [[SPEC-007-channel-baseline]]
+- **Outcomes:** [[OUT-2026-09-08-spec-channel-baseline]]
 <!-- trace:end -->
 
 ## Notes

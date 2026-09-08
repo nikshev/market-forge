@@ -38,6 +38,10 @@ tags: []
     - `tests/unit/bars/test_finalization.py::test_a_trade_inside_the_grace_period_is_included`
     - `tests/unit/bars/test_finalization.py::test_a_watermark_jump_finalizes_every_window_in_order`
     - `tests/unit/bars/test_finalization.py::test_a_window_with_no_trades_produces_no_bar`
+- **Code:**
+    - `src/channelflow/bars/__init__.py`
+    - `src/channelflow/bars/builder.py`
+    - `src/channelflow/bars/models.py`
 - **Outcomes:** [[OUT-2026-09-08-implement-bar-aggregation]], [[OUT-2026-09-08-plan-bar-aggregation]], [[OUT-2026-09-08-spec-bar-aggregation]], [[OUT-2026-09-08-tasks-bar-aggregation]]
 <!-- trace:end -->
 
