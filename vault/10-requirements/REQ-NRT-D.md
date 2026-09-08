@@ -6,7 +6,7 @@ hard_gated: true
 prd_ref: "Test D — centered filter prohibition"
 prd_lines: "2240-2243"
 phase: null
-status: draft
+status: implemented
 depends_on: []
 tags: []
 ---
@@ -22,7 +22,15 @@ Production feature path fails validation if a transform declares symmetric/cente
 ## Trace
 
 <!-- trace:begin -->
-_No linked artifacts yet._
+- **Specs:** [[SPEC-014-turning-points]]
+- **Tests:**
+    - `tests/unit/extrema/test_non_repainting.py::test_d_a_causal_transform_is_allowed`
+    - `tests/unit/extrema/test_non_repainting.py::test_d_a_centered_transform_is_refused_by_the_production_path`
+    - `tests/unit/extrema/test_non_repainting.py::test_d_research_paths_are_not_guarded`
+    - `tests/unit/extrema/test_non_repainting.py::test_d_the_engine_imports_no_centered_helper`
+- **Code:**
+    - `src/channelflow/extrema/causality.py`
+- **Outcomes:** [[OUT-2026-09-08-implement-turning-points]], [[OUT-2026-09-08-plan-turning-points]], [[OUT-2026-09-08-spec-turning-points]], [[OUT-2026-09-08-tasks-turning-points]]
 <!-- trace:end -->
 
 ## Notes

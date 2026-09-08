@@ -6,7 +6,7 @@ hard_gated: true
 prd_ref: "Test B — candidate chronology"
 prd_lines: "2228-2231"
 phase: null
-status: draft
+status: implemented
 depends_on: []
 tags: []
 ---
@@ -22,7 +22,13 @@ A candidate may be invalidated later, but its original snapshot cannot change.
 ## Trace
 
 <!-- trace:begin -->
-_No linked artifacts yet._
+- **Specs:** [[SPEC-014-turning-points]]
+- **Tests:**
+    - `tests/unit/extrema/test_non_repainting.py::test_b_a_candidate_record_is_frozen`
+    - `tests/unit/extrema/test_non_repainting.py::test_b_an_invalidated_candidate_keeps_its_original_record`
+- **Code:**
+    - `src/channelflow/extrema/models.py`
+- **Outcomes:** [[OUT-2026-09-08-implement-turning-points]], [[OUT-2026-09-08-plan-turning-points]], [[OUT-2026-09-08-spec-turning-points]], [[OUT-2026-09-08-tasks-turning-points]]
 <!-- trace:end -->
 
 ## Notes
