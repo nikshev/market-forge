@@ -59,7 +59,7 @@ requirement whose verification needs a network or a service.
     - `tests/tools/gates/test_two_gates.py::test_the_workflow_runs_the_full_suite_not_the_fast_one`
 - **Code:**
     - `.github/workflows/ci.yml`
-- **Outcomes:** [[OUT-2026-09-07-implement-ci-full-gate]], [[OUT-2026-09-07-plan-ci-full-gate]], [[OUT-2026-09-07-spec-ci-full-gate]], [[OUT-2026-09-07-tasks-ci-full-gate]]
+- **Outcomes:** [[OUT-2026-09-07-implement-ci-full-gate]], [[OUT-2026-09-07-plan-ci-full-gate]], [[OUT-2026-09-07-spec-ci-full-gate]], [[OUT-2026-09-07-tasks-ci-full-gate]], [[OUT-2026-09-08-implement-trace-rule-r8]]
 <!-- trace:end -->
 
 ## Notes

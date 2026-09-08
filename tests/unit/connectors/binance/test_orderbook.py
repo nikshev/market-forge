@@ -13,8 +13,8 @@ from typing import Any
 
 import pytest
 
+from channelflow.book import BookInvalid, OrderBook
 from channelflow.connectors.binance import normalize as n
-from channelflow.connectors.binance.orderbook import BookInvalid, OrderBook
 from channelflow.domain import PriceLevel
 
 INGEST = 1788838909900000000
@@ -35,9 +35,9 @@ def test_the_recorded_sequence_leaves_the_book_valid(depth_updates: list[dict[st
     for delta in deltas[1:]:
         book.apply(delta)
 
-    assert book.health.valid
-    assert book.health.gap_count == 0
-    assert book.health.last_sequence == deltas[-1].final_update_id
+    assert book.health().valid
+    assert book.health().gap_count == 0
+    assert book.health().last_sequence == deltas[-1].final_update_id
 
 
 @pytest.mark.trace("REQ-WP-003")
@@ -53,12 +53,12 @@ def test_a_missing_delta_makes_the_book_admit_it_is_broken(
     book = OrderBook.from_first_delta(deltas[0])
     book.apply(deltas[1])
 
-    before = book.health.last_sequence
+    before = book.health().last_sequence
     book.apply(deltas[3])  # deltas[2] deliberately skipped
 
-    assert not book.health.valid
-    assert book.health.gap_count == 1
-    assert book.health.last_sequence == before, "the out-of-order delta must not be applied"
+    assert not book.health().valid
+    assert book.health().gap_count == 1
+    assert book.health().last_sequence == before, "the out-of-order delta must not be applied"
 
 
 @pytest.mark.trace("REQ-WP-003")
@@ -69,7 +69,7 @@ def test_an_invalid_book_refuses_to_supply_state(depth_updates: list[dict[str, A
     book = OrderBook.from_first_delta(deltas[0])
     book.apply(deltas[3])  # gap
 
-    assert not book.health.valid
+    assert not book.health().valid
     with pytest.raises(BookInvalid):
         book.best_bid_ask()
 
@@ -110,6 +110,6 @@ def test_deltas_older_than_the_snapshot_are_discarded(
     stale = deltas[0].model_copy(update={"first_update_id": 1, "final_update_id": 2})
     book.apply(stale)
 
-    assert book.health.valid, "an obsolete delta is discarded, not a gap"
-    assert book.health.gap_count == 0
-    assert book.health.last_sequence == snapshot.update_id
+    assert book.health().valid, "an obsolete delta is discarded, not a gap"
+    assert book.health().gap_count == 0
+    assert book.health().last_sequence == snapshot.update_id
