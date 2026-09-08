@@ -194,6 +194,7 @@ graph LR
   OUT_2026_09_08_tasks_bar_aggregation["OUT-2026-09-08-tasks-bar-aggregation"]
   OUT_2026_09_08_tasks_binance_connector["OUT-2026-09-08-tasks-binance-connector"]
   OUT_2026_09_08_tasks_channel_baseline["OUT-2026-09-08-tasks-channel-baseline"]
+  OUT_2026_09_08_tasks_order_book_service["OUT-2026-09-08-tasks-order-book-service"]
   OUT_2026_09_08_tasks_signal_state_machine["OUT-2026-09-08-tasks-signal-state-machine"]
   PRD["PRD: ChannelFlow PRD"]
   REQ_BIAS_001["REQ-BIAS-001: No random train/test primary split."]
@@ -542,6 +543,7 @@ graph LR
   OUT_2026_09_08_tasks_bar_aggregation -.->|RECORDS| REQ_WP_005
   OUT_2026_09_08_tasks_binance_connector -.->|RECORDS| REQ_WP_003
   OUT_2026_09_08_tasks_channel_baseline -.->|RECORDS| REQ_WP_006
+  OUT_2026_09_08_tasks_order_book_service -.->|RECORDS| REQ_WP_004
   OUT_2026_09_08_tasks_signal_state_machine -.->|RECORDS| REQ_WP_007
   SPEC_001_traceability_tooling ==>|SPECIFIES| REQ_INFRA_001
   SPEC_002_project_bootstrap ==>|SPECIFIES| REQ_WP_001

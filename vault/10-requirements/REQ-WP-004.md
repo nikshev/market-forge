@@ -32,7 +32,7 @@ tags: []
 
 <!-- trace:begin -->
 - **Specs:** [[SPEC-010-order-book-service]]
-- **Outcomes:** [[OUT-2026-09-08-plan-order-book-service]], [[OUT-2026-09-08-spec-order-book-service]]
+- **Outcomes:** [[OUT-2026-09-08-plan-order-book-service]], [[OUT-2026-09-08-spec-order-book-service]], [[OUT-2026-09-08-tasks-order-book-service]]
 <!-- trace:end -->
 
 ## Notes
