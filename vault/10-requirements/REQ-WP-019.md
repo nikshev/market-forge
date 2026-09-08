@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "WP-019 Price extrema / turning points"
 prd_lines: "7072-7099"
 phase: null
-status: draft
+status: specified
 depends_on: []
 tags: []
 ---
@@ -48,7 +48,8 @@ Done when:
 ## Trace
 
 <!-- trace:begin -->
-_No linked artifacts yet._
+- **Specs:** [[SPEC-014-turning-points]]
+- **Outcomes:** [[OUT-2026-09-08-spec-turning-points]]
 <!-- trace:end -->
 
 ## Notes

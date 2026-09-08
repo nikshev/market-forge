@@ -6,7 +6,7 @@ hard_gated: true
 prd_ref: "Test E — replay parity"
 prd_lines: "2244-2247"
 phase: null
-status: draft
+status: specified
 depends_on: []
 tags: []
 ---
@@ -22,7 +22,8 @@ Live recorded outputs and deterministic replay outputs must match for the same e
 ## Trace
 
 <!-- trace:begin -->
-_No linked artifacts yet._
+- **Specs:** [[SPEC-014-turning-points]]
+- **Outcomes:** [[OUT-2026-09-08-spec-turning-points]]
 <!-- trace:end -->
 
 ## Notes

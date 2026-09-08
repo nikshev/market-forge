@@ -6,7 +6,7 @@ hard_gated: true
 prd_ref: "Test C — confirmation legality"
 prd_lines: "2232-2239"
 phase: null
-status: draft
+status: specified
 depends_on: []
 tags: []
 ---
@@ -27,7 +27,8 @@ and the confirmation logic must not read events with `available_at > known_at`.
 ## Trace
 
 <!-- trace:begin -->
-_No linked artifacts yet._
+- **Specs:** [[SPEC-014-turning-points]]
+- **Outcomes:** [[OUT-2026-09-08-spec-turning-points]]
 <!-- trace:end -->
 
 ## Notes

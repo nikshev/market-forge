@@ -6,7 +6,7 @@ hard_gated: true
 prd_ref: "Test A — future-bar invariance"
 prd_lines: "2220-2227"
 phase: null
-status: draft
+status: specified
 depends_on: []
 tags: []
 ---
@@ -26,7 +26,8 @@ Assert all finalized outputs with `available_at <= t` remain byte-equivalent.
 ## Trace
 
 <!-- trace:begin -->
-_No linked artifacts yet._
+- **Specs:** [[SPEC-014-turning-points]]
+- **Outcomes:** [[OUT-2026-09-08-spec-turning-points]]
 <!-- trace:end -->
 
 ## Notes

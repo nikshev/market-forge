@@ -6,7 +6,7 @@ hard_gated: true
 prd_ref: "Test D — centered filter prohibition"
 prd_lines: "2240-2243"
 phase: null
-status: draft
+status: specified
 depends_on: []
 tags: []
 ---
@@ -22,7 +22,8 @@ Production feature path fails validation if a transform declares symmetric/cente
 ## Trace
 
 <!-- trace:begin -->
-_No linked artifacts yet._
+- **Specs:** [[SPEC-014-turning-points]]
+- **Outcomes:** [[OUT-2026-09-08-spec-turning-points]]
 <!-- trace:end -->
 
 ## Notes

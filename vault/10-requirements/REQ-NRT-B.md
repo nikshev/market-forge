@@ -6,7 +6,7 @@ hard_gated: true
 prd_ref: "Test B — candidate chronology"
 prd_lines: "2228-2231"
 phase: null
-status: draft
+status: specified
 depends_on: []
 tags: []
 ---
@@ -22,7 +22,8 @@ A candidate may be invalidated later, but its original snapshot cannot change.
 ## Trace
 
 <!-- trace:begin -->
-_No linked artifacts yet._
+- **Specs:** [[SPEC-014-turning-points]]
+- **Outcomes:** [[OUT-2026-09-08-spec-turning-points]]
 <!-- trace:end -->
 
 ## Notes
