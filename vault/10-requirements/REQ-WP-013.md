@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "WP-013 Derivatives"
 prd_lines: "7027-7032"
 phase: null
-status: draft
+status: planned
 depends_on: ["REQ-WP-003"]
 tags: []
 ---
@@ -25,7 +25,8 @@ tags: []
 ## Trace
 
 <!-- trace:begin -->
-_No linked artifacts yet._
+- **Specs:** [[SPEC-016-derivatives]]
+- **Outcomes:** [[OUT-2026-09-08-plan-derivatives]], [[OUT-2026-09-08-spec-derivatives]]
 <!-- trace:end -->
 
 ## Notes
