@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "WP-017 PIT dataset"
 prd_lines: "7055-7061"
 phase: null
-status: specified
+status: planned
 depends_on: []
 tags: []
 ---
@@ -28,7 +28,7 @@ tags: []
 
 <!-- trace:begin -->
 - **Specs:** [[SPEC-015-pit-dataset]]
-- **Outcomes:** [[OUT-2026-09-08-spec-pit-dataset]]
+- **Outcomes:** [[OUT-2026-09-08-plan-pit-dataset]], [[OUT-2026-09-08-spec-pit-dataset]], [[OUT-2026-09-08-tasks-pit-dataset]]
 <!-- trace:end -->
 
 ## Notes
