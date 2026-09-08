@@ -54,6 +54,11 @@ tags: []
     - `tests/unit/models/test_report.py::test_the_report_refuses_overlapping_splits`
     - `tests/unit/models/test_report.py::test_the_report_scores_the_model_and_baselines_on_identical_data`
     - `tests/unit/models/test_report.py::test_unrun_baselines_carry_their_reason`
+- **Code:**
+    - `src/channelflow/models/__init__.py`
+    - `src/channelflow/models/base.py`
+    - `src/channelflow/models/gmdh.py`
+    - `src/channelflow/models/report.py`
 - **Outcomes:** [[OUT-2026-09-08-implement-gmdh]], [[OUT-2026-09-08-spec-gmdh]]
 <!-- trace:end -->
 
