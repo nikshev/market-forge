@@ -1,6 +1,13 @@
 """Local order-book reconstruction.
 
 # @trace: REQ-WP-003
+# @trace: REQ-WP-004
+
+Venue-agnostic by ADR-012: nothing here parses an exchange payload. It takes
+normalized `BookDelta` and `BookSnapshot` values, which is why it lives here
+rather than inside the connector that happened to need it first -- Principle
+VIII ("connectors share one interface") is empty if the shared thing sits
+inside one connector.
 
 PRD section 11.1 gives the procedure and this follows it literally: buffer
 deltas, take a snapshot, discard obsolete deltas, apply by exact sequence rules,

@@ -58,9 +58,9 @@ Requirements:
     - `tests/unit/connectors/binance/test_session.py::test_it_reconnects_before_the_venue_closes_the_stream`
     - `tests/unit/connectors/binance/test_session.py::test_the_stream_set_is_configurable`
 - **Code:**
+    - `src/channelflow/book/book.py`
     - `src/channelflow/connectors/binance/__init__.py`
     - `src/channelflow/connectors/binance/normalize.py`
-    - `src/channelflow/connectors/binance/orderbook.py`
     - `src/channelflow/connectors/binance/session.py`
     - `tools/record/binance_capture.py`
 - **Outcomes:** [[OUT-2026-09-08-implement-binance-connector]], [[OUT-2026-09-08-plan-binance-connector]], [[OUT-2026-09-08-spec-binance-connector]], [[OUT-2026-09-08-tasks-binance-connector]]

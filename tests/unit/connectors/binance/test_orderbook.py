@@ -13,8 +13,8 @@ from typing import Any
 
 import pytest
 
+from channelflow.book import BookInvalid, OrderBook
 from channelflow.connectors.binance import normalize as n
-from channelflow.connectors.binance.orderbook import BookInvalid, OrderBook
 from channelflow.domain import PriceLevel
 
 INGEST = 1788838909900000000
