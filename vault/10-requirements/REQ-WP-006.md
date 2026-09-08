@@ -51,6 +51,11 @@ tags: []
     - `tests/unit/channels/test_quality.py::test_the_score_stays_in_range`
     - `tests/unit/channels/test_quality.py::test_unavailable_submetrics_are_omitted_not_defaulted`
     - `tests/unit/channels/test_quality.py::test_weights_are_configurable`
+- **Code:**
+    - `src/channelflow/channels/__init__.py`
+    - `src/channelflow/channels/models.py`
+    - `src/channelflow/channels/quality.py`
+    - `src/channelflow/channels/rolling_ols.py`
 - **Outcomes:** [[OUT-2026-09-08-implement-channel-baseline]], [[OUT-2026-09-08-plan-channel-baseline]], [[OUT-2026-09-08-spec-channel-baseline]], [[OUT-2026-09-08-tasks-channel-baseline]]
 <!-- trace:end -->
 
