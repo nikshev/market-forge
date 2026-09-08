@@ -61,6 +61,7 @@ tags: []
 - **Code:**
     - `src/channelflow/book/__init__.py`
     - `src/channelflow/book/book.py`
+    - `src/channelflow/book/service.py`
 - **Outcomes:** [[OUT-2026-09-08-implement-order-book-service]], [[OUT-2026-09-08-plan-order-book-service]], [[OUT-2026-09-08-spec-order-book-service]], [[OUT-2026-09-08-tasks-order-book-service]]
 <!-- trace:end -->
 

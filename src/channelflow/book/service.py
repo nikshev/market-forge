@@ -127,6 +127,9 @@ class BookService:
     def depth_within_bps(self, bps: float) -> tuple[Decimal, Decimal]:
         return self._usable().depth_within_bps(bps)
 
+    def mid(self) -> Decimal:
+        return self._usable().mid()
+
     def _usable(self) -> OrderBook:
         """The one thing the service knows that the book does not: whether
         there is a book at all.
