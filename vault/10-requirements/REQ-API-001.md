@@ -61,6 +61,45 @@ calculated now over current history, and the deep-link default is
 
 <!-- trace:begin -->
 - **Specs:** [[SPEC-013-chart-and-read-api]]
+- **Tests:**
+    - `tests/unit/api/test_channel_modes.py::test_a_refit_without_enough_history_is_refused`
+    - `tests/unit/api/test_channel_modes.py::test_a_snapshot_taken_after_the_instant_is_not_returned`
+    - `tests/unit/api/test_channel_modes.py::test_as_seen_then_is_never_reconstructed_after_the_fact`
+    - `tests/unit/api/test_channel_modes.py::test_as_seen_then_returns_the_stored_snapshot_unchanged`
+    - `tests/unit/api/test_channel_modes.py::test_the_parameter_defaults_to_as_seen_then`
+    - `tests/unit/api/test_channel_modes.py::test_the_refit_cannot_see_past_the_requested_instant`
+    - `tests/unit/api/test_channel_modes.py::test_the_two_modes_disagree_and_that_is_the_point`
+    - `tests/unit/api/test_reads.py::test_a_feature_snapshot_is_served`
+    - `tests/unit/api/test_reads.py::test_a_feature_time_series_is_served`
+    - `tests/unit/api/test_reads.py::test_a_limit_returns_the_most_recent_bars`
+    - `tests/unit/api/test_reads.py::test_a_signal_detail_separates_the_later_outcome`
+    - `tests/unit/api/test_reads.py::test_an_unknown_signal_is_a_not_found`
+    - `tests/unit/api/test_reads.py::test_an_unknown_symbol_returns_an_empty_result`
+    - `tests/unit/api/test_reads.py::test_bars_are_served_in_event_time_order`
+    - `tests/unit/api/test_reads.py::test_bars_honour_the_time_range`
+    - `tests/unit/api/test_reads.py::test_markets_are_served`
+    - `tests/unit/api/test_reads.py::test_markets_filter_by_market_type`
+    - `tests/unit/api/test_reads.py::test_markets_filter_by_venue`
+    - `tests/unit/api/test_reads.py::test_signals_are_served_and_filtered`
+    - `tests/unit/api/test_reads.py::test_signals_filter_by_time_range`
+    - `tests/unit/api/test_ws.py::test_a_malformed_message_is_answered_not_fatal[not json at all-not JSON]`
+    - `tests/unit/api/test_ws.py::test_a_malformed_message_is_answered_not_fatal[{"op": "subscribe", "venue": "b", "symbol": "s", "timeframe": "1m", "channels": ["bras"]}-unknown channel]`
+    - `tests/unit/api/test_ws.py::test_a_malformed_message_is_answered_not_fatal[{"op": "subscribe", "venue": "b", "symbol": "s", "timeframe": "1m", "channels": []}-non-empty list]`
+    - `tests/unit/api/test_ws.py::test_a_malformed_message_is_answered_not_fatal[{"op": "subscribe", "venue": "binance"}-missing field]`
+    - `tests/unit/api/test_ws.py::test_a_malformed_message_is_answered_not_fatal[{"op": "unsubscribe"}-unsupported op]`
+    - `tests/unit/api/test_ws.py::test_a_published_update_reaches_the_subscriber`
+    - `tests/unit/api/test_ws.py::test_an_update_nobody_subscribed_to_reaches_nobody`
+    - `tests/unit/api/test_ws.py::test_another_symbol_is_not_delivered`
+    - `tests/unit/api/test_ws.py::test_only_subscribed_channels_are_delivered`
+    - `tests/unit/api/test_ws.py::test_the_documented_subscribe_message_is_accepted`
+- **Code:**
+    - `src/channelflow/api/__init__.py`
+    - `src/channelflow/api/app.py`
+    - `src/channelflow/api/channels.py`
+    - `src/channelflow/api/repositories.py`
+    - `src/channelflow/api/routes.py`
+    - `src/channelflow/api/schemas.py`
+    - `src/channelflow/api/ws.py`
 - **Outcomes:** [[OUT-2026-09-08-plan-chart-and-read-api]], [[OUT-2026-09-08-requirement-read-api]], [[OUT-2026-09-08-spec-chart-and-read-api]], [[OUT-2026-09-08-tasks-chart-and-read-api]]
 <!-- trace:end -->
 

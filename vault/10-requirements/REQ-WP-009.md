@@ -32,6 +32,13 @@ tags: []
 
 <!-- trace:begin -->
 - **Specs:** [[SPEC-013-chart-and-read-api]]
+- **Tests:**
+    - `tests/unit/api/test_channel_modes.py::test_the_parameter_defaults_to_as_seen_then`
+    - `tests/unit/api/test_channel_modes.py::test_the_two_modes_disagree_and_that_is_the_point`
+- **Code:**
+    - `apps/web/src/__tests__/scaffold.test.tsx`
+    - `apps/web/src/test-setup.ts`
+    - `apps/web/vite.config.ts`
 - **Outcomes:** [[OUT-2026-09-08-plan-chart-and-read-api]], [[OUT-2026-09-08-spec-chart-and-read-api]], [[OUT-2026-09-08-tasks-chart-and-read-api]]
 <!-- trace:end -->
 
