@@ -6,7 +6,7 @@ hard_gated: true
 prd_ref: "§41"
 prd_lines: "5319-5319"
 phase: null
-status: draft
+status: specified
 depends_on: []
 tags: []
 ---
@@ -22,7 +22,8 @@ No pivot that requires future bars unless the feature availability time is shift
 ## Trace
 
 <!-- trace:begin -->
-_No linked artifacts yet._
+- **Specs:** [[SPEC-015-pit-dataset]]
+- **Outcomes:** [[OUT-2026-09-08-spec-pit-dataset]]
 <!-- trace:end -->
 
 ## Notes

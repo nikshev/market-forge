@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "WP-017 PIT dataset"
 prd_lines: "7055-7061"
 phase: null
-status: draft
+status: specified
 depends_on: []
 tags: []
 ---
@@ -27,7 +27,8 @@ tags: []
 ## Trace
 
 <!-- trace:begin -->
-_No linked artifacts yet._
+- **Specs:** [[SPEC-015-pit-dataset]]
+- **Outcomes:** [[OUT-2026-09-08-spec-pit-dataset]]
 <!-- trace:end -->
 
 ## Notes
