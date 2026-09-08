@@ -54,6 +54,14 @@ Done when:
     - `tests/unit/domain/test_validation.py::test_an_aggressor_side_outside_the_permitted_set_is_rejected`
     - `tests/unit/domain/test_validation.py::test_an_unknown_field_is_rejected`
     - `tests/unit/domain/test_validation.py::test_omitting_ingest_time_is_rejected_and_the_field_is_named`
+- **Code:**
+    - `src/channelflow/domain/__init__.py`
+    - `src/channelflow/domain/book.py`
+    - `src/channelflow/domain/defi.py`
+    - `src/channelflow/domain/derivatives.py`
+    - `src/channelflow/domain/meta.py`
+    - `src/channelflow/domain/serialization.py`
+    - `src/channelflow/domain/trades.py`
 - **Outcomes:** [[OUT-2026-09-07-implement-domain-model]], [[OUT-2026-09-07-plan-domain-model]], [[OUT-2026-09-07-spec-domain-model]], [[OUT-2026-09-07-tasks-domain-model]]
 <!-- trace:end -->
 

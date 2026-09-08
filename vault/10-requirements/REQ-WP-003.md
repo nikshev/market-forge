@@ -6,7 +6,7 @@ prd_ref: "WP-003 Binance connector"
 prd_lines: "6945-6958"
 phase: null
 status: draft
-depends_on: []
+depends_on: [REQ-WP-002]
 tags: []
 ---
 

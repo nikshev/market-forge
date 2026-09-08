@@ -12,6 +12,7 @@ dependencies = [
     "asyncpg>=0.30",
     "boto3>=1.35",
     "pydantic>=2.13.5",
+    "websockets>=17.1",
 ]
 
 [project.optional-dependencies]
