@@ -23,11 +23,14 @@ numbers incomparable with every other experiment's.
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
 
 from channelflow.dataset import CertifiedDataset
-from channelflow.features import REGISTRY, exposed_feature_names
-from channelflow.research.ablation import AblationArm, AblationReport, run_ablation
+from channelflow.research.ablation import AblationArm
+from channelflow.research.cumulative import (
+    IncrementalReport,
+    resolve_membership,
+    run_cumulative_ablation,
+)
 from channelflow.turning.direct import Target
 
 #: EXP-004's families, finer than REQ-US-006's four. Every name here is a family
@@ -67,44 +70,9 @@ ARMS: tuple[AblationArm, ...] = tuple(
 )
 
 
-@dataclass(frozen=True)
-class Increment:
-    """What one family added over the arm before it."""
-
-    arm: str
-    over: str
-    added_features: tuple[str, ...]
-    #: Lower Brier is better, so a negative delta is an improvement. `None` when
-    #: either arm did not run -- an increment over an arm that was never scored
-    #: is not zero.
-    brier_delta: float | None
-    note: str = ""
-
-
-@dataclass(frozen=True)
-class IncrementalReport:
-    """The ablation, and the increments read off it."""
-
-    ablation: AblationReport
-    increments: tuple[Increment, ...]
-
-
 def available_from_registry() -> dict[str, tuple[str, ...]]:
-    """Which registered features belong to each of EXP-004's families.
-
-    Read from `REGISTRY` rather than listed here, so an arm cannot claim a
-    feature that does not exist and cannot miss one that does.
-
-    `exposed_feature_names` is called first for its import side effect: a
-    registry entry appears when its producing module is imported, so reading
-    `REGISTRY` cold sees only whatever happened to be loaded already -- which
-    made every order-flow arm look empty.
-    """
-    exposed_feature_names()
-    found: dict[str, tuple[str, ...]] = {}
-    for family, prefixes in _MEMBERSHIP.items():
-        found[family] = tuple(sorted(name for name in REGISTRY if name.startswith(prefixes)))
-    return found
+    """Which registered features belong to each of EXP-004's families."""
+    return resolve_membership(_MEMBERSHIP)
 
 
 def run_ofi_ablation(
@@ -116,53 +84,4 @@ def run_ofi_ablation(
 ) -> IncrementalReport:
     """Run EXP-004's five arms and report what each family added."""
     resolved = dict(available) if available is not None else available_from_registry()
-    ablation = run_ablation(dataset, target=target, available=resolved, arms=arms)
-    return IncrementalReport(ablation=ablation, increments=_increments(ablation, arms, resolved))
-
-
-def _increments(
-    report: AblationReport,
-    arms: Sequence[AblationArm],
-    available: Mapping[str, Sequence[str]],
-) -> tuple[Increment, ...]:
-    """Each arm against the one before it.
-
-    The absolute scores are in the ablation; these are the differences, which is
-    what "incremental value" names. An increment over an arm that did not run is
-    absent rather than zero: "this family added nothing" and "there was nothing
-    to add it to" are different findings.
-    """
-    entries = {entry.arm: entry for entry in report.entries}
-    increments: list[Increment] = []
-    for previous, arm in zip(arms, arms[1:], strict=False):
-        before, after = entries.get(previous.name), entries.get(arm.name)
-        added = tuple(
-            name for name in arm.resolve(available) if name not in previous.resolve(available)
-        )
-        if (
-            before is None
-            or after is None
-            or before.result is None
-            or after.result is None
-            or before.result.model_brier is None
-            or after.result.model_brier is None
-        ):
-            increments.append(
-                Increment(
-                    arm=arm.name,
-                    over=previous.name,
-                    added_features=added,
-                    brier_delta=None,
-                    note="one of the two arms was not scored, so there is no difference to take",
-                )
-            )
-            continue
-        increments.append(
-            Increment(
-                arm=arm.name,
-                over=previous.name,
-                added_features=added,
-                brier_delta=after.result.model_brier - before.result.model_brier,
-            )
-        )
-    return tuple(increments)
+    return run_cumulative_ablation(dataset, target=target, available=resolved, arms=arms)

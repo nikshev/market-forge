@@ -7,6 +7,7 @@
 # @trace: REQ-EXP-004
 # @trace: REQ-EXP-005
 # @trace: REQ-EXP-006
+# @trace: REQ-EXP-007
 """
 
 from channelflow.research.ablation import (
@@ -26,6 +27,13 @@ from channelflow.research.channel_comparison import (
     SeriesTooShort,
     compare_channel_models,
 )
+from channelflow.research.cumulative import (
+    Increment,
+    IncrementalReport,
+    increments_of,
+    resolve_membership,
+    run_cumulative_ablation,
+)
 from channelflow.research.derivatives_context import (
     VARIABLES,
     Bucket,
@@ -43,6 +51,10 @@ from channelflow.research.detector_comparison import (
     compare_detectors,
     detector_metrics,
 )
+from channelflow.research.dex_incremental import (
+    DexIncrementalReport,
+    run_dex_ablation,
+)
 from channelflow.research.lookback_sensitivity import (
     LOOKBACKS,
     Plateau,
@@ -54,8 +66,6 @@ from channelflow.research.lookback_sensitivity import (
     sweep_lookbacks,
 )
 from channelflow.research.ofi_incremental import (
-    Increment,
-    IncrementalReport,
     available_from_registry,
     run_ofi_ablation,
 )
@@ -76,6 +86,7 @@ __all__ = [
     "VARIABLES",
     "Bucket",
     "ConditionalReport",
+    "DexIncrementalReport",
     "Confluence",
     "VariableConditional",
     "conditional_study",
@@ -89,6 +100,10 @@ __all__ = [
     "confluence_study",
     "IncrementalReport",
     "available_from_registry",
+    "increments_of",
+    "resolve_membership",
+    "run_cumulative_ablation",
+    "run_dex_ablation",
     "run_ofi_ablation",
     "CandidateLife",
     "candidate_lives",

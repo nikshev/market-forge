@@ -5,8 +5,8 @@ type: experiment
 prd_ref: "EXP-007 DEX incremental value"
 prd_lines: "5117-5126"
 phase: null
-status: draft
-depends_on: []
+status: implemented
+depends_on: ["REQ-EXP-004", "REQ-WP-015", "REQ-WP-016"]
 tags: []
 ---
 
@@ -33,7 +33,22 @@ For ETH:
 ## Trace
 
 <!-- trace:begin -->
-_No linked artifacts yet._
+- **Specs:** [[SPEC-040-dex-incremental]]
+- **Tests:**
+    - `tests/unit/research/test_dex_incremental.py::test_an_arm_naming_a_family_outside_this_taxonomy_is_refused`
+    - `tests/unit/research/test_dex_incremental.py::test_every_dex_family_is_empty_in_the_registry_today`
+    - `tests/unit/research/test_dex_incremental.py::test_supplied_features_make_the_arms_run`
+    - `tests/unit/research/test_dex_incremental.py::test_the_divergence_family_shows_its_increment`
+    - `tests/unit/research/test_dex_incremental.py::test_the_five_arms_are_the_prds_and_are_cumulative`
+    - `tests/unit/research/test_dex_incremental.py::test_the_instrument_is_required`
+    - `tests/unit/research/test_dex_incremental.py::test_the_report_names_the_instrument`
+    - `tests/unit/research/test_dex_incremental.py::test_two_runs_produce_equal_reports`
+    - `tests/unit/research/test_dex_incremental.py::test_with_the_registry_as_it_is_every_dex_arm_reports_not_run`
+- **Code:**
+    - `src/channelflow/research/__init__.py`
+    - `src/channelflow/research/cumulative.py`
+    - `src/channelflow/research/dex_incremental.py`
+- **Outcomes:** [[OUT-2026-09-09-implement-dex-incremental]], [[OUT-2026-09-09-plan-dex-incremental]], [[OUT-2026-09-09-spec-dex-incremental]]
 <!-- trace:end -->
 
 ## Notes
