@@ -14,6 +14,7 @@
 # @trace: REQ-EXP-012
 # @trace: REQ-EXP-013
 # @trace: REQ-EXP-014
+# @trace: REQ-EXP-015
 """
 
 from channelflow.research.ablation import (
@@ -50,6 +51,19 @@ from channelflow.research.cumulative import (
     increments_of,
     resolve_membership,
     run_cumulative_ablation,
+)
+from channelflow.research.defi_confluence import (
+    CANDIDATE_FAMILIES,
+    ConfluenceReport,
+    DifferentFolds,
+    FamilyValue,
+    FoldFingerprint,
+    InstrumentsMissing,
+    NotStrict,
+    require_same_folds,
+    run_confluence_ablation,
+    strict_arms,
+    strictness_violations,
 )
 from channelflow.research.derivative_turning import (
     HORIZONS,
@@ -148,15 +162,22 @@ __all__ = [
     "DETECTORS",
     "DEFAULT_THRESHOLDS",
     "BULLETS",
+    "CANDIDATE_FAMILIES",
     "EXTREMA_ARMS",
     "HORIZONS",
     "SIGNALS",
     "METHODS",
     "ArmReport",
+    "ConfluenceReport",
     "Contemporaneous",
+    "DifferentFolds",
     "CenteredCandidateRejected",
     "CenteredLabeller",
     "ExhaustionStudy",
+    "FamilyValue",
+    "FoldFingerprint",
+    "InstrumentsMissing",
+    "NotStrict",
     "ExtremaComparison",
     "ForecastError",
     "OutcomeMissing",
@@ -168,6 +189,10 @@ __all__ = [
     "TurningComparison",
     "compare_gmdh_extrema",
     "compare_turning_methods",
+    "require_same_folds",
+    "run_confluence_ablation",
+    "strict_arms",
+    "strictness_violations",
     "study_exhaustion",
     "trailing_calls",
     "label_turns",
