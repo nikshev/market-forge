@@ -13,6 +13,7 @@
 # @trace: REQ-EXP-011
 # @trace: REQ-EXP-012
 # @trace: REQ-EXP-013
+# @trace: REQ-EXP-014
 """
 
 from channelflow.research.ablation import (
@@ -79,6 +80,18 @@ from channelflow.research.dex_incremental import (
     DexIncrementalReport,
     run_dex_ablation,
 )
+from channelflow.research.exhaustion import (
+    BULLETS,
+    SIGNALS,
+    Contemporaneous,
+    ExhaustionStudy,
+    Predictive,
+    ReadingRule,
+    SeriesMissing,
+    SignalStudy,
+    study_exhaustion,
+    trailing_calls,
+)
 from channelflow.research.extremum_detectors import (
     METHODS,
     DetectorComparison,
@@ -134,19 +147,29 @@ __all__ = [
     "ARMS",
     "DETECTORS",
     "DEFAULT_THRESHOLDS",
+    "BULLETS",
     "EXTREMA_ARMS",
     "HORIZONS",
+    "SIGNALS",
     "METHODS",
     "ArmReport",
+    "Contemporaneous",
     "CenteredCandidateRejected",
     "CenteredLabeller",
+    "ExhaustionStudy",
     "ExtremaComparison",
     "ForecastError",
     "OutcomeMissing",
+    "Predictive",
+    "ReadingRule",
+    "SeriesMissing",
+    "SignalStudy",
     "RootMetrics",
     "TurningComparison",
     "compare_gmdh_extrema",
     "compare_turning_methods",
+    "study_exhaustion",
+    "trailing_calls",
     "label_turns",
     "DetectorComparison",
     "RegimeRate",
