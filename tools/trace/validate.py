@@ -10,7 +10,15 @@ import networkx as nx
 from tools.trace.model import Status, TraceGraph
 
 # Edge kinds whose destination must be a requirement that exists.
-REQUIREMENT_TARGETED = ("SPECIFIES", "VERIFIES", "IMPLEMENTS", "RECORDS", "DECIDES", "DEPENDS_ON")
+REQUIREMENT_TARGETED = (
+    "SPECIFIES",
+    "VERIFIES",
+    "IMPLEMENTS",
+    "RECORDS",
+    "DECIDES",
+    "DEPENDS_ON",
+    "COVERS",
+)
 
 
 @dataclass(frozen=True)
@@ -18,6 +26,27 @@ class Violation:
     rule: str
     node_id: str
     message: str
+
+
+def _has_code(graph: TraceGraph, req_id: str) -> bool:
+    """Whether anything traceable implements this requirement.
+
+    Directly, for a requirement code can carry the marker of. Through its
+    `covers:` list for one that nothing can: a phase is a roll-up of PRD §45's
+    deliverables, and no module implements a phase -- it implements a work
+    package that delivers part of one.
+
+    R8 was written before any phase left `draft`, so this case had never come
+    up: under the direct reading a phase can never be `implemented`, which makes
+    the top of the ladder unreachable for a whole requirement type rather than
+    merely unearned. Following `covers:` keeps the rule's meaning -- implemented
+    means code exists -- and makes it answerable for a roll-up. A phase that
+    covers nothing still has no code, which is the right answer for one.
+    """
+    if graph.edges_into(req_id, "IMPLEMENTS"):
+        return True
+    covered = [edge.dst for edge in graph.edges_out_of(req_id, "COVERS")]
+    return bool(covered) and all(graph.edges_into(dst, "IMPLEMENTS") for dst in covered)
 
 
 def validate(graph: TraceGraph) -> list[Violation]:
@@ -30,7 +59,7 @@ def validate(graph: TraceGraph) -> list[Violation]:
         has_spec = bool(graph.edges_into(req_id, "SPECIFIES"))
         has_test = bool(graph.edges_into(req_id, "VERIFIES"))
         has_outcome = bool(graph.edges_into(req_id, "RECORDS"))
-        has_code = bool(graph.edges_into(req_id, "IMPLEMENTS"))
+        has_code = _has_code(graph, req_id)
         label = str(status.name).lower()
 
         if status >= Status.SPECIFIED and not has_spec:

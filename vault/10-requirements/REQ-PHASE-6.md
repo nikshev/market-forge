@@ -5,13 +5,11 @@ type: phase
 prd_ref: "Phase 6 — Research-grade validation"
 prd_lines: "6833-6844"
 phase: 6
-status: planned
+status: implemented
 depends_on: ["REQ-PHASE-5"]
 tags: []
-covers: [REQ-WP-017, REQ-US-006, REQ-US-007, REQ-NRT-E, REQ-BIAS-001, REQ-BIAS-003, REQ-BIAS-010]
-not_delivered:
-  - "experiment registry: experiments are modules and notes, not registered artifacts"
-  - "dataset hashes: no dataset, config, commit or model-artifact hash is computed or recorded"
+covers: [REQ-WP-017, REQ-US-006, REQ-US-007, REQ-NRT-E, REQ-BIAS-001, REQ-BIAS-003, REQ-BIAS-010, REQ-STORE-001, REQ-REPRO-001]
+not_delivered: []
 ---
 
 ## Requirement
@@ -54,15 +52,24 @@ requirement exists and has reached `implemented`.
 - [[REQ-BIAS-001]]
 - [[REQ-BIAS-003]]
 - [[REQ-BIAS-010]]
+- [[REQ-STORE-001]]
+- [[REQ-REPRO-001]]
 
-**Not delivered:**
+**Not delivered:** nothing. The two that were open closed on 2026-09-09:
+[[REQ-STORE-001]] built the canonical plane and its dataset hashes, and
+[[REQ-REPRO-001]] built the experiment registry and the other three hashes PRD
+§0 item 13 names.
 
-- experiment registry: experiments are modules and notes, not registered artifacts
-- dataset hashes: no dataset, config, commit or model-artifact hash is computed or recorded
+This is the first phase to reach `implemented`, and `test_phase_coverage` is
+what permits it: every covering requirement is `implemented` and the list above
+is empty.
 
-This phase is `planned` rather than `implemented` because that list is not
-empty. A phase is its deliverables; a phase with a missing deliverable is a
-phase in progress, however much of it is built.
+One thing it does **not** claim. The registry exists and none of the seventeen
+research modules reports through it yet, so PRD §41's rule 11 is enforceable and
+not yet enforced — [[REQ-BIAS-011]] stays at `specified` for exactly that
+reason. A phase is its deliverables, and a deliverable is a thing built; whether
+everything that could use it does is a different question, asked and answered
+elsewhere.
 
 ## Trace
 

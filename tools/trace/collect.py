@@ -90,6 +90,13 @@ def collect_requirements(vault_dir: Path) -> tuple[list[Node], list[Edge]]:
         edges.append(Edge(src=req_id, dst=PRD_NODE_ID, kind="DERIVED_FROM"))
         for dependency in _id_list(meta, "depends_on"):
             edges.append(Edge(src=req_id, dst=dependency, kind="DEPENDS_ON"))
+        # `covers:` is how a roll-up requirement -- a phase -- names the
+        # requirements that deliver it. Collected as an edge rather than left in
+        # frontmatter so R3 catches a misspelled id and R8 can follow it: a
+        # phase's code is its covering requirements' code, and no source file
+        # will ever carry a phase's own marker.
+        for covered in _id_list(meta, "covers"):
+            edges.append(Edge(src=req_id, dst=covered, kind="COVERS"))
     return nodes, edges
 
 
