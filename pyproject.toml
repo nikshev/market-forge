@@ -19,6 +19,14 @@ dependencies = [
     "fastapi>=0.115",
     "uvicorn>=0.32",
     "httpx>=0.28",
+    # PRD section 7's target storage profile (REQ-STORE-001, ADR-002): Parquet as
+    # the physical format on S3-compatible object storage, DuckDB for local and
+    # CI analytics over extracts. Both are libraries; neither needs a service.
+    "pyarrow>=18.0",
+    # 1.5 is the floor because that is the version this was verified against:
+    # it has `to_arrow_table` and deprecates `fetch_arrow_table`. An earlier
+    # floor would be a guess about when the rename landed.
+    "duckdb>=1.5",
 ]
 
 [project.optional-dependencies]
@@ -62,6 +70,17 @@ markers = [
 files = ["src"]
 strict = true
 python_version = "3.12"
+
+# pyarrow and duckdb ship no type information (no py.typed marker, no stubs on
+# PyPI). Ignoring the missing imports is narrower than it looks: strict mode
+# still checks every signature in this repository that touches them, so a
+# function returning a `pa.Table` is still checked at its own boundary -- only
+# the libraries' internals are unknown. The alternative, hand-written stubs for
+# two large C++ bindings, would be a second source of truth about someone else's
+# API (REQ-STORE-001).
+[[tool.mypy.overrides]]
+module = ["pyarrow.*", "duckdb.*"]
+ignore_missing_imports = true
 
 [tool.ruff]
 line-length = 100
