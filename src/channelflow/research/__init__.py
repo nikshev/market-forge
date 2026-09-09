@@ -12,6 +12,7 @@
 # @trace: REQ-EXP-010
 # @trace: REQ-EXP-011
 # @trace: REQ-EXP-012
+# @trace: REQ-EXP-013
 """
 
 from channelflow.research.ablation import (
@@ -87,6 +88,17 @@ from channelflow.research.extremum_detectors import (
 from channelflow.research.extremum_detectors import (
     compare_detectors as compare_extremum_detectors,
 )
+from channelflow.research.gmdh_extrema import (
+    ARMS as EXTREMA_ARMS,
+)
+from channelflow.research.gmdh_extrema import (
+    ArmReport,
+    ExtremaComparison,
+    ForecastError,
+    OutcomeMissing,
+    RootMetrics,
+    compare_gmdh_extrema,
+)
 from channelflow.research.lead_lag_value import (
     DEFAULT_THRESHOLDS,
     DivergenceSignal,
@@ -122,11 +134,18 @@ __all__ = [
     "ARMS",
     "DETECTORS",
     "DEFAULT_THRESHOLDS",
+    "EXTREMA_ARMS",
     "HORIZONS",
     "METHODS",
+    "ArmReport",
     "CenteredCandidateRejected",
     "CenteredLabeller",
+    "ExtremaComparison",
+    "ForecastError",
+    "OutcomeMissing",
+    "RootMetrics",
     "TurningComparison",
+    "compare_gmdh_extrema",
     "compare_turning_methods",
     "label_turns",
     "DetectorComparison",
