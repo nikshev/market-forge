@@ -5,6 +5,7 @@
 # @trace: REQ-EXP-002
 # @trace: REQ-EXP-003
 # @trace: REQ-EXP-004
+# @trace: REQ-EXP-005
 """
 
 from channelflow.research.ablation import (
@@ -50,11 +51,29 @@ from channelflow.research.ofi_incremental import (
     available_from_registry,
     run_ofi_ablation,
 )
+from channelflow.research.volume_confluence import (
+    Confluence,
+    ConfluenceResult,
+    Observation,
+    Population,
+    PopulationTooSmall,
+    Verdict,
+    classify,
+    confluence_study,
+)
 
 __all__ = [
     "ARMS",
     "DETECTORS",
+    "Confluence",
+    "ConfluenceResult",
     "Increment",
+    "Observation",
+    "Population",
+    "PopulationTooSmall",
+    "Verdict",
+    "classify",
+    "confluence_study",
     "IncrementalReport",
     "available_from_registry",
     "run_ofi_ablation",
