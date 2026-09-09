@@ -214,8 +214,16 @@ class Table:
         for row in rows:
             digest.update(self.schema.encode_row(dict(row)))
 
+        # A decimal column is stored as its exact string form, so the conversion
+        # happens here rather than in the caller: a table that took strings would
+        # push the round trip onto every producer, and one of them would store a
+        # float by accident.
         columns = {
-            column.name: [row[column.name] for row in rows] for column in self.schema.columns
+            column.name: [
+                str(row[column.name]) if column.type == "decimal" else row[column.name]
+                for row in rows
+            ]
+            for column in self.schema.columns
         }
         table = pa.table(columns, schema=self.schema.arrow())
         buffer = io.BytesIO()
