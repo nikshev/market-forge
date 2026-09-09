@@ -1,6 +1,7 @@
 """PRD section 13A.11's forward-path derivative experiment, end to end.
 
 # @trace: REQ-WP-019
+# @trace: REQ-US-007
 
     "GMDH predicts a smooth forward conditional price path or return path over
      bounded horizon h in [0, H]."
@@ -30,7 +31,7 @@ from enum import StrEnum
 
 import numpy as np
 
-from channelflow.dataset import Fold, Row
+from channelflow.dataset import CertifiedDataset, Row
 from channelflow.models import (
     ComparisonReport,
     GMDHNetwork,
@@ -93,7 +94,7 @@ class ExperimentOutcome:
 
 
 def run_derivative_experiment(
-    folds: list[Fold],
+    dataset: CertifiedDataset,
     *,
     feature_names: tuple[str, ...],
     path_targets: Mapping[int, PathCoefficients],
@@ -102,7 +103,11 @@ def run_derivative_experiment(
     tolerance: float = DEFAULT_TOLERANCE,
     selection_fraction: float = DEFAULT_SELECTION_FRACTION,
 ) -> ExperimentOutcome:
-    """Run it, and say what happened -- including that nothing did."""
+    """Run it, and say what happened -- including that nothing did.
+
+    Takes a `CertifiedDataset` (REQ-US-007): this fits models, and a leaked
+    dataset produces an `EDGE` verdict that means nothing.
+    """
     gate = gate or PromotionGate()
     reports: list[ComparisonReport] = []
     promoted: list[RootCandidate] = []
@@ -110,7 +115,7 @@ def run_derivative_experiment(
     unscored: list[str] = []
     last_stability: RootStability | None = None
 
-    for fold in folds:
+    for fold in dataset.folds:
         x_train, y_train = design_matrix(
             list(fold.train), target=target, feature_names=feature_names
         )

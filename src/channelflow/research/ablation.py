@@ -1,6 +1,7 @@
 """An ablation across feature families (PRD section 25.6).
 
 # @trace: REQ-US-006
+# @trace: REQ-US-007
 
 REQ-US-006 names five arms: channel only; channel + order flow; channel +
 derivatives; channel + DEX; all combined. EXP-015 adds the condition that makes
@@ -25,7 +26,7 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
-from channelflow.dataset import Fold
+from channelflow.dataset import CertifiedDataset
 from channelflow.turning.direct import DirectBaselineResult, Target, run_direct_baseline
 
 #: REQ-US-006's groups, mapped onto the feature registry's own family names.
@@ -110,7 +111,7 @@ class AblationReport:
 
 
 def run_ablation(
-    folds: list[Fold],
+    dataset: CertifiedDataset,
     *,
     target: Target,
     available: Mapping[str, Sequence[str]],
@@ -118,9 +119,11 @@ def run_ablation(
 ) -> AblationReport:
     """Score every arm on one fold set.
 
-    The folds are the caller's and are used as given. Rebuilding them per arm
-    would make each arm's score depend on its own split, and the difference
-    between two arms would no longer be the families under test.
+    The folds come from the certificate and are used as given. Rebuilding them
+    per arm would make each arm's score depend on its own split, and the
+    difference between two arms would no longer be the families under test.
+
+    A `CertifiedDataset` because this fits models (REQ-US-007).
     """
     entries: list[ArmEntry] = []
     seen: dict[tuple[str, ...], str] = {}
@@ -166,14 +169,14 @@ def run_ablation(
                 features=features,
                 # The same scoring path REQ-WP-019's direct target uses. A second
                 # one here would make the arms comparable only to each other.
-                result=run_direct_baseline(folds, target=target, feature_names=features),
+                result=run_direct_baseline(dataset, target=target, feature_names=features),
             )
         )
 
     return AblationReport(
         entries=tuple(entries),
         ranking=rank_arms(entries),
-        folds=len(folds),
+        folds=len(dataset.folds),
         target=str(target),
     )
 

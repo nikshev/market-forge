@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from channelflow.dataset import Row, WalkForwardFolds
+from channelflow.dataset import Row
 from channelflow.models import REQUIRED_BASELINES, ComparisonReport, Score
 from channelflow.turning import (
     FeatureMissing,
@@ -13,24 +13,26 @@ from channelflow.turning import (
 )
 from channelflow.turning.direct import HORIZON_TARGETS, aggregate
 
+from .conftest import Certify
+
 SECOND = 1_000_000_000
 HORIZON_NS = 10 * SECOND
 
 
 @pytest.mark.trace("REQ-WP-019")
 def test_the_direct_baseline_reports_metrics_per_fold_and_in_aggregate(
-    signal_rows: list[Row],
+    signal_rows: list[Row], certified: Certify
 ) -> None:
     """SC-001, FR-001, FR-002.
 
     REQ-WP-019's fourth acceptance criterion, in its own words: "direct baseline
     metrics exist". This is the test that says they do.
     """
-    folds = WalkForwardFolds(horizon_ns=HORIZON_NS, folds=4).build(signal_rows)
+    dataset = certified(signal_rows)
 
-    result = run_direct_baseline(folds, target="MAX", feature_names=("slope", "curvature"))
+    result = run_direct_baseline(dataset, target="MAX", feature_names=("slope", "curvature"))
 
-    assert len(result.folds) == len(folds)
+    assert len(result.folds) == len(dataset.folds)
     assert all(report.rows_scored > 0 for report in result.folds)
     assert result.rows_scored == sum(report.rows_scored for report in result.folds)
     assert result.model_brier is not None
@@ -38,15 +40,15 @@ def test_the_direct_baseline_reports_metrics_per_fold_and_in_aggregate(
 
 
 @pytest.mark.trace("REQ-WP-019")
-def test_a_learnable_target_beats_the_base_rate(signal_rows: list[Row]) -> None:
+def test_a_learnable_target_beats_the_base_rate(signal_rows: list[Row], certified: Certify) -> None:
     """SC-001.
 
     The control. Without it, "does not beat the base rate" below would be
     consistent with a baseline that never beats anything.
     """
-    folds = WalkForwardFolds(horizon_ns=HORIZON_NS, folds=4).build(signal_rows)
+    dataset = certified(signal_rows)
 
-    result = run_direct_baseline(folds, target="MAX", feature_names=("slope", "curvature"))
+    result = run_direct_baseline(dataset, target="MAX", feature_names=("slope", "curvature"))
 
     assert result.beats_base_rate
     assert result.model_brier < result.base_rate_brier
@@ -54,7 +56,7 @@ def test_a_learnable_target_beats_the_base_rate(signal_rows: list[Row]) -> None:
 
 @pytest.mark.trace("REQ-WP-019")
 def test_a_signal_free_target_reports_that_it_does_not_beat_the_base_rate(
-    signal_free_rows: list[Row],
+    signal_free_rows: list[Row], certified: Certify
 ) -> None:
     """SC-002, FR-002.
 
@@ -62,16 +64,18 @@ def test_a_signal_free_target_reports_that_it_does_not_beat_the_base_rate(
     score on its own reads like a result. Against a base rate it reads like what
     it is.
     """
-    folds = WalkForwardFolds(horizon_ns=HORIZON_NS, folds=4).build(signal_free_rows)
+    dataset = certified(signal_free_rows)
 
-    result = run_direct_baseline(folds, target="MAX", feature_names=("slope", "curvature"))
+    result = run_direct_baseline(dataset, target="MAX", feature_names=("slope", "curvature"))
 
     assert not result.beats_base_rate
     assert "does not beat" in result.summary
 
 
 @pytest.mark.trace("REQ-WP-019")
-def test_a_row_missing_a_declared_feature_is_refused(signal_rows: list[Row]) -> None:
+def test_a_row_missing_a_declared_feature_is_refused(
+    signal_rows: list[Row], certified: Certify
+) -> None:
     """SC-003, FR-003.
 
     A missing feature defaulted to zero is a row that says "no momentum" when it
@@ -83,7 +87,9 @@ def test_a_row_missing_a_declared_feature_is_refused(signal_rows: list[Row]) -> 
 
 
 @pytest.mark.trace("REQ-WP-019")
-def test_the_target_is_one_of_section_23_5as_three_classes(signal_rows: list[Row]) -> None:
+def test_the_target_is_one_of_section_23_5as_three_classes(
+    signal_rows: list[Row], certified: Certify
+) -> None:
     """FR-002.
 
     Section 23.5A's Target E is `P(local_max_within_H)`, `P(local_min_within_H)`
@@ -97,7 +103,9 @@ def test_the_target_is_one_of_section_23_5as_three_classes(signal_rows: list[Row
 
 
 @pytest.mark.trace("REQ-WP-019")
-def test_the_target_column_is_the_named_class_and_nothing_else(signal_rows: list[Row]) -> None:
+def test_the_target_column_is_the_named_class_and_nothing_else(
+    signal_rows: list[Row], certified: Certify
+) -> None:
     """FR-002."""
     _, y = design_matrix(signal_rows, target="MAX", feature_names=("slope",))
 
@@ -106,7 +114,9 @@ def test_the_target_column_is_the_named_class_and_nothing_else(signal_rows: list
 
 
 @pytest.mark.trace("REQ-WP-019")
-def test_features_are_read_in_the_declared_order_not_the_dicts(signal_rows: list[Row]) -> None:
+def test_features_are_read_in_the_declared_order_not_the_dicts(
+    signal_rows: list[Row], certified: Certify
+) -> None:
     """FR-003.
 
     A design matrix whose columns follow dictionary order changes meaning when a
@@ -120,26 +130,28 @@ def test_features_are_read_in_the_declared_order_not_the_dicts(signal_rows: list
 
 
 @pytest.mark.trace("REQ-WP-019")
-def test_no_fold_is_fitted_and_scored_on_the_same_row(signal_rows: list[Row]) -> None:
+def test_no_fold_is_fitted_and_scored_on_the_same_row(
+    signal_rows: list[Row], certified: Certify
+) -> None:
     """SC-001, FR-001.
 
     `compare` refuses overlapping splits, so a baseline that fitted on its own
     validation rows would raise here rather than report a flattering number.
     Asserted directly as well, because the property is the point of the fold.
     """
-    folds = WalkForwardFolds(horizon_ns=HORIZON_NS, folds=4).build(signal_rows)
+    dataset = certified(signal_rows)
 
-    for fold in folds:
+    for fold in dataset.folds:
         train_times = {row.as_of_ns for row in fold.train}
         validate_times = {row.as_of_ns for row in fold.validate}
         assert not train_times & validate_times
 
-    run_direct_baseline(folds, target="MAX", feature_names=("slope", "curvature"))
+    run_direct_baseline(dataset, target="MAX", feature_names=("slope", "curvature"))
 
 
 @pytest.mark.trace("REQ-WP-019")
 def test_a_fold_whose_target_never_occurs_is_reported_not_scored(
-    signal_rows: list[Row],
+    signal_rows: list[Row], certified: Certify
 ) -> None:
     """FR-002.
 
@@ -147,9 +159,9 @@ def test_a_fold_whose_target_never_occurs_is_reported_not_scored(
     Recorded as an unscored fold rather than averaged into the aggregate, where
     it would raise the reported quality of a model that learned nothing.
     """
-    folds = WalkForwardFolds(horizon_ns=HORIZON_NS, folds=4).build(signal_rows)
+    dataset = certified(signal_rows)
 
-    result = run_direct_baseline(folds, target="MIN", feature_names=("slope", "curvature"))
+    result = run_direct_baseline(dataset, target="MIN", feature_names=("slope", "curvature"))
 
     assert result.folds == ()
     assert result.rows_scored == 0

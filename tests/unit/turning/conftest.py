@@ -2,9 +2,14 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
+
 import pytest
 
-from channelflow.dataset import Label, Row
+from channelflow.dataset import CertifiedDataset, Label, Row, WalkForwardFolds, certify
+
+#: What a test asks for when it needs a dataset training will accept.
+Certify = Callable[[list[Row]], CertifiedDataset]
 
 SECOND = 1_000_000_000
 HORIZON_NS = 10 * SECOND
@@ -70,3 +75,20 @@ def signal_free_rows() -> list[Row]:
             )
         )
     return rows
+
+
+@pytest.fixture
+def certified() -> Certify:
+    """Rows, folded and passed through the leakage checks.
+
+    REQ-US-007's gate: training takes a certificate, so a test that fits a model
+    builds one the same way a caller does. Certifying here rather than stubbing
+    it also means these fixtures are checked -- a fixture with a leak in it
+    would fail loudly rather than quietly train something.
+    """
+
+    def build(rows: list[Row]) -> CertifiedDataset:
+        folds = WalkForwardFolds(horizon_ns=HORIZON_NS, folds=4).build(rows)
+        return certify(rows, folds)
+
+    return build

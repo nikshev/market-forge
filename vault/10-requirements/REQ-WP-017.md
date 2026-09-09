@@ -68,6 +68,7 @@ tags: []
     - `tests/unit/dataset/test_universe.py::test_rows_outside_the_universe_are_dropped_and_counted`
 - **Code:**
     - `src/channelflow/dataset/__init__.py`
+    - `src/channelflow/dataset/certified.py`
     - `src/channelflow/dataset/folds.py`
     - `src/channelflow/dataset/join.py`
     - `src/channelflow/dataset/labels.py`
