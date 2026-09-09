@@ -14,7 +14,8 @@ not_delivered:
   - "Curve Stableswap-NG/Cryptoswap adapter: not built"
   - "Uniswap v4 PoolManager adapter and hook safety classification: not built"
   - "HyperCore CLOB adapter and HyperEVM ingestion profile: not built"
-  - "Pinot HOT datasets and Iceberg canonical tables: named in the API repositories and not provisioned"
+  - "Iceberg canonical DeFi tables: no Parquet/Iceberg plane exists; the API reads from an in-memory repository (ADR-019)"
+  - "Pinot HOT DeFi datasets: deferred by ADR-002 until a HOT serving requirement exists, not missing by oversight"
   - "UI liquidity/depth overlay: the web app has no DEX overlay"
 ---
 
@@ -83,7 +84,7 @@ Acceptance:
 
 Which requirements deliver this phase, and what nothing delivers. The
 `covers:` and `not_delivered:` frontmatter carries the same two lists, and
-`tests/unit/trace/test_phase_coverage.py` checks that every covering
+`tests/tools/trace/test_phase_coverage.py` checks that every covering
 requirement exists and has reached `implemented`.
 
 **Delivered by:**
@@ -100,7 +101,8 @@ requirement exists and has reached `implemented`.
 - Curve Stableswap-NG/Cryptoswap adapter: not built
 - Uniswap v4 PoolManager adapter and hook safety classification: not built
 - HyperCore CLOB adapter and HyperEVM ingestion profile: not built
-- Pinot HOT datasets and Iceberg canonical tables: named in the API repositories and not provisioned
+- Iceberg canonical DeFi tables: no Parquet/Iceberg plane exists; the API reads from an in-memory repository ([[ADR-019]])
+- Pinot HOT DeFi datasets: deferred by [[ADR-002]] until a HOT serving requirement exists, not missing by oversight
 - UI liquidity/depth overlay: the web app has no DEX overlay
 
 This phase is `planned` rather than `implemented` because that list is not
