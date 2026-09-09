@@ -80,6 +80,64 @@ class _PredictionSource:
 
 
 @dataclass(frozen=True)
+class RowReading:
+    """One validation row's derivative reading, before anything is concluded."""
+
+    path: PathCoefficients
+    stability: RootStability
+    #: The experiment's own confidence in the promoted root: the share of
+    #: perturbed members that still found it. Zero when nothing was promoted.
+    probability: float
+    promoted: tuple[RootCandidate, ...]
+    rejected: tuple[PromotionDecision, ...]
+
+
+@dataclass(frozen=True)
+class FoldReading:
+    """One fold's matrices and its per-row readings, kept together.
+
+    The matrices travel with the readings because every consumer needs both and
+    rebuilding them separately is how the two drift apart: a design matrix built
+    twice from the same rows is only the same matrix while both call sites agree
+    on the feature order.
+    """
+
+    index: int
+    x_train: np.ndarray
+    y_train: np.ndarray
+    x_validate: np.ndarray
+    y_validate: np.ndarray
+    rows: tuple[RowReading, ...]
+
+    @property
+    def probabilities(self) -> np.ndarray:
+        return np.array([row.probability for row in self.rows], dtype=np.float64)
+
+
+@dataclass(frozen=True)
+class DerivativeReadings:
+    """Every fold that could be read, and why the rest could not."""
+
+    folds: tuple[FoldReading, ...]
+    unscored: tuple[str, ...]
+
+    @property
+    def promoted(self) -> tuple[RootCandidate, ...]:
+        return tuple(c for fold in self.folds for row in fold.rows for c in row.promoted)
+
+    @property
+    def rejected(self) -> tuple[PromotionDecision, ...]:
+        return tuple(d for fold in self.folds for row in fold.rows for d in row.rejected)
+
+    @property
+    def last_stability(self) -> RootStability | None:
+        for fold in reversed(self.folds):
+            if fold.rows:
+                return fold.rows[-1].stability
+        return None
+
+
+@dataclass(frozen=True)
 class ExperimentOutcome:
     """A verdict, and everything needed to disagree with it."""
 
@@ -93,7 +151,7 @@ class ExperimentOutcome:
     unscored: tuple[str, ...] = field(default=())
 
 
-def run_derivative_experiment(
+def read_derivative_folds(
     dataset: CertifiedDataset,
     *,
     feature_names: tuple[str, ...],
@@ -102,18 +160,19 @@ def run_derivative_experiment(
     gate: PromotionGate | None = None,
     tolerance: float = DEFAULT_TOLERANCE,
     selection_fraction: float = DEFAULT_SELECTION_FRACTION,
-) -> ExperimentOutcome:
-    """Run it, and say what happened -- including that nothing did.
+) -> DerivativeReadings:
+    """Fit the coefficient networks fold by fold and read every validation row.
 
-    Takes a `CertifiedDataset` (REQ-US-007): this fits models, and a leaked
-    dataset produces an `EDGE` verdict that means nothing.
+    Separated from the verdict on purpose. What a forward path says about a row
+    is one thing; whether the paths taken together are worth anything is
+    another, and EXP-013 asks the second question of four arms at once. A second
+    copy of this loop would be a second set of promotion rules that only looked
+    like the first.
     """
     gate = gate or PromotionGate()
-    reports: list[ComparisonReport] = []
-    promoted: list[RootCandidate] = []
-    rejected: list[PromotionDecision] = []
+    wanted = wanted_turn_type(target)
+    folds: list[FoldReading] = []
     unscored: list[str] = []
-    last_stability: RootStability | None = None
 
     for fold in dataset.folds:
         x_train, y_train = design_matrix(
@@ -149,34 +208,96 @@ def run_derivative_experiment(
             continue
 
         horizon = _horizon(list(fold.train), path_targets)
-        predictions = []
-        for index in range(len(fold.validate)):
-            path = _predicted_path(models, x_validate[index : index + 1], horizon)
-            stability = assess_root_stability(path, tolerance=tolerance)
-            last_stability = stability
-            probability = 0.0
-            for candidate in derivative_roots(path):
-                decision = gate.assess(candidate, stability)
-                if decision.promoted and candidate.turn_type is _wanted(target):
-                    promoted.append(candidate)
-                    # The presence rate is the experiment's own confidence: the
-                    # share of perturbed members that still found this root. A
-                    # promoted root nothing else agreed on predicts weakly,
-                    # which is the honest reading.
-                    probability = max(probability, stability.presence_rate)
-                elif not decision.promoted:
-                    rejected.append(decision)
-            predictions.append(probability)
+        rows = tuple(
+            _read_row(models, x_validate[index : index + 1], horizon, gate, tolerance, wanted)
+            for index in range(len(fold.validate))
+        )
+        folds.append(
+            FoldReading(
+                index=fold.index,
+                x_train=x_train,
+                y_train=y_train,
+                x_validate=x_validate,
+                y_validate=y_validate,
+                rows=rows,
+            )
+        )
 
+    return DerivativeReadings(folds=tuple(folds), unscored=tuple(unscored))
+
+
+def _read_row(
+    models: Mapping[str, GMDHNetwork | float],
+    x_row: np.ndarray,
+    horizon: float,
+    gate: PromotionGate,
+    tolerance: float,
+    wanted: TurnType | None,
+) -> RowReading:
+    path = _predicted_path(models, x_row, horizon)
+    stability = assess_root_stability(path, tolerance=tolerance)
+    probability = 0.0
+    promoted: list[RootCandidate] = []
+    rejected: list[PromotionDecision] = []
+    for candidate in derivative_roots(path):
+        decision = gate.assess(candidate, stability)
+        if decision.promoted and candidate.turn_type is wanted:
+            promoted.append(candidate)
+            # The presence rate is the experiment's own confidence: the share of
+            # perturbed members that still found this root. A promoted root
+            # nothing else agreed on predicts weakly, which is the honest
+            # reading.
+            probability = max(probability, stability.presence_rate)
+        elif not decision.promoted:
+            rejected.append(decision)
+    return RowReading(
+        path=path,
+        stability=stability,
+        probability=probability,
+        promoted=tuple(promoted),
+        rejected=tuple(rejected),
+    )
+
+
+def run_derivative_experiment(
+    dataset: CertifiedDataset,
+    *,
+    feature_names: tuple[str, ...],
+    path_targets: Mapping[int, PathCoefficients],
+    target: Target,
+    gate: PromotionGate | None = None,
+    tolerance: float = DEFAULT_TOLERANCE,
+    selection_fraction: float = DEFAULT_SELECTION_FRACTION,
+) -> ExperimentOutcome:
+    """Run it, and say what happened -- including that nothing did.
+
+    Takes a `CertifiedDataset` (REQ-US-007): this fits models, and a leaked
+    dataset produces an `EDGE` verdict that means nothing.
+    """
+    readings = read_derivative_folds(
+        dataset,
+        feature_names=feature_names,
+        path_targets=path_targets,
+        target=target,
+        gate=gate,
+        tolerance=tolerance,
+        selection_fraction=selection_fraction,
+    )
+    promoted = readings.promoted
+    rejected = readings.rejected
+    unscored = list(readings.unscored)
+    reports: list[ComparisonReport] = []
+
+    for fold in readings.folds:
         try:
             reports.append(
                 compare(
                     _PredictionSource(),
-                    x_fit=x_train,
-                    y_fit=y_train,
-                    x_score=x_validate,
-                    y_score=y_validate,
-                    model_predictions=np.array(predictions, dtype=np.float64),
+                    x_fit=fold.x_train,
+                    y_fit=fold.y_train,
+                    x_score=fold.x_validate,
+                    y_score=fold.y_validate,
+                    model_predictions=fold.probabilities,
                 )
             )
         except SplitOverlap as exc:
@@ -186,9 +307,9 @@ def run_derivative_experiment(
         return ExperimentOutcome(
             verdict=Verdict.NO_EDGE,
             reason=f"no fold could be scored: {'; '.join(unscored) or 'no folds were given'}",
-            stability=last_stability,
-            promoted=tuple(promoted),
-            rejected=tuple(rejected),
+            stability=readings.last_stability,
+            promoted=promoted,
+            rejected=rejected,
             unscored=tuple(unscored),
         )
 
@@ -210,14 +331,14 @@ def run_derivative_experiment(
         verdict=Verdict.EDGE if promoted and result.beats_base_rate else Verdict.NO_EDGE,
         reason=reason,
         report=result,
-        stability=last_stability,
-        promoted=tuple(promoted),
-        rejected=tuple(rejected),
+        stability=readings.last_stability,
+        promoted=promoted,
+        rejected=rejected,
         unscored=tuple(unscored),
     )
 
 
-def _wanted(target: Target) -> TurnType | None:
+def wanted_turn_type(target: Target) -> TurnType | None:
     """Which turn type this target is about. `NO_TURN` is about neither."""
     if target == "MAX":
         return TurnType.MAX
