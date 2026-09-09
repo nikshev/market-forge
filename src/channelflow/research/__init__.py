@@ -2,6 +2,7 @@
 
 # @trace: REQ-US-006
 # @trace: REQ-EXP-001
+# @trace: REQ-EXP-002
 """
 
 from channelflow.research.ablation import (
@@ -21,10 +22,28 @@ from channelflow.research.channel_comparison import (
     SeriesTooShort,
     compare_channel_models,
 )
+from channelflow.research.lookback_sensitivity import (
+    LOOKBACKS,
+    Plateau,
+    Recommendation,
+    SweepEntry,
+    SweepReport,
+    find_plateau,
+    recommend,
+    sweep_lookbacks,
+)
 
 __all__ = [
     "ARMS",
+    "LOOKBACKS",
     "MODELS",
+    "Plateau",
+    "Recommendation",
+    "SweepEntry",
+    "SweepReport",
+    "find_plateau",
+    "recommend",
+    "sweep_lookbacks",
     "ChannelComparisonReport",
     "ModelEntry",
     "SeriesTooShort",
