@@ -6,6 +6,7 @@
 # @trace: REQ-EXP-003
 # @trace: REQ-EXP-004
 # @trace: REQ-EXP-005
+# @trace: REQ-EXP-006
 """
 
 from channelflow.research.ablation import (
@@ -24,6 +25,13 @@ from channelflow.research.channel_comparison import (
     ModelEntry,
     SeriesTooShort,
     compare_channel_models,
+)
+from channelflow.research.derivatives_context import (
+    VARIABLES,
+    Bucket,
+    ConditionalReport,
+    VariableConditional,
+    conditional_study,
 )
 from channelflow.research.detector_comparison import (
     DETECTORS,
@@ -65,7 +73,12 @@ from channelflow.research.volume_confluence import (
 __all__ = [
     "ARMS",
     "DETECTORS",
+    "VARIABLES",
+    "Bucket",
+    "ConditionalReport",
     "Confluence",
+    "VariableConditional",
+    "conditional_study",
     "ConfluenceResult",
     "Increment",
     "Observation",
