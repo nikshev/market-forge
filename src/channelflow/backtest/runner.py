@@ -28,7 +28,7 @@ from dataclasses import dataclass, field
 from channelflow.backtest.families import SetupFamily
 from channelflow.backtest.report import BacktestReport
 from channelflow.bars import Bar
-from channelflow.channels import ChannelFitError, RollingOLSChannel
+from channelflow.channels import ChannelFitError, ChannelModel, RollingOLSChannel
 from channelflow.signals import TERMINAL, CandidateState, SignalMachine, Transition
 
 
@@ -36,7 +36,10 @@ from channelflow.signals import TERMINAL, CandidateState, SignalMachine, Transit
 class BacktestRunner:
     """One pass over one bar series under one configuration."""
 
-    channel: RollingOLSChannel = field(default_factory=RollingOLSChannel)
+    #: Any of REQ-CHAN-001's baselines, not only A. REQ-EXP-001 runs five of
+    #: them through this runner, and a concrete type here would mean the
+    #: comparison needed its own.
+    channel: ChannelModel = field(default_factory=RollingOLSChannel)
     machine: SignalMachine = field(default_factory=SignalMachine)
     #: When given, the run is of this family alone (REQ-US-005): the machine is
     #: built from it and opens nothing else. `None` leaves the runner exactly as
@@ -130,8 +133,15 @@ class BacktestRunner:
             **family,
             "channel_model": self.channel.__class__.__name__,
             "channel_lookback": str(self.channel.lookback),
-            "quantile_low": str(self.channel.quantile_low),
-            "quantile_high": str(self.channel.quantile_high),
+            # Whatever else the model is configured by. Reading named fields
+            # would tie this report to baseline A's parameters, and a run with
+            # REQ-CHAN-001's Kalman filter would report a channel it did not
+            # use -- two runs whose difference cannot be attributed.
+            **{
+                f"channel_{name}": str(value)
+                for name, value in sorted(vars(self.channel).items())
+                if name != "lookback" and not name.startswith("_")
+            },
             "zone_upper": str(machine.zone_upper),
             "zone_lower": str(machine.zone_lower),
             "zone_middle": str(machine.zone_middle),

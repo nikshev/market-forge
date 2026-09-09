@@ -5,7 +5,11 @@
 
 from __future__ import annotations
 
+from typing import Protocol
+
 from pydantic import BaseModel, ConfigDict, Field
+
+from channelflow.bars import Bar
 
 
 class ChannelQuality(BaseModel):
@@ -70,3 +74,21 @@ class ChannelSnapshot(BaseModel):
                 f"({self.source_max_event_time_ns}) is after as_of_ns ({self.as_of_ns}); "
                 "this channel would have seen the future"
             )
+
+
+class ChannelModel(Protocol):
+    """What every channel baseline can do (REQ-EXP-001).
+
+    The comparison in REQ-EXP-001 runs five of these side by side, and the
+    backtest runner takes one. Naming the shape rather than one class is what
+    lets either accept a model it has never heard of -- and what stops the
+    runner's type from quietly meaning "baseline A".
+    """
+
+    # A read-only property rather than a variable: every baseline is a frozen
+    # dataclass, and a protocol asking for a settable attribute would exclude
+    # all of them.
+    @property
+    def lookback(self) -> int: ...
+
+    def fit(self, bars: list[Bar], *, as_of_ns: int) -> ChannelSnapshot: ...

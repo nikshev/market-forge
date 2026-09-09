@@ -1,6 +1,7 @@
 """Baseline A: rolling OLS on log price (PRD section 13.2).
 
 # @trace: REQ-WP-006
+# @trace: REQ-EXP-001
 
 The filtering comes before the fitting, deliberately. PRD section 13.1 states
 the invariant `source_max_event_time <= as_of`, section 2.1 calls repainting the
@@ -23,6 +24,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
+from typing import Literal
 
 import numpy as np
 
@@ -32,6 +34,10 @@ from channelflow.channels.quality import score_channel
 from channelflow.channels.window import fit_window
 
 MODEL_NAME = "rolling_ols_log_price"
+#: PRD section 13.2's first width option, which REQ-EXP-001 compares against the
+#: preferred one. Its own name, so a comparison does not compare a model with
+#: itself under two labels.
+STD_MODEL_NAME = "rolling_ols_std_bands"
 MODEL_VERSION = "1.0.0"
 
 #: Residual spread below which there is no measurable noise, so a
@@ -47,6 +53,14 @@ class RollingOLSChannel:
     quantile_low: float = 0.10
     quantile_high: float = 0.90
     weights: dict[str, float] | None = None
+    #: PRD section 13.2 lists three width options and calls empirical residual
+    #: quantiles "preferred", which is why that is the default. `std` places the
+    #: bands at `band_sigmas` residual standard deviations instead -- symmetric
+    #: by construction, and the section's first option.
+    bands: Literal["residual_quantiles", "std"] = "residual_quantiles"
+    #: Only read when `bands` is `std`. The normal 90th percentile, so the two
+    #: width options target the same coverage.
+    band_sigmas: float = 1.2816
 
     def fit(self, bars: list[Bar], *, as_of_ns: int) -> ChannelSnapshot:
         window = self._window(bars, as_of_ns=as_of_ns)
@@ -59,8 +73,12 @@ class RollingOLSChannel:
         fitted = intercept + slope * index
         residuals = log_prices - fitted
 
-        low_q = float(np.quantile(residuals, self.quantile_low))
-        high_q = float(np.quantile(residuals, self.quantile_high))
+        if self.bands == "std":
+            spread = self.band_sigmas * float(np.std(residuals))
+            low_q, high_q = -spread, spread
+        else:
+            low_q = float(np.quantile(residuals, self.quantile_low))
+            high_q = float(np.quantile(residuals, self.quantile_high))
 
         center_log_now = float(fitted[-1])
         center_now = math.exp(center_log_now)
@@ -82,7 +100,7 @@ class RollingOLSChannel:
 
         return ChannelSnapshot(
             as_of_ns=as_of_ns,
-            model_name=MODEL_NAME,
+            model_name=MODEL_NAME if self.bands == "residual_quantiles" else STD_MODEL_NAME,
             model_version=MODEL_VERSION,
             lookback=self.lookback,
             center_now=center_now,
