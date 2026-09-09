@@ -166,3 +166,20 @@ class StopPolicyOutcome:
     reached_target_after_stop: bool
     stop_updates: int
     reason_counts: dict[str, int]
+    #: The excursion the position actually saw, in R, over the points observed
+    #: before it exited. Section 25.5 asks for both; the replay is the only
+    #: place that has the path and the position side together, so computing
+    #: them anywhere else means re-deriving the side convention.
+    mfe_r: float | None = None
+    mae_r: float | None = None
+    #: When the stop fired, and how long the position was held. `None` when it
+    #: never fired -- a holding time of zero would read as an instant exit.
+    exit_at_ns: int | None = None
+    holding_ns: int | None = None
+    #: Distance from the market to the stop at each decision instant, in R.
+    #: Section 44A's median and 95th-percentile stop distance are quantiles of
+    #: this, and a quantile of a summary is not a quantile.
+    stop_distances_r: tuple[float, ...] = ()
+    #: How many decision instants were observed before the exit. A rate over
+    #: the whole path would count instants that never happened.
+    points_observed: int = 0

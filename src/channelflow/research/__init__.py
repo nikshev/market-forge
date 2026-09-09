@@ -16,6 +16,7 @@
 # @trace: REQ-EXP-014
 # @trace: REQ-EXP-015
 # @trace: REQ-EXP-016
+# @trace: REQ-EXP-017
 """
 
 from channelflow.research.ablation import (
@@ -158,6 +159,23 @@ from channelflow.research.ofi_incremental import (
     available_from_registry,
     run_ofi_ablation,
 )
+from channelflow.research.stop_policies import (
+    ABLATIONS,
+    METRICS,
+    POLICIES,
+    Ablation,
+    Capabilities,
+    DifferentEntries,
+    DuplicateEntry,
+    Entry,
+    PathPoint,
+    PolicyMetrics,
+    StopComparison,
+    UnknownCapability,
+    compare_stop_policies,
+    require_same_entries,
+    visible_path,
+)
 from channelflow.research.volume_confluence import (
     Confluence,
     ConfluenceResult,
@@ -177,13 +195,21 @@ __all__ = [
     "CANDIDATE_FAMILIES",
     "EXTREMA_ARMS",
     "HORIZONS",
+    "ABLATIONS",
+    "METRICS",
+    "POLICIES",
     "RULES",
     "SIGNALS",
     "METHODS",
+    "Ablation",
     "ArmReport",
+    "Capabilities",
     "ConfluenceReport",
     "Contemporaneous",
+    "DifferentEntries",
     "DifferentFolds",
+    "DuplicateEntry",
+    "Entry",
     "CenteredCandidateRejected",
     "CenteredLabeller",
     "ExhaustionStudy",
@@ -192,8 +218,12 @@ __all__ = [
     "HigherFrame",
     "MultiScaleReport",
     "OutOfOrder",
+    "PathPoint",
+    "PolicyMetrics",
+    "StopComparison",
     "RuleResult",
     "SetEconomics",
+    "UnknownCapability",
     "UnknownRule",
     "InstrumentsMissing",
     "NotStrict",
@@ -209,13 +239,16 @@ __all__ = [
     "compare_gmdh_extrema",
     "compare_turning_methods",
     "available_frame",
+    "compare_stop_policies",
     "evaluate_nesting",
+    "require_same_entries",
     "require_same_folds",
     "run_confluence_ablation",
     "strict_arms",
     "strictness_violations",
     "study_exhaustion",
     "trailing_calls",
+    "visible_path",
     "label_turns",
     "DetectorComparison",
     "RegimeRate",
