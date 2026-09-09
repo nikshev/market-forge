@@ -79,22 +79,30 @@ write only past it.
 <!-- trace:begin -->
 - **Specs:** [[SPEC-056-replay-recorder]]
 - **Tests:**
+    - `tests/unit/pipeline/test_replay.py::test_a_continued_series_writes_only_what_is_new`
+    - `tests/unit/pipeline/test_replay.py::test_a_recording_does_not_name_a_table_another_series_filled`
     - `tests/unit/pipeline/test_replay.py::test_a_recording_is_a_value_and_carries_its_counts`
     - `tests/unit/pipeline/test_replay.py::test_a_replay_does_not_rewrite_its_own_input`
     - `tests/unit/pipeline/test_replay.py::test_a_replay_that_produced_nothing_names_nothing`
     - `tests/unit/pipeline/test_replay.py::test_a_replay_writes_the_snapshots_it_fitted`
+    - `tests/unit/pipeline/test_replay.py::test_a_run_that_skipped_everything_still_names_its_dataset`
+    - `tests/unit/pipeline/test_replay.py::test_a_second_pass_over_the_same_trades_writes_no_bars`
+    - `tests/unit/pipeline/test_replay.py::test_a_second_replay_over_the_same_bars_writes_nothing`
     - `tests/unit/pipeline/test_replay.py::test_a_signal_is_written_once_in_its_final_state`
+    - `tests/unit/pipeline/test_replay.py::test_a_watermark_for_an_unseen_series_is_absent_not_zero`
     - `tests/unit/pipeline/test_replay.py::test_a_window_still_open_at_the_end_is_not_written`
+    - `tests/unit/pipeline/test_replay.py::test_one_symbol_s_history_does_not_hold_back_another`
     - `tests/unit/pipeline/test_replay.py::test_the_api_serves_what_a_replay_recorded`
     - `tests/unit/pipeline/test_replay.py::test_the_caller_s_runner_comes_back_without_sinks`
     - `tests/unit/pipeline/test_replay.py::test_the_observers_do_not_change_what_the_run_reports`
     - `tests/unit/pipeline/test_replay.py::test_the_recording_names_only_the_tables_it_wrote`
     - `tests/unit/pipeline/test_replay.py::test_trades_become_bars_in_the_table`
+    - `tests/unit/pipeline/test_replay.py::test_trades_from_two_series_are_refused`
     - `tests/unit/pipeline/test_replay.py::test_two_replays_of_one_series_write_the_same_dataset`
 - **Code:**
     - `src/channelflow/pipeline/__init__.py`
     - `src/channelflow/pipeline/replay.py`
-- **Outcomes:** [[OUT-2026-09-09-implement-replay-recorder]], [[OUT-2026-09-09-plan-replay-recorder]], [[OUT-2026-09-09-requirement-replay-recorder]], [[OUT-2026-09-09-spec-replay-recorder]]
+- **Outcomes:** [[OUT-2026-09-09-fix-replay-idempotence]], [[OUT-2026-09-09-implement-replay-recorder]], [[OUT-2026-09-09-plan-replay-recorder]], [[OUT-2026-09-09-requirement-replay-recorder]], [[OUT-2026-09-09-spec-replay-recorder]]
 <!-- trace:end -->
 
 ## Notes
