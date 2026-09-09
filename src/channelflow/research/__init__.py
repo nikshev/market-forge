@@ -15,6 +15,7 @@
 # @trace: REQ-EXP-013
 # @trace: REQ-EXP-014
 # @trace: REQ-EXP-015
+# @trace: REQ-EXP-016
 """
 
 from channelflow.research.ablation import (
@@ -142,6 +143,17 @@ from channelflow.research.lookback_sensitivity import (
     recommend,
     sweep_lookbacks,
 )
+from channelflow.research.multi_scale import (
+    RULES,
+    HigherFrame,
+    MultiScaleReport,
+    OutOfOrder,
+    RuleResult,
+    SetEconomics,
+    UnknownRule,
+    available_frame,
+    evaluate_nesting,
+)
 from channelflow.research.ofi_incremental import (
     available_from_registry,
     run_ofi_ablation,
@@ -165,6 +177,7 @@ __all__ = [
     "CANDIDATE_FAMILIES",
     "EXTREMA_ARMS",
     "HORIZONS",
+    "RULES",
     "SIGNALS",
     "METHODS",
     "ArmReport",
@@ -176,6 +189,12 @@ __all__ = [
     "ExhaustionStudy",
     "FamilyValue",
     "FoldFingerprint",
+    "HigherFrame",
+    "MultiScaleReport",
+    "OutOfOrder",
+    "RuleResult",
+    "SetEconomics",
+    "UnknownRule",
     "InstrumentsMissing",
     "NotStrict",
     "ExtremaComparison",
@@ -189,6 +208,8 @@ __all__ = [
     "TurningComparison",
     "compare_gmdh_extrema",
     "compare_turning_methods",
+    "available_frame",
+    "evaluate_nesting",
     "require_same_folds",
     "run_confluence_ablation",
     "strict_arms",
