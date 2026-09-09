@@ -219,10 +219,7 @@ class Table:
         # push the round trip onto every producer, and one of them would store a
         # float by accident.
         columns = {
-            column.name: [
-                str(row[column.name]) if column.type == "decimal" else row[column.name]
-                for row in rows
-            ]
+            column.name: [_for_arrow(column.type, row[column.name]) for row in rows]
             for column in self.schema.columns
         }
         table = pa.table(columns, schema=self.schema.arrow())
@@ -261,3 +258,19 @@ class Table:
                 "question in a way the caller could not detect"
             )
         return table.filter(pc.less_equal(table[column], pa.scalar(as_of_ns, pa.int64())))
+
+
+def _for_arrow(column_type: str, value: object) -> object:
+    """One value in the shape Arrow wants for its column type.
+
+    Decimals become their exact text and maps become pair lists, here rather
+    than in the caller: a table that took the storage shapes would push the
+    conversion onto every producer, and one of them would store a float by
+    accident.
+    """
+    if column_type == "decimal":
+        return str(value)
+    if column_type == "float_map":
+        assert isinstance(value, Mapping)
+        return [(key, value[key]) for key in sorted(value)]
+    return value

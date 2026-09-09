@@ -274,3 +274,58 @@ def test_the_tenth_commit_does_not_reorder_the_chain(trades: Table) -> None:
     current = trades.current()
     assert current is not None and current.snapshot_id == 11
     assert trades.read().num_rows == 11
+
+
+@pytest.mark.trace("REQ-STORE-001")
+def test_container_columns_survive_the_round_trip(store: InMemoryObjectStore) -> None:
+    """PRD §29.6 asks a channel snapshot for forecast arrays and quality
+    components by name, so the plane has to carry both without a child table."""
+    from channelflow.lakehouse import Column, Schema
+
+    schema = Schema(
+        columns=(
+            Column(name="event_time_ns", type="timestamp_ns"),
+            Column(name="horizons", type="float_list"),
+            Column(name="contributing", type="string_list"),
+            Column(name="submetrics", type="float_map"),
+        ),
+        event_time_column="event_time_ns",
+    )
+    table = Table(name="channel_snapshots", schema=schema, store=store)
+    table.append(
+        [
+            {
+                "event_time_ns": 1,
+                "horizons": [1.5, 2.5],
+                "contributing": ["fit", "width"],
+                "submetrics": {"fit": 0.9, "age": 0.1},
+            }
+        ]
+    )
+
+    row = table.read().to_pylist()[0]
+    assert row["horizons"] == [1.5, 2.5]
+    assert row["contributing"] == ["fit", "width"]
+    assert dict(row["submetrics"]) == {"age": 0.1, "fit": 0.9}
+
+
+@pytest.mark.trace("REQ-STORE-001")
+def test_an_empty_container_is_stored_as_empty_and_not_as_absent(
+    store: InMemoryObjectStore,
+) -> None:
+    """Baseline A produces no forecast horizons at all, and PRD §13.7's note
+    says fabricating a plausible list would be worse than an honest absence. An
+    empty list has to come back empty rather than as null."""
+    from channelflow.lakehouse import Column, Schema
+
+    schema = Schema(
+        columns=(
+            Column(name="event_time_ns", type="timestamp_ns"),
+            Column(name="horizons", type="float_list"),
+        ),
+        event_time_column="event_time_ns",
+    )
+    table = Table(name="t", schema=schema, store=store)
+    table.append([{"event_time_ns": 1, "horizons": []}])
+
+    assert table.read().to_pylist()[0]["horizons"] == []

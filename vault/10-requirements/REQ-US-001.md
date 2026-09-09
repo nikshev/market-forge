@@ -23,12 +23,18 @@ As a user, I want to see a list of markets, sorted by setup score, so that I can
 <!-- trace:begin -->
 - **Specs:** [[SPEC-026-scored-markets]]
 - **Tests:**
-    - `tests/unit/api/test_scored_markets.py::test_a_filtered_list_is_still_ordered`
-    - `tests/unit/api/test_scored_markets.py::test_a_market_carries_the_confidence_beside_its_score`
-    - `tests/unit/api/test_scored_markets.py::test_an_unscored_market_sorts_last_with_null_scores`
-    - `tests/unit/api/test_scored_markets.py::test_the_market_list_is_ordered_by_rank_score`
-    - `tests/unit/api/test_scored_markets.py::test_the_order_is_the_same_twice`
-    - `tests/unit/api/test_scored_markets.py::test_the_unscored_tail_is_ordered_by_name`
+    - `tests/unit/api/test_scored_markets.py::test_a_filtered_list_is_still_ordered[in_memory]`
+    - `tests/unit/api/test_scored_markets.py::test_a_filtered_list_is_still_ordered[lakehouse]`
+    - `tests/unit/api/test_scored_markets.py::test_a_market_carries_the_confidence_beside_its_score[in_memory]`
+    - `tests/unit/api/test_scored_markets.py::test_a_market_carries_the_confidence_beside_its_score[lakehouse]`
+    - `tests/unit/api/test_scored_markets.py::test_an_unscored_market_sorts_last_with_null_scores[in_memory]`
+    - `tests/unit/api/test_scored_markets.py::test_an_unscored_market_sorts_last_with_null_scores[lakehouse]`
+    - `tests/unit/api/test_scored_markets.py::test_the_market_list_is_ordered_by_rank_score[in_memory]`
+    - `tests/unit/api/test_scored_markets.py::test_the_market_list_is_ordered_by_rank_score[lakehouse]`
+    - `tests/unit/api/test_scored_markets.py::test_the_order_is_the_same_twice[in_memory]`
+    - `tests/unit/api/test_scored_markets.py::test_the_order_is_the_same_twice[lakehouse]`
+    - `tests/unit/api/test_scored_markets.py::test_the_unscored_tail_is_ordered_by_name[in_memory]`
+    - `tests/unit/api/test_scored_markets.py::test_the_unscored_tail_is_ordered_by_name[lakehouse]`
 - **Code:**
     - `src/channelflow/api/ranking.py`
     - `src/channelflow/api/repositories.py`

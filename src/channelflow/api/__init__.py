@@ -5,6 +5,7 @@
 
 from channelflow.api.app import create_app
 from channelflow.api.channels import AS_SEEN_THEN, CURRENT_REFIT, ChannelUnavailable, channel_at
+from channelflow.api.lakehouse_repository import LakehouseRepository
 from channelflow.api.repositories import (
     FeaturePoint,
     InMemoryRepository,
@@ -15,6 +16,7 @@ from channelflow.api.repositories import (
 from channelflow.api.ws import CHANNELS, Hub, SubscribeError, Subscription, parse_subscribe
 
 __all__ = [
+    "LakehouseRepository",
     "AS_SEEN_THEN",
     "CHANNELS",
     "CURRENT_REFIT",

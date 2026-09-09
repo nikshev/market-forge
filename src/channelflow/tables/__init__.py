@@ -12,6 +12,7 @@ One table so far. The other sixteen §29.B names arrive with the subsystems that
 produce them, each with its own requirement.
 """
 
+from channelflow.tables import bars, channels, features, signals
 from channelflow.tables.bars import (
     ORDER,
     SCHEMA,
@@ -27,6 +28,10 @@ from channelflow.tables.bars import (
 
 __all__ = [
     "ORDER",
+    "bars",
+    "channels",
+    "features",
+    "signals",
     "SCHEMA",
     "TABLE_NAME",
     "BarSink",
