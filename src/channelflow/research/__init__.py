@@ -11,6 +11,7 @@
 # @trace: REQ-EXP-009
 # @trace: REQ-EXP-010
 # @trace: REQ-EXP-011
+# @trace: REQ-EXP-012
 """
 
 from channelflow.research.ablation import (
@@ -47,6 +48,14 @@ from channelflow.research.cumulative import (
     increments_of,
     resolve_membership,
     run_cumulative_ablation,
+)
+from channelflow.research.derivative_turning import (
+    HORIZONS,
+    CenteredCandidateRejected,
+    CenteredLabeller,
+    TurningComparison,
+    compare_turning_methods,
+    label_turns,
 )
 from channelflow.research.derivatives_context import (
     VARIABLES,
@@ -113,7 +122,13 @@ __all__ = [
     "ARMS",
     "DETECTORS",
     "DEFAULT_THRESHOLDS",
+    "HORIZONS",
     "METHODS",
+    "CenteredCandidateRejected",
+    "CenteredLabeller",
+    "TurningComparison",
+    "compare_turning_methods",
+    "label_turns",
     "DetectorComparison",
     "RegimeRate",
     "compare_extremum_detectors",
