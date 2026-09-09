@@ -9,6 +9,7 @@
 # @trace: REQ-EXP-006
 # @trace: REQ-EXP-007
 # @trace: REQ-EXP-009
+# @trace: REQ-EXP-010
 """
 
 from channelflow.research.ablation import (
@@ -67,6 +68,12 @@ from channelflow.research.dex_incremental import (
     DexIncrementalReport,
     run_dex_ablation,
 )
+from channelflow.research.lead_lag_value import (
+    DEFAULT_THRESHOLDS,
+    DivergenceSignal,
+    LeadLagResult,
+    evaluate_divergence,
+)
 from channelflow.research.lookback_sensitivity import (
     LOOKBACKS,
     Plateau,
@@ -95,7 +102,11 @@ from channelflow.research.volume_confluence import (
 __all__ = [
     "ARMS",
     "DETECTORS",
+    "DEFAULT_THRESHOLDS",
     "SUPPORTED_COVERAGE",
+    "DivergenceSignal",
+    "LeadLagResult",
+    "evaluate_divergence",
     "VARIABLES",
     "CalibrationReport",
     "Method",
