@@ -53,8 +53,15 @@ class Transform(Protocol):
     feature registry's fields.
     """
 
-    name: str
-    centered: bool
+    # Read-only properties rather than variables: `CausalTransform` below is a
+    # frozen dataclass, and a protocol asking for settable attributes cannot be
+    # satisfied by one -- which would make this protocol stricter than its own
+    # reference implementation.
+    @property
+    def name(self) -> str: ...
+
+    @property
+    def centered(self) -> bool: ...
 
     def apply(self, values: list[float]) -> list[float]: ...
 
