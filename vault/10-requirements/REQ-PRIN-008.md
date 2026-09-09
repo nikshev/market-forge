@@ -24,9 +24,15 @@ Every feature must have a description of its semantics, unit of measurement, cad
 <!-- trace:begin -->
 - **Specs:** [[SPEC-011-ofi-lob-features]]
 - **Tests:**
+    - `tests/unit/channels/test_features.py::test_a_channel_with_no_width_has_no_position`
+    - `tests/unit/channels/test_features.py::test_the_channel_features_are_registered`
+    - `tests/unit/channels/test_features.py::test_the_features_read_the_snapshot_rather_than_recomputing_it`
+    - `tests/unit/channels/test_features.py::test_the_position_is_zero_at_the_lower_boundary`
+    - `tests/unit/channels/test_features.py::test_the_width_is_a_percentage_of_the_centre`
     - `tests/unit/features/test_registry.py::test_every_exposed_feature_is_registered`
     - `tests/unit/features/test_registry.py::test_no_required_field_is_blank`
 - **Code:**
+    - `src/channelflow/channels/features.py`
     - `src/channelflow/derivatives/registry_entries.py`
     - `src/channelflow/features/registry.py`
     - `src/channelflow/volume/shape.py`

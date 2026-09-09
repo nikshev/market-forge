@@ -45,13 +45,18 @@ class AblationArm:
 
     name: str
     families: tuple[str, ...]
+    #: The vocabulary this arm's families are checked against. REQ-US-006's
+    #: four are the default; REQ-EXP-004 and REQ-EXP-007 slice the same
+    #: registry more finely and pass their own, so an unknown family is still
+    #: refused rather than silently resolving to nothing.
+    taxonomy: tuple[str, ...] = FAMILIES
 
     def __post_init__(self) -> None:
-        unknown = [f for f in self.families if f not in FAMILIES]
+        unknown = [f for f in self.families if f not in self.taxonomy]
         if unknown:
             raise UnknownFamily(
                 f"arm {self.name!r} names {', '.join(unknown)}, which the taxonomy does "
-                f"not know ({', '.join(FAMILIES)}); an unknown family resolves to no "
+                f"not know ({', '.join(self.taxonomy)}); an unknown family resolves to no "
                 "features, which is indistinguishable from missing data -- and one of "
                 "those is a typo"
             )
