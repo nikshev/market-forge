@@ -44,7 +44,7 @@ Acceptance:
 
 Which requirements deliver this phase, and what nothing delivers. The
 `covers:` and `not_delivered:` frontmatter carries the same two lists, and
-`tests/unit/trace/test_phase_coverage.py` checks that every covering
+`tests/tools/trace/test_phase_coverage.py` checks that every covering
 requirement exists and has reached `implemented`.
 
 **Delivered by:**

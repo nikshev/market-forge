@@ -157,7 +157,7 @@ it meant before.
 
 The 11 `REQ-PHASE-*` notes also carry `covers:` and `not_delivered:`
 frontmatter: which requirements deliver the phase, and which of its deliverables
-nothing does. `tests/unit/trace/test_phase_coverage.py` checks the first list
+nothing does. `tests/tools/trace/test_phase_coverage.py` checks the first list
 mechanically — every covering requirement must exist and have reached
 `implemented` — and checks that a phase claiming to be `implemented` has an
 empty second list. Every phase has a non-empty one today, which is why every

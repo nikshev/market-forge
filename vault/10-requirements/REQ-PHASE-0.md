@@ -10,9 +10,7 @@ depends_on: []
 tags: []
 covers: [REQ-WP-001, REQ-WP-002, REQ-INFRA-001, REQ-INFRA-002]
 not_delivered:
-  - "virtual clock: no clock abstraction exists; time comes from the event stream and from the connectors' own session"
   - "event bus abstraction: components are wired directly, with no bus between them"
-  - "ClickHouse connectivity: the stack provisions PostgreSQL and MinIO only"
 ---
 
 ## Requirement
@@ -45,7 +43,7 @@ Acceptance:
 
 Which requirements deliver this phase, and what nothing delivers. The
 `covers:` and `not_delivered:` frontmatter carries the same two lists, and
-`tests/unit/trace/test_phase_coverage.py` checks that every covering
+`tests/tools/trace/test_phase_coverage.py` checks that every covering
 requirement exists and has reached `implemented`.
 
 **Delivered by:**
@@ -57,9 +55,25 @@ requirement exists and has reached `implemented`.
 
 **Not delivered:**
 
-- virtual clock: no clock abstraction exists; time comes from the event stream and from the connectors' own session
 - event bus abstraction: components are wired directly, with no bus between them
-- ClickHouse connectivity: the stack provisions PostgreSQL and MinIO only
+
+Two other deliverables are **not** on that list, and both were on it in the first
+version of this note.
+
+The **virtual clock** is delivered, by a stronger construction than the PRD asks
+for: no module in `src/` reads a wall clock at all. Time is event time carried on
+the data, a `Clock` protocol with a driven fake exists where a lifetime has to be
+measured, and ten packages carry import-ban tests asserting they cannot consult a
+clock — `tests/unit/backtest/test_virtual_clock.py` among them. A virtual clock
+exists to make replay deterministic; here that property holds because there is
+nothing to virtualize.
+
+"Postgres/ClickHouse connectivity" is also not on it. [[ADR-002]] dropped
+ClickHouse and adopted the PRD's own target storage profile from the start —
+PostgreSQL for transactional metadata and S3-compatible object storage as the
+canonical data plane — and both are provisioned. The PRD's wording is provenance
+for a decision already taken, not an outstanding deliverable, and the Notes
+section below has said so since the phase note was written.
 
 This phase is `planned` rather than `implemented` because that list is not
 empty. A phase is its deliverables; a phase with a missing deliverable is a

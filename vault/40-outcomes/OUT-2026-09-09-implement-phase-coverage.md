@@ -17,13 +17,14 @@ The gap lists came from reading the deliverables against the repository, and the
 answer was the same for every phase: something is missing. That is why all
 eleven are `planned` and none is `implemented`.
 
-- **Phase 0** has no virtual clock, no event bus abstraction and no ClickHouse
-  connectivity, though the rest of the skeleton is there and green.
+- **Phase 0** has no event bus abstraction, though the rest of the skeleton is
+  there and green.
 - **Phase 1A** has the whole extremum lifecycle and no chart markers for
   candidate versus confirmed extrema.
 - **Phase 2** has every book and flow feature and no UI pane showing them.
 - **Phase 4** has the EVM connector and the Uniswap v3 adapter, and none of
-  Aerodrome, Curve, Uniswap v4, HyperCore, Pinot or Iceberg.
+  Aerodrome, Curve, Uniswap v4, HyperCore or Iceberg. Pinot is deferred by
+  [[ADR-002]] rather than missing.
 - **Phase 5** has the cross-venue engine and only one venue connector.
 - **Phase 6** has the point-in-time dataset, the walk-forward runner and the
   ablations, and no experiment registry and no dataset hashes.
@@ -55,3 +56,38 @@ nothing down. Each of those eleven would have been contradicted by its own note.
 - **The coverage lists are hand-written.** A requirement that delivers part of a
   phase and is not listed is invisible to the test, which checks the claims made
   rather than discovering the ones that were not.
+
+## Correction, same day
+
+Three of the gap lines were wrong. Two of them were Phase 0's.
+
+**ClickHouse connectivity** was listed as missing, against a decision the phase
+note itself cites: [[ADR-002]] dropped ClickHouse on 2026-09-07 and adopted the
+PRD's target storage profile from the start. PostgreSQL and S3-compatible object
+storage are both provisioned, which is what that deliverable asks for once the
+ADR is read.
+
+**The virtual clock** was listed as missing and is delivered by a stronger
+construction than the PRD asks for: no module in `src/` reads a wall clock at
+all, and ten packages carry import-ban tests saying so. There is even a
+`tests/unit/backtest/test_virtual_clock.py`. A virtual clock exists to make
+replay deterministic, and that property holds here because there is nothing to
+virtualize.
+
+**Phase 4's Pinot entry** said "not provisioned" where [[ADR-002]] defers Pinot
+until a HOT serving requirement exists. It now says deferred, beside the Iceberg
+line, which is a real gap.
+
+The method produced all three. The survey read PRD §45's deliverable list
+literally and compared each line against the running stack -- and a deliverable
+that was decided away, or satisfied by something built under a different name,
+looks exactly like one that was never built. A gap list assembled that way
+reports decisions as omissions and mislabels what it does not recognise.
+
+The remaining lines were re-read twice: against every ADR, and against the code
+rather than against a name. Phase 1A's chart markers, Phase 2's book pane and
+Phase 7A's stop-path chart were confirmed absent by reading what
+`apps/web/src/series.ts` actually builds -- candles, channel lines, zones and a
+signal marker, and nothing else. Phase 6's registry and hashes and Phase 7's
+model registry were confirmed absent by searching for the concept rather than
+the word.
