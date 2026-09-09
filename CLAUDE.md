@@ -141,14 +141,27 @@ regenerate it from `vault/` instead.
 
 Constraint notes derived from PRD §0 (`REQ-PRIN-*`) and §41 (`REQ-BIAS-*`)
 carry their rule text as their `## Acceptance` verbatim, by design — the
-prohibition itself is the checkable condition. This is distinct from, and
-must not be confused with, the 3 notes that genuinely lack acceptance
-criteria and carry the `ACCEPTANCE-NOT-SPECIFIED` marker (all `REQ-PHASE-*`).
-Seven notes have left that list: `REQ-WP-016` on 2026-09-08, when criteria were
-derived from PRD §17 and approved, and the six `REQ-EXP-*` on 2026-09-09. Both
-derivations are recorded — see
-`docs/superpowers/specs/2026-09-08-cross-venue-acceptance-design.md` and
-`docs/superpowers/specs/2026-09-09-experiment-acceptance-design.md`.
+prohibition itself is the checkable condition.
+
+No note carries the `ACCEPTANCE-NOT-SPECIFIED` marker any more. Ten did: the
+extractor writes it wherever a PRD section states deliverables and no acceptance
+criteria, and it is what kept those notes in `draft`. `REQ-WP-016` left the list
+on 2026-09-08, six `REQ-EXP-*` on 2026-09-09, and `REQ-PHASE-5`, `-6` and `-8`
+on the same day. Every one of those criteria is **derived, not quoted**, and each
+derivation names the PRD section behind each line — see
+`docs/superpowers/specs/2026-09-08-cross-venue-acceptance-design.md`,
+`…/2026-09-09-experiment-acceptance-design.md` and
+`…/2026-09-09-phase-acceptance-design.md`. If the extractor is ever re-run over a
+PRD section with no criteria, the marker comes back, and it means the same thing
+it meant before.
+
+The 11 `REQ-PHASE-*` notes also carry `covers:` and `not_delivered:`
+frontmatter: which requirements deliver the phase, and which of its deliverables
+nothing does. `tests/unit/trace/test_phase_coverage.py` checks the first list
+mechanically — every covering requirement must exist and have reached
+`implemented` — and checks that a phase claiming to be `implemented` has an
+empty second list. Every phase has a non-empty one today, which is why every
+phase is `planned`.
 
 ## Commands
 

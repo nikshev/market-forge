@@ -5,9 +5,17 @@ type: phase
 prd_ref: "Phase 4 — DeFi ingestion + AMM market structure"
 prd_lines: "6776-6820"
 phase: 4
-status: draft
+status: planned
 depends_on: ["REQ-PHASE-3"]
 tags: []
+covers: [REQ-WP-014, REQ-WP-015, REQ-ASSET-001, REQ-BIAS-006, REQ-EXP-007]
+not_delivered:
+  - "Aerodrome Slipstream and v2 adapters: not built"
+  - "Curve Stableswap-NG/Cryptoswap adapter: not built"
+  - "Uniswap v4 PoolManager adapter and hook safety classification: not built"
+  - "HyperCore CLOB adapter and HyperEVM ingestion profile: not built"
+  - "Pinot HOT datasets and Iceberg canonical tables: named in the API repositories and not provisioned"
+  - "UI liquidity/depth overlay: the web app has no DEX overlay"
 ---
 
 ## Requirement
@@ -71,10 +79,41 @@ Acceptance:
 - CEX top-of-book is never compared directly with DEX infinitesimal spot for arbitrage scoring;
 - backtest uses `available_at` and selected finality policy, not only block timestamp.
 
+## Coverage
+
+Which requirements deliver this phase, and what nothing delivers. The
+`covers:` and `not_delivered:` frontmatter carries the same two lists, and
+`tests/unit/trace/test_phase_coverage.py` checks that every covering
+requirement exists and has reached `implemented`.
+
+**Delivered by:**
+
+- [[REQ-WP-014]]
+- [[REQ-WP-015]]
+- [[REQ-ASSET-001]]
+- [[REQ-BIAS-006]]
+- [[REQ-EXP-007]]
+
+**Not delivered:**
+
+- Aerodrome Slipstream and v2 adapters: not built
+- Curve Stableswap-NG/Cryptoswap adapter: not built
+- Uniswap v4 PoolManager adapter and hook safety classification: not built
+- HyperCore CLOB adapter and HyperEVM ingestion profile: not built
+- Pinot HOT datasets and Iceberg canonical tables: named in the API repositories and not provisioned
+- UI liquidity/depth overlay: the web app has no DEX overlay
+
+This phase is `planned` rather than `implemented` because that list is not
+empty. A phase is its deliverables; a phase with a missing deliverable is a
+phase in progress, however much of it is built.
+
 ## Trace
 
 <!-- trace:begin -->
-_No linked artifacts yet._
+- **Specs:** [[SPEC-051-phase-coverage]]
+- **Tests:**
+    - `tests/tools/trace/test_phase_coverage.py::test_phase_4_coverage`
+- **Outcomes:** [[OUT-2026-09-09-implement-phase-coverage]], [[OUT-2026-09-09-requirement-phase-acceptance]], [[OUT-2026-09-09-spec-phase-coverage]]
 <!-- trace:end -->
 
 ## Notes

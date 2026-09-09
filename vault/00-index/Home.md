@@ -26,8 +26,10 @@ so every note carries the same history as the code it describes.
   carry their rule text as their `## Acceptance` verbatim, by design: for a
   flat prohibition ("no random train/test primary split"), the prohibition
   *is* the checkable condition, so there is nothing further to extract. This
-  is distinct from the 10 notes that genuinely lack acceptance criteria and
-  carry the `ACCEPTANCE-NOT-SPECIFIED` marker instead.
+  is distinct from the 10 notes that genuinely lacked acceptance criteria and
+  carried the `ACCEPTANCE-NOT-SPECIFIED` marker. All ten now carry derived
+  criteria instead, each line naming the PRD section it comes from; the three
+  derivations live under `docs/superpowers/specs/`.
 - `graphify-out/obsidian/` is a *different*, generated, gitignored vault. This
   one is authoritative.
 

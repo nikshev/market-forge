@@ -5,9 +5,12 @@ type: phase
 prd_ref: "Phase 1A — Extremum baseline"
 prd_lines: "6720-6737"
 phase: 1A
-status: draft
+status: planned
 depends_on: ["REQ-PHASE-1"]
 tags: []
+covers: [REQ-WP-019, REQ-NRT-A, REQ-NRT-B, REQ-NRT-C, REQ-NRT-E, REQ-EXP-011, REQ-EXP-012]
+not_delivered:
+  - "chart markers for candidate versus confirmed extrema: the web chart draws channels and volume profile, not extrema"
 ---
 
 ## Requirement
@@ -34,10 +37,38 @@ Acceptance:
 - appending future bars does not mutate finalized candidates/confirmed extrema;
 - confirmation lag and prominence are reported.
 
+## Coverage
+
+Which requirements deliver this phase, and what nothing delivers. The
+`covers:` and `not_delivered:` frontmatter carries the same two lists, and
+`tests/unit/trace/test_phase_coverage.py` checks that every covering
+requirement exists and has reached `implemented`.
+
+**Delivered by:**
+
+- [[REQ-WP-019]]
+- [[REQ-NRT-A]]
+- [[REQ-NRT-B]]
+- [[REQ-NRT-C]]
+- [[REQ-NRT-E]]
+- [[REQ-EXP-011]]
+- [[REQ-EXP-012]]
+
+**Not delivered:**
+
+- chart markers for candidate versus confirmed extrema: the web chart draws channels and volume profile, not extrema
+
+This phase is `planned` rather than `implemented` because that list is not
+empty. A phase is its deliverables; a phase with a missing deliverable is a
+phase in progress, however much of it is built.
+
 ## Trace
 
 <!-- trace:begin -->
-_No linked artifacts yet._
+- **Specs:** [[SPEC-051-phase-coverage]]
+- **Tests:**
+    - `tests/tools/trace/test_phase_coverage.py::test_phase_1a_coverage`
+- **Outcomes:** [[OUT-2026-09-09-implement-phase-coverage]], [[OUT-2026-09-09-requirement-phase-acceptance]], [[OUT-2026-09-09-spec-phase-coverage]]
 <!-- trace:end -->
 
 ## Notes
