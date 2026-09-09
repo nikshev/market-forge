@@ -5,6 +5,8 @@ REQ-STORE-001, PRD §29.0.
 
 from __future__ import annotations
 
+from decimal import Decimal
+
 import pytest
 
 from channelflow.lakehouse import Column, Schema, UnknownColumn
@@ -70,7 +72,7 @@ def test_a_column_type_outside_the_vocabulary_is_refused() -> None:
     """The vocabulary is closed so two writers cannot disagree about what a
     column is."""
     with pytest.raises(ValueError, match="storage types"):
-        Column(name="a", type="decimal")  # type: ignore[arg-type]
+        Column(name="a", type="numeric")  # type: ignore[arg-type]
 
 
 @pytest.mark.trace("REQ-STORE-001")
@@ -129,3 +131,43 @@ def test_a_column_is_reachable_by_name_and_an_unknown_one_is_not() -> None:
     assert schema.column("price").type == "float64"
     with pytest.raises(UnknownColumn, match="nope"):
         schema.column("nope")
+
+
+@pytest.mark.trace("REQ-STORE-001")
+def test_a_decimal_column_takes_a_decimal_and_nothing_else() -> None:
+    """A price is money. Accepting a float here would let `0.1` in, which
+    float64 cannot hold, and the value stored would not be the value passed."""
+    schema = Schema(columns=(Column(name="price", type="decimal"),))
+
+    assert schema.encode_row({"price": Decimal("112000.10")})
+    for wrong in (112000.1, "112000.10", 112000):
+        with pytest.raises(TypeError, match="Decimal"):
+            schema.encode_row({"price": wrong})
+
+
+@pytest.mark.trace("REQ-STORE-001")
+def test_two_decimals_that_compare_equal_are_different_content() -> None:
+    """`Decimal("1.10")` and `Decimal("1.1")` are equal and carry different
+    exponents; Parquet stores the two strings distinctly. A hash calling them the
+    same would let a stored value change without its identity changing -- the
+    same reading `-0.0` gets."""
+    schema = Schema(columns=(Column(name="price", type="decimal"),))
+
+    assert schema.encode_row({"price": Decimal("1.10")}) != schema.encode_row(
+        {"price": Decimal("1.1")}
+    )
+
+
+@pytest.mark.trace("REQ-STORE-001")
+def test_a_schema_names_the_columns_a_reader_has_to_convert_back() -> None:
+    """A caller that forgot one would compare a string against a number and find
+    nothing, which reads as an empty result rather than as a mistake."""
+    schema = Schema(
+        columns=(
+            Column(name="open", type="decimal"),
+            Column(name="count", type="int64"),
+            Column(name="close", type="decimal"),
+        )
+    )
+
+    assert schema.decimal_columns == ("open", "close")

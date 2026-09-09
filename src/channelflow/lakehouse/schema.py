@@ -19,13 +19,14 @@ from __future__ import annotations
 import hashlib
 import struct
 from dataclasses import dataclass
+from decimal import Decimal
 from typing import Literal
 
 import pyarrow as pa
 
 #: What a column may hold. Each maps to exactly one Arrow type, and each has
 #: exactly one canonical byte encoding for hashing.
-ColumnType = Literal["int64", "float64", "string", "bool", "timestamp_ns"]
+ColumnType = Literal["int64", "float64", "string", "bool", "timestamp_ns", "decimal"]
 
 _ARROW: dict[str, pa.DataType] = {
     "int64": pa.int64(),
@@ -37,6 +38,12 @@ _ARROW: dict[str, pa.DataType] = {
     # nanosecond count, and converting at the storage boundary would introduce a
     # unit and a timezone that nothing upstream has.
     "timestamp_ns": pa.int64(),
+    # Stored as its exact string form, not as a float or an Arrow decimal.
+    # A price is money: float64 cannot hold 0.1, and an Arrow decimal needs a
+    # precision and scale declared per column, which PRD section 29's schemas do
+    # not give and which would silently truncate the first value that exceeded
+    # them. A string round-trips every `Decimal` exactly and costs bytes.
+    "decimal": pa.string(),
 }
 
 #: One byte per type, so two values of different types can never hash alike.
@@ -46,6 +53,7 @@ _TAG: dict[str, bytes] = {
     "string": b"s",
     "bool": b"b",
     "timestamp_ns": b"t",
+    "decimal": b"d",
 }
 
 
@@ -118,6 +126,16 @@ class Schema:
         digest.update(_length_prefixed((self.event_time_column or "").encode()))
         return digest.hexdigest()
 
+    @property
+    def decimal_columns(self) -> tuple[str, ...]:
+        """Columns stored as text that a reader has to turn back into `Decimal`.
+
+        Named here rather than rediscovered by each reader: a caller that forgot
+        one would compare a string against a number and find nothing, which
+        reads as an empty result rather than as a mistake.
+        """
+        return tuple(c.name for c in self.columns if c.type == "decimal")
+
     def arrow(self) -> pa.Schema:
         return pa.schema([pa.field(c.name, _ARROW[c.type]) for c in self.columns])
 
@@ -172,6 +190,15 @@ def _encode(column_type: str, value: object) -> bytes:
         if not isinstance(value, bool):
             raise TypeError(f"expected a bool for a bool column, got {value!r}")
         return b"\x01" if value else b"\x00"
+    if column_type == "decimal":
+        if not isinstance(value, Decimal):
+            raise TypeError(f"expected a Decimal for a decimal column, got {value!r}")
+        # The exact string form, so `Decimal("1.10")` and `Decimal("1.1")` are
+        # different content. They compare equal and carry different exponents,
+        # Parquet stores the two strings distinctly, and a hash calling them the
+        # same would let a stored value change without its identity changing --
+        # the same reading `-0.0` gets above.
+        return str(value).encode()
     if not isinstance(value, str):
         raise TypeError(f"expected a str for a string column, got {value!r}")
     return value.encode("utf-8")

@@ -159,14 +159,17 @@ point-in-time reads, and DuckDB access to a snapshot.
     - `tests/unit/lakehouse/test_schema.py::test_a_boolean_is_not_an_integer`
     - `tests/unit/lakehouse/test_schema.py::test_a_column_is_reachable_by_name_and_an_unknown_one_is_not`
     - `tests/unit/lakehouse/test_schema.py::test_a_column_type_outside_the_vocabulary_is_refused`
+    - `tests/unit/lakehouse/test_schema.py::test_a_decimal_column_takes_a_decimal_and_nothing_else`
     - `tests/unit/lakehouse/test_schema.py::test_a_row_carrying_a_column_the_schema_does_not_declare_is_refused`
     - `tests/unit/lakehouse/test_schema.py::test_a_row_missing_a_column_is_refused`
+    - `tests/unit/lakehouse/test_schema.py::test_a_schema_names_the_columns_a_reader_has_to_convert_back`
     - `tests/unit/lakehouse/test_schema.py::test_a_schema_with_no_columns_is_refused`
     - `tests/unit/lakehouse/test_schema.py::test_a_value_of_the_wrong_python_type_is_refused`
     - `tests/unit/lakehouse/test_schema.py::test_an_event_time_column_has_to_be_a_nanosecond_count`
     - `tests/unit/lakehouse/test_schema.py::test_an_event_time_column_that_does_not_exist_is_refused`
     - `tests/unit/lakehouse/test_schema.py::test_an_integer_is_accepted_where_a_float_is_declared`
     - `tests/unit/lakehouse/test_schema.py::test_duplicate_columns_are_refused`
+    - `tests/unit/lakehouse/test_schema.py::test_two_decimals_that_compare_equal_are_different_content`
     - `tests/unit/lakehouse/test_store.py::test_a_backend_that_cannot_do_conditional_writes_is_refused[InvalidRequest]`
     - `tests/unit/lakehouse/test_store.py::test_a_backend_that_cannot_do_conditional_writes_is_refused[MethodNotAllowed]`
     - `tests/unit/lakehouse/test_store.py::test_a_backend_that_cannot_do_conditional_writes_is_refused[NotImplemented]`
