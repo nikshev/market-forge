@@ -3,6 +3,7 @@
 # @trace: REQ-US-006
 # @trace: REQ-EXP-001
 # @trace: REQ-EXP-002
+# @trace: REQ-EXP-003
 """
 
 from channelflow.research.ablation import (
@@ -22,6 +23,16 @@ from channelflow.research.channel_comparison import (
     SeriesTooShort,
     compare_channel_models,
 )
+from channelflow.research.detector_comparison import (
+    DETECTORS,
+    UNAVAILABLE,
+    CandidateLife,
+    DetectorComparisonReport,
+    DetectorEntry,
+    candidate_lives,
+    compare_detectors,
+    detector_metrics,
+)
 from channelflow.research.lookback_sensitivity import (
     LOOKBACKS,
     Plateau,
@@ -35,7 +46,15 @@ from channelflow.research.lookback_sensitivity import (
 
 __all__ = [
     "ARMS",
+    "DETECTORS",
+    "CandidateLife",
+    "candidate_lives",
+    "detector_metrics",
+    "UNAVAILABLE",
+    "DetectorComparisonReport",
+    "DetectorEntry",
     "LOOKBACKS",
+    "compare_detectors",
     "MODELS",
     "Plateau",
     "Recommendation",
