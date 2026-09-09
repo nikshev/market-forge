@@ -142,11 +142,13 @@ regenerate it from `vault/` instead.
 Constraint notes derived from PRD §0 (`REQ-PRIN-*`) and §41 (`REQ-BIAS-*`)
 carry their rule text as their `## Acceptance` verbatim, by design — the
 prohibition itself is the checkable condition. This is distinct from, and
-must not be confused with, the 9 notes that genuinely lack acceptance
-criteria and carry the `ACCEPTANCE-NOT-SPECIFIED` marker (6 `REQ-EXP-*` and
-3 `REQ-PHASE-*`). `REQ-WP-016` was the tenth until 2026-09-08, when criteria
-were derived from PRD §17 and approved — see
-`docs/superpowers/specs/2026-09-08-cross-venue-acceptance-design.md`.
+must not be confused with, the 3 notes that genuinely lack acceptance
+criteria and carry the `ACCEPTANCE-NOT-SPECIFIED` marker (all `REQ-PHASE-*`).
+Seven notes have left that list: `REQ-WP-016` on 2026-09-08, when criteria were
+derived from PRD §17 and approved, and the six `REQ-EXP-*` on 2026-09-09. Both
+derivations are recorded — see
+`docs/superpowers/specs/2026-09-08-cross-venue-acceptance-design.md` and
+`docs/superpowers/specs/2026-09-09-experiment-acceptance-design.md`.
 
 ## Commands
 
