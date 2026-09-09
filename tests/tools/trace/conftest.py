@@ -31,11 +31,13 @@ class VaultBuilder:
         status: str = "draft",
         type_: str = "work-package",
         depends_on: list[str] | None = None,
+        covers: list[str] | None = None,
         prd_ref: str = "§46",
         title: str = "A requirement",
         hard_gated: bool = False,
     ) -> Path:
         deps = "[]" if not depends_on else "[" + ", ".join(depends_on) + "]"
+        covered = "[]" if not covers else "[" + ", ".join(covers) + "]"
         path = self.vault / "10-requirements" / f"{req_id}.md"
         path.write_text(
             textwrap.dedent(f"""\
@@ -48,6 +50,7 @@ class VaultBuilder:
                 phase: 0
                 status: {status}
                 depends_on: {deps}
+                covers: {covered}
                 ---
 
                 ## Requirement

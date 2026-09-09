@@ -84,7 +84,8 @@ Two catch people out most:
 | Source file | `# @trace: REQ-...` (or `// @trace: REQ-...` for `.ts`/`.js`) |
 | Outcome note | `records: [REQ-...]` frontmatter in `vault/40-outcomes/` |
 
-`tools/trace/validate.py` checks six rules over the graph:
+`tools/trace/validate.py` checks seven rules over the graph (they are numbered
+R1-R6 and R8; there is no R7):
 
 | Rule | Fires when |
 |---|---|
@@ -94,6 +95,7 @@ Two catch people out most:
 | R4 | status is past `draft`, no outcome note `RECORDS` the requirement |
 | R5 | a `hard_gated: true` requirement is past `specified` with no test |
 | R6 | a `depends_on` cycle among requirements |
+| R8 | status is `implemented` or later, no git-tracked source file carries `# @trace: <id>` — or, for a roll-up requirement, some requirement in its `covers:` list has no such file ([[ADR-055]]) |
 
 A duplicate `id:` across two requirement notes is caught earlier than this
 table, while the graph is still being built (`TraceGraph.add` refuses the
@@ -117,11 +119,13 @@ loudly with the failing tests printed, before `validate` ever runs, rather
 than surfacing as a confusing R2/R5 violation. What `VERIFIES` still does not
 mean: nothing checks that a `@pytest.mark.trace(...)` marker names a test
 that genuinely exercises the requirement it claims to verify — that link is
-self-asserted, exactly like the `tested` rung above. Nor is an `IMPLEMENTS`
-edge required by any rule — R3 only checks that one, if present, doesn't
-point at a nonexistent requirement — so code links are advisory: a
-requirement can reach `implemented` with zero linked source files and
-`make validate` will not notice.
+self-asserted, exactly like the `tested` rung above.
+
+An `IMPLEMENTS` edge is required by exactly one rule, R8, and only from
+`implemented` upwards: below that rung code links are advisory, and R3 merely
+checks that one, if present, doesn't point at a nonexistent requirement. R8 is
+what stopped a requirement reaching `implemented` with a full test suite and no
+traceable code at all, which is how it was found.
 
 `make graph` rebuilds `.trace/graph.json` and regenerates the dashboard
 (`vault/00-index/Traceability Dashboard.md`) and each requirement note's
@@ -160,8 +164,10 @@ frontmatter: which requirements deliver the phase, and which of its deliverables
 nothing does. `tests/tools/trace/test_phase_coverage.py` checks the first list
 mechanically — every covering requirement must exist and have reached
 `implemented` — and checks that a phase claiming to be `implemented` has an
-empty second list. Every phase has a non-empty one today, which is why every
-phase is `planned`.
+empty second list. `REQ-PHASE-6` is `implemented` — the first to get there, on
+2026-09-09, when `REQ-STORE-001` and `REQ-REPRO-001` closed its last two
+deliverables. The other ten still have a non-empty list, which is why they are
+`planned`.
 
 ## Commands
 
@@ -177,7 +183,7 @@ phase is `planned`.
     make trace       # markers + rebuild .trace/graph.json
     make dashboard   # markers + rewrite the dashboard and notes' Trace sections
     make graph       # trace + dashboard
-    make validate    # markers + check the six coverage rules; exits 1 on violations
+    make validate    # markers + check the seven coverage rules; exits 1 on violations
     make clean       # remove .trace, .pytest_cache, __pycache__
 
     make web-install    # npm ci in apps/web

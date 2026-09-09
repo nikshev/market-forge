@@ -31,9 +31,16 @@ DOMAIN_PACKAGES = (
     "backtest",
 )
 
-#: What must not appear in them. `lakehouse` is this package; the other three
-#: are the backends it exists to hide.
-FORBIDDEN = ("channelflow.lakehouse", "pyarrow", "duckdb", "boto3")
+#: What must not appear in them. `lakehouse` is this package and `experiments`
+#: sits on it, so importing either pulls the three backends in behind it; the
+#: other three are the backends themselves.
+FORBIDDEN = (
+    "channelflow.lakehouse",
+    "channelflow.experiments",
+    "pyarrow",
+    "duckdb",
+    "boto3",
+)
 
 
 def _imported_names(module: Path) -> set[str]:

@@ -256,6 +256,82 @@ def test_r8_ignores_a_specified_requirement(vault):
     assert "R8" not in rules(validate(build_graph(vault.root)))
 
 
+def test_r8_follows_a_roll_up_requirement_to_the_work_that_delivers_it(vault, tmp_path):
+    """A phase is PRD §45's deliverables, and no module implements a phase.
+
+    R8 was written before any phase left `draft`, so this case had never come
+    up. Under the direct reading a phase can never be `implemented` -- not
+    unearned, but unreachable, for a whole requirement type. Following `covers:`
+    keeps the rule's meaning and makes it answerable for a roll-up.
+    """
+    vault.requirement("REQ-WP-001", status="implemented")
+    vault.source("channelflow/thing.py", ["REQ-WP-001"])
+    vault.requirement("REQ-PHASE-0", status="implemented", type_="phase", covers=["REQ-WP-001"])
+    vault.spec("001-bootstrap", ["REQ-WP-001", "REQ-PHASE-0"])
+    vault.outcome("OUT-2026-09-07-impl-a", step="implement", records=["REQ-WP-001", "REQ-PHASE-0"])
+    dump = tmp_path / "tests.json"
+    dump.write_text(
+        '[{"nodeid": "tests/test_a.py::test_x", "requirements": ["REQ-WP-001", "REQ-PHASE-0"]}]'
+    )
+
+    assert "R8" not in rules(validate(build_graph(vault.root, test_dump=dump)))
+
+
+def test_r8_still_fails_a_roll_up_whose_covered_work_has_no_code(vault, tmp_path):
+    """The rule is followed through `covers:`, not waived by it.
+
+    A phase whose covering requirement has no traceable code has no traceable
+    code either, and the transitive reading has to say so or it is an exemption
+    wearing a rule's clothes.
+    """
+    # Two covered requirements, and only one of them has code. `all` fails the
+    # phase; `any` would pass it on the strength of the half that is built,
+    # which is the reading that turns a transitive rule into a partial one.
+    vault.requirement("REQ-WP-001", status="implemented")
+    vault.source("channelflow/thing.py", ["REQ-WP-001"])
+    vault.requirement("REQ-WP-002", status="implemented")
+    vault.requirement(
+        "REQ-PHASE-0", status="implemented", type_="phase", covers=["REQ-WP-001", "REQ-WP-002"]
+    )
+    covered = ["REQ-WP-001", "REQ-WP-002", "REQ-PHASE-0"]
+    vault.spec("001-bootstrap", covered)
+    vault.outcome("OUT-2026-09-07-impl-a", step="implement", records=covered)
+    dump = tmp_path / "tests.json"
+    dump.write_text(
+        '[{"nodeid": "tests/test_a.py::test_x", '
+        '"requirements": ["REQ-WP-001", "REQ-WP-002", "REQ-PHASE-0"]}]'
+    )
+
+    assert {
+        v.node_id for v in validate(build_graph(vault.root, test_dump=dump)) if v.rule == "R8"
+    } == {
+        "REQ-WP-002",
+        "REQ-PHASE-0",
+    }
+
+
+def test_r8_fails_a_roll_up_that_covers_nothing(vault, tmp_path):
+    """Which is the right answer for one. PRD §45's Phase 8 covers nothing, and
+    a rule that let an empty `covers:` stand in for code would let it claim to
+    be implemented."""
+    vault.requirement("REQ-PHASE-8", status="implemented", type_="phase")
+    vault.spec("008-hardening", ["REQ-PHASE-8"])
+    vault.outcome("OUT-2026-09-07-impl-a", step="implement", records=["REQ-PHASE-8"])
+    dump = tmp_path / "tests.json"
+    dump.write_text('[{"nodeid": "tests/test_a.py::test_x", "requirements": ["REQ-PHASE-8"]}]')
+
+    assert "R8" in rules(validate(build_graph(vault.root, test_dump=dump)))
+
+
+def test_r3_catches_a_misspelled_covering_requirement(vault):
+    """`covers:` is an edge like any other, so a typo in a coverage claim is
+    caught by the rule that catches every other dangling id -- and a typo in a
+    coverage claim reads exactly like coverage."""
+    vault.requirement("REQ-PHASE-0", status="draft", type_="phase", covers=["REQ-WP-999"])
+
+    assert "R3" in rules(validate(build_graph(vault.root)))
+
+
 # --- ordering ---
 
 
