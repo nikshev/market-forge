@@ -29,6 +29,7 @@ Production feature path fails validation if a transform declares symmetric/cente
     - `tests/unit/extrema/test_non_repainting.py::test_d_research_paths_are_not_guarded`
     - `tests/unit/extrema/test_non_repainting.py::test_d_the_engine_imports_no_centered_helper`
 - **Code:**
+    - `src/channelflow/channels/kalman.py`
     - `src/channelflow/extrema/causality.py`
 - **Outcomes:** [[OUT-2026-09-08-implement-turning-points]], [[OUT-2026-09-08-plan-turning-points]], [[OUT-2026-09-08-spec-turning-points]], [[OUT-2026-09-08-tasks-turning-points]]
 <!-- trace:end -->
