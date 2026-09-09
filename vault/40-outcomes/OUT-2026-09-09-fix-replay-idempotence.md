@@ -56,8 +56,15 @@ the reasoning.
 - **A watermark is a full table scan per run.** Honest at these row counts,
   not at production ones. The plane's snapshots carry per-file bounds; a
   watermark should read those instead of the rows.
-- **Nothing enforces ADR-056 on the next writer.** It is a rule in a note, not
-  a rule a validator checks. The live sink is the first writer that will inherit
-  it, and it does not exist yet.
+- **Nothing enforces [[ADR-056]] on the next entry point.** It is a rule in a
+  note, not a rule a validator checks. The live sink is the first one that will
+  inherit it, and it does not exist yet.
+- **The repository's single-item writers are exempt, and the exemption is a
+  judgement.** They append literally, exactly as the in-memory repository does,
+  which is what keeps the two answering alike under the conformance suite; a
+  caller looping over them can still double a series. ADR-056 puts idempotence
+  on the entry point doing the looping. If a caller ever loops over them
+  *without* being such an entry point, that reasoning fails and nothing will
+  say so.
 - **Feature and score tables are still empty**, unchanged from [[REQ-PIPE-001]]'s
   own open questions.
