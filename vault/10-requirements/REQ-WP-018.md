@@ -57,7 +57,9 @@ tags: []
 - **Code:**
     - `src/channelflow/models/__init__.py`
     - `src/channelflow/models/base.py`
+    - `src/channelflow/models/boosting.py`
     - `src/channelflow/models/gmdh.py`
+    - `src/channelflow/models/regularized.py`
     - `src/channelflow/models/report.py`
 - **Outcomes:** [[OUT-2026-09-08-implement-gmdh]], [[OUT-2026-09-08-spec-gmdh]]
 <!-- trace:end -->

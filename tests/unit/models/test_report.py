@@ -43,11 +43,12 @@ def test_the_report_scores_the_model_and_baselines_on_identical_data(
 def test_every_baseline_from_the_prd_appears_in_the_report(
     structured: tuple[np.ndarray, ...],
 ) -> None:
-    """SC-006, FR-011, ADR-029.
+    """SC-006, FR-011, ADR-029 as amended by ADR-050.
 
     All six, in the PRD's own order, so a reader comparing against §23.6 reads
-    down the same list -- and sees the four that did not run rather than
-    assuming the list was satisfied.
+    down the same list -- and sees the two that did not run rather than assuming
+    the list was satisfied. Four run since REQ-EXP-008 required the regularized
+    logistic and the boosted trees that ADR-029 had left out.
     """
     x_fit, y_fit, x_score, y_score = structured
 
@@ -55,7 +56,12 @@ def test_every_baseline_from_the_prd_appears_in_the_report(
 
     assert [b.name for b in report.baselines] == list(REQUIRED_BASELINES)
     ran = [b.name for b in report.baselines if b.ran]
-    assert ran == ["no_skill_base_rate", "logistic_regression"]
+    assert ran == [
+        "no_skill_base_rate",
+        "logistic_regression",
+        "regularized_logistic_regression",
+        "gradient_boosted_trees",
+    ]
 
 
 @pytest.mark.trace("REQ-WP-018")
