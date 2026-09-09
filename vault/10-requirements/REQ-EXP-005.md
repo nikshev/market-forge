@@ -18,7 +18,17 @@ Does boundary overlap with VAH/VAL/HVN/LVN materially change target-before-stop 
 
 ## Acceptance
 
-_ACCEPTANCE-NOT-SPECIFIED: the PRD states no explicit acceptance criteria for this section. They must be written before this requirement leaves `draft`._
+- the two populations are defined point-in-time: setups whose boundary overlaps
+  a VAH, VAL, HVN or LVN level at signal time, and those whose boundary does
+  not;
+- target-before-stop probability is computed for each from REQ-BT-001's
+  outcomes, with ambiguous outcomes excluded and counted;
+- "materially" is a configured effect size, declared before the comparison and
+  reported with the result;
+- the answer is one of three — higher, lower, or not materially different — and
+  the third is a result rather than a failure;
+- a population too small to support the comparison refuses rather than reporting
+  a difference.
 
 ## Trace
 
@@ -30,3 +40,9 @@ _No linked artifacts yet._
 
 Generated from the PRD by `tools/extract_prd.py`. This section is human
 territory and is never machine-rewritten.
+
+The acceptance criteria above replaced an `ACCEPTANCE-NOT-SPECIFIED` marker on
+2026-09-09. The PRD names what this experiment compares but states no condition
+under which it is done. The derivation, what was chosen rather than implied, and
+the four criteria every comparison-shaped experiment shares are in
+`docs/superpowers/specs/2026-09-09-experiment-acceptance-design.md`.
