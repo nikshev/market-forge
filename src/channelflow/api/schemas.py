@@ -3,6 +3,7 @@
 # @trace: REQ-API-001
 # @trace: REQ-US-001
 # @trace: REQ-US-004
+# @trace: REQ-US-003
 
 Separate from the domain models deliberately. A wire format that *is* a domain
 model makes every domain change an API change, and PRD section 0.5's
@@ -19,6 +20,8 @@ import uuid
 
 from pydantic import BaseModel, ConfigDict
 
+from channelflow.api.channels import AS_SEEN_THEN, CURRENT_REFIT
+from channelflow.api.comparison import ChannelComparison
 from channelflow.api.repositories import FeaturePoint, Market, ScoredSetup
 from channelflow.bars import Bar
 from channelflow.channels import ChannelSnapshot
@@ -118,6 +121,51 @@ class ChannelOut(BaseModel):
             quality_score=snapshot.quality.score,
             source_max_event_time_ns=snapshot.source_max_event_time_ns,
             mode=mode,
+        )
+
+
+class ChannelDifferenceOut(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    center: float
+    upper: float
+    lower: float
+    slope: float
+    width_pct: float
+    quality: float
+    #: `None` when the stored channel had no width. See `comparison.py`.
+    center_in_widths: float | None
+
+
+class ChannelComparisonOut(BaseModel):
+    """PRD section 27.5's two views at once, and what moved (REQ-US-003)."""
+
+    model_config = ConfigDict(frozen=True)
+
+    as_seen_then: ChannelOut
+    current_refit: ChannelOut
+    difference: ChannelDifferenceOut
+    #: How far past the compared instant the refit could see.
+    hindsight_ns: int
+    #: Always true. A channel fitted over later bars has seen what followed.
+    research_only: bool
+
+    @classmethod
+    def of(cls, comparison: ChannelComparison) -> ChannelComparisonOut:
+        return cls(
+            as_seen_then=ChannelOut.of(comparison.as_seen_then, mode=AS_SEEN_THEN),
+            current_refit=ChannelOut.of(comparison.current_refit, mode=CURRENT_REFIT),
+            difference=ChannelDifferenceOut(
+                center=comparison.difference.center,
+                upper=comparison.difference.upper,
+                lower=comparison.difference.lower,
+                slope=comparison.difference.slope,
+                width_pct=comparison.difference.width_pct,
+                quality=comparison.difference.quality,
+                center_in_widths=comparison.difference.center_in_widths,
+            ),
+            hindsight_ns=comparison.hindsight_ns,
+            research_only=comparison.research_only,
         )
 
 
