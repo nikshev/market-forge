@@ -140,8 +140,17 @@ class ThresholdPolicy:
         return self.vol_multiplier * math.sqrt(variance) * BPS
 
     def _channel_bps(self, channel_width_pct: float | None) -> float:
+        """A fraction of the channel's width, in basis points.
+
+        `channel_width_pct` is a percentage, in the same units as
+        `ChannelSnapshot.width_pct` -- which is where every caller gets it. It
+        used to be read as a fraction of price, and the two differ by a hundred:
+        a real 2% channel passed straight through came out as a 5,000 bps
+        threshold, the detector confirmed nothing for the rest of the series,
+        and the report read "this method found no extrema".
+        """
         if channel_width_pct is None:
             raise ThresholdUnavailable(
                 "CHANNEL_WIDTH_FRACTION needs a channel width; none was supplied"
             )
-        return self.channel_width_fraction * channel_width_pct * BPS
+        return self.channel_width_fraction * (channel_width_pct / 100.0) * BPS

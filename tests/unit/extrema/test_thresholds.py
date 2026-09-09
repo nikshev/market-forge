@@ -60,10 +60,16 @@ def test_the_realized_vol_mode_rises_with_volatility() -> None:
 
 @pytest.mark.trace("REQ-WP-019")
 def test_the_channel_width_mode_is_a_fraction_of_the_width() -> None:
-    """FR-005. Hand-computed: a quarter of a 2% channel is 50 bps."""
+    """FR-005. Hand-computed: a quarter of a 2% channel is 50 bps.
+
+    The width arrives as a percentage, in `ChannelSnapshot.width_pct`'s own
+    units -- 2.0 for a two-percent channel. Read as a fraction of price instead,
+    a real channel width produces a threshold a hundred times too wide and the
+    detector silently stops confirming.
+    """
     policy = ThresholdPolicy(mode=ThresholdMode.CHANNEL_WIDTH_FRACTION, channel_width_fraction=0.25)
 
-    threshold = policy.at(flat(40), as_of_ns=BASE_NS + 40 * MINUTE_NS, channel_width_pct=0.02)
+    threshold = policy.at(flat(40), as_of_ns=BASE_NS + 40 * MINUTE_NS, channel_width_pct=2.0)
 
     assert threshold == pytest.approx(50.0)
 

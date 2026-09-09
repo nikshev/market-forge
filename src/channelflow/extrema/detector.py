@@ -1,6 +1,7 @@
 """PRD section 13A.5's directional-change baseline.
 
 # @trace: REQ-WP-019
+# @trace: REQ-EXP-011
 # @trace: REQ-NRT-A
 # @trace: REQ-NRT-C
 # @trace: REQ-NRT-E
@@ -78,8 +79,16 @@ class DirectionalChangeDetector:
     _last_confirmed_index: int | None = None
     _seen: list[Bar] = field(default_factory=list)
 
-    def on_bar(self, bar: Bar) -> ConfirmedExtremum | None:
+    def on_bar(
+        self, bar: Bar, *, channel_width_pct: float | None = None
+    ) -> ConfirmedExtremum | None:
         """Advance by one bar. Returns a confirmation, or None.
+
+        `channel_width_pct` is what PRD section 13A.5's `CHANNEL_WIDTH_FRACTION`
+        threshold needs, and the caller has it: the detector holds bars and the
+        channel is fitted elsewhere. Without it that mode raises rather than
+        falling back to another -- a threshold silently computed a different way
+        is a different detector under the same name.
 
         The bar is appended to the detector's own history before anything is
         computed, and every computation reads only that history -- so a later
@@ -90,19 +99,19 @@ class DirectionalChangeDetector:
         close = float(bar.close)
 
         if self._direction is None:
-            self._settle_direction(close, bar, index)
+            self._settle_direction(close, bar, index, channel_width_pct)
             return None
 
         if self._direction == "UP":
             if close >= (self._extreme_price or close):
                 self._extend(close, bar, index, "HIGH")
                 return None
-            return self._maybe_confirm(bar, index, close, "HIGH")
+            return self._maybe_confirm(bar, index, close, "HIGH", channel_width_pct)
 
         if close <= (self._extreme_price or close):
             self._extend(close, bar, index, "LOW")
             return None
-        return self._maybe_confirm(bar, index, close, "LOW")
+        return self._maybe_confirm(bar, index, close, "LOW", channel_width_pct)
 
     def run(self, bars: list[Bar]) -> list[ConfirmedExtremum]:
         """Feed a whole series. Returns what was confirmed, in order."""
@@ -112,7 +121,9 @@ class DirectionalChangeDetector:
 
     # --- internals ---
 
-    def _settle_direction(self, close: float, bar: Bar, index: int) -> None:
+    def _settle_direction(
+        self, close: float, bar: Bar, index: int, channel_width_pct: float | None = None
+    ) -> None:
         """Find out which way the market was going before we started watching.
 
         The swing that produced the first bar was never observed, so the
@@ -132,7 +143,11 @@ class DirectionalChangeDetector:
             self._running_low = here
 
         try:
-            threshold = self.thresholds.at(self._seen, as_of_ns=bar.close_time_ns)
+            threshold = self.thresholds.at(
+                self._seen,
+                as_of_ns=bar.close_time_ns,
+                channel_width_pct=channel_width_pct,
+            )
         except ThresholdUnavailable:
             return
 
@@ -174,7 +189,12 @@ class DirectionalChangeDetector:
         )
 
     def _maybe_confirm(
-        self, bar: Bar, index: int, close: float, kind: str
+        self,
+        bar: Bar,
+        index: int,
+        close: float,
+        kind: str,
+        channel_width_pct: float | None = None,
     ) -> ConfirmedExtremum | None:
         extreme = self._extreme_price
         extreme_time = self._extreme_time_ns
@@ -184,7 +204,11 @@ class DirectionalChangeDetector:
 
         reversal = abs(close - extreme) / extreme * BPS
         try:
-            threshold = self.thresholds.at(self._seen, as_of_ns=bar.close_time_ns)
+            threshold = self.thresholds.at(
+                self._seen,
+                as_of_ns=bar.close_time_ns,
+                channel_width_pct=channel_width_pct,
+            )
         except ThresholdUnavailable:
             # No threshold, no confirmation. Approximating one would produce a
             # confirmation nobody could reproduce.
