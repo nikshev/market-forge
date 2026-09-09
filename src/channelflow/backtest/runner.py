@@ -22,14 +22,26 @@ optimisation worth making once there is something to measure.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from copy import deepcopy
 from dataclasses import dataclass, field
 
 from channelflow.backtest.families import SetupFamily
 from channelflow.backtest.report import BacktestReport
 from channelflow.bars import Bar
-from channelflow.channels import ChannelFitError, ChannelModel, RollingOLSChannel
-from channelflow.signals import TERMINAL, CandidateState, SignalMachine, Transition
+from channelflow.channels import (
+    ChannelFitError,
+    ChannelModel,
+    ChannelSnapshot,
+    RollingOLSChannel,
+)
+from channelflow.signals import (
+    TERMINAL,
+    Candidate,
+    CandidateState,
+    SignalMachine,
+    Transition,
+)
 
 
 @dataclass
@@ -45,6 +57,17 @@ class BacktestRunner:
     #: built from it and opens nothing else. `None` leaves the runner exactly as
     #: it was, which is what REQ-WP-010's parity test compares against.
     family: SetupFamily | None = None
+
+    #: Observers, for a caller that wants what the run computed and not only
+    #: what it counted (REQ-PIPE-001). The report is a summary by design; a
+    #: replay that has to write its channel snapshots to the canonical plane
+    #: needs the snapshots themselves, and recomputing them outside this loop
+    #: would be a second fitting path that could disagree with this one.
+    #:
+    #: They observe and cannot steer: neither is consulted, and the report is
+    #: identical whether they are present or not.
+    on_snapshot: Callable[[Bar, ChannelSnapshot], None] | None = None
+    on_candidate: Callable[[Candidate], None] | None = None
 
     def run(self, bars: list[Bar]) -> BacktestReport:
         """Replay `bars`. Repeatable: the same input gives the same report.
@@ -84,9 +107,18 @@ class BacktestRunner:
                 skipped += 1
                 snapshot = None
 
+            if snapshot is not None and self.on_snapshot is not None:
+                self.on_snapshot(bar, snapshot)
+
             candidate = machine.on_bar(bar, snapshot)
             if candidate is None:
                 continue
+
+            if self.on_candidate is not None:
+                # Every bar the candidate is live for, not only the bar it
+                # opened on: a recorder needs its final state, and the final
+                # state is whatever the last call carried.
+                self.on_candidate(candidate)
 
             if candidate.opened_at_ns != current_open_ns:
                 current_open_ns = candidate.opened_at_ns
