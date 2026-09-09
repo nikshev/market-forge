@@ -113,3 +113,30 @@ export function markerFor(signal: SignalOut, _channel: ChannelOut | null): Marke
     text: `${signal.direction.toUpperCase()} · ${signal.boundary}`,
   };
 }
+
+// The window the chart opens on. REQ-US-002 asks for "exactly the signal's
+// timestamp", and a view fitted to five hundred bars contains that instant
+// while hiding it -- the reader is left to find the moment the alert was about.
+//
+// `null` means there is nothing to centre on, and the caller shows the whole
+// history instead. Centring on a bar that does not exist would scroll the chart
+// into empty space, which reads as a data outage rather than as an old link.
+export function visibleRangeFor(
+  bars: BarOut[],
+  atNs: number | null,
+  span: number,
+): { from: number; to: number } | null {
+  if (atNs === null || bars.length === 0) {
+    return null;
+  }
+  const index = bars.findIndex((bar) => bar.open_time_ns <= atNs && atNs < bar.close_time_ns);
+  if (index === -1) {
+    return null;
+  }
+  const half = Math.floor(span / 2);
+  // Clamped to the data at both ends: a range running past the last bar leaves
+  // the signal off-centre with blank space beside it, which reads as missing
+  // data rather than as the edge of the history.
+  const from = Math.max(0, Math.min(index - half, bars.length - 1 - span));
+  return { from: Math.max(0, from), to: Math.min(bars.length - 1, Math.max(0, from) + span) };
+}

@@ -9,6 +9,8 @@
 // not silently become a refit, or old signals start looking better than they
 // were and nothing says why.
 
+import { overlaysFromQuery } from "./overlays";
+import type { OverlaySelection } from "./overlays";
 import { AS_SEEN_THEN, CURRENT_REFIT } from "./types";
 import type { ChannelMode } from "./types";
 
@@ -19,6 +21,9 @@ export interface DeepLink {
   atNs: number | null;
   signalId: string | null;
   mode: ChannelMode;
+  // REQ-US-002: which of PRD section 27.2's layers were on when the alert
+  // fired, and whether that could be read at all.
+  overlays: OverlaySelection;
 }
 
 export function modeFromQuery(params: URLSearchParams): ChannelMode {
@@ -41,5 +46,6 @@ export function parseDeepLink(pathname: string, search: string): DeepLink | null
     atNs: at === null ? null : Date.parse(at) * 1_000_000 || null,
     signalId: params.get("signal"),
     mode: modeFromQuery(params),
+    overlays: overlaysFromQuery(params),
   };
 }

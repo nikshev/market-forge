@@ -84,3 +84,35 @@ export interface ExplanationOut {
   model_version: string;
   factors: FactorOut[];
 }
+
+// PRD section 27.2's toggleable layers, in the PRD's order. Mirrors
+// `channelflow.alerting.Overlay`: the alert writes these names into the deep
+// link and the chart reads them back, so a divergence would silently drop
+// whichever layer got renamed on one side.
+export const OVERLAYS = [
+  "candles",
+  "channel_center",
+  "channel_bounds",
+  "forecast_corridor",
+  "signal_zones",
+  "signal_marker",
+  "volume_profile",
+  "poc_vah_val",
+  "vwap",
+  "lob_walls",
+  "dex_liquidity_bands",
+  "liquidation_levels",
+] as const;
+export type Overlay = (typeof OVERLAYS)[number];
+
+// What the chart shows when the link did not say. The four layers REQ-WP-009's
+// acceptance names, plus the profile REQ-WP-012 added -- the state this chart
+// had before any link carried overlays.
+export const DEFAULT_OVERLAYS: readonly Overlay[] = [
+  "candles",
+  "channel_center",
+  "channel_bounds",
+  "signal_zones",
+  "signal_marker",
+  "volume_profile",
+];
