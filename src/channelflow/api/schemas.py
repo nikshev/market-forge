@@ -1,6 +1,8 @@
 """What goes over the wire.
 
 # @trace: REQ-API-001
+# @trace: REQ-US-001
+# @trace: REQ-US-004
 
 Separate from the domain models deliberately. A wire format that *is* a domain
 model makes every domain change an API change, and PRD section 0.5's
@@ -17,22 +19,43 @@ import uuid
 
 from pydantic import BaseModel, ConfigDict
 
-from channelflow.api.repositories import FeaturePoint, Market
+from channelflow.api.repositories import FeaturePoint, Market, ScoredSetup
 from channelflow.bars import Bar
 from channelflow.channels import ChannelSnapshot
+from channelflow.scoring import Explanation, Factor
 from channelflow.signals import Candidate
 
 
 class MarketOut(BaseModel):
+    """A market, and its latest score when it has one.
+
+    The three score fields are `None` rather than zero for a market nobody has
+    scored. A zero would say the setup was examined and found worthless, which
+    is a different claim from "not examined" -- and the list is sorted on it.
+    """
+
     model_config = ConfigDict(frozen=True)
 
     venue: str
     symbol: str
     market_type: str
+    setup_score: float | None = None
+    rank_score: float | None = None
+    #: The share of PRD section 22.1's 100 points any family could speak to.
+    confidence: float | None = None
 
     @classmethod
-    def of(cls, market: Market) -> MarketOut:
-        return cls(venue=market.venue, symbol=market.symbol, market_type=market.market_type)
+    def of(
+        cls, market: Market, *, scored: ScoredSetup | None = None, rank_score: float | None = None
+    ) -> MarketOut:
+        return cls(
+            venue=market.venue,
+            symbol=market.symbol,
+            market_type=market.market_type,
+            setup_score=None if scored is None else scored.score.final,
+            rank_score=rank_score,
+            confidence=None if scored is None else scored.score.confidence,
+        )
 
 
 class BarOut(BaseModel):
@@ -133,6 +156,60 @@ class TransitionOut(BaseModel):
     reason: str
 
 
+class FactorOut(BaseModel):
+    """One group's contribution, as PRD section 22.4's panel needs it."""
+
+    model_config = ConfigDict(frozen=True)
+
+    group: str
+    value: float
+    cap: float
+    #: The contribution as a share of its own cap. 26 of 30 and 8 of 10 are both
+    #: strong; 4 of 20 is weak while being the larger number.
+    share: float
+    names: tuple[str, ...]
+
+    @classmethod
+    def of(cls, factor: Factor) -> FactorOut:
+        return cls(
+            group=factor.group.value,
+            value=factor.value,
+            cap=factor.cap,
+            share=factor.share,
+            names=factor.names,
+        )
+
+
+class ExplanationOut(BaseModel):
+    """PRD section 22.4's five items.
+
+    The outcome is deliberately not among them. Section 27.4 requires the later
+    outcome "visually separated so it cannot be confused with information
+    available at signal time", and nesting it here would make that impossible
+    for any UI, not only this one.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    top_positive: tuple[FactorOut, ...]
+    top_negative: tuple[FactorOut, ...]
+    missing: tuple[str, ...]
+    feature_snapshot: dict[str, float]
+    model_version: str
+    factors: tuple[FactorOut, ...]
+
+    @classmethod
+    def of(cls, explanation: Explanation) -> ExplanationOut:
+        return cls(
+            top_positive=tuple(FactorOut.of(f) for f in explanation.top_positive),
+            top_negative=tuple(FactorOut.of(f) for f in explanation.top_negative),
+            missing=tuple(g.value for g in explanation.missing),
+            feature_snapshot=explanation.feature_snapshot,
+            model_version=explanation.model_version,
+            factors=tuple(FactorOut.of(f) for f in explanation.factors),
+        )
+
+
 class SignalDetailOut(BaseModel):
     """PRD section 28.6.
 
@@ -149,6 +226,10 @@ class SignalDetailOut(BaseModel):
     channel: ChannelOut | None
     features: dict[str, float]
     outcome: dict[str, str] | None
+    #: `None` for a signal produced before it was scored, or one nobody scored.
+    #: The rest of the detail still returns: an explanation is an addition to a
+    #: signal, not a precondition for reading one.
+    explanation: ExplanationOut | None = None
 
 
 class FeaturePointOut(BaseModel):

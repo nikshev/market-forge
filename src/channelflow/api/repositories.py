@@ -1,6 +1,8 @@
 """Where the API reads from.
 
 # @trace: REQ-API-001
+# @trace: REQ-US-001
+# @trace: REQ-US-004
 
 PRD section 29 defines the storage -- Iceberg on object storage, Pinot for HOT
 serving, PostgreSQL for metadata. None of it is built, and REQ-WP-009's chart
@@ -27,6 +29,7 @@ from typing import Protocol
 from channelflow.alerting import signal_id_for
 from channelflow.bars import Bar
 from channelflow.channels import ChannelSnapshot
+from channelflow.scoring import SignalScore
 from channelflow.signals import Candidate
 
 
@@ -35,6 +38,25 @@ class Market:
     venue: str
     symbol: str
     market_type: str
+
+
+@dataclass(frozen=True)
+class ScoredSetup:
+    """A market's latest score, and what PRD section 43 ranks it by.
+
+    The three ranking factors live here rather than being computed on read:
+    section 43 has them penalize staleness, illiquidity and repetition, and each
+    needs state the API does not hold. The API ranks; it does not measure.
+    """
+
+    venue: str
+    symbol: str
+    score: SignalScore
+    #: Section 22.4's "raw feature snapshot", stored with the score it explains.
+    feature_snapshot: dict[str, float]
+    model_version: str
+    liquidity_factor: float = 1.0
+    novelty_factor: float = 1.0
 
 
 @dataclass(frozen=True)
@@ -79,6 +101,8 @@ class Repository(Protocol):
 
     def signal(self, signal_id: uuid.UUID) -> Candidate | None: ...
 
+    def setup_score(self, *, venue: str, symbol: str) -> ScoredSetup | None: ...
+
 
 @dataclass
 class InMemoryRepository:
@@ -94,6 +118,9 @@ class InMemoryRepository:
     _snapshots: dict[tuple[str, str, int], list[ChannelSnapshot]] = field(default_factory=dict)
     _features: dict[tuple[str, str, int], list[FeaturePoint]] = field(default_factory=dict)
     _signals: list[Candidate] = field(default_factory=list)
+    #: One score per market, its latest. A history of scores is section 29's
+    #: storage work; overwriting is honest about what this holds.
+    _scores: dict[tuple[str, str], ScoredSetup] = field(default_factory=dict)
 
     # --- writing, for the pipeline and the tests ---
 
@@ -124,6 +151,27 @@ class InMemoryRepository:
     def add_signal(self, candidate: Candidate) -> None:
         self._signals.append(candidate)
 
+    def add_setup_score(
+        self,
+        *,
+        venue: str,
+        symbol: str,
+        score: SignalScore,
+        feature_snapshot: dict[str, float],
+        model_version: str,
+        liquidity_factor: float = 1.0,
+        novelty_factor: float = 1.0,
+    ) -> None:
+        self._scores[(venue, symbol)] = ScoredSetup(
+            venue=venue,
+            symbol=symbol,
+            score=score,
+            feature_snapshot=dict(feature_snapshot),
+            model_version=model_version,
+            liquidity_factor=liquidity_factor,
+            novelty_factor=novelty_factor,
+        )
+
     # --- reading ---
 
     def markets(self, *, venue: str | None = None, market_type: str | None = None) -> list[Market]:
@@ -133,6 +181,9 @@ class InMemoryRepository:
             if (venue is None or m.venue == venue)
             and (market_type is None or m.market_type == market_type)
         ]
+
+    def setup_score(self, *, venue: str, symbol: str) -> ScoredSetup | None:
+        return self._scores.get((venue, symbol))
 
     def bars(
         self,

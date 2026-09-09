@@ -54,3 +54,33 @@ export const ZONES = {
   middle: [0.44, 0.56],
   lower: [0.0, 0.12],
 } as const;
+
+// PRD section 22.1's six groups, in the PRD's own order and by its own names.
+// REQ-US-004 asks to see channel, OFI, volume profile, derivatives and DeFi;
+// these are those five plus rejection quality, which section 22.1 scores too.
+export const GROUPS = [
+  "channel_structure",
+  "rejection_quality",
+  "order_flow_confirmation",
+  "volume_confirmation",
+  "derivatives_context",
+  "defi_crossvenue_context",
+] as const;
+export type Group = (typeof GROUPS)[number];
+
+export interface FactorOut {
+  group: Group;
+  value: number;
+  cap: number;
+  share: number;
+  names: string[];
+}
+
+export interface ExplanationOut {
+  top_positive: FactorOut[];
+  top_negative: FactorOut[];
+  missing: Group[];
+  feature_snapshot: Record<string, number>;
+  model_version: string;
+  factors: FactorOut[];
+}

@@ -1,6 +1,8 @@
 """PRD section 28's endpoints.
 
 # @trace: REQ-API-001
+# @trace: REQ-US-001
+# @trace: REQ-US-004
 
 Read-only, every one of them: Principle IX says phases 1-3 form signals and
 alerts and the system does not open positions, and an API with no write path
@@ -19,11 +21,13 @@ from fastapi import APIRouter, HTTPException, Query, Request
 
 from channelflow.alerting import signal_id_for
 from channelflow.api.channels import ChannelUnavailable, channel_at
+from channelflow.api.ranking import rank_markets
 from channelflow.api.repositories import Repository
 from channelflow.api.schemas import (
     BarOut,
     BarsResponse,
     ChannelOut,
+    ExplanationOut,
     FeaturePointOut,
     FeatureSeriesResponse,
     FeatureSnapshotResponse,
@@ -34,6 +38,7 @@ from channelflow.api.schemas import (
     SignalsResponse,
     TransitionOut,
 )
+from channelflow.scoring import explain
 
 router = APIRouter(prefix="/api/v1")
 
@@ -48,8 +53,23 @@ def get_markets(
     venue: str | None = None,
     market_type: str | None = None,
 ) -> MarketsResponse:
-    found = _repository(request).markets(venue=venue, market_type=market_type)
-    return MarketsResponse(markets=tuple(MarketOut.of(m) for m in found))
+    """PRD section 28.1's list, ordered by section 43's rank score (REQ-US-001).
+
+    Filters first, then order. A list ordered before filtering is ordered over
+    rows the caller never sees, and the visible order is then whatever survived.
+
+    An unscored market sorts after every scored one and carries nulls. Ranking
+    it at zero would place it among the worst setups, saying it had been
+    examined and found weak.
+    """
+    repository = _repository(request)
+    found = repository.markets(venue=venue, market_type=market_type)
+    return MarketsResponse(
+        markets=tuple(
+            MarketOut.of(r.market, scored=r.scored, rank_score=r.rank_score)
+            for r in rank_markets(found, repository=repository)
+        )
+    )
 
 
 @router.get("/bars", response_model=BarsResponse)
@@ -185,7 +205,20 @@ def get_signal(request: Request, signal_id: uuid.UUID) -> SignalDetailOut:
         start_ns=0,
         end_ns=candidate.opened_at_ns,
     )
+    scored = repository.setup_score(venue=candidate.venue, symbol=candidate.symbol)
+    explanation = (
+        None
+        if scored is None
+        else ExplanationOut.of(
+            explain(
+                scored.score,
+                feature_snapshot=scored.feature_snapshot,
+                model_version=scored.model_version,
+            )
+        )
+    )
     return SignalDetailOut(
+        explanation=explanation,
         decision=SignalOut.of(candidate, signal_id=signal_id),
         history=tuple(
             TransitionOut(

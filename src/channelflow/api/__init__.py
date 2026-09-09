@@ -5,7 +5,13 @@
 
 from channelflow.api.app import create_app
 from channelflow.api.channels import AS_SEEN_THEN, CURRENT_REFIT, ChannelUnavailable, channel_at
-from channelflow.api.repositories import FeaturePoint, InMemoryRepository, Market, Repository
+from channelflow.api.repositories import (
+    FeaturePoint,
+    InMemoryRepository,
+    Market,
+    Repository,
+    ScoredSetup,
+)
 from channelflow.api.ws import CHANNELS, Hub, SubscribeError, Subscription, parse_subscribe
 
 __all__ = [
@@ -18,6 +24,7 @@ __all__ = [
     "InMemoryRepository",
     "Market",
     "Repository",
+    "ScoredSetup",
     "SubscribeError",
     "Subscription",
     "channel_at",
