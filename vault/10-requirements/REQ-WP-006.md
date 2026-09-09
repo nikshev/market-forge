@@ -56,6 +56,7 @@ tags: []
     - `src/channelflow/channels/models.py`
     - `src/channelflow/channels/quality.py`
     - `src/channelflow/channels/rolling_ols.py`
+    - `src/channelflow/channels/window.py`
 - **Outcomes:** [[OUT-2026-09-08-implement-channel-baseline]], [[OUT-2026-09-08-plan-channel-baseline]], [[OUT-2026-09-08-spec-channel-baseline]], [[OUT-2026-09-08-tasks-channel-baseline]]
 <!-- trace:end -->
 

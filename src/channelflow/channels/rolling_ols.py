@@ -29,6 +29,7 @@ import numpy as np
 from channelflow.bars import Bar
 from channelflow.channels.models import ChannelSnapshot
 from channelflow.channels.quality import score_channel
+from channelflow.channels.window import fit_window
 
 MODEL_NAME = "rolling_ols_log_price"
 MODEL_VERSION = "1.0.0"
@@ -36,14 +37,6 @@ MODEL_VERSION = "1.0.0"
 #: Residual spread below which there is no measurable noise, so a
 #: signal-to-noise ratio has nothing to divide by. See the use site.
 NEGLIGIBLE_LOG_SPREAD = 1e-9
-
-
-class ChannelFitError(ValueError):
-    """The channel could not be fitted, and the reason is named.
-
-    Raised rather than returning a degraded snapshot: a channel fitted on fewer
-    points than asked for is a different model wearing the same name.
-    """
 
 
 @dataclass(frozen=True)
@@ -109,27 +102,4 @@ class RollingOLSChannel:
         )
 
     def _window(self, bars: list[Bar], *, as_of_ns: int) -> list[Bar]:
-        """Select the bars the fit may see. Everything the invariant needs.
-
-        Three filters, each one a requirement rather than a precaution:
-        finalized only (PRD section 12), at or before `as_of` (section 13.1),
-        and ordered by event time (arrival order is not market information).
-        """
-        eligible = sorted(
-            (b for b in bars if b.is_final and b.close_time_ns <= as_of_ns),
-            key=lambda b: b.close_time_ns,
-        )
-        window = eligible[-self.lookback :]
-
-        if len(window) < self.lookback:
-            raise ChannelFitError(
-                f"need {self.lookback} finalized bars at or before as_of, found {len(window)}; "
-                "fitting on fewer would silently be a different model"
-            )
-        for bar in window:
-            if bar.close <= 0:
-                raise ChannelFitError(
-                    f"bar at {bar.open_time_ns} has a non-positive close ({bar.close}); "
-                    "log price is undefined"
-                )
-        return window
+        return fit_window(bars, as_of_ns=as_of_ns, lookback=self.lookback)
