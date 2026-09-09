@@ -4,6 +4,7 @@
 # @trace: REQ-EXP-001
 # @trace: REQ-EXP-002
 # @trace: REQ-EXP-003
+# @trace: REQ-EXP-004
 """
 
 from channelflow.research.ablation import (
@@ -43,10 +44,20 @@ from channelflow.research.lookback_sensitivity import (
     recommend,
     sweep_lookbacks,
 )
+from channelflow.research.ofi_incremental import (
+    Increment,
+    IncrementalReport,
+    available_from_registry,
+    run_ofi_ablation,
+)
 
 __all__ = [
     "ARMS",
     "DETECTORS",
+    "Increment",
+    "IncrementalReport",
+    "available_from_registry",
+    "run_ofi_ablation",
     "CandidateLife",
     "candidate_lives",
     "detector_metrics",

@@ -22,10 +22,11 @@ def exposed_feature_names() -> tuple[str, ...]:
     would be the gate quietly becoming about one module.
     """
     from channelflow import derivatives, volume
+    from channelflow.channels import features as channel_features
     from channelflow.features import flow, instant, ofi, walls
 
     names: list[str] = []
-    for module in (instant, ofi, flow, walls, derivatives, volume):
+    for module in (instant, ofi, flow, walls, derivatives, volume, channel_features):
         names.extend(module.FEATURES)
     return tuple(names)
 
