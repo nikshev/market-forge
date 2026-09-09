@@ -3,6 +3,7 @@
 # @trace: REQ-API-001
 # @trace: REQ-US-001
 # @trace: REQ-US-004
+# @trace: REQ-US-003
 
 Read-only, every one of them: Principle IX says phases 1-3 form signals and
 alerts and the system does not open positions, and an API with no write path
@@ -21,11 +22,13 @@ from fastapi import APIRouter, HTTPException, Query, Request
 
 from channelflow.alerting import signal_id_for
 from channelflow.api.channels import ChannelUnavailable, channel_at
+from channelflow.api.comparison import HindsightInverted, compare_channel
 from channelflow.api.ranking import rank_markets
 from channelflow.api.repositories import Repository
 from channelflow.api.schemas import (
     BarOut,
     BarsResponse,
+    ChannelComparisonOut,
     ChannelOut,
     ExplanationOut,
     FeaturePointOut,
@@ -117,6 +120,38 @@ def get_channel(
     except ChannelUnavailable as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     return ChannelOut.of(view.snapshot, mode=view.mode)
+
+
+@router.get("/channels/comparison", response_model=ChannelComparisonOut)
+def get_channel_comparison(
+    request: Request,
+    venue: str,
+    symbol: str,
+    timeframe_ns: int,
+    at_ns: int,
+    now_ns: int,
+) -> ChannelComparisonOut:
+    """PRD section 27.5's two views at once (REQ-US-003).
+
+    `now_ns` is the caller's, not a clock reading: section 27.5 refits over
+    "visible/current history", and what is visible is the reader's own window.
+    """
+    try:
+        comparison = compare_channel(
+            _repository(request),
+            venue=venue,
+            symbol=symbol,
+            timeframe_ns=timeframe_ns,
+            at_ns=at_ns,
+            now_ns=now_ns,
+        )
+    except HindsightInverted as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except ChannelUnavailable as exc:
+        # 404: the pair of channels this names does not exist. Neither side can
+        # be approximated -- a rebuilt AS-SEEN-THEN would measure nothing.
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return ChannelComparisonOut.of(comparison)
 
 
 @router.get("/features/snapshot", response_model=FeatureSnapshotResponse)
