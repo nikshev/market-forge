@@ -69,33 +69,57 @@ calculated now over current history, and the deep-link default is
     - `tests/unit/api/test_channel_modes.py::test_the_parameter_defaults_to_as_seen_then`
     - `tests/unit/api/test_channel_modes.py::test_the_refit_cannot_see_past_the_requested_instant`
     - `tests/unit/api/test_channel_modes.py::test_the_two_modes_disagree_and_that_is_the_point`
-    - `tests/unit/api/test_reads.py::test_a_feature_snapshot_is_served`
-    - `tests/unit/api/test_reads.py::test_a_feature_time_series_is_served`
-    - `tests/unit/api/test_reads.py::test_a_limit_returns_the_most_recent_bars`
-    - `tests/unit/api/test_reads.py::test_a_signal_detail_separates_the_later_outcome`
-    - `tests/unit/api/test_reads.py::test_an_unknown_signal_is_a_not_found`
-    - `tests/unit/api/test_reads.py::test_an_unknown_symbol_returns_an_empty_result`
-    - `tests/unit/api/test_reads.py::test_bars_are_served_in_event_time_order`
-    - `tests/unit/api/test_reads.py::test_bars_honour_the_time_range`
-    - `tests/unit/api/test_reads.py::test_markets_are_served`
-    - `tests/unit/api/test_reads.py::test_markets_filter_by_market_type`
-    - `tests/unit/api/test_reads.py::test_markets_filter_by_venue`
-    - `tests/unit/api/test_reads.py::test_signals_are_served_and_filtered`
-    - `tests/unit/api/test_reads.py::test_signals_filter_by_time_range`
-    - `tests/unit/api/test_ws.py::test_a_malformed_message_is_answered_not_fatal[not json at all-not JSON]`
-    - `tests/unit/api/test_ws.py::test_a_malformed_message_is_answered_not_fatal[{"op": "subscribe", "venue": "b", "symbol": "s", "timeframe": "1m", "channels": ["bras"]}-unknown channel]`
-    - `tests/unit/api/test_ws.py::test_a_malformed_message_is_answered_not_fatal[{"op": "subscribe", "venue": "b", "symbol": "s", "timeframe": "1m", "channels": []}-non-empty list]`
-    - `tests/unit/api/test_ws.py::test_a_malformed_message_is_answered_not_fatal[{"op": "subscribe", "venue": "binance"}-missing field]`
-    - `tests/unit/api/test_ws.py::test_a_malformed_message_is_answered_not_fatal[{"op": "unsubscribe"}-unsupported op]`
-    - `tests/unit/api/test_ws.py::test_a_published_update_reaches_the_subscriber`
-    - `tests/unit/api/test_ws.py::test_an_update_nobody_subscribed_to_reaches_nobody`
-    - `tests/unit/api/test_ws.py::test_another_symbol_is_not_delivered`
-    - `tests/unit/api/test_ws.py::test_only_subscribed_channels_are_delivered`
-    - `tests/unit/api/test_ws.py::test_the_documented_subscribe_message_is_accepted`
+    - `tests/unit/api/test_reads.py::test_a_feature_snapshot_is_served[in_memory]`
+    - `tests/unit/api/test_reads.py::test_a_feature_snapshot_is_served[lakehouse]`
+    - `tests/unit/api/test_reads.py::test_a_feature_time_series_is_served[in_memory]`
+    - `tests/unit/api/test_reads.py::test_a_feature_time_series_is_served[lakehouse]`
+    - `tests/unit/api/test_reads.py::test_a_limit_returns_the_most_recent_bars[in_memory]`
+    - `tests/unit/api/test_reads.py::test_a_limit_returns_the_most_recent_bars[lakehouse]`
+    - `tests/unit/api/test_reads.py::test_a_signal_detail_separates_the_later_outcome[in_memory]`
+    - `tests/unit/api/test_reads.py::test_a_signal_detail_separates_the_later_outcome[lakehouse]`
+    - `tests/unit/api/test_reads.py::test_an_unknown_signal_is_a_not_found[in_memory]`
+    - `tests/unit/api/test_reads.py::test_an_unknown_signal_is_a_not_found[lakehouse]`
+    - `tests/unit/api/test_reads.py::test_an_unknown_symbol_returns_an_empty_result[in_memory]`
+    - `tests/unit/api/test_reads.py::test_an_unknown_symbol_returns_an_empty_result[lakehouse]`
+    - `tests/unit/api/test_reads.py::test_bars_are_served_in_event_time_order[in_memory]`
+    - `tests/unit/api/test_reads.py::test_bars_are_served_in_event_time_order[lakehouse]`
+    - `tests/unit/api/test_reads.py::test_bars_honour_the_time_range[in_memory]`
+    - `tests/unit/api/test_reads.py::test_bars_honour_the_time_range[lakehouse]`
+    - `tests/unit/api/test_reads.py::test_markets_are_served[in_memory]`
+    - `tests/unit/api/test_reads.py::test_markets_are_served[lakehouse]`
+    - `tests/unit/api/test_reads.py::test_markets_filter_by_market_type[in_memory]`
+    - `tests/unit/api/test_reads.py::test_markets_filter_by_market_type[lakehouse]`
+    - `tests/unit/api/test_reads.py::test_markets_filter_by_venue[in_memory]`
+    - `tests/unit/api/test_reads.py::test_markets_filter_by_venue[lakehouse]`
+    - `tests/unit/api/test_reads.py::test_signals_are_served_and_filtered[in_memory]`
+    - `tests/unit/api/test_reads.py::test_signals_are_served_and_filtered[lakehouse]`
+    - `tests/unit/api/test_reads.py::test_signals_filter_by_time_range[in_memory]`
+    - `tests/unit/api/test_reads.py::test_signals_filter_by_time_range[lakehouse]`
+    - `tests/unit/api/test_ws.py::test_a_malformed_message_is_answered_not_fatal[in_memory-not json at all-not JSON]`
+    - `tests/unit/api/test_ws.py::test_a_malformed_message_is_answered_not_fatal[in_memory-{"op": "subscribe", "venue": "b", "symbol": "s", "timeframe": "1m", "channels": ["bras"]}-unknown channel]`
+    - `tests/unit/api/test_ws.py::test_a_malformed_message_is_answered_not_fatal[in_memory-{"op": "subscribe", "venue": "b", "symbol": "s", "timeframe": "1m", "channels": []}-non-empty list]`
+    - `tests/unit/api/test_ws.py::test_a_malformed_message_is_answered_not_fatal[in_memory-{"op": "subscribe", "venue": "binance"}-missing field]`
+    - `tests/unit/api/test_ws.py::test_a_malformed_message_is_answered_not_fatal[in_memory-{"op": "unsubscribe"}-unsupported op]`
+    - `tests/unit/api/test_ws.py::test_a_malformed_message_is_answered_not_fatal[lakehouse-not json at all-not JSON]`
+    - `tests/unit/api/test_ws.py::test_a_malformed_message_is_answered_not_fatal[lakehouse-{"op": "subscribe", "venue": "b", "symbol": "s", "timeframe": "1m", "channels": ["bras"]}-unknown channel]`
+    - `tests/unit/api/test_ws.py::test_a_malformed_message_is_answered_not_fatal[lakehouse-{"op": "subscribe", "venue": "b", "symbol": "s", "timeframe": "1m", "channels": []}-non-empty list]`
+    - `tests/unit/api/test_ws.py::test_a_malformed_message_is_answered_not_fatal[lakehouse-{"op": "subscribe", "venue": "binance"}-missing field]`
+    - `tests/unit/api/test_ws.py::test_a_malformed_message_is_answered_not_fatal[lakehouse-{"op": "unsubscribe"}-unsupported op]`
+    - `tests/unit/api/test_ws.py::test_a_published_update_reaches_the_subscriber[in_memory]`
+    - `tests/unit/api/test_ws.py::test_a_published_update_reaches_the_subscriber[lakehouse]`
+    - `tests/unit/api/test_ws.py::test_an_update_nobody_subscribed_to_reaches_nobody[in_memory]`
+    - `tests/unit/api/test_ws.py::test_an_update_nobody_subscribed_to_reaches_nobody[lakehouse]`
+    - `tests/unit/api/test_ws.py::test_another_symbol_is_not_delivered[in_memory]`
+    - `tests/unit/api/test_ws.py::test_another_symbol_is_not_delivered[lakehouse]`
+    - `tests/unit/api/test_ws.py::test_only_subscribed_channels_are_delivered[in_memory]`
+    - `tests/unit/api/test_ws.py::test_only_subscribed_channels_are_delivered[lakehouse]`
+    - `tests/unit/api/test_ws.py::test_the_documented_subscribe_message_is_accepted[in_memory]`
+    - `tests/unit/api/test_ws.py::test_the_documented_subscribe_message_is_accepted[lakehouse]`
 - **Code:**
     - `src/channelflow/api/__init__.py`
     - `src/channelflow/api/app.py`
     - `src/channelflow/api/channels.py`
+    - `src/channelflow/api/lakehouse_repository.py`
     - `src/channelflow/api/repositories.py`
     - `src/channelflow/api/routes.py`
     - `src/channelflow/api/schemas.py`

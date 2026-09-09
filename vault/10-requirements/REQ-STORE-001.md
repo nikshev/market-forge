@@ -159,11 +159,16 @@ point-in-time reads, and DuckDB access to a snapshot.
     - `tests/unit/lakehouse/test_schema.py::test_a_boolean_is_not_an_integer`
     - `tests/unit/lakehouse/test_schema.py::test_a_column_is_reachable_by_name_and_an_unknown_one_is_not`
     - `tests/unit/lakehouse/test_schema.py::test_a_column_type_outside_the_vocabulary_is_refused`
+    - `tests/unit/lakehouse/test_schema.py::test_a_container_column_refuses_the_wrong_shape`
     - `tests/unit/lakehouse/test_schema.py::test_a_decimal_column_takes_a_decimal_and_nothing_else`
+    - `tests/unit/lakehouse/test_schema.py::test_a_float_list_hashes_by_its_order`
+    - `tests/unit/lakehouse/test_schema.py::test_a_float_map_hashes_the_same_whatever_order_it_was_built_in`
     - `tests/unit/lakehouse/test_schema.py::test_a_row_carrying_a_column_the_schema_does_not_declare_is_refused`
     - `tests/unit/lakehouse/test_schema.py::test_a_row_missing_a_column_is_refused`
     - `tests/unit/lakehouse/test_schema.py::test_a_schema_names_the_columns_a_reader_has_to_convert_back`
+    - `tests/unit/lakehouse/test_schema.py::test_a_schema_names_the_map_columns_a_reader_has_to_convert`
     - `tests/unit/lakehouse/test_schema.py::test_a_schema_with_no_columns_is_refused`
+    - `tests/unit/lakehouse/test_schema.py::test_a_string_list_cannot_forge_its_own_boundaries`
     - `tests/unit/lakehouse/test_schema.py::test_a_value_of_the_wrong_python_type_is_refused`
     - `tests/unit/lakehouse/test_schema.py::test_an_event_time_column_has_to_be_a_nanosecond_count`
     - `tests/unit/lakehouse/test_schema.py::test_an_event_time_column_that_does_not_exist_is_refused`
@@ -194,7 +199,9 @@ point-in-time reads, and DuckDB access to a snapshot.
     - `tests/unit/lakehouse/test_table.py::test_an_append_of_no_rows_is_refused`
     - `tests/unit/lakehouse/test_table.py::test_an_append_under_a_different_schema_is_refused`
     - `tests/unit/lakehouse/test_table.py::test_an_earlier_snapshot_still_reads_under_the_schema_it_was_written_with`
+    - `tests/unit/lakehouse/test_table.py::test_an_empty_container_is_stored_as_empty_and_not_as_absent`
     - `tests/unit/lakehouse/test_table.py::test_appending_leaves_every_earlier_snapshot_exactly_as_it_was`
+    - `tests/unit/lakehouse/test_table.py::test_container_columns_survive_the_round_trip`
     - `tests/unit/lakehouse/test_table.py::test_nothing_in_the_lakehouse_consults_a_clock`
     - `tests/unit/lakehouse/test_table.py::test_the_chain_records_its_own_order`
     - `tests/unit/lakehouse/test_table.py::test_the_recorded_event_time_is_the_batch_maximum`

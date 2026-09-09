@@ -171,3 +171,66 @@ def test_a_schema_names_the_columns_a_reader_has_to_convert_back() -> None:
     )
 
     assert schema.decimal_columns == ("open", "close")
+
+
+@pytest.mark.trace("REQ-STORE-001")
+def test_a_float_list_hashes_by_its_order() -> None:
+    """PRD §29.6's "forecast arrays" are a curve, not a set: the value at horizon
+    one is not the value at horizon two."""
+    schema = Schema(columns=(Column(name="horizons", type="float_list"),))
+
+    assert schema.encode_row({"horizons": [1.0, 2.0]}) != schema.encode_row(
+        {"horizons": [2.0, 1.0]}
+    )
+    assert schema.encode_row({"horizons": []}) != schema.encode_row({"horizons": [0.0]})
+
+
+@pytest.mark.trace("REQ-STORE-001")
+def test_a_string_list_cannot_forge_its_own_boundaries() -> None:
+    """Framed per item, so `["ab"]` and `["a", "b"]` are different values."""
+    schema = Schema(columns=(Column(name="names", type="string_list"),))
+
+    assert schema.encode_row({"names": ["ab"]}) != schema.encode_row({"names": ["a", "b"]})
+
+
+@pytest.mark.trace("REQ-STORE-001")
+def test_a_float_map_hashes_the_same_whatever_order_it_was_built_in() -> None:
+    """A map is not ordered. Two writers that inserted the same pairs in
+    different orders wrote the same value, and an identity that disagreed would
+    make a snapshot's hash depend on a dict's insertion history."""
+    schema = Schema(columns=(Column(name="submetrics", type="float_map"),))
+
+    assert schema.encode_row({"submetrics": {"a": 1.0, "b": 2.0}}) == schema.encode_row(
+        {"submetrics": {"b": 2.0, "a": 1.0}}
+    )
+    assert schema.encode_row({"submetrics": {"a": 1.0}}) != schema.encode_row(
+        {"submetrics": {"a": 2.0}}
+    )
+
+
+@pytest.mark.trace("REQ-STORE-001")
+def test_a_container_column_refuses_the_wrong_shape() -> None:
+    """A string is a sequence in Python, which is how a name ends up stored as a
+    list of its own characters."""
+    lists = Schema(columns=(Column(name="v", type="string_list"),))
+    maps = Schema(columns=(Column(name="v", type="float_map"),))
+
+    with pytest.raises(TypeError, match="sequence"):
+        lists.encode_row({"v": "abc"})
+    with pytest.raises(TypeError, match="mapping"):
+        maps.encode_row({"v": [("a", 1.0)]})
+
+
+@pytest.mark.trace("REQ-STORE-001")
+def test_a_schema_names_the_map_columns_a_reader_has_to_convert() -> None:
+    """Arrow hands a map back as a list of pairs. A reader that forgot one gets
+    `[("fit", 0.9)]` where it expected `{"fit": 0.9}`, and the mistake surfaces
+    wherever the value is used rather than where it was read."""
+    schema = Schema(
+        columns=(
+            Column(name="submetrics", type="float_map"),
+            Column(name="score", type="float64"),
+        )
+    )
+
+    assert schema.map_columns == ("submetrics",)

@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import hashlib
 import struct
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from decimal import Decimal
 from typing import Literal
@@ -26,7 +27,23 @@ import pyarrow as pa
 
 #: What a column may hold. Each maps to exactly one Arrow type, and each has
 #: exactly one canonical byte encoding for hashing.
-ColumnType = Literal["int64", "float64", "string", "bool", "timestamp_ns", "decimal"]
+ColumnType = Literal[
+    "int64",
+    "float64",
+    "string",
+    "bool",
+    "timestamp_ns",
+    "decimal",
+    # Containers. PRD section 29.6 asks a channel snapshot for "forecast arrays"
+    # and "quality components" by name, so a table that could only hold scalars
+    # would need a child table per tuple -- six of them across section 29.B's
+    # schemas, each joined back on every read. Arrow and Parquet carry all three
+    # natively and DuckDB and Trino query them, which is the whole reason the
+    # physical format was chosen.
+    "float_list",
+    "string_list",
+    "float_map",
+]
 
 _ARROW: dict[str, pa.DataType] = {
     "int64": pa.int64(),
@@ -44,6 +61,9 @@ _ARROW: dict[str, pa.DataType] = {
     # not give and which would silently truncate the first value that exceeded
     # them. A string round-trips every `Decimal` exactly and costs bytes.
     "decimal": pa.string(),
+    "float_list": pa.list_(pa.float64()),
+    "string_list": pa.list_(pa.string()),
+    "float_map": pa.map_(pa.string(), pa.float64()),
 }
 
 #: One byte per type, so two values of different types can never hash alike.
@@ -54,6 +74,9 @@ _TAG: dict[str, bytes] = {
     "bool": b"b",
     "timestamp_ns": b"t",
     "decimal": b"d",
+    "float_list": b"L",
+    "string_list": b"S",
+    "float_map": b"M",
 }
 
 
@@ -127,6 +150,17 @@ class Schema:
         return digest.hexdigest()
 
     @property
+    def map_columns(self) -> tuple[str, ...]:
+        """Columns Arrow hands back as a list of pairs rather than as a mapping.
+
+        Named for the same reason as `decimal_columns`: a reader that forgot one
+        would get `[("fit", 0.9)]` where it expected `{"fit": 0.9}`, and the
+        mistake surfaces wherever the value is finally used rather than where it
+        was read.
+        """
+        return tuple(c.name for c in self.columns if c.type == "float_map")
+
+    @property
     def decimal_columns(self) -> tuple[str, ...]:
         """Columns stored as text that a reader has to turn back into `Decimal`.
 
@@ -190,6 +224,24 @@ def _encode(column_type: str, value: object) -> bytes:
         if not isinstance(value, bool):
             raise TypeError(f"expected a bool for a bool column, got {value!r}")
         return b"\x01" if value else b"\x00"
+    if column_type == "float_list":
+        if isinstance(value, str) or not isinstance(value, Sequence):
+            raise TypeError(f"expected a sequence for a float_list column, got {value!r}")
+        return b"".join(_length_prefixed(_encode("float64", item)) for item in value)
+    if column_type == "string_list":
+        if isinstance(value, str) or not isinstance(value, Sequence):
+            raise TypeError(f"expected a sequence for a string_list column, got {value!r}")
+        return b"".join(_length_prefixed(_encode("string", item)) for item in value)
+    if column_type == "float_map":
+        if not isinstance(value, Mapping):
+            raise TypeError(f"expected a mapping for a float_map column, got {value!r}")
+        # Keys sorted: a map is not ordered, and two writers that inserted the
+        # same pairs in different orders wrote the same value.
+        return b"".join(
+            _length_prefixed(_encode("string", key))
+            + _length_prefixed(_encode("float64", value[key]))
+            for key in sorted(value)
+        )
     if column_type == "decimal":
         if not isinstance(value, Decimal):
             raise TypeError(f"expected a Decimal for a decimal column, got {value!r}")

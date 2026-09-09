@@ -23,10 +23,14 @@ As a user, I want to see the contribution factors: channel, OFI, volume profile,
 <!-- trace:begin -->
 - **Specs:** [[SPEC-026-scored-markets]]
 - **Tests:**
-    - `tests/unit/api/test_scored_markets.py::test_a_missing_family_is_missing_and_not_a_negative_factor`
-    - `tests/unit/api/test_scored_markets.py::test_a_scored_signals_detail_carries_its_explanation`
-    - `tests/unit/api/test_scored_markets.py::test_an_unscored_signal_still_returns_its_detail`
-    - `tests/unit/api/test_scored_markets.py::test_the_outcome_stays_separate_from_the_explanation`
+    - `tests/unit/api/test_scored_markets.py::test_a_missing_family_is_missing_and_not_a_negative_factor[in_memory]`
+    - `tests/unit/api/test_scored_markets.py::test_a_missing_family_is_missing_and_not_a_negative_factor[lakehouse]`
+    - `tests/unit/api/test_scored_markets.py::test_a_scored_signals_detail_carries_its_explanation[in_memory]`
+    - `tests/unit/api/test_scored_markets.py::test_a_scored_signals_detail_carries_its_explanation[lakehouse]`
+    - `tests/unit/api/test_scored_markets.py::test_an_unscored_signal_still_returns_its_detail[in_memory]`
+    - `tests/unit/api/test_scored_markets.py::test_an_unscored_signal_still_returns_its_detail[lakehouse]`
+    - `tests/unit/api/test_scored_markets.py::test_the_outcome_stays_separate_from_the_explanation[in_memory]`
+    - `tests/unit/api/test_scored_markets.py::test_the_outcome_stays_separate_from_the_explanation[lakehouse]`
 - **Code:**
     - `apps/web/src/Explanation.tsx`
     - `apps/web/src/__tests__/Explanation.test.tsx`
