@@ -45,6 +45,8 @@ the graph or the validator depends on a fuzzy or LLM-derived edge.
     - `tests/tools/trace/test_cli.py::test_validate_exits_one_and_names_the_rule`
     - `tests/tools/trace/test_dashboard.py::test_update_requirement_notes_is_idempotent`
     - `tests/tools/trace/test_graph.py::test_build_graph_wires_every_edge_kind`
+    - `tests/tools/trace/test_phase_coverage.py::test_every_phase_note_is_checked_by_one_of_these_tests`
+    - `tests/tools/trace/test_phase_coverage.py::test_no_requirement_note_still_carries_the_unspecified_marker`
     - `tests/tools/trace/test_pytest_plugin.py::test_parametrized_tests_are_recorded_once_per_case`
     - `tests/tools/trace/test_validate.py::test_r5_fails_for_a_planned_hard_gated_constraint_without_a_test`
     - `tests/tools/trace/test_vault_hard_gated.py::test_every_bias_requirement_is_hard_gated`

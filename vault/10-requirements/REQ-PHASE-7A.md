@@ -5,9 +5,14 @@ type: phase
 prd_ref: "Phase 7A — Adaptive position / stop management (shadow → paper)"
 prd_lines: "6871-6903"
 phase: 7A
-status: draft
+status: planned
 depends_on: ["REQ-PHASE-7"]
 tags: []
+covers: [REQ-WP-020, REQ-EXP-017, REQ-BIAS-009, REQ-BT-001]
+not_delivered:
+  - "stop-path chart: the web app has no stop-path view"
+  - "Telegram stop-update notification: the alerting layer sends signals, not stop updates"
+  - "shadow/paper replay of stop-update activation latency: the replay models fills, not activation latency"
 ---
 
 ## Requirement
@@ -54,10 +59,37 @@ Live exchange stop modification is **not** required for this phase.
 
 Live exchange stop modification is **not** required for this phase.
 
+## Coverage
+
+Which requirements deliver this phase, and what nothing delivers. The
+`covers:` and `not_delivered:` frontmatter carries the same two lists, and
+`tests/unit/trace/test_phase_coverage.py` checks that every covering
+requirement exists and has reached `implemented`.
+
+**Delivered by:**
+
+- [[REQ-WP-020]]
+- [[REQ-EXP-017]]
+- [[REQ-BIAS-009]]
+- [[REQ-BT-001]]
+
+**Not delivered:**
+
+- stop-path chart: the web app has no stop-path view
+- Telegram stop-update notification: the alerting layer sends signals, not stop updates
+- shadow/paper replay of stop-update activation latency: the replay models fills, not activation latency
+
+This phase is `planned` rather than `implemented` because that list is not
+empty. A phase is its deliverables; a phase with a missing deliverable is a
+phase in progress, however much of it is built.
+
 ## Trace
 
 <!-- trace:begin -->
-_No linked artifacts yet._
+- **Specs:** [[SPEC-051-phase-coverage]]
+- **Tests:**
+    - `tests/tools/trace/test_phase_coverage.py::test_phase_7a_coverage`
+- **Outcomes:** [[OUT-2026-09-09-implement-phase-coverage]], [[OUT-2026-09-09-requirement-phase-acceptance]], [[OUT-2026-09-09-spec-phase-coverage]]
 <!-- trace:end -->
 
 ## Notes
