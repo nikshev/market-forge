@@ -1,6 +1,7 @@
 """What a replay produced.
 
 # @trace: REQ-WP-010
+# @trace: REQ-US-005
 
 Signal-quality metrics only. ADR-009: PRD section 25.5 lists twenty metrics, but
 almost all need an outcome definition (section 40) and a fill model (section
@@ -58,6 +59,11 @@ class BacktestReport(BaseModel):
     terminal_reasons: dict[str, int]
 
     transitions: tuple[Transition, ...]
+
+    #: The setup family this run was of, or `None` for an unrestricted run
+    #: (REQ-US-005). Two reports that cannot be told apart are two reports whose
+    #: difference cannot be attributed.
+    family: str | None = None
 
     #: PRD section 13.11 calls the zone bounds research defaults. Two runs whose
     #: reports cannot be told apart are two runs whose difference cannot be

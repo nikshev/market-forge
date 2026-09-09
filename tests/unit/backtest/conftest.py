@@ -67,3 +67,20 @@ def falling_with_breakouts() -> list[Bar]:
         breaking = -0.10 if i > WARMUP_BARS and i % BREAK_PERIOD < 4 else 0.0
         bars.append(bar(i, 100.0 * math.exp(drift + oscillation + breaking)))
     return bars
+
+
+@pytest.fixture
+def rising_with_breakouts() -> list[Bar]:
+    """The mirror image: a climbing channel that breaks upward.
+
+    A falling channel only ever opens middle-zone shorts, so a run restricted to
+    short setups is indistinguishable from one restricted to the middle zone.
+    This fixture is where those two differ -- its middle zone opens longs.
+    """
+    bars = []
+    for i in range(400):
+        drift = 0.0015 * i
+        oscillation = 0.02 * math.sin(i * 0.55)
+        breaking = 0.10 if i > WARMUP_BARS and i % BREAK_PERIOD < 4 else 0.0
+        bars.append(bar(i, 100.0 * math.exp(drift + oscillation + breaking)))
+    return bars

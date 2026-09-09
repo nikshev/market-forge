@@ -43,6 +43,13 @@ class SignalMachine:
     min_quality: float = 0.5
     slope_threshold: float = 0.05
     expiry_bars: int = 10
+    #: Which `(boundary, direction)` pairs this machine may open. `None` means
+    #: every pair, which is how the engine has always behaved and what every
+    #: caller before REQ-US-005 gets. A restricted machine is how PRD section
+    #: 31's per-family `enabled:` is expressed: the engine tracks one candidate
+    #: at a time, so a family's run has to be prevented from opening another
+    #: family's setups rather than have them filtered out afterwards.
+    opens: tuple[tuple[str, str], ...] | None = None
     detector: RejectionDetector = field(default_factory=CloseBackInside)
 
     candidate: Candidate | None = None
@@ -102,6 +109,8 @@ class SignalMachine:
                 self._open(bar, direction="long", boundary="middle")
 
     def _open(self, bar: Bar, *, direction: str, boundary: str) -> None:
+        if self.opens is not None and (boundary, direction) not in self.opens:
+            return
         transition = Transition(
             from_state=CandidateState.NONE,
             to_state=CandidateState.APPROACH,
