@@ -1,6 +1,7 @@
 """Signal state machine (REQ-WP-007).
 
 # @trace: REQ-WP-007
+# @trace: REQ-EXP-003
 """
 
 from channelflow.signals.machine import IllegalTransition, SignalMachine
@@ -11,7 +12,12 @@ from channelflow.signals.models import (
     CandidateState,
     Transition,
 )
-from channelflow.signals.rejection import CloseBackInside, RejectionDetector
+from channelflow.signals.rejection import (
+    CloseBackInside,
+    RejectionDetector,
+    TwoBarConfirmation,
+    WickOnly,
+)
 
 __all__ = [
     "ALLOWED",
@@ -23,4 +29,6 @@ __all__ = [
     "TERMINAL",
     "SignalMachine",
     "Transition",
+    "TwoBarConfirmation",
+    "WickOnly",
 ]
