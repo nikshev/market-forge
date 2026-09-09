@@ -10,6 +10,7 @@
 # @trace: REQ-EXP-007
 # @trace: REQ-EXP-009
 # @trace: REQ-EXP-010
+# @trace: REQ-EXP-011
 """
 
 from channelflow.research.ablation import (
@@ -68,6 +69,15 @@ from channelflow.research.dex_incremental import (
     DexIncrementalReport,
     run_dex_ablation,
 )
+from channelflow.research.extremum_detectors import (
+    METHODS,
+    DetectorComparison,
+    RegimeRate,
+    volatility_regime,
+)
+from channelflow.research.extremum_detectors import (
+    compare_detectors as compare_extremum_detectors,
+)
 from channelflow.research.lead_lag_value import (
     DEFAULT_THRESHOLDS,
     DivergenceSignal,
@@ -103,6 +113,11 @@ __all__ = [
     "ARMS",
     "DETECTORS",
     "DEFAULT_THRESHOLDS",
+    "METHODS",
+    "DetectorComparison",
+    "RegimeRate",
+    "compare_extremum_detectors",
+    "volatility_regime",
     "SUPPORTED_COVERAGE",
     "DivergenceSignal",
     "LeadLagResult",
