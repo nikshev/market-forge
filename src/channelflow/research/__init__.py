@@ -8,6 +8,7 @@
 # @trace: REQ-EXP-005
 # @trace: REQ-EXP-006
 # @trace: REQ-EXP-007
+# @trace: REQ-EXP-009
 """
 
 from channelflow.research.ablation import (
@@ -26,6 +27,17 @@ from channelflow.research.channel_comparison import (
     ModelEntry,
     SeriesTooShort,
     compare_channel_models,
+)
+from channelflow.research.corridor_calibration import (
+    SUPPORTED_COVERAGE,
+    CalibrationReport,
+    Measurement,
+    Method,
+    MethodResult,
+    NoStableCorridor,
+    compare_corridors,
+    measure_corridors,
+    pick_winner,
 )
 from channelflow.research.cumulative import (
     Increment,
@@ -83,7 +95,16 @@ from channelflow.research.volume_confluence import (
 __all__ = [
     "ARMS",
     "DETECTORS",
+    "SUPPORTED_COVERAGE",
     "VARIABLES",
+    "CalibrationReport",
+    "Method",
+    "Measurement",
+    "MethodResult",
+    "NoStableCorridor",
+    "compare_corridors",
+    "measure_corridors",
+    "pick_winner",
     "Bucket",
     "ConditionalReport",
     "DexIncrementalReport",

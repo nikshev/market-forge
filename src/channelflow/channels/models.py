@@ -58,6 +58,12 @@ class ChannelSnapshot(BaseModel):
     upper_now: float
     lower_now: float
     slope_normalized: float
+    #: The fitted slope in log price per bar, unnormalized. PRD section 13.7's
+    #: forecast centre needs it: projecting a channel forward without it means
+    #: projecting it flat, which is a different forecast. `slope_normalized`
+    #: cannot serve -- it is divided by the residual spread, so two channels with
+    #: the same normalized slope move at different speeds.
+    slope_log_per_bar: float = 0.0
     width_pct: float
 
     #: Empty for Baseline A. PRD section 13.7 defines forecasts; fabricating a
