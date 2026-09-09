@@ -51,6 +51,7 @@ Ablation:
 - **Code:**
     - `src/channelflow/channels/features.py`
     - `src/channelflow/research/__init__.py`
+    - `src/channelflow/research/cumulative.py`
     - `src/channelflow/research/ofi_incremental.py`
 - **Outcomes:** [[OUT-2026-09-09-implement-ofi-incremental]], [[OUT-2026-09-09-plan-ofi-incremental]], [[OUT-2026-09-09-spec-ofi-incremental]]
 <!-- trace:end -->
