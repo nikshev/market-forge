@@ -55,7 +55,8 @@ class QuantileChannel:
         # Centred and scaled so the two coefficients are on comparable scales;
         # without it the slope's gradient is `lookback` times the intercept's
         # and a shared step size cannot serve both.
-        scaled = (index - index.mean()) / max(index.std(), 1.0)
+        scale = max(index.std(), 1.0)
+        scaled = (index - index.mean()) / scale
 
         fits = {
             tau: _pinball_fit(scaled, log_prices, tau=tau)
@@ -94,6 +95,10 @@ class QuantileChannel:
             upper_now=upper_now,
             lower_now=lower_now,
             slope_normalized=(slopes[0.5] / spread if spread > NEGLIGIBLE_LOG_SPREAD else 0.0),
+            # The fit runs on a centred, scaled index, so its slope is per
+            # scaled unit. Divided by the scale it is per bar again -- the unit
+            # every other baseline reports and the one section 13.7 projects in.
+            slope_log_per_bar=float(slopes[0.5] / scale),
             width_pct=(upper_now - lower_now) / center_now * 100.0 if center_now > 0 else 0.0,
             quality=_quality(slopes, residuals),
             source_max_event_time_ns=max(bar.close_time_ns for bar in window),

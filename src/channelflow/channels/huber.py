@@ -91,6 +91,7 @@ class HuberChannel:
             upper_now=upper_now,
             lower_now=lower_now,
             slope_normalized=slope_normalized,
+            slope_log_per_bar=float(slope),
             width_pct=(upper_now - lower_now) / center_now * 100.0 if center_now > 0 else 0.0,
             quality=score_channel(
                 residuals=residuals,

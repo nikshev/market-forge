@@ -88,6 +88,8 @@ class KalmanChannel:
             slope_normalized=(
                 slope / innovation_std if innovation_std > NEGLIGIBLE_LOG_SPREAD else 0.0
             ),
+            # The filter's slope state is already log price per bar.
+            slope_log_per_bar=float(slope),
             width_pct=(upper_now - lower_now) / center_now * 100.0 if center_now > 0 else 0.0,
             quality=ChannelQuality(
                 # A filter that is certain of its level is a filter whose
