@@ -1,4 +1,5 @@
 // @trace: REQ-WP-009
+// @trace: REQ-US-002
 //
 // PRD section 27.2's overlays, for the four layers REQ-WP-009's acceptance
 // names: candles, the channel's centre and boundaries, the setup zones, and a
@@ -12,8 +13,9 @@
 import { createChart, type IChartApi } from "lightweight-charts";
 import { useEffect, useRef } from "react";
 
-import { buildSeries, markerFor } from "./series";
-import type { BarOut, ChannelOut, SignalOut } from "./types";
+import { buildSeries, markerFor, visibleRangeFor } from "./series";
+import { DEFAULT_OVERLAYS } from "./types";
+import type { BarOut, ChannelOut, Overlay, SignalOut } from "./types";
 import { profileBars } from "./volumeProfile";
 import type { Profile } from "./volumeProfile";
 
@@ -23,16 +25,24 @@ const ZONE_COLOURS: Record<string, string> = {
   lower: "rgba(47, 158, 68, 0.10)",
 };
 
+// How many bars the deep link's instant is centred in. Wide enough to read the
+// setup's context, narrow enough that the bar the alert is about is obvious.
+const FOCUS_SPAN = 60;
+
 export function Chart({
   bars,
   channel,
   signal,
   profile = null,
+  overlays = DEFAULT_OVERLAYS,
+  focusAtNs = null,
 }: {
   bars: BarOut[];
   channel: ChannelOut | null;
   signal: SignalOut | null;
   profile?: Profile | null;
+  overlays?: readonly Overlay[];
+  focusAtNs?: number | null;
 }): JSX.Element {
   const container = useRef<HTMLDivElement>(null);
   const chart = useRef<IChartApi | null>(null);
@@ -58,14 +68,21 @@ export function Chart({
       return;
     }
     const { candles, channelLines, zones } = buildSeries({ bars, channel });
+    // Exactly the layers the link named (REQ-US-002). A chart that draws more
+    // than the alert had on is showing a different picture from the one the
+    // setup was judged against, and saying nothing about the difference.
+    const on = new Set(overlays);
 
     const candlestick = instance.addCandlestickSeries();
-    candlestick.setData(candles);
-    if (signal !== null) {
+    candlestick.setData(on.has("candles") ? candles : []);
+    if (signal !== null && on.has("signal_marker")) {
       candlestick.setMarkers([markerFor(signal, channel)]);
     }
 
     for (const [name, points] of Object.entries(channelLines)) {
+      if (!on.has(name === "center" ? "channel_center" : "channel_bounds")) {
+        continue;
+      }
       const line = instance.addLineSeries({
         color: name === "center" ? "#4c6ef5" : "#868e96",
         lineWidth: name === "center" ? 2 : 1,
@@ -79,7 +96,7 @@ export function Chart({
     // Zones are drawn as price lines rather than filled areas: the library has
     // no band primitive, and faking one with two stacked areas would put a
     // shape on the chart whose edges do not mean what they look like.
-    for (const [name, band] of Object.entries(zones)) {
+    for (const [name, band] of Object.entries(on.has("signal_zones") ? zones : {})) {
       for (const edge of [band.from, band.to]) {
         candlestick.createPriceLine({
           price: edge,
@@ -98,7 +115,7 @@ export function Chart({
     // than drawn as bars. A faked histogram out of stacked areas would put
     // edges on the chart that do not mean what they look like, the same
     // reasoning the channel zones follow.
-    for (const bar of profileBars(profile)) {
+    for (const bar of profileBars(on.has("volume_profile") ? profile : null)) {
       candlestick.createPriceLine({
         price: (bar.low + bar.high) / 2,
         color:
@@ -114,8 +131,14 @@ export function Chart({
       });
     }
 
-    instance.timeScale().fitContent();
-  }, [bars, channel, signal, profile]);
+    const range = visibleRangeFor(bars, focusAtNs, FOCUS_SPAN);
+    if (range === null) {
+      instance.timeScale().fitContent();
+    } else {
+      // REQ-US-002: "opens the chart at exactly the signal's timestamp".
+      instance.timeScale().setVisibleLogicalRange(range);
+    }
+  }, [bars, channel, signal, profile, overlays, focusAtNs]);
 
   return <div ref={container} data-testid="chart" />;
 }

@@ -1,6 +1,7 @@
 """Telegram alerting (REQ-WP-008).
 
 # @trace: REQ-WP-008
+# @trace: REQ-US-002
 """
 
 from channelflow.alerting.dedupe import DedupePolicy
@@ -13,6 +14,7 @@ from channelflow.alerting.models import (
     OrderFlowSummary,
     signal_id_for,
 )
+from channelflow.alerting.overlays import Overlay
 from channelflow.alerting.render import chart_deep_link, render_message
 
 __all__ = [
@@ -23,6 +25,7 @@ __all__ = [
     "DedupePolicy",
     "Dispatcher",
     "OrderFlowSummary",
+    "Overlay",
     "Transport",
     "chart_deep_link",
     "render_message",

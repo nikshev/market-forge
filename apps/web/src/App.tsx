@@ -1,5 +1,6 @@
 // @trace: REQ-WP-001
 // @trace: REQ-WP-009
+// @trace: REQ-US-002
 //
 // The page an alert's deep link opens. PRD section 27.1's route, and section
 // 27.5's default: AS-SEEN-THEN, always, unless the link says otherwise in so
@@ -12,6 +13,7 @@ import { Chart } from "./Chart";
 import { ChannelModeControl } from "./ChannelMode";
 import { LoadState, type LoadStateKind } from "./LoadState";
 import { parseDeepLink } from "./deepLink";
+import { RESTORATION_NOTICE } from "./overlays";
 import { AS_SEEN_THEN, type BarOut, type ChannelMode, type ChannelOut } from "./types";
 
 const MINUTE_NS = 60 * 1_000_000_000;
@@ -78,6 +80,10 @@ export function App(): JSX.Element {
     );
   }
 
+  // Said out loud, never inferred from an empty chart: a page that quietly
+  // showed its defaults would claim to have restored a state nobody recorded.
+  const notice = RESTORATION_NOTICE[link.overlays.state];
+
   return (
     <main>
       <h1>ChannelFlow</h1>
@@ -86,7 +92,14 @@ export function App(): JSX.Element {
       </h2>
       <ChannelModeControl mode={mode} onChange={setMode} />
       <LoadState state={state} detail={detail} />
-      <Chart bars={bars} channel={channel} signal={null} />
+      {notice === null ? null : <p role="status">{notice}</p>}
+      <Chart
+        bars={bars}
+        channel={channel}
+        signal={null}
+        overlays={link.overlays.overlays}
+        focusAtNs={link.atNs}
+      />
     </main>
   );
 }

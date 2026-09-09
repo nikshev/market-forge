@@ -83,20 +83,32 @@ def render_message(alert: Alert) -> str:
 
 
 def chart_deep_link(alert: Alert) -> str:
-    """PRD section 27.1: `/chart/:venue/:symbol?tf=..&at=..&signal=<uuid>`.
+    """PRD section 27.1's link, plus section 27.2's active layers.
+
+    `/chart/:venue/:symbol?tf=..&at=..&signal=<uuid>[&overlays=..]`
 
     The host is the alert's own, never a constant here -- a hard-coded one
     works in exactly one deployment.
     """
     candidate = alert.candidate
     at = _utc_iso(alert.event_time_ns)
-    return (
+    link = (
         f"{alert.chart_base_url.rstrip('/')}"
         f"/chart/{quote(candidate.venue)}/{quote(candidate.symbol)}"
         f"?tf={_timeframe(candidate.timeframe_ns)}"
         f"&at={quote(at, safe='')}"
         f"&signal={alert.signal_id}"
     )
+    if not alert.overlays:
+        # Omitted, never defaulted. A default written here would claim the alert
+        # knew what was on screen, and the chart would restore a state nobody
+        # recorded (REQ-US-002, FR-002).
+        return link
+    # Sorted and deduplicated, so one alert is one link. Serialized in whatever
+    # order the tuple held, a resent alert would carry a different URL and look
+    # like a different signal.
+    names = ",".join(sorted({o.value for o in alert.overlays}))
+    return f"{link}&overlays={quote(names, safe='')}"
 
 
 def _timeframe(timeframe_ns: int) -> str:

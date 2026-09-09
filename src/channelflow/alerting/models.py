@@ -17,6 +17,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from channelflow.alerting.overlays import Overlay
 from channelflow.channels import ChannelSnapshot
 from channelflow.signals import Candidate
 
@@ -86,6 +87,10 @@ class Alert(BaseModel):
     #: No default. A hard-coded host works in exactly one deployment, and a
     #: message whose only actionable element is broken is worse than none.
     chart_base_url: str = Field(min_length=1)
+    #: Which of PRD section 27.2's layers were on when this fired (REQ-US-002).
+    #: Empty means the pipeline did not record them -- not that none were on, so
+    #: the link omits the parameter rather than claiming a set nobody stored.
+    overlays: tuple[Overlay, ...] = ()
 
     @property
     def signal_id(self) -> uuid.UUID:
