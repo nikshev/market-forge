@@ -84,17 +84,22 @@ Done when:
     - `tests/unit/stops/test_policy.py::test_the_same_anchor_is_used_once_it_is_knowable`
     - `tests/unit/stops/test_replay.py::test_a_naive_baseline_still_may_not_widen`
     - `tests/unit/stops/test_replay.py::test_a_path_that_never_hits_the_stop_reports_no_exit`
+    - `tests/unit/stops/test_replay.py::test_a_position_that_never_stopped_has_no_holding_time`
     - `tests/unit/stops/test_replay.py::test_a_replay_is_deterministic`
+    - `tests/unit/stops/test_replay.py::test_a_short_position_records_the_excursion_the_other_way_round`
     - `tests/unit/stops/test_replay.py::test_a_short_position_replays_symmetrically`
     - `tests/unit/stops/test_replay.py::test_a_stop_that_was_right_does_not_count_as_premature`
+    - `tests/unit/stops/test_replay.py::test_a_stopped_position_reports_when_it_ended`
     - `tests/unit/stops/test_replay.py::test_no_anchor_kind_derives_a_stop_from_price_alone`
     - `tests/unit/stops/test_replay.py::test_realized_r_is_net_of_fees_and_slippage`
+    - `tests/unit/stops/test_replay.py::test_the_data_quality_freeze_fires_in_a_replay`
     - `tests/unit/stops/test_replay.py::test_the_exit_uses_the_executable_price_not_the_requested_stop`
     - `tests/unit/stops/test_replay.py::test_the_naive_baseline_moves_more_often_than_the_structural_one`
     - `tests/unit/stops/test_replay.py::test_the_naive_baselines_are_comparable_on_one_path`
     - `tests/unit/stops/test_replay.py::test_the_premature_rate_is_never_reported_without_realized_r`
     - `tests/unit/stops/test_replay.py::test_the_premature_stop_metric_counts_targets_reached_after_the_stop`
     - `tests/unit/stops/test_replay.py::test_the_replay_counts_why_the_policy_held`
+    - `tests/unit/stops/test_replay.py::test_the_replay_records_the_excursion_the_position_saw`
     - `tests/unit/stops/test_replay.py::test_the_stops_package_cannot_consult_a_clock`
 - **Code:**
     - `src/channelflow/stops/__init__.py`

@@ -114,8 +114,10 @@ class Replay:
         updates = 0
         requested: Decimal | None = None
         remaining: list[PricePoint] = []
+        walk = _Walk(position)
 
         for index, point in enumerate(path):
+            walk.observe(point, stop)
             if self._triggered(position, stop, point.price):
                 requested = stop
                 remaining = list(path[index:])
@@ -129,6 +131,10 @@ class Replay:
                 market_price=point.price,
                 noise_distance=point.noise_distance,
                 phase=PositionPhase.STRUCTURE_TRAIL,
+                # The field existed on `PricePoint` and never reached the policy,
+                # so section 44A.18's freeze could not fire in a replay -- the one
+                # place it is supposed to be observable.
+                data_quality_ok=point.data_quality_ok,
             )
             for reason in proposal.reasons:
                 reasons[reason.name] = reasons.get(reason.name, 0) + 1
@@ -136,7 +142,7 @@ class Replay:
                 stop = proposal.price
                 updates += 1
 
-        return self._outcome("adaptive", position, requested, remaining, reasons, updates)
+        return self._outcome("adaptive", position, requested, remaining, reasons, updates, walk)
 
     def run_naive(
         self,
@@ -148,8 +154,10 @@ class Replay:
         updates = 0
         requested: Decimal | None = None
         remaining: list[PricePoint] = []
+        walk = _Walk(position)
 
         for index, point in enumerate(path):
+            walk.observe(point, stop)
             if self._triggered(position, stop, point.price):
                 requested = stop
                 remaining = list(path[index:])
@@ -167,7 +175,7 @@ class Replay:
                 stop = proposed
                 updates += 1
 
-        return self._outcome(policy.name, position, requested, remaining, {}, updates)
+        return self._outcome(policy.name, position, requested, remaining, {}, updates, walk)
 
     def _triggered(self, position: PositionState, stop: Decimal, price: Decimal) -> bool:
         return price <= stop if position.side == "LONG" else price >= stop
@@ -180,6 +188,7 @@ class Replay:
         remaining: list[PricePoint],
         reasons: dict[str, int],
         updates: int,
+        walk: _Walk,
     ) -> StopPolicyOutcome:
         if requested is None:
             return StopPolicyOutcome(
@@ -193,6 +202,12 @@ class Replay:
                 reached_target_after_stop=False,
                 stop_updates=updates,
                 reason_counts=reasons,
+                mfe_r=walk.best_r,
+                mae_r=walk.worst_r,
+                exit_at_ns=None,
+                holding_ns=walk.holding(exited=False),
+                stop_distances_r=tuple(walk.distances),
+                points_observed=walk.points,
             )
 
         realized, slippage = self.costs.executable_exit(requested, side=position.side)
@@ -218,6 +233,12 @@ class Replay:
             reached_target_after_stop=self._reached_target(position, remaining),
             stop_updates=updates,
             reason_counts=reasons,
+            mfe_r=walk.best_r,
+            mae_r=walk.worst_r,
+            exit_at_ns=walk.last_ns,
+            holding_ns=walk.holding(exited=True),
+            stop_distances_r=tuple(walk.distances),
+            points_observed=walk.points,
         )
 
     def _reached_target(self, position: PositionState, remaining: list[PricePoint]) -> bool:
@@ -229,6 +250,50 @@ class Replay:
             (point.price >= target) if position.side == "LONG" else (point.price <= target)
             for point in remaining
         )
+
+
+@dataclass
+class _Walk:
+    """What the position saw on its way to the exit.
+
+    Recorded by the replay because the replay is the only place that holds the
+    path and the position side together. Computing an excursion anywhere else
+    means re-deriving the side convention, and a sign error there is invisible:
+    the numbers stay plausible and the favourable and adverse excursions simply
+    swap.
+    """
+
+    position: PositionState
+    best_r: float | None = None
+    worst_r: float | None = None
+    last_ns: int | None = None
+    distances: list[float] = field(default_factory=list)
+    points: int = 0
+
+    def observe(self, point: PricePoint, stop: Decimal) -> None:
+        risk = self.position.initial_risk_per_unit
+        move = (
+            point.price - self.position.average_entry_price
+            if self.position.side == "LONG"
+            else self.position.average_entry_price - point.price
+        )
+        excursion = float(move / risk)
+        self.best_r = excursion if self.best_r is None else max(self.best_r, excursion)
+        self.worst_r = excursion if self.worst_r is None else min(self.worst_r, excursion)
+        self.distances.append(float(abs(point.price - stop) / risk))
+        self.last_ns = point.at_ns
+        self.points += 1
+
+    def holding(self, *, exited: bool) -> int | None:
+        """How long the position was held -- only when it actually ended.
+
+        A position that never stopped has no holding time. Reporting the last
+        observed instant as one would make an unfinished path look like a
+        completed trade.
+        """
+        if not exited or self.last_ns is None:
+            return None
+        return self.last_ns - self.position.entry_time_ns
 
 
 @dataclass(frozen=True)

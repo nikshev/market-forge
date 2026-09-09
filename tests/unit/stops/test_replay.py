@@ -22,7 +22,7 @@ from channelflow.stops import (
     StopPolicy,
 )
 
-from .conftest import long_position, point, short_position
+from .conftest import anchor, at, long_position, point, short_position
 
 
 def free() -> CostModel:
@@ -283,3 +283,102 @@ def test_no_anchor_kind_derives_a_stop_from_price_alone() -> None:
         "volume_node",
         "initial_stop",
     }
+
+
+@pytest.mark.trace("REQ-WP-020")
+def test_the_data_quality_freeze_fires_in_a_replay(rising_path: list[PricePoint]) -> None:
+    """Section 44A.18's freeze, in the one place it is supposed to be observable.
+
+    `PricePoint` has carried `data_quality_ok` since the replay was written and
+    the replay never passed it to the policy, so the freeze could not fire on
+    any replayed path -- and a counterfactual evaluation that cannot show the
+    freeze is not evaluating the policy that runs live.
+    """
+    frozen = [
+        PricePoint(
+            at_ns=p.at_ns,
+            price=p.price,
+            noise_distance=p.noise_distance,
+            anchors=p.anchors,
+            data_quality_ok=False,
+        )
+        for p in rising_path
+    ]
+
+    outcome = Replay(costs=free()).run_adaptive(long_position(), frozen, StopPolicy(cooldown_ns=0))
+
+    assert outcome.stop_updates == 0
+    assert outcome.reason_counts.get("HELD_DATA_QUALITY") == len(frozen)
+
+
+@pytest.mark.trace("REQ-WP-020")
+def test_the_replay_records_the_excursion_the_position_saw(
+    rising_path: list[PricePoint],
+) -> None:
+    """Section 25.5 wants MFE and MAE, and the replay is the only place that
+    holds the path and the position side together.
+
+    The path runs 101 to 112 from an entry of 100 with R0 = 5, so the best the
+    position saw was +12/5 and the worst +1/5. Both positive here: it never
+    traded below the entry, and reporting the adverse excursion as zero would
+    say it did.
+    """
+    outcome = Replay(costs=free()).run_adaptive(
+        long_position(), rising_path, StopPolicy(cooldown_ns=0)
+    )
+
+    assert outcome.mfe_r == pytest.approx(12 / 5)
+    assert outcome.mae_r == pytest.approx(1 / 5)
+    assert outcome.points_observed == len(rising_path)
+
+
+@pytest.mark.trace("REQ-WP-020")
+def test_a_short_position_records_the_excursion_the_other_way_round() -> None:
+    """The control for the sign convention. A path that falls is favourable to a
+    short, and an excursion computed with the long convention would report this
+    position's best moment as its worst."""
+    falling = [point(i, str(99 - i)) for i in range(6)]
+
+    outcome = Replay(costs=free()).run_adaptive(
+        short_position(), falling, StopPolicy(cooldown_ns=0)
+    )
+
+    # Entry 100, R0 = 5, path 99 down to 94: the best the short saw was +6/5 and
+    # the worst +1/5. With the long convention the two would swap sign, and the
+    # position's best moment would be reported as its worst.
+    assert outcome.mfe_r == pytest.approx(6 / 5)
+    assert outcome.mae_r == pytest.approx(1 / 5)
+
+
+@pytest.mark.trace("REQ-WP-020")
+def test_a_position_that_never_stopped_has_no_holding_time(
+    rising_path: list[PricePoint],
+) -> None:
+    """Reporting the last observed instant as one would make an unfinished path
+    look like a completed trade."""
+    outcome = Replay(costs=free()).run_adaptive(
+        long_position(), rising_path, StopPolicy(cooldown_ns=0)
+    )
+
+    assert not outcome.exited
+    assert outcome.exit_at_ns is None
+    assert outcome.holding_ns is None
+
+
+@pytest.mark.trace("REQ-WP-020")
+def test_a_stopped_position_reports_when_it_ended() -> None:
+    """And the stop distances it passed through on the way.
+
+    Section 44A's median and 95th-percentile stop distance are quantiles of this
+    list, and a quantile of a summary is not a quantile.
+    """
+    low = anchor("99", known_at=0)
+    path = [point(i, str(101 + i), anchors=(low,)) for i in range(4)] + [point(4, "94")]
+
+    outcome = Replay(costs=free()).run_adaptive(long_position(), path, StopPolicy(cooldown_ns=0))
+
+    assert outcome.exited
+    assert outcome.exit_at_ns == at(4)
+    assert outcome.holding_ns == at(4) - at(0)
+    assert len(outcome.stop_distances_r) == outcome.points_observed == 5
+    assert all(distance >= 0.0 for distance in outcome.stop_distances_r)
