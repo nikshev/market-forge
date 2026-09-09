@@ -1,6 +1,7 @@
 """PRD section 13A.13's direct target, and the baseline it must beat.
 
 # @trace: REQ-WP-019
+# @trace: REQ-US-007
 
     "Do not depend only on a derivative-based target. Build direct supervised
      targets too."
@@ -24,7 +25,7 @@ from typing import Literal, get_args
 
 import numpy as np
 
-from channelflow.dataset import Fold, LabelClass, Row
+from channelflow.dataset import CertifiedDataset, LabelClass, Row
 from channelflow.models import ComparisonReport, LogisticRegression, NotEnoughData, compare
 
 #: Section 23.5A's Target E, in the PRD's order.
@@ -110,9 +111,13 @@ def design_matrix(
 
 
 def run_direct_baseline(
-    folds: list[Fold], *, target: Target, feature_names: tuple[str, ...]
+    dataset: CertifiedDataset, *, target: Target, feature_names: tuple[str, ...]
 ) -> DirectBaselineResult:
     """Fit and score fold by fold, and aggregate weighted by rows scored.
+
+    Takes a `CertifiedDataset`, never a bare fold list: REQ-US-007 asks that the
+    training data pass the leakage checks *before* being trained on, and a
+    precondition someone has to remember is not a guarantee.
 
     A fold whose target never occurs is dropped with its reason rather than
     scored: a constant target makes every model perfect, and averaging that in
@@ -121,7 +126,7 @@ def run_direct_baseline(
     reports: list[ComparisonReport] = []
     unscored: list[str] = []
 
-    for fold in folds:
+    for fold in dataset.folds:
         x_fit, y_fit = design_matrix(list(fold.train), target=target, feature_names=feature_names)
         x_score, y_score = design_matrix(
             list(fold.validate), target=target, feature_names=feature_names

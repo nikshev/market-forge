@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from channelflow.dataset import Label, Row, WalkForwardFolds
+from channelflow.dataset import CertifiedDataset, Label, Row, WalkForwardFolds, certify
 from channelflow.research import (
     ARMS,
     AblationArm,
@@ -61,40 +61,42 @@ AVAILABLE = {
 
 
 @pytest.fixture
-def folds() -> list:
-    return WalkForwardFolds(horizon_ns=HORIZON_NS, folds=4).build(rows())
+def dataset() -> CertifiedDataset:
+    """Folded and certified, the way REQ-US-007 requires training data to arrive."""
+    built = rows()
+    return certify(built, WalkForwardFolds(horizon_ns=HORIZON_NS, folds=4).build(built))
 
 
 @pytest.mark.trace("REQ-US-006")
-def test_all_five_arms_appear_in_the_report(folds: list) -> None:
+def test_all_five_arms_appear_in_the_report(dataset: CertifiedDataset) -> None:
     """SC-001, FR-002.
 
     REQ-US-006 names five. An arm silently missing from the report is one the
     reader assumes was compared.
     """
-    report = run_ablation(folds, target="MAX", available=AVAILABLE)
+    report = run_ablation(dataset, target="MAX", available=AVAILABLE)
 
     assert {entry.arm for entry in report.entries} == {arm.name for arm in ARMS}
     assert len(ARMS) == 5
 
 
 @pytest.mark.trace("REQ-US-006")
-def test_every_scored_arm_ran_on_the_same_folds(folds: list) -> None:
+def test_every_scored_arm_ran_on_the_same_folds(dataset: CertifiedDataset) -> None:
     """SC-002, FR-003.
 
     EXP-015 says it in the PRD's own words: "use strict ablation and same
     walk-forward folds". Arms scored on different splits differ by the split.
     """
-    report = run_ablation(folds, target="MAX", available=AVAILABLE)
+    report = run_ablation(dataset, target="MAX", available=AVAILABLE)
 
-    assert report.folds == len(folds)
+    assert report.folds == len(dataset.folds)
     scored = [e for e in report.entries if e.result is not None]
     assert scored
     assert len({e.result.rows_scored for e in scored if e.result is not None}) == 1
 
 
 @pytest.mark.trace("REQ-US-006")
-def test_an_arm_with_no_features_for_its_families_is_not_run(folds: list) -> None:
+def test_an_arm_with_no_features_for_its_families_is_not_run(dataset: CertifiedDataset) -> None:
     """SC-003, FR-004.
 
     The registry carries no DEX features today. Reported as a result, "channel +
@@ -102,7 +104,7 @@ def test_an_arm_with_no_features_for_its_families_is_not_run(folds: list) -> Non
     that as evidence the DEX family adds nothing -- a finding about the data
     pipeline presented as a finding about the market.
     """
-    report = run_ablation(folds, target="MAX", available=AVAILABLE)
+    report = run_ablation(dataset, target="MAX", available=AVAILABLE)
 
     dex = next(e for e in report.entries if e.arm == "channel_dex")
     assert dex.result is None
@@ -110,7 +112,7 @@ def test_an_arm_with_no_features_for_its_families_is_not_run(folds: list) -> Non
 
 
 @pytest.mark.trace("REQ-US-006")
-def test_an_arm_identical_to_an_earlier_one_names_it(folds: list) -> None:
+def test_an_arm_identical_to_an_earlier_one_names_it(dataset: CertifiedDataset) -> None:
     """SC-004, FR-005.
 
     Two arms resolving to one feature set are one measurement reported twice.
@@ -121,7 +123,7 @@ def test_an_arm_identical_to_an_earlier_one_names_it(folds: list) -> None:
     # and has to read differently.
     available = {**AVAILABLE, "derivatives": ("ofi_1m",)}
 
-    report = run_ablation(folds, target="MAX", available=available)
+    report = run_ablation(dataset, target="MAX", available=available)
 
     derivatives = next(e for e in report.entries if e.arm == "channel_derivatives")
     assert derivatives.result is None
@@ -129,39 +131,39 @@ def test_an_arm_identical_to_an_earlier_one_names_it(folds: list) -> None:
 
 
 @pytest.mark.trace("REQ-US-006")
-def test_an_unrun_arm_is_not_ranked(folds: list) -> None:
+def test_an_unrun_arm_is_not_ranked(dataset: CertifiedDataset) -> None:
     """SC-005, FR-006.
 
     A ranking is an ordering of things that were measured.
     """
-    report = run_ablation(folds, target="MAX", available=AVAILABLE)
+    report = run_ablation(dataset, target="MAX", available=AVAILABLE)
 
     assert "channel_dex" not in report.ranking
     assert set(report.ranking) <= {e.arm for e in report.entries if e.result is not None}
 
 
 @pytest.mark.trace("REQ-US-006")
-def test_the_ranking_breaks_ties_by_name(folds: list) -> None:
+def test_the_ranking_breaks_ties_by_name(dataset: CertifiedDataset) -> None:
     """FR-007, SC-007.
 
     Two arms that score identically must order the same way twice, or the
     report's conclusion changes between runs over one input.
     """
-    first = run_ablation(folds, target="MAX", available=AVAILABLE)
-    second = run_ablation(folds, target="MAX", available=AVAILABLE)
+    first = run_ablation(dataset, target="MAX", available=AVAILABLE)
+    second = run_ablation(dataset, target="MAX", available=AVAILABLE)
 
     assert first.ranking == second.ranking
     assert first == second
 
 
 @pytest.mark.trace("REQ-US-006")
-def test_a_report_with_nothing_runnable_says_so(folds: list) -> None:
+def test_a_report_with_nothing_runnable_says_so(dataset: CertifiedDataset) -> None:
     """SC-006, FR-008.
 
     An empty ranking reads like a completed comparison in which nothing won.
     """
     report = run_ablation(
-        folds,
+        dataset,
         target="MAX",
         available={"channel": (), "order_flow": (), "derivatives": (), "dex": ()},
     )
@@ -184,7 +186,7 @@ def test_an_unknown_family_is_refused() -> None:
 
 
 @pytest.mark.trace("REQ-US-006")
-def test_adding_a_family_can_only_add_features(folds: list) -> None:
+def test_adding_a_family_can_only_add_features(dataset: CertifiedDataset) -> None:
     """SC-002, FR-009.
 
     "All combined" contains every other arm's features. If it did not, the

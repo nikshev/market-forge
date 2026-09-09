@@ -1,8 +1,14 @@
 """Point-in-time dataset (REQ-WP-017, PRD section 24).
 
 # @trace: REQ-WP-017
+# @trace: REQ-US-007
 """
 
+from channelflow.dataset.certified import (
+    CertificationRefused,
+    CertifiedDataset,
+    certify,
+)
 from channelflow.dataset.folds import (
     Fold,
     FoldConfigurationImpossible,
@@ -31,6 +37,8 @@ from channelflow.dataset.models import FeatureSnapshot, Label, LabelClass, Row
 
 __all__ = [
     "AmbiguousSnapshot",
+    "CertificationRefused",
+    "CertifiedDataset",
     "BuildReport",
     "DropReason",
     "FeatureSnapshot",
@@ -49,6 +57,7 @@ __all__ = [
     "LockedTestSplit",
     "WalkForwardFolds",
     "as_of_snapshot",
+    "certify",
     "build_rows",
     "check_folds",
     "check_rows",
