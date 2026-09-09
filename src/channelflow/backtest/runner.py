@@ -1,6 +1,7 @@
 """Bar replay through the production signal engine.
 
 # @trace: REQ-WP-010
+# @trace: REQ-US-005
 
 This module owns no strategy logic. PRD section 25.2 says to avoid a separate
 backtest implementation, and Constitution Principle VII says live and replay are
@@ -24,6 +25,7 @@ from __future__ import annotations
 from copy import deepcopy
 from dataclasses import dataclass, field
 
+from channelflow.backtest.families import SetupFamily
 from channelflow.backtest.report import BacktestReport
 from channelflow.bars import Bar
 from channelflow.channels import ChannelFitError, RollingOLSChannel
@@ -36,6 +38,10 @@ class BacktestRunner:
 
     channel: RollingOLSChannel = field(default_factory=RollingOLSChannel)
     machine: SignalMachine = field(default_factory=SignalMachine)
+    #: When given, the run is of this family alone (REQ-US-005): the machine is
+    #: built from it and opens nothing else. `None` leaves the runner exactly as
+    #: it was, which is what REQ-WP-010's parity test compares against.
+    family: SetupFamily | None = None
 
     def run(self, bars: list[Bar]) -> BacktestReport:
         """Replay `bars`. Repeatable: the same input gives the same report.
@@ -45,7 +51,7 @@ class BacktestRunner:
         mid-lifecycle and report something else -- and the caller's machine
         would come back holding a candidate from history.
         """
-        machine = deepcopy(self.machine)
+        machine = deepcopy(self.machine) if self.family is None else self.family.machine()
 
         # A bar still forming can still change, so only finalized bars replay
         # (FR-001). Sorting is what makes arrival order irrelevant.
@@ -107,6 +113,7 @@ class BacktestRunner:
             confirmed=confirmed,
             terminal_reasons=terminal_reasons,
             transitions=tuple(transitions),
+            family=None if self.family is None else self.family.name,
             configuration=self._configuration(),
         )
 
@@ -114,16 +121,22 @@ class BacktestRunner:
         """PRD section 13.11 calls the zone bounds research defaults. Two runs
         whose reports cannot be told apart are two runs whose difference cannot
         be attributed to anything."""
+        # The family's own thresholds, not the default machine's: a report whose
+        # configuration does not include what the family changed cannot explain
+        # why two family runs differ.
+        machine = self.machine if self.family is None else self.family.machine()
+        family = {} if self.family is None else self.family.configuration()
         return {
+            **family,
             "channel_model": self.channel.__class__.__name__,
             "channel_lookback": str(self.channel.lookback),
             "quantile_low": str(self.channel.quantile_low),
             "quantile_high": str(self.channel.quantile_high),
-            "zone_upper": str(self.machine.zone_upper),
-            "zone_lower": str(self.machine.zone_lower),
-            "zone_middle": str(self.machine.zone_middle),
-            "min_quality": str(self.machine.min_quality),
-            "slope_threshold": str(self.machine.slope_threshold),
-            "expiry_bars": str(self.machine.expiry_bars),
-            "detector": self.machine.detector.name,
+            "zone_upper": str(machine.zone_upper),
+            "zone_lower": str(machine.zone_lower),
+            "zone_middle": str(machine.zone_middle),
+            "min_quality": str(machine.min_quality),
+            "slope_threshold": str(machine.slope_threshold),
+            "expiry_bars": str(machine.expiry_bars),
+            "detector": machine.detector.name,
         }
