@@ -14,7 +14,13 @@ from channelflow.bars import Bar
 from channelflow.domain import EventMeta, TradeEvent
 from channelflow.experiments import dataset_reference
 from channelflow.lakehouse import InMemoryObjectStore
-from channelflow.pipeline import Recording, record_bars, record_replay
+from channelflow.pipeline import (
+    MixedSeries,
+    Recording,
+    record_bars,
+    record_replay,
+    watermark,
+)
 from channelflow.tables import bars as bars_table
 from channelflow.tables import channels as channels_table
 from channelflow.tables import signals as signals_table
@@ -24,14 +30,16 @@ MINUTE_NS = 60 * SECOND_NS
 BASE_NS = 1_788_838_800_000_000_000
 
 
-def trade(index: int, *, price: str = "100.0", size: str = "1.0") -> TradeEvent:
+def trade(
+    index: int, *, price: str = "100.0", size: str = "1.0", symbol: str = "BTCUSDT"
+) -> TradeEvent:
     at = BASE_NS + index * SECOND_NS
     return TradeEvent(
         meta=EventMeta(
             source="binance-ws",
             venue="binance",
             market_type="spot",
-            symbol="BTCUSDT",
+            symbol=symbol,
             event_time_ns=at,
             ingest_time_ns=at,
             sequence=index,
@@ -241,7 +249,7 @@ def test_a_replay_that_produced_nothing_names_nothing(store: InMemoryObjectStore
 
     assert recording.channel_snapshots == 0
     assert recording.signals == 0
-    assert not recording.wrote_anything
+    assert not recording.has_dataset
     with pytest.raises(ValueError, match="no tables"):
         _ = recording.dataset
 
@@ -308,5 +316,177 @@ def test_the_api_serves_what_a_replay_recorded(store: InMemoryObjectStore) -> No
 def test_a_recording_is_a_value_and_carries_its_counts() -> None:
     recording = Recording(bars=3, channel_snapshots=2, signals=1, tables={"bars": (1, "abc")})
 
-    assert recording.wrote_anything
+    assert recording.has_dataset
     assert recording.dataset == dataset_reference({"bars": (1, "abc")})
+
+
+# --- A run over input the tables already cover ------------------------------
+#
+# The plane is append-only. Nothing rejects a row that is already there, so a
+# second run over the same input silently doubles the series and every reader
+# -- the API, a dataset hash, a count -- reports the double as fact. These are
+# the tests for the watermarks that stop it.
+
+
+@pytest.mark.trace("REQ-PIPE-001")
+def test_a_second_pass_over_the_same_trades_writes_no_bars(store: InMemoryObjectStore) -> None:
+    """Append-only means nothing rejects the duplicate; the writer has to."""
+    trades = [trade(index) for index in range(600)]
+
+    first = record_bars(trades, store=store, timeframe_ns=MINUTE_NS)
+    second = record_bars(trades, store=store, timeframe_ns=MINUTE_NS)
+
+    assert first.bars > 0
+    assert second.bars == 0
+    assert second.skipped == first.bars
+    assert bars_table.table_for(store).read().num_rows == first.bars
+
+
+@pytest.mark.trace("REQ-PIPE-001")
+def test_a_second_replay_over_the_same_bars_writes_nothing(store: InMemoryObjectStore) -> None:
+    """Including the transitions.
+
+    A duplicated signal is worse than a duplicated bar: its rows land in the
+    child table too, and the join then hands one signal two histories -- so a
+    reader gets a candidate whose transitions contradict each other rather than
+    an obvious double.
+    """
+    bars = rising_with_rejections()
+    cores = signals_table.table_for(store)
+    transitions = signals_table.transitions_table_for(store)
+
+    first, _ = record_replay(
+        bars, store=store, venue="binance", symbol="BTCUSDT", timeframe_ns=MINUTE_NS
+    )
+    after_first = (
+        channels_table.table_for(store).read().num_rows,
+        cores.read().num_rows,
+        transitions.read().num_rows,
+    )
+    second, _ = record_replay(
+        bars, store=store, venue="binance", symbol="BTCUSDT", timeframe_ns=MINUTE_NS
+    )
+
+    assert second.channel_snapshots == 0
+    assert second.signals == 0
+    assert second.skipped == first.channel_snapshots + first.signals
+    assert (
+        channels_table.table_for(store).read().num_rows,
+        cores.read().num_rows,
+        transitions.read().num_rows,
+    ) == after_first
+    stored = signals_table.read_signals(cores, transitions)
+    assert len(stored) == first.signals
+
+
+@pytest.mark.trace("REQ-PIPE-001")
+def test_a_run_that_skipped_everything_still_names_its_dataset(
+    store: InMemoryObjectStore,
+) -> None:
+    """What it would have written is already there, so those snapshots are
+    exactly the dataset its input corresponds to -- and recovering a lost
+    citation by re-running is the reason a no-op run is worth allowing at all."""
+    bars = rising_with_rejections()
+
+    first, _ = record_replay(
+        bars, store=store, venue="binance", symbol="BTCUSDT", timeframe_ns=MINUTE_NS
+    )
+    second, _ = record_replay(
+        bars, store=store, venue="binance", symbol="BTCUSDT", timeframe_ns=MINUTE_NS
+    )
+
+    assert second.has_dataset
+    assert second.dataset == first.dataset
+
+
+@pytest.mark.trace("REQ-PIPE-001")
+def test_a_continued_series_writes_only_what_is_new(store: InMemoryObjectStore) -> None:
+    """A feed resumed from an overlapping window is the ordinary case, and
+    refusing the whole batch would lose the tail that is genuinely new."""
+    trades = [trade(index) for index in range(600)]
+
+    record_bars(trades[:300], store=store, timeframe_ns=MINUTE_NS)
+    second = record_bars(trades, store=store, timeframe_ns=MINUTE_NS)
+
+    whole = InMemoryObjectStore()
+    record_bars(trades, store=whole, timeframe_ns=MINUTE_NS)
+
+    assert second.bars > 0
+    assert second.skipped > 0
+    assert bars_table.read_bars(bars_table.table_for(store)) == bars_table.read_bars(
+        bars_table.table_for(whole)
+    )
+
+
+@pytest.mark.trace("REQ-PIPE-001")
+def test_one_symbol_s_history_does_not_hold_back_another(store: InMemoryObjectStore) -> None:
+    """The watermark is per series. An unscoped one would refuse a symbol's
+    first bar on the strength of another symbol's hundredth -- and the second
+    symbol would simply never appear, with nothing raised."""
+    record_bars([trade(index) for index in range(600)], store=store, timeframe_ns=MINUTE_NS)
+
+    other = record_bars(
+        [trade(index, symbol="ETHUSDT") for index in range(600)],
+        store=store,
+        timeframe_ns=MINUTE_NS,
+    )
+
+    assert other.bars > 0
+    assert other.skipped == 0
+    stored = bars_table.read_bars(bars_table.table_for(store), venue="binance", symbol="ETHUSDT")
+    assert len(stored) == other.bars
+
+
+@pytest.mark.trace("REQ-PIPE-001")
+def test_trades_from_two_series_are_refused(store: InMemoryObjectStore) -> None:
+    """One builder aggregates one series. Mixing two produces bars that belong
+    to neither, and a watermark over the mixture is a watermark over nothing."""
+    mixed = [trade(0), trade(1, symbol="ETHUSDT")]
+
+    with pytest.raises(MixedSeries):
+        record_bars(mixed, store=store, timeframe_ns=MINUTE_NS)
+
+
+@pytest.mark.trace("REQ-PIPE-001")
+def test_a_recording_does_not_name_a_table_another_series_filled(
+    store: InMemoryObjectStore,
+) -> None:
+    """ "The table holds something" and "this run put something there" are the
+    same question only on a fresh store.
+
+    One store holds every series, so the channels table is full of BTCUSDT the
+    moment BTCUSDT has been replayed -- and a recording for ETHUSDT that named
+    it would hand a research run a dataset of somebody else's rows, carrying
+    the hash of a real snapshot to make it look checked.
+    """
+    record_bars([trade(index) for index in range(600)], store=store, timeframe_ns=MINUTE_NS)
+    record_replay(
+        rising_with_rejections(),
+        store=store,
+        venue="binance",
+        symbol="BTCUSDT",
+        timeframe_ns=MINUTE_NS,
+    )
+
+    recording, _ = record_replay(
+        [], store=store, venue="binance", symbol="ETHUSDT", timeframe_ns=MINUTE_NS
+    )
+
+    assert bars_table.table_for(store).current() is not None
+    assert channels_table.table_for(store).current() is not None
+    assert not recording.has_dataset
+
+
+@pytest.mark.trace("REQ-PIPE-001")
+def test_a_watermark_for_an_unseen_series_is_absent_not_zero(store: InMemoryObjectStore) -> None:
+    """Zero is a real instant. A table reporting it for a series it has never
+    seen would refuse every event at or before the epoch."""
+    table = bars_table.table_for(store)
+    assert watermark(table, "close_time_ns", venue="binance", symbol="BTCUSDT") is None
+
+    record_bars([trade(index) for index in range(600)], store=store, timeframe_ns=MINUTE_NS)
+
+    assert watermark(table, "close_time_ns", venue="binance", symbol="ETHUSDT") is None
+    seen = watermark(table, "close_time_ns", venue="binance", symbol="BTCUSDT")
+    assert seen is not None
+    assert seen == max(b.close_time_ns for b in bars_table.read_bars(table))

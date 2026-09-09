@@ -71,10 +71,15 @@ dataset reference and nothing produced one.
 - **FR-005**: A replay MUST NOT write the bars it read.
 - **FR-006**: The observers MUST NOT change the report.
 - **FR-007**: A caller's runner MUST come back without sinks.
-- **FR-008**: A recording MUST name only the tables that hold something.
+- **FR-008**: A recording MUST name only the tables the run is answerable for — wrote to, or skipped rows destined for. A table that merely holds something MUST NOT be named.
 - **FR-009**: A recording that wrote nothing MUST refuse to name a dataset.
 - **FR-010**: Two replays of one series MUST produce the same dataset identity.
 - **FR-011**: The durable repository MUST serve what a replay recorded.
+- **FR-012**: A run over input a table already covers MUST NOT write it again, per series.
+- **FR-013**: A run MUST report how many rows it skipped as already covered.
+- **FR-014**: A run over partly-overlapping input MUST write the part that is new.
+- **FR-015**: A run that skipped everything MUST still name the dataset its input corresponds to.
+- **FR-016**: Trades spanning more than one venue or symbol MUST be refused.
 
 ### Key Entities
 
@@ -92,12 +97,18 @@ dataset reference and nothing produced one.
 - **SC-005**: A recorded run's report equals an unrecorded one's.
 - **SC-006**: A passed-in runner's hooks are `None` afterwards.
 - **SC-007**: The bars table is untouched by a replay.
-- **SC-008**: `bars` is absent from a replay's recording; the channel table is present.
+- **SC-008**: `bars` is absent from a replay's recording; the channel table is present. A recording for a series with no rows names nothing, even on a store another series filled.
 - **SC-009**: An empty replay names nothing and refuses a dataset.
 - **SC-010**: Two replays of one series share a dataset identity.
 - **SC-011**: The repository returns the recorded bars, a snapshot and the signals.
+- **SC-012**: A second pass over the same trades writes no bars; the table's row count is unchanged.
+- **SC-013**: A second replay over the same bars writes no snapshots, signals or transitions; all three row counts are unchanged.
+- **SC-014**: A second run's `skipped` equals what the first run wrote.
+- **SC-015**: A run resumed over overlapping input leaves the table identical to one run over the whole input.
+- **SC-016**: One symbol's history does not suppress another symbol's first bar.
+- **SC-017**: A fully-skipped re-run's dataset identity equals the first run's.
 
 ## Assumptions
 
 - **The producing subsystems' hooks are the seam.** `BarBuilder.on_final` existed; the runner gained two observers that cannot steer it.
-- **One replay is one batch per table.** A resumable backfill needs a watermark this does not keep.
+- **One replay is one batch per table** *within* a run. Across runs it is not: the plane is append-only and nothing rejects a row already there, so each entry point reads a per-series watermark first and writes only past it. See [[ADR-056]].

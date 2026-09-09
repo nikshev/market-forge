@@ -40,9 +40,14 @@ why [[REQ-BIAS-011]] stopped at `specified`.
 - a replay does not write the bars it read;
 - the observers do not change what the run reports;
 - a runner passed in comes back without sinks attached;
-- the result names only the tables the replay actually wrote to, and a replay
-  that produced nothing names nothing;
-- two replays of one series produce the same dataset identity;
+- the result names only the tables the run is answerable for — wrote to, or
+  skipped rows destined for — and a run that produced nothing names nothing,
+  including on a store another series filled;
+- a run over input a table already covers writes nothing and says how much it
+  skipped; a run over partly-overlapping input writes the part that is new;
+- one series' history does not suppress another's first row;
+- two replays of one series produce the same dataset identity, and a
+  fully-skipped re-run still names it;
 - the durable repository serves what a replay recorded, with nothing in memory
   between them.
 
@@ -59,9 +64,15 @@ the two entry points, and the dataset identity of what was written.
 - **Feature snapshots and scores.** The replay produces neither: features come
   from the registry against a book this replay does not have, and a score needs
   them. Their tables exist ([[REQ-STORE-002]]) and stay empty.
-- **Incremental or resumable backfill.** One replay, one batch per table. A
-  backfill that resumes needs to know what it already wrote, which is a
-  watermark this does not keep.
+- **Scheduling and orchestration.** What a run does over the input it is handed
+  is here; deciding when to run it, and over what, is not.
+
+Was out, and is now in: **resumability**. It was listed as out of scope on the
+grounds that one replay is one batch per table — true within a run, and false
+across runs. The plane is append-only and rejects nothing, so a second run over
+the same input doubled the series silently and every reader counted the double
+as fact. See [[ADR-056]]. Both entry points now read a per-series watermark and
+write only past it.
 
 ## Trace
 

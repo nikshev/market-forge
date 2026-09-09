@@ -16,16 +16,20 @@ for a live feed to take.
 
 from channelflow.pipeline.replay import (
     ChannelRecorder,
+    MixedSeries,
     Recording,
     SignalRecorder,
     record_bars,
     record_replay,
+    watermark,
 )
 
 __all__ = [
     "ChannelRecorder",
+    "MixedSeries",
     "Recording",
     "SignalRecorder",
     "record_bars",
     "record_replay",
+    "watermark",
 ]
