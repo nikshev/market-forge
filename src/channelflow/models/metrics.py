@@ -1,10 +1,18 @@
 """PRD section 23.8's calibration metrics, and section 25.5's by-bucket view.
 
 # @trace: REQ-EXP-008
+# @trace: REQ-WP-023
 
 REQ-EXP-008 asks for four numbers beside the Brier score: calibration, PR-AUC,
 expectancy by probability bucket, and feature stability across folds. Each
 answers a question the Brier score cannot.
+
+PRD §23.5A conditions turning-point probabilities on an explicit horizon, so
+[[REQ-WP-023]] adds a second reporter beside the first: the same curve, sliced
+by the horizon each row's own label carries. A pooled figure averages across
+horizons a forecast is never acted on together, and is dragged toward whichever
+horizon supplied the most rows -- a fact about the dataset rather than about the
+model.
 
 **Calibration** asks whether a 0.7 means seven times in ten. A model can be
 sharp and badly calibrated -- ranking correctly while its numbers mean nothing --
@@ -26,6 +34,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass
+from typing import Protocol
 
 import numpy as np
 
@@ -196,3 +205,137 @@ def feature_stability(selections: Sequence[Sequence[str]]) -> float | None:
         shared = {name for name in chosen if all(name in other for other in others)}
         shares.append(len(shared) / len(chosen))
     return sum(shares) / len(shares)
+
+
+# --- calibration per horizon (REQ-WP-023) ------------------------------------
+#
+# PRD §23.5A conditions all three Target E classes on an explicit horizon, and
+# a model's reliability is not constant across them: five bars ahead is nearly
+# the present, fifty is a different question about a different market.
+#
+# Pooled, a model well calibrated at short horizons and badly at long ones
+# reports an acceptable number, because the average is dragged toward whichever
+# horizon supplied the most rows. That is a fact about the dataset rather than
+# about the model, and the failure it hides is the one that matters: a forecast
+# is acted on at one horizon, never at the average of several.
+
+
+class LabelLike(Protocol):
+    """What this reporter needs to read from a label, and nothing more.
+
+    A protocol rather than an import, the way `dataset.leakage` does it: a
+    metrics module that imported the dataset package would make the dependency
+    run the wrong way, and this needs two fields out of a model with a dozen.
+    """
+
+    @property
+    def label_class(self) -> str: ...
+
+    @property
+    def horizon_end_ns(self) -> int: ...
+
+
+class RowWithLabel(Protocol):
+    """A row that knows when it was taken and what it is a label about."""
+
+    @property
+    def as_of_ns(self) -> int: ...
+
+    @property
+    def label(self) -> LabelLike: ...
+
+
+@dataclass(frozen=True)
+class HorizonSlice:
+    """One horizon's reliability, or the reason there is none."""
+
+    horizon_ns: int
+    observations: int
+    #: `None` when the slice has too few rows to say anything. Absent and poor
+    #: are different facts, and this is the third place in the repository that
+    #: distinction has had to be made explicit.
+    curve: Calibration | None
+    reason: str = ""
+
+
+@dataclass(frozen=True)
+class HorizonCalibration:
+    """Reliability per horizon, and the pooled figure beside it.
+
+    Beside, never instead. Removing the pooled number breaks readers who have
+    been quoting it; replacing the slices with it is the defect this exists to
+    fix.
+    """
+
+    slices: dict[int, HorizonSlice]
+    pooled: Calibration
+    target: str
+
+
+def calibration_by_horizon(
+    rows: Sequence[RowWithLabel],
+    predicted: np.ndarray,
+    *,
+    target: str,
+    minimum_observations: int,
+) -> HorizonCalibration:
+    """Reliability for `target`, one curve per horizon the rows actually carry.
+
+    The horizon is each row's own -- `horizon_end_ns` less `as_of_ns` -- rather
+    than an argument, because a horizon supplied alongside the predictions is one
+    a caller can get wrong with nothing to notice.
+
+    Grouped exactly rather than bucketed: labels are built with a stated `H`, so
+    rows share exact horizons, and bands would add a second arbitrary choice on
+    top of `minimum_observations`.
+
+    `minimum_observations` is the caller's (Principle X). PRD §23.8 gives no
+    number, so a constant here would be a threshold nobody could change -- and
+    the threshold decides which findings are visible.
+
+    Empty input is refused by `calibration` below, not here. A guard here raised
+    the same error with the same words one layer up, which is a rule stated twice
+    and owned by neither -- the mutation sweep found it by deleting it and
+    changing nothing.
+    """
+    if len(rows) != len(predicted):
+        raise ValueError(
+            f"{len(rows)} row(s) and {len(predicted)} prediction(s) must be the same "
+            "length; a report over a misaligned pair is arithmetic on unrelated numbers"
+        )
+    actual = np.array(
+        [1.0 if row.label.label_class == target else 0.0 for row in rows], dtype=np.float64
+    )
+
+    grouped: dict[int, list[int]] = {}
+    for index, row in enumerate(rows):
+        horizon = row.label.horizon_end_ns - row.as_of_ns
+        grouped.setdefault(horizon, []).append(index)
+
+    slices: dict[int, HorizonSlice] = {}
+    for horizon in sorted(grouped):
+        members = grouped[horizon]
+        # On the row count, never on whether the target occurred. A target that
+        # never occurred at a horizon has observations and no positives, which is
+        # a real calibration and a bad one -- keying on positives would call it
+        # unmeasured and hide the finding.
+        if len(members) < minimum_observations:
+            slices[horizon] = HorizonSlice(
+                horizon_ns=horizon,
+                observations=len(members),
+                curve=None,
+                reason=(
+                    f"{len(members)} observation(s), fewer than the {minimum_observations} "
+                    "this report was asked for; a curve over them would be the pooled "
+                    "average speaking for a slice that cannot speak"
+                ),
+            )
+            continue
+        picked = np.array(members)
+        slices[horizon] = HorizonSlice(
+            horizon_ns=horizon,
+            observations=len(members),
+            curve=calibration(predicted[picked], actual[picked]),
+        )
+
+    return HorizonCalibration(slices=slices, pooled=calibration(predicted, actual), target=target)

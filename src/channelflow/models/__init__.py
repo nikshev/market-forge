@@ -18,7 +18,10 @@ from channelflow.models.metrics import (
     BucketExpectancy,
     Calibration,
     CalibrationBin,
+    HorizonCalibration,
+    HorizonSlice,
     calibration,
+    calibration_by_horizon,
     expectancy_by_bucket,
     feature_stability,
     pr_auc,
@@ -43,6 +46,9 @@ from channelflow.models.report import (
 )
 
 __all__ = [
+    "HorizonCalibration",
+    "HorizonSlice",
+    "calibration_by_horizon",
     "MODEL_REGISTRY_SCHEMA",
     "MODEL_REGISTRY_TABLE",
     "ModelNotFitted",
