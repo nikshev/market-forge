@@ -11,7 +11,9 @@ import pytest
 from channelflow.api import LakehouseRepository
 from channelflow.backtest import BacktestRunner
 from channelflow.bars import Bar
+from channelflow.bus import EventBus
 from channelflow.domain import EventMeta, TradeEvent
+from channelflow.events import BarFinalized, CandidateUpdated, ChannelFitted
 from channelflow.experiments import dataset_reference
 from channelflow.lakehouse import InMemoryObjectStore
 from channelflow.pipeline import (
@@ -490,3 +492,94 @@ def test_a_watermark_for_an_unseen_series_is_absent_not_zero(store: InMemoryObje
     seen = watermark(table, "close_time_ns", venue="binance", symbol="BTCUSDT")
     assert seen is not None
     assert seen == max(b.close_time_ns for b in bars_table.read_bars(table))
+
+
+# --- the bus a caller can reach (REQ-INFRA-003) ------------------------------
+
+
+@pytest.mark.trace("REQ-INFRA-003")
+def test_a_caller_can_observe_a_replay_without_editing_it(
+    store: InMemoryObjectStore,
+) -> None:
+    """The claim the abstraction is worth anything for.
+
+    Before the bus, a second consumer of channel snapshots meant changing what
+    `record_replay` constructs. It is now a subscription, and the test is that
+    the caller writes no line inside this package.
+    """
+    seen: list[ChannelFitted] = []
+    signals: list[CandidateUpdated] = []
+    bus = EventBus()
+    bus.subscribe(ChannelFitted, seen.append)
+    bus.subscribe(CandidateUpdated, signals.append)
+
+    recording, report = record_replay(
+        rising_with_rejections(),
+        store=store,
+        venue="binance",
+        symbol="BTCUSDT",
+        timeframe_ns=MINUTE_NS,
+        bus=bus,
+    )
+
+    stored = signals_table.read_signals(
+        signals_table.table_for(store), signals_table.transitions_table_for(store)
+    )
+
+    assert len(seen) == recording.channel_snapshots
+    # Every signal that reached the table was seen as an event first. The
+    # subscriber sees more events than there are signals, deliberately: the
+    # machine emits one per bar a candidate is alive for, which is why the
+    # recorder keeps the latest rather than writing each.
+    assert {event.candidate.opened_at_ns for event in signals} == {
+        candidate.opened_at_ns for candidate in stored
+    }
+    assert len(signals) > len(stored)
+    assert report.candidates_opened == recording.signals
+
+
+@pytest.mark.trace("REQ-INFRA-003")
+def test_an_observer_does_not_change_what_is_recorded(
+    store: InMemoryObjectStore,
+) -> None:
+    """A subscriber is an observer. If adding one changed the recording, the bus
+    would have turned a read into a write."""
+    bars = rising_with_rejections()
+    plain, _ = record_replay(
+        bars,
+        store=InMemoryObjectStore(),
+        venue="binance",
+        symbol="BTCUSDT",
+        timeframe_ns=MINUTE_NS,
+    )
+
+    bus = EventBus()
+    bus.subscribe(ChannelFitted, lambda _: None)
+    observed, _ = record_replay(
+        bars,
+        store=store,
+        venue="binance",
+        symbol="BTCUSDT",
+        timeframe_ns=MINUTE_NS,
+        bus=bus,
+    )
+
+    assert observed.dataset == plain.dataset
+
+
+@pytest.mark.trace("REQ-INFRA-003")
+def test_a_caller_can_observe_finalized_bars(store: InMemoryObjectStore) -> None:
+    """The same claim on the other producer."""
+    seen: list[BarFinalized] = []
+    bus = EventBus()
+    bus.subscribe(BarFinalized, seen.append)
+
+    recording = record_bars(
+        [trade(index) for index in range(600)],
+        store=store,
+        timeframe_ns=MINUTE_NS,
+        bus=bus,
+    )
+
+    assert len(seen) == recording.bars + recording.skipped
+    assert all(event.bar.is_final for event in seen)

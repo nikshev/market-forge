@@ -34,8 +34,9 @@ from dataclasses import dataclass, field
 
 from channelflow.backtest import BacktestReport, BacktestRunner
 from channelflow.bars import Bar, BarBuilder
-from channelflow.channels import ChannelSnapshot
+from channelflow.bus import EventBus
 from channelflow.domain import TradeEvent
+from channelflow.events import BarFinalized, CandidateUpdated, ChannelFitted
 from channelflow.experiments import dataset_reference
 from channelflow.lakehouse import ObjectStore, Table
 from channelflow.signals import Candidate
@@ -127,8 +128,8 @@ class ChannelRecorder:
     skipped: int = 0
     _buffer: list[dict[str, object]] = field(default_factory=list)
 
-    def __call__(self, bar: Bar, snapshot: ChannelSnapshot) -> None:
-        del bar  # the snapshot carries its own `as_of_ns`
+    def __call__(self, event: ChannelFitted) -> None:
+        snapshot = event.snapshot  # the bar is on the event; the snapshot carries `as_of_ns`
         if self.after_ns is not None and snapshot.as_of_ns <= self.after_ns:
             self.skipped += 1
             return
@@ -175,7 +176,8 @@ class SignalRecorder:
     _latest: dict[int, Candidate] = field(default_factory=dict)
     _skipped_ids: set[int] = field(default_factory=set)
 
-    def __call__(self, candidate: Candidate) -> None:
+    def __call__(self, event: CandidateUpdated) -> None:
+        candidate = event.candidate
         if self.after_ns is not None and candidate.opened_at_ns <= self.after_ns:
             # Counted once per candidate, not once per bar it is alive for: the
             # skip is about the signal, and a per-bar count would report the
@@ -203,7 +205,11 @@ class SignalRecorder:
 
 
 def record_bars(
-    trades: Sequence[TradeEvent], *, store: ObjectStore, timeframe_ns: int
+    trades: Sequence[TradeEvent],
+    *,
+    store: ObjectStore,
+    timeframe_ns: int,
+    bus: EventBus | None = None,
 ) -> Recording:
     """Aggregate trades into bars and write the ones the table does not have.
 
@@ -235,8 +241,22 @@ def record_bars(
         table, "close_time_ns", venue=venue, symbol=symbol, timeframe_ns=timeframe_ns
     )
 
+    # The builder is handed one publishing hook rather than the collector, so a
+    # second consumer of finalized bars -- a metric, a live publisher -- is a
+    # subscription instead of a change here.
+    #
+    # The bus is a parameter for the same reason. A bus this function kept to
+    # itself would move the coupling rather than remove it: the caller still
+    # could not observe a bar without editing this file, which is the cost the
+    # abstraction exists to remove.
+    bus = bus if bus is not None else EventBus()
     finalized: list[Bar] = []
-    builder = BarBuilder(timeframe_ns=timeframe_ns, on_final=finalized.append)
+    bus.subscribe(BarFinalized, lambda event: finalized.append(event.bar))
+
+    builder = BarBuilder(
+        timeframe_ns=timeframe_ns,
+        on_final=lambda bar: bus.publish(BarFinalized(bar)),
+    )
     for trade in trades:
         builder.add(trade)
 
@@ -260,6 +280,7 @@ def record_replay(
     symbol: str,
     timeframe_ns: int,
     runner: BacktestRunner | None = None,
+    bus: EventBus | None = None,
 ) -> tuple[Recording, BacktestReport]:
     """Replay `bars` and write the channel snapshots and signals it produced.
 
@@ -297,6 +318,12 @@ def record_replay(
         ),
     )
 
+    # A caller's bus if there is one, so a consumer of channel snapshots or
+    # signals subscribes rather than editing this function.
+    bus = bus if bus is not None else EventBus()
+    bus.subscribe(ChannelFitted, channel_recorder)
+    bus.subscribe(CandidateUpdated, signal_recorder)
+
     base = runner or BacktestRunner()
     # A copy with the observers attached: the caller's runner is theirs, and a
     # runner that came back carrying sinks would write again on its next use.
@@ -304,8 +331,8 @@ def record_replay(
         channel=base.channel,
         machine=base.machine,
         family=base.family,
-        on_snapshot=channel_recorder,
-        on_candidate=signal_recorder,
+        on_snapshot=lambda bar, snapshot: bus.publish(ChannelFitted(bar, snapshot)),
+        on_candidate=lambda candidate: bus.publish(CandidateUpdated(candidate)),
     )
     report = observed.run(list(bars))
 

@@ -5,7 +5,7 @@ type: infrastructure
 prd_ref: "Phase 0 — Repository + correctness skeleton"
 prd_lines: "6685-6685"
 phase: 0
-status: planned
+status: implemented
 depends_on: [REQ-WP-005, REQ-WP-010, REQ-PIPE-001]
 tags: [tooling]
 ---
@@ -57,7 +57,23 @@ would break that at its foundation while looking like an implementation detail.
 
 <!-- trace:begin -->
 - **Specs:** [[SPEC-059-event-bus]]
-- **Outcomes:** [[OUT-2026-09-10-requirement-event-bus]], [[OUT-2026-09-10-spec-event-bus]]
+- **Tests:**
+    - `tests/unit/pipeline/test_replay.py::test_a_caller_can_observe_a_replay_without_editing_it`
+    - `tests/unit/pipeline/test_replay.py::test_a_caller_can_observe_finalized_bars`
+    - `tests/unit/pipeline/test_replay.py::test_an_observer_does_not_change_what_is_recorded`
+    - `tests/unit/test_bus.py::test_a_subscriber_to_another_type_receives_nothing`
+    - `tests/unit/test_bus.py::test_a_subscribers_exception_reaches_the_publisher`
+    - `tests/unit/test_bus.py::test_a_subscription_made_during_dispatch_waits_for_the_next_event`
+    - `tests/unit/test_bus.py::test_an_event_with_no_subscriber_is_published_without_effect`
+    - `tests/unit/test_bus.py::test_dispatch_is_by_exact_type`
+    - `tests/unit/test_bus.py::test_every_subscriber_to_a_type_receives_the_event`
+    - `tests/unit/test_bus.py::test_subscribers_run_in_subscription_order`
+    - `tests/unit/test_bus.py::test_the_same_handler_subscribed_twice_is_called_twice`
+    - `tests/unit/test_bus.py::test_two_identical_runs_deliver_identical_sequences`
+- **Code:**
+    - `src/channelflow/bus.py`
+    - `src/channelflow/events.py`
+- **Outcomes:** [[OUT-2026-09-10-implement-event-bus]], [[OUT-2026-09-10-plan-event-bus]], [[OUT-2026-09-10-requirement-event-bus]], [[OUT-2026-09-10-spec-event-bus]]
 <!-- trace:end -->
 
 ## Notes

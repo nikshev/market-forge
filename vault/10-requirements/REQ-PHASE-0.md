@@ -5,12 +5,11 @@ type: phase
 prd_ref: "Phase 0 — Repository + correctness skeleton"
 prd_lines: "6675-6694"
 phase: 0
-status: planned
+status: implemented
 depends_on: []
 tags: []
-covers: [REQ-WP-001, REQ-WP-002, REQ-INFRA-001, REQ-INFRA-002]
-not_delivered:
-  - "event bus abstraction: components are wired directly, with no bus between them"
+covers: [REQ-WP-001, REQ-WP-002, REQ-INFRA-001, REQ-INFRA-002, REQ-INFRA-003]
+not_delivered: []
 ---
 
 ## Requirement
@@ -85,10 +84,28 @@ phase in progress, however much of it is built.
 - **Specs:** [[SPEC-051-phase-coverage]]
 - **Tests:**
     - `tests/tools/trace/test_phase_coverage.py::test_phase_0_coverage`
-- **Outcomes:** [[OUT-2026-09-09-implement-phase-coverage]], [[OUT-2026-09-09-requirement-phase-acceptance]], [[OUT-2026-09-09-spec-phase-coverage]]
+- **Outcomes:** [[OUT-2026-09-09-implement-phase-coverage]], [[OUT-2026-09-09-requirement-phase-acceptance]], [[OUT-2026-09-09-spec-phase-coverage]], [[OUT-2026-09-10-implement-event-bus]]
 <!-- trace:end -->
 
 ## Notes
+
+`not_delivered` is empty as of 2026-09-10, and this is the second phase to reach
+`implemented` after [[REQ-PHASE-6]]. The last entry to leave was "event bus
+abstraction: components are wired directly, with no bus between them", closed by
+[[REQ-INFRA-003]].
+
+Worth knowing what that deliverable turned out to be. The PRD names it in one
+line, no section elaborates it, and none of this phase's three acceptance
+criteria depends on it — so the requirement was written from the one cost the
+wiring actually had, and the bus is small: a synchronous, ordered dispatcher
+with the replay path as its only consumer. Whether it earns its place is
+answered honestly in [[OUT-2026-09-10-implement-event-bus]] rather than assumed
+by the deliverable being ticked.
+
+Two of the nine deliverables were closed earlier by correction rather than by
+code, and that is recorded where it happened: ClickHouse connectivity is not
+part of the architecture ([[ADR-002]] dropped it), and the virtual clock is
+delivered as event-time discipline rather than as a clock object.
 
 The requirement body above quotes PRD Phase 0 verbatim and lists
 "Postgres/ClickHouse connectivity". ClickHouse was subsequently dropped in favour of
