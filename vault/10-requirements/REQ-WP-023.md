@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "§23.5A, §23.8, §45 Phase 7"
 prd_lines: "4065-4074, 6861"
 phase: 7
-status: specified
+status: implemented
 depends_on: [REQ-WP-018, REQ-WP-019, REQ-US-007]
 tags: []
 ---
@@ -53,7 +53,20 @@ because a trader acts at one horizon and not at the average of several.
 
 <!-- trace:begin -->
 - **Specs:** [[SPEC-062-calibration-by-horizon]]
-- **Outcomes:** [[OUT-2026-09-10-requirement-calibration-by-horizon]], [[OUT-2026-09-10-spec-calibration-by-horizon]]
+- **Tests:**
+    - `tests/unit/models/test_calibration_by_horizon.py::test_a_misaligned_pair_is_refused`
+    - `tests/unit/models/test_calibration_by_horizon.py::test_a_report_is_a_value`
+    - `tests/unit/models/test_calibration_by_horizon.py::test_a_target_that_never_occurs_is_measured_not_unmeasured`
+    - `tests/unit/models/test_calibration_by_horizon.py::test_a_thin_horizon_is_unmeasured_rather_than_curved`
+    - `tests/unit/models/test_calibration_by_horizon.py::test_each_horizon_gets_its_own_curve`
+    - `tests/unit/models/test_calibration_by_horizon.py::test_no_rows_is_refused`
+    - `tests/unit/models/test_calibration_by_horizon.py::test_the_horizon_comes_from_the_row_s_own_label`
+    - `tests/unit/models/test_calibration_by_horizon.py::test_the_minimum_is_the_caller_s`
+    - `tests/unit/models/test_calibration_by_horizon.py::test_the_pooled_figure_hides_what_the_slices_show`
+    - `tests/unit/models/test_calibration_by_horizon.py::test_the_pooled_figure_is_what_calibration_would_have_said`
+- **Code:**
+    - `src/channelflow/models/metrics.py`
+- **Outcomes:** [[OUT-2026-09-10-implement-calibration-by-horizon]], [[OUT-2026-09-10-plan-calibration-by-horizon]], [[OUT-2026-09-10-requirement-calibration-by-horizon]], [[OUT-2026-09-10-spec-calibration-by-horizon]]
 <!-- trace:end -->
 
 ## Notes
