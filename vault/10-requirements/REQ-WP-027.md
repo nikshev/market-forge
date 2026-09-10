@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "§27.3, §45 Phase 2"
 prd_lines: "4423-4435, 6751"
 phase: 2
-status: draft
+status: specified
 depends_on: [REQ-WP-009, REQ-WP-011, REQ-API-001]
 tags: [frontend]
 ---
@@ -56,7 +56,8 @@ here would deliver panes for data those phases have not finished.
 ## Trace
 
 <!-- trace:begin -->
-_No linked artifacts yet._
+- **Specs:** [[SPEC-065-flow-panes]]
+- **Outcomes:** [[OUT-2026-09-10-requirement-flow-panes]], [[OUT-2026-09-10-spec-flow-panes]]
 <!-- trace:end -->
 
 ## Notes
