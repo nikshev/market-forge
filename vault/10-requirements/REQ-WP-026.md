@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "§45 Phase 3 acceptance, §16, §19"
 prd_lines: "6771-6774"
 phase: 3
-status: draft
+status: specified
 depends_on: [REQ-WP-013]
 tags: []
 ---
@@ -47,7 +47,8 @@ one without it.
 ## Trace
 
 <!-- trace:begin -->
-_No linked artifacts yet._
+- **Specs:** [[SPEC-064-stale-derivatives]]
+- **Outcomes:** [[OUT-2026-09-10-requirement-stale-derivatives]], [[OUT-2026-09-10-spec-stale-derivatives]]
 <!-- trace:end -->
 
 ## Notes
