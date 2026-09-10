@@ -33,6 +33,7 @@ import numpy as np
 
 from channelflow.models.base import BaseRate, LogisticRegression, Model, require_disjoint
 from channelflow.models.boosting import GradientBoostedTrees
+from channelflow.models.registry import artifact_hash
 from channelflow.models.regularized import ElasticNetLogistic
 
 #: The report's own declared strengths for section 23.6's regularized baseline.
@@ -68,6 +69,15 @@ class Score:
     brier: float | None
     ran: bool
     note: str = ""
+    #: The artifact hash of the model that produced this score, when this
+    #: comparison fitted it. `None` when it did not -- a caller supplying its own
+    #: predictions has no artifact here, and reporting one would name a model
+    #: that produced nothing ([[REQ-WP-024]]).
+    #:
+    #: Optional with a default so every existing reader of a `Score` is
+    #: unaffected, which is what lets a hash be reported at all without changing
+    #: what a comparison means.
+    artifact: str | None = None
 
 
 @dataclass(frozen=True)
@@ -127,6 +137,7 @@ def compare(
     """Score a model and its baselines on identical held-out data."""
     require_disjoint(x_fit, x_score)
 
+    fitted_here = model_predictions is None
     if model_predictions is None:
         model.fit(x_fit, y_fit)
         model_predictions = model.predict_proba(x_score)
@@ -148,6 +159,10 @@ def compare(
                 name=baseline.name,
                 brier=brier(baseline.predict_proba(x_score), y_score),
                 ran=True,
+                # Taken here, where the fitted model is in scope. Obtaining it by
+                # fitting again would be a second scoring path, and a comparison
+                # is only honest if one code path produced both numbers.
+                artifact=artifact_hash(baseline),
             )
         )
     for name in REQUIRED_BASELINES:
@@ -156,7 +171,15 @@ def compare(
         scores.append(Score(name=name, brier=None, ran=False, note=NOT_RUN[name]))
 
     return ComparisonReport(
-        model=Score(name=model.name, brier=brier(model_predictions, y_score), ran=True),
+        model=Score(
+            name=model.name,
+            brier=brier(model_predictions, y_score),
+            ran=True,
+            # Only when this comparison fitted it. EXP-013 and the turning-point
+            # experiment hand in predictions computed elsewhere, and their
+            # stand-ins have no parameters to hash.
+            artifact=artifact_hash(model) if fitted_here else None,
+        ),
         # Kept in the PRD's own order, so a reader comparing against section
         # 23.6 reads down the same list.
         baselines=tuple(next(s for s in scores if s.name == name) for name in REQUIRED_BASELINES),

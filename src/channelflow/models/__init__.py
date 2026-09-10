@@ -33,6 +33,7 @@ from channelflow.models.registry import (
     ModelRegistry,
     Registration,
     artifact_hash,
+    combined_artifact,
     require_registered,
 )
 from channelflow.models.regularized import ElasticNetLogistic
@@ -55,6 +56,7 @@ __all__ = [
     "ModelRegistry",
     "Registration",
     "artifact_hash",
+    "combined_artifact",
     "require_registered",
     "NOT_RUN",
     "REQUIRED_BASELINES",

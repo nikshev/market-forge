@@ -24,6 +24,7 @@ from channelflow.models import (
     ModelRegistry,
     Registration,
     artifact_hash,
+    combined_artifact,
     require_registered,
 )
 
@@ -177,6 +178,30 @@ def test_the_hash_is_framed_so_fields_cannot_borrow_from_each_other() -> None:
     second.fit(x, y)
 
     assert artifact_hash(first) != artifact_hash(second)
+
+
+@pytest.mark.trace("REQ-WP-024")
+def test_a_variant_s_artifact_covers_every_fold_and_their_order() -> None:
+    """SC-002's "and not otherwise", which is the half a looser reading drops.
+
+    A combined hash that took only the first fold, or that sorted the folds,
+    would pass every test that merely checks two identical runs agree -- and
+    would call two different walk-forward orders the same run.
+    """
+    folds = ("a" * 64, "b" * 64, "c" * 64)
+
+    assert combined_artifact(folds) != combined_artifact(folds[:1])
+    assert combined_artifact(folds) != combined_artifact(tuple(reversed(folds)))
+    assert combined_artifact(folds) != combined_artifact((folds[0], folds[1], "d" * 64))
+    assert combined_artifact(folds) == combined_artifact(folds)
+
+
+@pytest.mark.trace("REQ-WP-024")
+def test_a_variant_with_no_scored_fold_has_no_artifact() -> None:
+    """Combining nothing would produce a stable hash every empty variant
+    shares, and a run could then cite it."""
+    with pytest.raises(ModelNotFitted, match="no scored fold"):
+        combined_artifact([])
 
 
 # --- the registration -------------------------------------------------------
@@ -345,3 +370,47 @@ def test_a_run_that_fitted_no_model_needs_no_registration(
     )
 
     require_registered(identity, models=registry)
+
+
+# --- what a comparison reports about what it fitted (REQ-WP-024) -------------
+
+
+@pytest.mark.trace("REQ-WP-024")
+def test_a_comparison_reports_the_artifact_of_the_model_it_fitted() -> None:
+    """Under a name of its own.
+
+    EXP-008's subject happens to share a name with one of its baselines, so a
+    comparison that dropped the subject's artifact would still look complete --
+    the baseline supplies one under the same name. This uses a distinct name so
+    the subject has to answer for itself.
+    """
+    from channelflow.models import compare
+
+    x, y = data()
+    x_score, y_score = data(seed=7)
+
+    report = compare(GradientBoostedTrees(), x_fit=x, y_fit=y, x_score=x_score, y_score=y_score)
+
+    assert report.model.artifact
+    assert all(score.artifact for score in report.baselines if score.ran)
+
+
+@pytest.mark.trace("REQ-WP-024")
+def test_a_comparison_handed_predictions_reports_no_artifact() -> None:
+    """Two experiments supply their own probabilities. Reporting an artifact for
+    a model that produced nothing would name a model that did no work."""
+    from channelflow.models import compare
+
+    x, y = data()
+    x_score, y_score = data(seed=7)
+
+    report = compare(
+        GradientBoostedTrees(),
+        x_fit=x,
+        y_fit=y,
+        x_score=x_score,
+        y_score=y_score,
+        model_predictions=np.full(len(y_score), 0.5),
+    )
+
+    assert report.model.artifact is None

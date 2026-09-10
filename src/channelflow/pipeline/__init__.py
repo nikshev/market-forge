@@ -23,8 +23,12 @@ from channelflow.pipeline.replay import (
     record_replay,
     watermark,
 )
+from channelflow.pipeline.study import NothingScorable, StudyResult, run_study
 
 __all__ = [
+    "NothingScorable",
+    "StudyResult",
+    "run_study",
     "ChannelRecorder",
     "MixedSeries",
     "Recording",
