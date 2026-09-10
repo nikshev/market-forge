@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "§32, §45 Phase 8"
 prd_lines: "4752-4781, 6911"
 phase: 8
-status: specified
+status: planned
 depends_on: [REQ-WP-008, REQ-WP-034]
 tags: []
 ---
