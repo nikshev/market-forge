@@ -15,6 +15,7 @@ from channelflow.stops.models import (
 )
 from channelflow.stops.policy import StopPolicy, swing_anchors
 from channelflow.stops.replay import (
+    ActivationLatency,
     ComparisonReport,
     CostModel,
     NaiveATRTrailing,
@@ -24,6 +25,7 @@ from channelflow.stops.replay import (
 )
 
 __all__ = [
+    "ActivationLatency",
     "AnchorKind",
     "ComparisonReport",
     "CostModel",

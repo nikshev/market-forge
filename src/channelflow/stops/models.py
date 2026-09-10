@@ -183,3 +183,9 @@ class StopPolicyOutcome:
     #: How many decision instants were observed before the exit. A rate over
     #: the whole path would count instants that never happened.
     points_observed: int = 0
+    #: How many of `stop_updates` the exchange actually obeyed inside the path
+    #: ([[REQ-WP-033]]). The two are one number only in a model where an
+    #: instruction is obeyed the instant it is decided; kept apart, a report can
+    #: say four were decided and one landed, which is the sentence PRD section
+    #: 44A.27 exists to make sayable.
+    stop_updates_activated: int = 0

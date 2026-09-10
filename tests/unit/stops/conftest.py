@@ -7,7 +7,7 @@ from decimal import Decimal
 
 import pytest
 
-from channelflow.stops import AnchorKind, PositionState, PricePoint, StopAnchor
+from channelflow.stops import AnchorKind, CostModel, PositionState, PricePoint, StopAnchor
 
 MINUTE_NS = 60 * 1_000_000_000
 BASE_NS = 1788838800000000000
@@ -87,3 +87,8 @@ def rising_path() -> list[PricePoint]:
     """Price walks from 101 to 112, with a swing low confirmed at minute 5."""
     low = anchor("99", known_at=5)
     return [point(i, str(101 + i), anchors=(low,) if i >= 5 else ()) for i in range(12)]
+
+
+def free() -> CostModel:
+    """Zero costs, for the tests that are about mechanics rather than money."""
+    return CostModel(taker_fee_bps=Decimal(0), slippage_bps=Decimal(0))

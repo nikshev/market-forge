@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "§44A.27, §45 Phase 7A"
 prd_lines: "6304-6314, 6898"
 phase: 7A
-status: planned
+status: implemented
 depends_on: [REQ-WP-020]
 tags: []
 ---
@@ -74,7 +74,26 @@ The same section states what must not be done about the ambiguity that follows:
 ## Trace
 
 <!-- trace:begin -->
-_Not yet generated. Run `make graph`._
+- **Specs:** [[SPEC-071-stop-latency]]
+- **Tests:**
+    - `tests/unit/stops/test_latency.py::test_a_latency_longer_than_the_path_leaves_the_initial_stop_in_place`
+    - `tests/unit/stops/test_latency.py::test_a_report_can_say_two_were_decided_and_one_landed`
+    - `tests/unit/stops/test_latency.py::test_a_report_names_the_latency_it_ran_under`
+    - `tests/unit/stops/test_latency.py::test_a_stop_obeyed_before_it_was_decided_is_refused`
+    - `tests/unit/stops/test_latency.py::test_a_touch_after_the_acknowledgement_does_exit_on_it`
+    - `tests/unit/stops/test_latency.py::test_the_default_is_not_instantaneous`
+    - `tests/unit/stops/test_latency.py::test_the_default_total_is_the_prd_s_own_gap`
+    - `tests/unit/stops/test_latency.py::test_the_distance_to_the_stop_is_the_distance_to_the_active_one`
+    - `tests/unit/stops/test_latency.py::test_the_instantaneous_case_is_expressible`
+    - `tests/unit/stops/test_latency.py::test_the_legs_add_up`
+    - `tests/unit/stops/test_latency.py::test_the_naive_baselines_wait_too`
+    - `tests/unit/stops/test_latency.py::test_the_policy_is_shown_what_it_asked_for_not_what_landed`
+    - `tests/unit/stops/test_latency.py::test_the_prd_s_own_example`
+    - `tests/unit/stops/test_latency.py::test_the_same_tie_rule_applies_where_it_costs_something`
+    - `tests/unit/stops/test_latency.py::test_the_tie_at_the_acknowledgement_instant_does_not_credit_the_new_stop`
+- **Code:**
+    - `src/channelflow/stops/replay.py`
+- **Outcomes:** [[OUT-2026-09-10-implement-stop-latency]], [[OUT-2026-09-10-plan-stop-latency]], [[OUT-2026-09-10-requirement-stop-latency]], [[OUT-2026-09-10-spec-stop-latency]]
 <!-- trace:end -->
 
 ## Notes
