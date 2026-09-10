@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "§23.5A, §23.8, §45 Phase 7"
 prd_lines: "4065-4074, 6861"
 phase: 7
-status: draft
+status: specified
 depends_on: [REQ-WP-018, REQ-WP-019, REQ-US-007]
 tags: []
 ---
@@ -52,7 +52,8 @@ because a trader acts at one horizon and not at the average of several.
 ## Trace
 
 <!-- trace:begin -->
-_No linked artifacts yet._
+- **Specs:** [[SPEC-062-calibration-by-horizon]]
+- **Outcomes:** [[OUT-2026-09-10-requirement-calibration-by-horizon]], [[OUT-2026-09-10-spec-calibration-by-horizon]]
 <!-- trace:end -->
 
 ## Notes
