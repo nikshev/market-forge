@@ -88,6 +88,8 @@ result quoting one of them cites a thing that no longer exists.
     - `tests/unit/models/test_registry.py::test_two_identical_fits_hash_alike`
     - `tests/unit/models/test_registry.py::test_two_models_with_one_hyperparameter_apart_hash_differently`
     - `tests/unit/models/test_registry.py::test_two_states_that_concatenate_alike_do_not_hash_alike`
+- **Code:**
+    - `src/channelflow/models/registry.py`
 - **Outcomes:** [[OUT-2026-09-10-implement-model-registry]], [[OUT-2026-09-10-plan-model-registry]], [[OUT-2026-09-10-requirement-model-registry]], [[OUT-2026-09-10-spec-model-registry]]
 <!-- trace:end -->
 
