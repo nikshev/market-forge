@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "§32, §45 Phase 8"
 prd_lines: "4752-4781, 6911"
 phase: 8
-status: planned
+status: implemented
 depends_on: [REQ-WP-008, REQ-WP-034]
 tags: []
 ---
@@ -83,7 +83,36 @@ reader who confuses them at a glance does the wrong thing quickly.
 ## Trace
 
 <!-- trace:begin -->
-_Not yet generated. Run `make graph`._
+- **Specs:** [[SPEC-073-outage-alerts]]
+- **Tests:**
+    - `tests/unit/alerting/test_outages.py::test_a_duration_of_zero_is_a_duration`
+    - `tests/unit/alerting/test_outages.py::test_a_feed_first_seen_bad_is_announced`
+    - `tests/unit/alerting/test_outages.py::test_a_feed_first_seen_good_says_nothing`
+    - `tests/unit/alerting/test_outages.py::test_a_feed_turning_bad_is_announced_once`
+    - `tests/unit/alerting/test_outages.py::test_a_recovery_nobody_was_told_about_is_not_announced`
+    - `tests/unit/alerting/test_outages.py::test_an_operational_alert_shares_no_header_with_a_trading_one`
+    - `tests/unit/alerting/test_outages.py::test_coming_back_is_announced_with_how_long_it_was_bad`
+    - `tests/unit/alerting/test_outages.py::test_getting_worse_is_a_new_fact`
+    - `tests/unit/alerting/test_outages.py::test_operational_alerts_are_audited_like_everything_else`
+    - `tests/unit/alerting/test_outages.py::test_the_message_names_the_feed_the_state_and_the_reason`
+    - `tests/unit/alerting/test_outages.py::test_the_notification_id_says_which_state_it_announced`
+    - `tests/unit/alerting/test_outages.py::test_the_same_bad_state_seen_again_says_nothing`
+    - `tests/unit/alerting/test_outages.py::test_two_feeds_are_watched_apart`
+    - `tests/unit/health/test_assessment.py::test_a_stale_feed_and_a_gappy_one_are_two_different_states`
+    - `tests/unit/health/test_assessment.py::test_everything_within_its_limit_is_good`
+    - `tests/unit/health/test_assessment.py::test_nothing_reported_is_not_good_news`
+    - `tests/unit/health/test_assessment.py::test_one_absent_reading_is_not_one_reading_within_its_limit`
+    - `tests/unit/health/test_assessment.py::test_reconnects_and_missing_bars_degrade_rather_than_disqualify`
+    - `tests/unit/health/test_assessment.py::test_the_reading_carries_the_feed_and_the_instant`
+    - `tests/unit/health/test_assessment.py::test_the_states_are_ranked_worst_last`
+    - `tests/unit/health/test_assessment.py::test_the_thresholds_are_arguments`
+    - `tests/unit/health/test_assessment.py::test_the_worst_reading_decides_and_the_reason_names_it`
+    - `tests/unit/health/test_assessment.py::test_the_worst_wins_even_when_a_milder_reading_is_checked_after_it`
+- **Code:**
+    - `src/channelflow/alerting/__init__.py`
+    - `src/channelflow/alerting/outages.py`
+    - `src/channelflow/health.py`
+- **Outcomes:** [[OUT-2026-09-10-implement-outage-alerts]], [[OUT-2026-09-10-plan-outage-alerts]], [[OUT-2026-09-10-requirement-outage-alerts]], [[OUT-2026-09-10-spec-outage-alerts]]
 <!-- trace:end -->
 
 ## Notes
