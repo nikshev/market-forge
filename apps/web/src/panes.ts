@@ -1,4 +1,5 @@
 // @trace: REQ-WP-027
+// @trace: REQ-WP-030
 //
 // PRD section 27.3's lower panes, for the three Phase 2 has data for.
 //
@@ -21,14 +22,25 @@ export interface Pane {
   label: string;
 }
 
-// Only the panes this phase has data for. PRD section 27.3 lists nine; OI,
-// funding, basis and liquidations are Phase 3's own deliverable and the DEX
-// pair is Phase 4's. Offering an empty pane and calling it a feature would put
-// a phase's unfinished work in front of a reader as though it were finished.
+// PRD section 27.3 lists nine panes. Seven are here: the order-flow three from
+// [[REQ-WP-027]] and Phase 3's four, added by [[REQ-WP-030]] once that phase's
+// data was finished. The DEX pair is still absent because Phase 4's is not --
+// offering an empty pane and calling it a feature would put a phase's unfinished
+// work in front of a reader as though it were finished.
+//
+// Every entry's `feature` must be a name the registry knows. That is checked
+// from the Python suite (`tests/unit/features/test_pane_features.py`), because
+// this list and the registry are the two halves and neither can check itself: a
+// pane naming a feature nobody records shows "no readings of this feature"
+// forever, which reads as a quiet market rather than as a typo.
 export const PANES: readonly Pane[] = [
   { feature: "cvd", label: "CVD" },
   { feature: "ofi_1m", label: "OFI (1m)" },
   { feature: "depth_imbalance_10", label: "Depth imbalance (10)" },
+  { feature: "open_interest_usd", label: "Open interest" },
+  { feature: "funding_z", label: "Funding (z)" },
+  { feature: "basis_bps", label: "Basis (bps)" },
+  { feature: "liquidation_imbalance_5m", label: "Liquidations (5m)" },
 ];
 
 export interface PanePoint {

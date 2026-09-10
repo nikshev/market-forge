@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "§27.3, §45 Phase 3"
 prd_lines: "4423-4435, 6768"
 phase: 3
-status: specified
+status: implemented
 depends_on: [REQ-WP-027, REQ-WP-013, REQ-API-001]
 tags: [frontend]
 ---
@@ -46,7 +46,15 @@ that road carries a second load without changing.
 
 <!-- trace:begin -->
 - **Specs:** [[SPEC-068-derivatives-panes]]
-- **Outcomes:** [[OUT-2026-09-10-requirement-derivatives-panes]], [[OUT-2026-09-10-spec-derivatives-panes]]
+- **Tests:**
+    - `tests/unit/features/test_pane_features.py::test_a_pane_list_it_cannot_read_is_a_failure_not_an_empty_answer`
+    - `tests/unit/features/test_pane_features.py::test_every_offered_pane_names_a_registered_feature`
+    - `tests/unit/features/test_pane_features.py::test_the_derivatives_panes_are_offered`
+    - `tests/unit/features/test_pane_features.py::test_the_dex_panes_are_not_offered_yet`
+    - `tests/unit/features/test_pane_features.py::test_the_order_flow_panes_are_still_offered`
+- **Code:**
+    - `apps/web/src/panes.ts`
+- **Outcomes:** [[OUT-2026-09-10-implement-derivatives-panes]], [[OUT-2026-09-10-plan-derivatives-panes]], [[OUT-2026-09-10-requirement-derivatives-panes]], [[OUT-2026-09-10-spec-derivatives-panes]]
 <!-- trace:end -->
 
 ## Notes

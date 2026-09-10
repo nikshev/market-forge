@@ -20,11 +20,19 @@ function point(index: number, values: Record<string, number>): FeaturePointOut {
 }
 
 describe("the pane list", () => {
-  it("offers exactly the features this phase has data for", () => {
-    // OI, funding, basis and liquidations are PRD section 27.3 panes too, and
-    // they belong to Phase 3's deliverable. Offering them here would put an
-    // empty pane in front of a reader and call it a feature.
-    expect(PANES.map((p) => p.feature)).toEqual(["cvd", "ofi_1m", "depth_imbalance_10"]);
+  it("offers the panes whose phases have finished their data", () => {
+    // Order flow from [[REQ-WP-027]], derivatives from [[REQ-WP-030]]. The DEX
+    // pair is absent because Phase 4's data is, and offering an empty pane
+    // would put unfinished work in front of a reader as though it were done.
+    expect(PANES.map((p) => p.feature)).toEqual([
+      "cvd",
+      "ofi_1m",
+      "depth_imbalance_10",
+      "open_interest_usd",
+      "funding_z",
+      "basis_bps",
+      "liquidation_imbalance_5m",
+    ]);
   });
 
   it("gives every pane a label a reader can choose by", () => {
