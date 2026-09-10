@@ -50,7 +50,9 @@ describe("the deep link's overlays", () => {
 
     render(<App />);
 
-    expect(await screen.findByRole("status")).toHaveTextContent(/did not record which layers/);
+    expect(
+      await screen.findByRole("status", { name: "Overlay restoration" }),
+    ).toHaveTextContent(/did not record which layers/);
   });
 
   it("says nothing when the layers were restored", async () => {
@@ -58,6 +60,9 @@ describe("the deep link's overlays", () => {
 
     render(<App />);
 
-    expect(screen.queryByRole("status")).toBeNull();
+    // By name rather than by being the only status on the page. The lower pane
+    // ([[REQ-WP-027]]) has its own, and a test that asserted "no status at all"
+    // would fail for a reason that has nothing to do with overlays.
+    expect(screen.queryByRole("status", { name: "Overlay restoration" })).toBeNull();
   });
 });

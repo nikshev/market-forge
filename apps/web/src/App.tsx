@@ -8,13 +8,21 @@
 
 import { useCallback, useEffect, useState } from "react";
 
-import { fetchBars, fetchChannel } from "./api";
+import { fetchBars, fetchChannel, fetchFeatureSeries } from "./api";
 import { Chart } from "./Chart";
 import { ChannelModeControl } from "./ChannelMode";
+import { FlowPane } from "./FlowPane";
 import { LoadState, type LoadStateKind } from "./LoadState";
+import { PANES } from "./panes";
 import { parseDeepLink } from "./deepLink";
 import { RESTORATION_NOTICE } from "./overlays";
-import { AS_SEEN_THEN, type BarOut, type ChannelMode, type ChannelOut } from "./types";
+import {
+  AS_SEEN_THEN,
+  type BarOut,
+  type ChannelMode,
+  type ChannelOut,
+  type FeaturePointOut,
+} from "./types";
 
 const MINUTE_NS = 60 * 1_000_000_000;
 
@@ -29,6 +37,11 @@ export function App(): JSX.Element {
   const [channel, setChannel] = useState<ChannelOut | null>(null);
   const [state, setState] = useState<LoadStateKind>("ok");
   const [detail, setDetail] = useState<string | undefined>(undefined);
+  const [pane, setPane] = useState<string>(PANES[0]!.feature);
+  const [points, setPoints] = useState<FeaturePointOut[]>([]);
+  // A pane's own failure, kept apart from the page's: the chart can load while
+  // the features do not, and one message for both would blame the wrong thing.
+  const [paneFailure, setPaneFailure] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (link === null) {
@@ -65,6 +78,17 @@ export function App(): JSX.Element {
     // An absent channel is not a failure of the page: the chart draws candles
     // and no channel, which is the honest picture (US4 scenario 5).
     setChannel(channelResult.ok ? channelResult.value : null);
+
+    const loaded = barsResult.value.bars;
+    const seriesResult = await fetchFeatureSeries({
+      venue: link.venue,
+      symbol: link.symbol,
+      timeframeNs,
+      startNs: loaded[0]?.open_time_ns ?? atNs,
+      endNs: loaded.at(-1)?.close_time_ns ?? atNs,
+    });
+    setPaneFailure(seriesResult.ok ? null : seriesResult.error);
+    setPoints(seriesResult.ok ? seriesResult.value.points : []);
   }, [link, mode]);
 
   useEffect(() => {
@@ -92,7 +116,14 @@ export function App(): JSX.Element {
       </h2>
       <ChannelModeControl mode={mode} onChange={setMode} />
       <LoadState state={state} detail={detail} />
-      {notice === null ? null : <p role="status">{notice}</p>}
+      {notice === null ? null : (
+        // Named, because the page now carries more than one status and a
+        // reader -- or a test -- asking for "the status" would get whichever
+        // came first.
+        <p role="status" aria-label="Overlay restoration">
+          {notice}
+        </p>
+      )}
       <Chart
         bars={bars}
         channel={channel}
@@ -100,6 +131,7 @@ export function App(): JSX.Element {
         overlays={link.overlays.overlays}
         focusAtNs={link.atNs}
       />
+      <FlowPane points={points} feature={pane} onSelect={setPane} failure={paneFailure} />
     </main>
   );
 }

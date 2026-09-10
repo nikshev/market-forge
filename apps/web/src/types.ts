@@ -116,3 +116,15 @@ export const DEFAULT_OVERLAYS: readonly Overlay[] = [
   "signal_marker",
   "volume_profile",
 ];
+
+/** PRD section 28's feature point: an instant, and a mapping of what was
+ * measured then. A feature absent from the mapping is silent rather than
+ * zero -- see `panes.ts`, where drawing the difference is the whole job. */
+export interface FeaturePointOut {
+  at_ns: number;
+  values: Record<string, number>;
+}
+
+export interface FeatureSeriesResponse {
+  points: FeaturePointOut[];
+}
