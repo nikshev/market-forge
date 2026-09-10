@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "§16, §45 Phase 3"
 prd_lines: "1778, 6767"
 phase: 3
-status: draft
+status: specified
 depends_on: [REQ-WP-013, REQ-WP-026]
 tags: []
 ---
@@ -46,7 +46,8 @@ who is positioned which way. It is the last entry in [[REQ-PHASE-3]]'s
 ## Trace
 
 <!-- trace:begin -->
-_No linked artifacts yet._
+- **Specs:** [[SPEC-069-long-short]]
+- **Outcomes:** [[OUT-2026-09-10-requirement-long-short]], [[OUT-2026-09-10-spec-long-short]]
 <!-- trace:end -->
 
 ## Notes
