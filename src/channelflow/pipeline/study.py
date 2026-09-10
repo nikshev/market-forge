@@ -123,6 +123,7 @@ def run_study(
             result_folds=len(result.folds),
             rows=result.rows_scored,
             brier=_brier_of(result.folds, variant),
+            spans=_spans(dataset),
         )
         for variant, artifact in sorted(artifacts.items())
     )
@@ -236,6 +237,39 @@ def _winner(folds: Sequence[ComparisonReport], artifacts: Mapping[str, str]) -> 
     return None if scored[best] >= base else best
 
 
+@dataclass(frozen=True)
+class _Spans:
+    """The outer extent of what a run trained and validated on."""
+
+    train_start_ns: int
+    train_end_ns: int
+    validation_start_ns: int
+    validation_end_ns: int
+
+
+def _spans(dataset: CertifiedDataset) -> _Spans:
+    """The true extent of the folds, over every row they hold.
+
+    These overlap, and that is correct rather than tolerated: walk-forward folds
+    interleave by construction -- fold 1 trains on data later than fold 0
+    validated on. Within a fold they never touch, which is the property that
+    matters and the one `WalkForwardFolds` and the leakage certificate enforce.
+
+    Written after [[ADR-058]]. Before it these four fields held 1/2/2/3, because
+    `Registration` refused any overlap and a walk-forward run cannot satisfy
+    that -- so a registry whose whole job is describing an artifact truthfully
+    carried four invented numbers.
+    """
+    train = [row.as_of_ns for fold in dataset.folds for row in fold.train]
+    validate = [row.as_of_ns for fold in dataset.folds for row in fold.validate]
+    return _Spans(
+        train_start_ns=min(train),
+        train_end_ns=max(train),
+        validation_start_ns=min(validate),
+        validation_end_ns=max(validate),
+    )
+
+
 def _registration(
     *,
     variant: str,
@@ -246,15 +280,16 @@ def _registration(
     result_folds: int,
     rows: int,
     brier: float | None,
+    spans: _Spans,
 ) -> Registration:
     """PRD §23.9's eleven fields for one variant of this run."""
     return Registration(
         model_type=variant,
         feature_set_versions={name: 1 for name in feature_names},
-        train_start_ns=1,
-        train_end_ns=2,
-        validation_start_ns=2,
-        validation_end_ns=3,
+        train_start_ns=spans.train_start_ns,
+        train_end_ns=spans.train_end_ns,
+        validation_start_ns=spans.validation_start_ns,
+        validation_end_ns=spans.validation_end_ns,
         code_commit=code.commit,
         hyperparameters={"target": str(target), "folds": result_folds},
         scaler_parameters={"none": "features are used as given"},
@@ -262,6 +297,9 @@ def _registration(
         metrics={"brier": brier if brier is not None else float("nan"), "rows": float(rows)},
         artifact_hash=artifact,
         deployment_status="shadow",
+        # The folds this run used are walk-forward, and saying so is what lets
+        # the spans above be true ([[ADR-058]]).
+        validation_regime="walk_forward",
     )
 
 

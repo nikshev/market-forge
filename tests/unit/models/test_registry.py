@@ -219,6 +219,7 @@ def registration(**overrides: object) -> Registration:
         "hyperparameters": {"iterations": 400},
         "scaler_parameters": {"mean": 0.0},
         "calibration_model": "isotonic",
+        "validation_regime": "single_split",
         "metrics": {"brier": 0.19},
         "artifact_hash": "b" * 64,
         "deployment_status": "shadow",
@@ -258,11 +259,61 @@ def test_a_registration_with_no_metrics_is_refused() -> None:
 
 
 @pytest.mark.trace("REQ-WP-022")
-def test_a_validation_span_overlapping_the_training_span_is_refused() -> None:
+def test_a_single_split_whose_validation_overlaps_its_training_is_refused() -> None:
     """A model validated on rows it was trained on is not validated, and the
-    number it reports is the one PRD section 41 rule 10 exists to stop."""
+    number it reports is the one PRD section 41 rule 10 exists to stop.
+
+    For a single split, and only for one: the spans are the whole of what
+    happened, so an overlap between them is the leak itself.
+    """
     with pytest.raises(ValueError, match="overlap"):
         registration(validation_start_ns=1_500)
+
+
+@pytest.mark.trace("REQ-WP-022")
+def test_a_walk_forward_run_may_report_overlapping_spans() -> None:
+    """The correction.
+
+    Walk-forward folds interleave by construction: fold 1 trains on data later
+    than fold 0 validated on. Within a fold the two never touch -- which is the
+    property that matters and the one the fold builder and the leakage
+    certificate actually enforce. A run-level span pair for such a run overlaps
+    and is not a leak, and the earlier rule refused it, which is why
+    `run_study` was left writing placeholder spans instead of true ones.
+    """
+    entry = registration(
+        validation_regime="walk_forward",
+        train_start_ns=0,
+        train_end_ns=85,
+        validation_start_ns=24,
+        validation_end_ns=119,
+    )
+
+    assert entry.train_end_ns > entry.validation_start_ns
+
+
+@pytest.mark.trace("REQ-WP-022")
+def test_a_walk_forward_span_that_ends_before_it_starts_is_still_refused() -> None:
+    """The relaxation is about the two spans against each other, not about a
+    span against itself."""
+    with pytest.raises(ValueError, match="train"):
+        registration(validation_regime="walk_forward", train_start_ns=90, train_end_ns=10)
+
+
+@pytest.mark.trace("REQ-WP-022")
+def test_the_validation_regime_has_no_default() -> None:
+    """ADR-015's reasoning: a field with a default is a field an author can
+    forget to think about, and this one decides which rule applies."""
+    fields = {k: v for k, v in registration().__dict__.items() if k != "validation_regime"}
+
+    with pytest.raises(TypeError, match="validation_regime"):
+        Registration(**fields)
+
+
+@pytest.mark.trace("REQ-WP-022")
+def test_an_unknown_validation_regime_is_refused() -> None:
+    with pytest.raises(ValueError, match="validation_regime"):
+        registration(validation_regime="whatever_i_did")
 
 
 @pytest.mark.trace("REQ-WP-022")

@@ -74,10 +74,11 @@ refusal is theoretical.
     - `tests/unit/pipeline/test_study.py::test_every_variant_is_registered_and_on_record`
     - `tests/unit/pipeline/test_study.py::test_reliability_is_reported_at_each_horizon`
     - `tests/unit/pipeline/test_study.py::test_the_fourth_hash_resolves_instead_of_reading_unrecorded`
+    - `tests/unit/pipeline/test_study.py::test_the_registration_carries_the_run_s_real_spans`
     - `tests/unit/pipeline/test_study.py::test_two_runs_over_one_dataset_produce_equal_identities`
 - **Code:**
     - `src/channelflow/pipeline/study.py`
-- **Outcomes:** [[OUT-2026-09-10-implement-research-run]], [[OUT-2026-09-10-plan-research-run]], [[OUT-2026-09-10-requirement-research-run]], [[OUT-2026-09-10-spec-research-run]]
+- **Outcomes:** [[OUT-2026-09-10-fix-validation-regime]], [[OUT-2026-09-10-implement-research-run]], [[OUT-2026-09-10-plan-research-run]], [[OUT-2026-09-10-requirement-research-run]], [[OUT-2026-09-10-spec-research-run]]
 <!-- trace:end -->
 
 ## Notes

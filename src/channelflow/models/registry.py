@@ -31,6 +31,7 @@ import json
 import struct
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
+from typing import Literal, cast, get_args
 
 import numpy as np
 
@@ -47,6 +48,28 @@ _TAG_SEQ = b"q"
 _TAG_MAP = b"m"
 _TAG_ARRAY = b"a"
 _TAG_OBJECT = b"o"
+
+
+#: PRD §23.9's four span fields describe a run, and what they can say depends on
+#: how it was validated.
+#:
+#: **`single_split`** trains on one range and validates on a later one, so the
+#: spans are the whole of what happened and an overlap between them is a leak.
+#:
+#: **`walk_forward`** interleaves by construction: fold 1 trains on data later
+#: than fold 0 validated on. Within a fold the two never touch, and that is the
+#: property that matters -- enforced by the fold builder and checked by the
+#: leakage certificate, which is where a real guarantee lives. A run-level span
+#: pair for such a run overlaps and is not a leak.
+#:
+#: This distinction is a correction. The first version of this rule refused any
+#: overlap and cited PRD §41 rule 10 for it. §23.9 asks for no such thing, rule
+#: 10 is about a locked test segment which walk-forward satisfies per fold, and
+#: the strict form duplicated a guarantee that already existed -- with a cruder
+#: test that a correct scheme legitimately fails. See [[ADR-058]].
+ValidationRegime = Literal["single_split", "walk_forward"]
+
+VALIDATION_REGIMES: tuple[str, ...] = get_args(ValidationRegime)
 
 
 class ModelNotFitted(ValueError):
@@ -146,6 +169,10 @@ class Registration:
     metrics: Mapping[str, float]
     artifact_hash: str
     deployment_status: str
+    #: How the run was validated, which decides what the four span fields can
+    #: say. No default, for [[ADR-015]]'s reason: a field with one is a field an
+    #: author can forget to think about, and this one selects a rule.
+    validation_regime: ValidationRegime
 
     def __post_init__(self) -> None:
         for name in (
@@ -175,12 +202,21 @@ class Registration:
                     f"the {span} span ends at {end} and starts at {start}; a span that "
                     "ends before it starts contains no rows"
                 )
-        if self.validation_start_ns < self.train_end_ns:
+        if self.validation_regime not in VALIDATION_REGIMES:
+            raise ValueError(
+                f"validation_regime {self.validation_regime!r} is not one of "
+                f"{VALIDATION_REGIMES}; the four span fields mean different things under "
+                "each, so a registration that does not say which is not readable"
+            )
+        if (
+            self.validation_regime == "single_split"
+            and self.validation_start_ns < self.train_end_ns
+        ):
             raise ValueError(
                 f"the training span ends at {self.train_end_ns} and validation starts at "
-                f"{self.validation_start_ns}, so they overlap; a model validated on rows "
-                "it was trained on is not validated, and PRD section 41 rule 10 exists "
-                "to stop the number that comes out"
+                f"{self.validation_start_ns}, so they overlap; for a single split the spans "
+                "are the whole of what happened, so an overlap between them is the leak "
+                "itself, and PRD section 41 rule 10 exists to stop the number that comes out"
             )
 
 
@@ -211,6 +247,7 @@ MODEL_REGISTRY_SCHEMA = Schema(
         Column(name="calibration_model", type="string"),
         Column(name="metrics", type="string"),
         Column(name="deployment_status", type="string"),
+        Column(name="validation_regime", type="string"),
     ),
     event_time_column="event_time_ns",
 )
@@ -312,6 +349,7 @@ def _as_row(entry: Registration) -> dict[str, object]:
         "calibration_model": entry.calibration_model,
         "metrics": json.dumps(dict(entry.metrics), sort_keys=True),
         "deployment_status": entry.deployment_status,
+        "validation_regime": entry.validation_regime,
     }
 
 
@@ -336,4 +374,5 @@ def _from_row(row: dict[str, object]) -> Registration:
         metrics=json.loads(str(row["metrics"])),
         artifact_hash=str(row["artifact_hash"]),
         deployment_status=str(row["deployment_status"]),
+        validation_regime=cast(ValidationRegime, str(row["validation_regime"])),
     )

@@ -72,25 +72,29 @@ result quoting one of them cites a thing that no longer exists.
     - `tests/unit/models/test_registry.py::test_a_run_citing_a_registered_artifact_is_reportable`
     - `tests/unit/models/test_registry.py::test_a_run_citing_an_artifact_nobody_registered_is_refused`
     - `tests/unit/models/test_registry.py::test_a_run_that_fitted_no_model_needs_no_registration`
+    - `tests/unit/models/test_registry.py::test_a_single_split_whose_validation_overlaps_its_training_is_refused`
     - `tests/unit/models/test_registry.py::test_a_span_that_ends_before_it_starts_is_refused`
-    - `tests/unit/models/test_registry.py::test_a_validation_span_overlapping_the_training_span_is_refused`
+    - `tests/unit/models/test_registry.py::test_a_walk_forward_run_may_report_overlapping_spans`
+    - `tests/unit/models/test_registry.py::test_a_walk_forward_span_that_ends_before_it_starts_is_still_refused`
     - `tests/unit/models/test_registry.py::test_an_array_reshaped_without_changing_a_byte_changes_the_hash`
     - `tests/unit/models/test_registry.py::test_an_empty_named_field_is_refused[calibration_model]`
     - `tests/unit/models/test_registry.py::test_an_empty_named_field_is_refused[code_commit]`
     - `tests/unit/models/test_registry.py::test_an_empty_named_field_is_refused[deployment_status]`
     - `tests/unit/models/test_registry.py::test_an_empty_named_field_is_refused[model_type]`
     - `tests/unit/models/test_registry.py::test_an_unfitted_model_is_refused_rather_than_hashed`
+    - `tests/unit/models/test_registry.py::test_an_unknown_validation_regime_is_refused`
     - `tests/unit/models/test_registry.py::test_every_model_type_can_say_whether_it_is_fitted`
     - `tests/unit/models/test_registry.py::test_recording_one_registration_twice_stores_it_once`
     - `tests/unit/models/test_registry.py::test_the_hash_is_framed_so_fields_cannot_borrow_from_each_other`
     - `tests/unit/models/test_registry.py::test_the_registry_knows_which_artifacts_it_holds`
     - `tests/unit/models/test_registry.py::test_the_stored_hash_is_read_and_not_recomputed`
+    - `tests/unit/models/test_registry.py::test_the_validation_regime_has_no_default`
     - `tests/unit/models/test_registry.py::test_two_identical_fits_hash_alike`
     - `tests/unit/models/test_registry.py::test_two_models_with_one_hyperparameter_apart_hash_differently`
     - `tests/unit/models/test_registry.py::test_two_states_that_concatenate_alike_do_not_hash_alike`
 - **Code:**
     - `src/channelflow/models/registry.py`
-- **Outcomes:** [[OUT-2026-09-10-implement-model-registry]], [[OUT-2026-09-10-plan-model-registry]], [[OUT-2026-09-10-requirement-model-registry]], [[OUT-2026-09-10-spec-model-registry]]
+- **Outcomes:** [[OUT-2026-09-10-fix-validation-regime]], [[OUT-2026-09-10-implement-model-registry]], [[OUT-2026-09-10-plan-model-registry]], [[OUT-2026-09-10-requirement-model-registry]], [[OUT-2026-09-10-spec-model-registry]]
 <!-- trace:end -->
 
 ## Notes
