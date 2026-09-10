@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "§27.3, §45 Phase 2"
 prd_lines: "4423-4435, 6751"
 phase: 2
-status: specified
+status: implemented
 depends_on: [REQ-WP-009, REQ-WP-011, REQ-API-001]
 tags: [frontend]
 ---
@@ -57,7 +57,15 @@ here would deliver panes for data those phases have not finished.
 
 <!-- trace:begin -->
 - **Specs:** [[SPEC-065-flow-panes]]
-- **Outcomes:** [[OUT-2026-09-10-requirement-flow-panes]], [[OUT-2026-09-10-spec-flow-panes]]
+- **Tests:**
+    - `tests/unit/api/test_reads.py::test_a_feature_not_recorded_at_an_instant_is_absent_not_zero[in_memory]`
+    - `tests/unit/api/test_reads.py::test_a_feature_not_recorded_at_an_instant_is_absent_not_zero[lakehouse]`
+- **Code:**
+    - `apps/web/src/FlowPane.tsx`
+    - `apps/web/src/__tests__/FlowPane.test.tsx`
+    - `apps/web/src/__tests__/panes.test.ts`
+    - `apps/web/src/panes.ts`
+- **Outcomes:** [[OUT-2026-09-10-implement-flow-panes]], [[OUT-2026-09-10-plan-flow-panes]], [[OUT-2026-09-10-requirement-flow-panes]], [[OUT-2026-09-10-spec-flow-panes]]
 <!-- trace:end -->
 
 ## Notes

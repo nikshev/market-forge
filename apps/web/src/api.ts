@@ -6,7 +6,13 @@
 // empty component tree, which is exactly the indistinguishable blank the rule
 // forbids.
 
-import type { BarOut, ChannelMode, ChannelOut, SignalOut } from "./types";
+import type {
+  BarOut,
+  ChannelMode,
+  ChannelOut,
+  FeatureSeriesResponse,
+  SignalOut,
+} from "./types";
 import { AS_SEEN_THEN } from "./types";
 
 export type Result<T> = { ok: true; value: T } | { ok: false; error: string };
@@ -65,4 +71,20 @@ export function fetchChannel(params: {
 
 export function fetchSignal(signalId: string): Promise<Result<{ decision: SignalOut }>> {
   return get(`/api/v1/signals/${signalId}`, {});
+}
+
+export function fetchFeatureSeries(params: {
+  venue: string;
+  symbol: string;
+  timeframeNs: number;
+  startNs: number;
+  endNs: number;
+}): Promise<Result<FeatureSeriesResponse>> {
+  return get("/api/v1/features/timeseries", {
+    venue: params.venue,
+    symbol: params.symbol,
+    timeframe_ns: params.timeframeNs,
+    start_ns: params.startNs,
+    end_ns: params.endNs,
+  });
 }

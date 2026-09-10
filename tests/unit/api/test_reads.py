@@ -221,3 +221,58 @@ def test_a_feature_time_series_is_served(client: TestClient, repository: object)
     ).json()["points"]
 
     assert [p["values"]["qi_l1"] for p in series] == [-0.5, 0.1]
+
+
+@pytest.mark.trace("REQ-WP-027")
+def test_a_feature_not_recorded_at_an_instant_is_absent_not_zero(
+    client: TestClient, repository: object
+) -> None:
+    """The server half of the rule the lower panes are built on.
+
+    PRD §27.3's panes draw one feature over a window, and [[REQ-WP-027]] refuses
+    to plot a missing value at zero -- a flat line through a CVD pane says "no
+    net delta", which is a claim about the market rather than about the data.
+
+    That refusal is only worth anything if the endpoint reports absence as
+    absence. An API that filled a gap with zero would leave the pane nothing to
+    tell apart, and the honest picture would be gone before the browser saw it.
+    """
+    repository.add_feature_snapshot(  # type: ignore[attr-defined]
+        venue="binance",
+        symbol="BTCUSDT",
+        timeframe_ns=MINUTE_NS,
+        at_ns=BASE_NS + 1 * MINUTE_NS,
+        values={"cvd": 12.0, "ofi_1m": -3.0},
+    )
+    repository.add_feature_snapshot(  # type: ignore[attr-defined]
+        venue="binance",
+        symbol="BTCUSDT",
+        timeframe_ns=MINUTE_NS,
+        at_ns=BASE_NS + 2 * MINUTE_NS,
+        values={"ofi_1m": 4.0},
+    )
+    repository.add_feature_snapshot(  # type: ignore[attr-defined]
+        venue="binance",
+        symbol="BTCUSDT",
+        timeframe_ns=MINUTE_NS,
+        at_ns=BASE_NS + 3 * MINUTE_NS,
+        values={"cvd": 0.0},
+    )
+
+    points = client.get(
+        "/api/v1/features/timeseries",
+        params={
+            "venue": "binance",
+            "symbol": "BTCUSDT",
+            "timeframe_ns": MINUTE_NS,
+            "start_ns": BASE_NS + MINUTE_NS,
+            "end_ns": BASE_NS + 3 * MINUTE_NS,
+        },
+    ).json()["points"]
+
+    assert len(points) == 3
+    # The instant that carried no CVD carries no key for it.
+    assert "cvd" not in points[1]["values"]
+    # And a recorded zero is still a zero: the two must never become one
+    # picture, which is the pair REQ-WP-027 tests on the browser side.
+    assert points[2]["values"]["cvd"] == 0.0
