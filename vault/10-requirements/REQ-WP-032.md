@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "§44A.33, §45 Phase 7A"
 prd_lines: "6464-6500, 6887"
 phase: 7A
-status: planned
+status: implemented
 depends_on: [REQ-WP-020, REQ-WP-028]
 tags: []
 ---
@@ -84,7 +84,20 @@ inspecting a stop decision needs.
 ## Trace
 
 <!-- trace:begin -->
-_Not yet generated. Run `make graph`._
+- **Specs:** [[SPEC-070-stop-path]]
+- **Tests:**
+    - `tests/unit/stops/test_view_contract.py::test_a_source_that_declares_no_such_interface_is_a_failure`
+    - `tests/unit/stops/test_view_contract.py::test_an_interface_with_no_fields_is_a_failure`
+    - `tests/unit/stops/test_view_contract.py::test_every_anchor_field_reaches_the_view`
+    - `tests/unit/stops/test_view_contract.py::test_every_proposal_field_reaches_the_view`
+    - `tests/unit/stops/test_view_contract.py::test_the_view_invents_no_position_field`
+    - `tests/unit/stops/test_view_contract.py::test_the_view_renders_moved_and_refused_because_both_can_happen`
+- **Code:**
+    - `apps/web/src/PositionView.tsx`
+    - `apps/web/src/__tests__/PositionView.test.tsx`
+    - `apps/web/src/__tests__/stopPath.test.ts`
+    - `apps/web/src/stopPath.ts`
+- **Outcomes:** [[OUT-2026-09-10-implement-stop-path]], [[OUT-2026-09-10-plan-stop-path]], [[OUT-2026-09-10-requirement-stop-path]], [[OUT-2026-09-10-spec-stop-path]]
 <!-- trace:end -->
 
 ## Notes
