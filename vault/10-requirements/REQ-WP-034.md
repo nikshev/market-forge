@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "§44A.34, §45 Phase 7A"
 prd_lines: "6504-6530, 6899"
 phase: 7A
-status: planned
+status: implemented
 depends_on: [REQ-WP-008, REQ-WP-020, REQ-WP-033]
 tags: []
 ---
@@ -71,7 +71,30 @@ in exactly the way silence would have lost them, but expensively.
 ## Trace
 
 <!-- trace:begin -->
-_Not yet generated. Run `make graph`._
+- **Specs:** [[SPEC-072-stop-alert]]
+- **Tests:**
+    - `tests/unit/alerting/test_stop_updates.py::test_a_hold_is_not_announced`
+    - `tests/unit/alerting/test_stop_updates.py::test_a_move_is_announced`
+    - `tests/unit/alerting/test_stop_updates.py::test_a_proposal_with_no_anchor_omits_the_block`
+    - `tests/unit/alerting/test_stop_updates.py::test_a_refusal_is_not_announced_either`
+    - `tests/unit/alerting/test_stop_updates.py::test_a_suppression_is_recorded_rather_than_silent`
+    - `tests/unit/alerting/test_stop_updates.py::test_a_throwing_transport_never_escapes_into_the_caller`
+    - `tests/unit/alerting/test_stop_updates.py::test_debug_announces_a_hold_as_a_hold`
+    - `tests/unit/alerting/test_stop_updates.py::test_debug_does_not_invent_events`
+    - `tests/unit/alerting/test_stop_updates.py::test_delivery_retries_and_dead_letters_like_a_signal_alert`
+    - `tests/unit/alerting/test_stop_updates.py::test_open_risk_floors_at_zero_once_the_stop_passes_entry`
+    - `tests/unit/alerting/test_stop_updates.py::test_the_anchor_and_the_reasons_reach_the_message`
+    - `tests/unit/alerting/test_stop_updates.py::test_the_audit_names_the_instrument`
+    - `tests/unit/alerting/test_stop_updates.py::test_the_link_carries_the_alert_s_own_host`
+    - `tests/unit/alerting/test_stop_updates.py::test_the_message_carries_a_reason_nobody_taught_it`
+    - `tests/unit/alerting/test_stop_updates.py::test_the_message_states_both_stops`
+    - `tests/unit/alerting/test_stop_updates.py::test_the_message_states_the_risk_before_and_after`
+    - `tests/unit/alerting/test_stop_updates.py::test_the_notification_id_is_derived_rather_than_generated`
+    - `tests/unit/alerting/test_stop_updates.py::test_the_old_stop_is_the_one_that_was_in_force`
+- **Code:**
+    - `src/channelflow/alerting/__init__.py`
+    - `src/channelflow/alerting/stop_updates.py`
+- **Outcomes:** [[OUT-2026-09-10-implement-stop-alert]], [[OUT-2026-09-10-plan-stop-alert]], [[OUT-2026-09-10-requirement-stop-alert]], [[OUT-2026-09-10-spec-stop-alert]]
 <!-- trace:end -->
 
 ## Notes

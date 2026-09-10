@@ -5,12 +5,11 @@ type: phase
 prd_ref: "Phase 7A — Adaptive position / stop management (shadow → paper)"
 prd_lines: "6871-6903"
 phase: 7A
-status: planned
+status: implemented
 depends_on: ["REQ-PHASE-7"]
 tags: []
-covers: [REQ-WP-020, REQ-EXP-017, REQ-BIAS-009, REQ-BT-001, REQ-WP-032, REQ-WP-033]
-not_delivered:
-  - "Telegram stop-update notification: the alerting layer sends signals, not stop updates"
+covers: [REQ-WP-020, REQ-EXP-017, REQ-BIAS-009, REQ-BT-001, REQ-WP-032, REQ-WP-033, REQ-WP-034]
+not_delivered: []
 ---
 
 ## Requirement
@@ -94,3 +93,28 @@ phase in progress, however much of it is built.
 
 Generated from the PRD by `tools/extract_prd.py`. This section is human
 territory and is never machine-rewritten.
+
+Closed 2026-09-10 by [[REQ-WP-034]]. The phase's fifteen deliverables reduce to
+one claim — a stop may tighten risk and may never widen it — and three ways of
+keeping that claim honest:
+
+- **the engine** ([[REQ-WP-020]]): the state machine, the anchors, the buffer,
+  the monotonic rule, and [[ADR-032]]'s insistence that a hold is a proposal, so
+  six different reasons for not moving stay six different facts;
+- **the evaluation** ([[REQ-BT-001]], [[REQ-BIAS-009]], [[REQ-EXP-017]],
+  [[REQ-WP-033]]): a counterfactual replay against a naive baseline, net of
+  costs, in which a decided stop is not an obeyed stop — §44A.27's own example
+  now runs as a test;
+- **what a person sees** ([[REQ-WP-032]], [[REQ-WP-034]]): a path shown as it
+  was generated rather than recomputed, and a notification that reports the
+  transition rather than the state.
+
+Every acceptance line holds. The two that took the most work were the two about
+things not being where they appear to be: a confirmed swing cannot be used
+before `known_at`, and a stop update is not effective until it is acknowledged.
+
+What the phase does not do, and never claimed to: live exchange stop
+modification is explicitly out of scope above, and nothing constructs a
+dispatcher or serves a position outside its own package — the same waiting state
+the signal alert has been in since Phase 2, on a live mode §25.1 does not yet
+describe.

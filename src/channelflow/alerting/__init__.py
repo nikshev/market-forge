@@ -2,10 +2,11 @@
 
 # @trace: REQ-WP-008
 # @trace: REQ-US-002
+# @trace: REQ-WP-034
 """
 
 from channelflow.alerting.dedupe import DedupePolicy
-from channelflow.alerting.dispatch import Dispatcher, Transport
+from channelflow.alerting.dispatch import Dispatcher, Notification, Transport
 from channelflow.alerting.gate import AlertGate
 from channelflow.alerting.models import (
     Alert,
@@ -16,6 +17,11 @@ from channelflow.alerting.models import (
 )
 from channelflow.alerting.overlays import Overlay
 from channelflow.alerting.render import chart_deep_link, render_message
+from channelflow.alerting.stop_updates import (
+    StopUpdateAlert,
+    StopUpdateGate,
+    render_stop_update,
+)
 
 __all__ = [
     "Alert",
@@ -24,10 +30,14 @@ __all__ = [
     "AuditRecord",
     "DedupePolicy",
     "Dispatcher",
+    "Notification",
     "OrderFlowSummary",
     "Overlay",
+    "StopUpdateAlert",
+    "StopUpdateGate",
     "Transport",
     "chart_deep_link",
     "render_message",
+    "render_stop_update",
     "signal_id_for",
 ]

@@ -20,11 +20,11 @@ which is also what an operator reads when something has gone wrong.
 
 from __future__ import annotations
 
+import uuid
 from dataclasses import dataclass, field
 from typing import Protocol
 
-from channelflow.alerting.models import Alert, AttemptOutcome, AuditRecord
-from channelflow.alerting.render import chart_deep_link, render_message
+from channelflow.alerting.models import AttemptOutcome, AuditRecord
 
 SECOND_NS = 1_000_000_000
 
@@ -32,6 +32,29 @@ SECOND_NS = 1_000_000_000
 #: ambiguous success -- is retried: a delivery nobody can confirm is not one
 #: (the spec's first edge case).
 OK = "ok"
+
+
+class Notification(Protocol):
+    """Anything worth sending.
+
+    The dispatcher used to render an `Alert` directly. Two kinds of notification
+    now share one retry policy and one audit ([[REQ-WP-034]]), so it depends on
+    what every notification can do rather than on one of them. The alternative
+    -- a second dispatcher -- would copy the retry, dead-lettering, audit and
+    never-block behaviour PRD section 26.4 specifies once, and a copy diverges
+    silently: the failure is one alert kind quietly not being retried, visible
+    only in an audit nobody reads until something has already been missed.
+    """
+
+    @property
+    def notification_id(self) -> uuid.UUID: ...
+
+    @property
+    def symbol(self) -> str: ...
+
+    def render(self) -> str: ...
+
+    def link(self) -> str: ...
 
 
 class Transport(Protocol):
@@ -53,17 +76,17 @@ class Dispatcher:
     max_attempts: int = 3
     backoff_base_ns: int = SECOND_NS
     audit: list[AuditRecord] = field(default_factory=list)
-    dead_letters: list[Alert] = field(default_factory=list)
+    dead_letters: list[Notification] = field(default_factory=list)
 
-    def deliver(self, alert: Alert, *, at_ns: int) -> AuditRecord:
+    def deliver(self, alert: Notification, *, at_ns: int) -> AuditRecord:
         """Try to send, up to the attempt budget. Never raises.
 
         `at_ns` is an event time, and the attempt timestamps are derived from
         it by the computed backoff -- so replaying a stream produces an
         identical audit (ADR-018, Principle VII).
         """
-        text = render_message(alert)
-        link = chart_deep_link(alert)
+        text = alert.render()
+        link = alert.link()
 
         attempts: list[AttemptOutcome] = []
         for attempt in range(1, self.max_attempts + 1):
@@ -82,7 +105,7 @@ class Dispatcher:
             attempts,
         )
 
-    def suppress(self, alert: Alert, *, at_ns: int, reason: str) -> AuditRecord:
+    def suppress(self, alert: Notification, *, at_ns: int, reason: str) -> AuditRecord:
         """Record an alert that was deliberately not sent.
 
         A suppression that left no trace would be indistinguishable from there
@@ -106,15 +129,15 @@ class Dispatcher:
 
     def _record(
         self,
-        alert: Alert,
+        alert: Notification,
         at_ns: int,
         status: str,
         reason: str,
         attempts: tuple[AttemptOutcome, ...] | list[AttemptOutcome],
     ) -> AuditRecord:
         record = AuditRecord(
-            signal_id=alert.signal_id,
-            symbol=alert.candidate.symbol,
+            signal_id=alert.notification_id,
+            symbol=alert.symbol,
             queued_at_ns=at_ns,
             status=status,  # type: ignore[arg-type]
             reason=reason,
