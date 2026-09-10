@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "§27.3, §45 Phase 3"
 prd_lines: "4423-4435, 6768"
 phase: 3
-status: draft
+status: specified
 depends_on: [REQ-WP-027, REQ-WP-013, REQ-API-001]
 tags: [frontend]
 ---
@@ -45,7 +45,8 @@ that road carries a second load without changing.
 ## Trace
 
 <!-- trace:begin -->
-_No linked artifacts yet._
+- **Specs:** [[SPEC-068-derivatives-panes]]
+- **Outcomes:** [[OUT-2026-09-10-requirement-derivatives-panes]], [[OUT-2026-09-10-spec-derivatives-panes]]
 <!-- trace:end -->
 
 ## Notes
