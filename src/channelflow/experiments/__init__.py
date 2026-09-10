@@ -14,6 +14,13 @@ are atomic without asking. A registry that could be tidied up after the fact
 would defeat the rule it exists to enforce.
 """
 
+from channelflow.experiments.fields import (
+    Compared,
+    Field,
+    Reported,
+    config_of,
+    report_comparison,
+)
 from channelflow.experiments.hashing import (
     ConfigValue,
     UnhashableConfig,
@@ -39,6 +46,9 @@ from channelflow.experiments.report import CherryPicked, Report, publish, why_no
 
 __all__ = [
     "SCHEMA",
+    "Compared",
+    "Field",
+    "Reported",
     "TABLE_NAME",
     "CherryPicked",
     "CodeVersion",
@@ -54,7 +64,9 @@ __all__ = [
     "RunIdentity",
     "UnhashableConfig",
     "config_hash",
+    "config_of",
     "dataset_reference",
     "publish",
+    "report_comparison",
     "why_not",
 ]
