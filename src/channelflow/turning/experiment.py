@@ -72,6 +72,17 @@ class _PredictionSource:
 
     name: str = "gmdh_derivative_path"
 
+    @property
+    def fitted(self) -> bool:
+        """Never.
+
+        A stand-in that carries predictions already computed elsewhere, not a
+        model that learned them. [[REQ-WP-022]] takes an artifact hash only of
+        something that was fitted, and an object with no parameters would hash
+        to a string every other such object shares.
+        """
+        return False
+
     def fit(self, x: np.ndarray, y: np.ndarray) -> None:
         raise NotEnoughData("the derivative experiment supplies its own predictions")
 

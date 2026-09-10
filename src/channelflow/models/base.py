@@ -24,6 +24,18 @@ class Model(Protocol):
 
     name: str
 
+    @property
+    def fitted(self) -> bool:
+        """Whether this model has learned anything.
+
+        A member rather than something inferred from outside: one model holds
+        `None` weights, another empty trees, a third an absent search result,
+        and there is no test from out here that covers all three. The same
+        reasoning `Transform.centered` was given -- an author of the next model
+        cannot skip the question.
+        """
+        ...
+
     def fit(self, x: np.ndarray, y: np.ndarray) -> None: ...
 
     def predict_proba(self, x: np.ndarray) -> np.ndarray: ...
@@ -73,6 +85,17 @@ class LogisticRegression:
     learning_rate: float = 0.1
     _weights: np.ndarray | None = None
     _bias: float = 0.0
+
+    @property
+    def fitted(self) -> bool:
+        """Whether this model has learned anything.
+
+        Only the model can answer: this one keeps `None` weights until it
+        has some. [[REQ-WP-022]] asks because an
+        artifact hash of an unfitted model is a stable, meaningless string that
+        every unfitted model of its type would share.
+        """
+        return self._weights is not None
 
     def fit(self, x: np.ndarray, y: np.ndarray) -> None:
         features = x.shape[1]

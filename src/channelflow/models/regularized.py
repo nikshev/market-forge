@@ -47,6 +47,17 @@ class ElasticNetLogistic:
     _weights: np.ndarray | None = None
     _bias: float = 0.0
 
+    @property
+    def fitted(self) -> bool:
+        """Whether this model has learned anything.
+
+        Only the model can answer: this one keeps `None` weights until it
+        has some. [[REQ-WP-022]] asks because an
+        artifact hash of an unfitted model is a stable, meaningless string that
+        every unfitted model of its type would share.
+        """
+        return self._weights is not None
+
     def __post_init__(self) -> None:
         if self.penalty < 0.0:
             raise ValueError("the penalty is a magnitude; a negative one rewards large weights")
