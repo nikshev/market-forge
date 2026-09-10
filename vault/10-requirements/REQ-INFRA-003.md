@@ -5,7 +5,7 @@ type: infrastructure
 prd_ref: "Phase 0 — Repository + correctness skeleton"
 prd_lines: "6685-6685"
 phase: 0
-status: specified
+status: planned
 depends_on: [REQ-WP-005, REQ-WP-010, REQ-PIPE-001]
 tags: [tooling]
 ---
