@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "§33, §45 Phase 8"
 prd_lines: "4783-4800, 6910"
 phase: 8
-status: planned
+status: implemented
 depends_on: [REQ-WP-008, REQ-WP-035]
 tags: []
 ---
@@ -72,7 +72,29 @@ metrics from the run it replays.
 ## Trace
 
 <!-- trace:begin -->
-_Not yet generated. Run `make graph`._
+- **Specs:** [[SPEC-074-metrics]]
+- **Tests:**
+    - `tests/unit/metrics/test_registry.py::test_a_counter_refuses_to_go_backwards`
+    - `tests/unit/metrics/test_registry.py::test_a_gauge_takes_the_latest_value`
+    - `tests/unit/metrics/test_registry.py::test_a_label_value_is_escaped`
+    - `tests/unit/metrics/test_registry.py::test_a_metric_never_appears_without_a_sample`
+    - `tests/unit/metrics/test_registry.py::test_a_metric_observed_as_zero_is_present`
+    - `tests/unit/metrics/test_registry.py::test_a_name_prometheus_would_reject_is_refused_at_registration`
+    - `tests/unit/metrics/test_registry.py::test_a_refused_observation_leaves_the_exposition_untouched`
+    - `tests/unit/metrics/test_registry.py::test_a_registered_metric_nobody_observed_is_absent`
+    - `tests/unit/metrics/test_registry.py::test_an_empty_registry_renders_nothing_rather_than_a_page_of_zeroes`
+    - `tests/unit/metrics/test_registry.py::test_delivery_failures_are_counted_from_the_audit`
+    - `tests/unit/metrics/test_registry.py::test_every_rendered_metric_carries_its_type`
+    - `tests/unit/metrics/test_registry.py::test_nothing_is_both_unimplemented_and_derived`
+    - `tests/unit/metrics/test_registry.py::test_nothing_wrong_counts_as_nothing_wrong`
+    - `tests/unit/metrics/test_registry.py::test_observing_one_metric_does_not_summon_the_others`
+    - `tests/unit/metrics/test_registry.py::test_stale_feeds_are_counted_from_the_assessments`
+    - `tests/unit/metrics/test_registry.py::test_the_help_line_travels_with_it`
+    - `tests/unit/metrics/test_registry.py::test_the_metrics_nobody_produces_are_named`
+    - `tests/unit/metrics/test_registry.py::test_two_connectors_are_two_series_not_a_sum`
+- **Code:**
+    - `src/channelflow/metrics.py`
+- **Outcomes:** [[OUT-2026-09-10-implement-metrics]], [[OUT-2026-09-10-plan-metrics]], [[OUT-2026-09-10-requirement-metrics]], [[OUT-2026-09-10-spec-metrics]]
 <!-- trace:end -->
 
 ## Notes
