@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "§25.1, §29.B, §45 Phase 1A"
 prd_lines: "4198-4210, 6724-6737"
 phase: 1
-status: draft
+status: specified
 depends_on: [REQ-WP-028, REQ-PIPE-001, REQ-INFRA-003, REQ-WP-019]
 tags: []
 ---
@@ -50,7 +50,8 @@ what turns that from an abstraction into a seam.
 ## Trace
 
 <!-- trace:begin -->
-_No linked artifacts yet._
+- **Specs:** [[SPEC-067-record-extrema]]
+- **Outcomes:** [[OUT-2026-09-10-requirement-record-extrema]], [[OUT-2026-09-10-spec-record-extrema]]
 <!-- trace:end -->
 
 ## Notes
