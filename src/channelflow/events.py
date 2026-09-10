@@ -1,6 +1,7 @@
 """What the producers produce.
 
 # @trace: REQ-INFRA-003
+# @trace: REQ-WP-029
 
 Values, not messages: nothing here is routed, retried or serialized. They exist
 so a producer can say what happened without naming who cares, which is the whole
@@ -16,6 +17,7 @@ from dataclasses import dataclass
 
 from channelflow.bars import Bar
 from channelflow.channels import ChannelSnapshot
+from channelflow.extrema.models import ConfirmedExtremum, ExtremumCandidate
 from channelflow.signals import Candidate
 
 
@@ -56,3 +58,27 @@ class CandidateUpdated:
     """
 
     candidate: Candidate
+
+
+@dataclass(frozen=True)
+class ExtremumObserved:
+    """A running high or low was noticed.
+
+    A candidate, not a turn: it may extend, be invalidated, or be confirmed. The
+    chart draws it differently for that reason ([[REQ-WP-028]]), and recording it
+    is how PRD §13A.2's lifecycle stays append-only.
+    """
+
+    candidate: ExtremumCandidate
+
+
+@dataclass(frozen=True)
+class ExtremumConfirmed:
+    """A candidate's reversal crossed its threshold.
+
+    Published in the turn of the bar that confirmed it, never batched at the
+    end: a live process attaching the same subscribers has to see the same
+    order, and a burst would be a second path that only replay takes.
+    """
+
+    extremum: ConfirmedExtremum

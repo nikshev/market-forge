@@ -371,7 +371,15 @@ def test_a_second_replay_over_the_same_bars_writes_nothing(store: InMemoryObject
 
     assert second.channel_snapshots == 0
     assert second.signals == 0
-    assert second.skipped == first.channel_snapshots + first.signals
+    # Everything the first run wrote, now including the extrema [[REQ-WP-029]]
+    # added. Enumerated rather than summed loosely: a term forgotten here would
+    # make a run that skipped less than it should look correct.
+    assert second.skipped == (
+        first.channel_snapshots
+        + first.signals
+        + first.confirmed_extrema
+        + first.extremum_candidates
+    )
     assert (
         channels_table.table_for(store).read().num_rows,
         cores.read().num_rows,

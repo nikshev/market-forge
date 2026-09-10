@@ -16,6 +16,7 @@ for a live feed to take.
 
 from channelflow.pipeline.replay import (
     ChannelRecorder,
+    ExtremumRecorder,
     MixedSeries,
     Recording,
     SignalRecorder,
@@ -30,6 +31,7 @@ __all__ = [
     "StudyResult",
     "run_study",
     "ChannelRecorder",
+    "ExtremumRecorder",
     "MixedSeries",
     "Recording",
     "SignalRecorder",

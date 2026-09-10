@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "§25.1, §29.B, §45 Phase 1A"
 prd_lines: "4198-4210, 6724-6737"
 phase: 1
-status: specified
+status: implemented
 depends_on: [REQ-WP-028, REQ-PIPE-001, REQ-INFRA-003, REQ-WP-019]
 tags: []
 ---
@@ -51,7 +51,20 @@ what turns that from an abstraction into a seam.
 
 <!-- trace:begin -->
 - **Specs:** [[SPEC-067-record-extrema]]
-- **Outcomes:** [[OUT-2026-09-10-requirement-record-extrema]], [[OUT-2026-09-10-spec-record-extrema]]
+- **Tests:**
+    - `tests/unit/pipeline/test_record_extrema.py::test_a_caller_sees_every_extremum_event`
+    - `tests/unit/pipeline/test_record_extrema.py::test_a_confirmation_arrives_in_its_own_bar_s_turn`
+    - `tests/unit/pipeline/test_record_extrema.py::test_a_longer_replay_adds_only_what_is_new`
+    - `tests/unit/pipeline/test_record_extrema.py::test_a_replay_fills_the_extremum_tables`
+    - `tests/unit/pipeline/test_record_extrema.py::test_a_second_replay_writes_no_extrema`
+    - `tests/unit/pipeline/test_record_extrema.py::test_a_series_with_no_turn_records_nothing_and_refuses_nothing`
+    - `tests/unit/pipeline/test_record_extrema.py::test_an_observer_does_not_change_what_is_recorded`
+    - `tests/unit/pipeline/test_record_extrema.py::test_what_the_replay_already_recorded_is_unchanged`
+    - `tests/unit/pipeline/test_record_extrema.py::test_what_was_written_is_what_the_detector_produced`
+- **Code:**
+    - `src/channelflow/events.py`
+    - `src/channelflow/pipeline/replay.py`
+- **Outcomes:** [[OUT-2026-09-10-implement-record-extrema]], [[OUT-2026-09-10-plan-record-extrema]], [[OUT-2026-09-10-requirement-record-extrema]], [[OUT-2026-09-10-spec-record-extrema]]
 <!-- trace:end -->
 
 ## Notes
