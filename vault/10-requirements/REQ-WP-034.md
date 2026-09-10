@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "§44A.34, §45 Phase 7A"
 prd_lines: "6504-6530, 6899"
 phase: 7A
-status: specified
+status: planned
 depends_on: [REQ-WP-008, REQ-WP-020, REQ-WP-033]
 tags: []
 ---
