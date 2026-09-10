@@ -1,5 +1,11 @@
 """PRD section 44A.28's counterfactual evaluation (REQ-WP-020, REQ-BIAS-009).
 
+Every replay here steps a minute at a time, so the default activation latency of
+160ms ([[REQ-WP-033]]) never falls between two observations and none of these
+outcomes moves under it. The reports below state `none()` regardless: these
+tests were written against instantaneous activation, and saying so is cheaper
+than a reader working out that it did not matter.
+
 Section 41 rule 9: "Fees/slippage must be included in economic evaluation."
 This is the first economic evaluation in the repository, so it is the first
 place the rule can apply -- see ADR-031.
@@ -13,6 +19,7 @@ from pathlib import Path
 import pytest
 
 from channelflow.stops import (
+    ActivationLatency,
     ComparisonReport,
     CostModel,
     NaiveATRTrailing,
@@ -22,12 +29,7 @@ from channelflow.stops import (
     StopPolicy,
 )
 
-from .conftest import anchor, at, long_position, point, short_position
-
-
-def free() -> CostModel:
-    """Zero costs, for the tests that are about mechanics rather than money."""
-    return CostModel(taker_fee_bps=Decimal(0), slippage_bps=Decimal(0))
+from .conftest import anchor, at, free, long_position, point, short_position
 
 
 @pytest.mark.trace("REQ-WP-020")
@@ -108,7 +110,7 @@ def test_the_premature_stop_metric_counts_targets_reached_after_the_stop() -> No
     path = [point(0, "99"), point(1, "94"), point(2, "110"), point(3, "116")]
 
     outcome = Replay(costs=free()).run_adaptive(long_position(), path, StopPolicy(cooldown_ns=0))
-    report = ComparisonReport(outcomes=(outcome,))
+    report = ComparisonReport(outcomes=(outcome,), latency=ActivationLatency.none())
 
     assert outcome.reached_target_after_stop
     assert report.premature_stop_rate == 1.0
@@ -123,7 +125,9 @@ def test_a_stop_that_was_right_does_not_count_as_premature() -> None:
 
     assert outcome.exited
     assert not outcome.reached_target_after_stop
-    assert ComparisonReport(outcomes=(outcome,)).premature_stop_rate == 0.0
+    report = ComparisonReport(outcomes=(outcome,), latency=ActivationLatency.none())
+
+    assert report.premature_stop_rate == 0.0
 
 
 @pytest.mark.trace("REQ-WP-020")
@@ -139,7 +143,7 @@ def test_the_premature_rate_is_never_reported_without_realized_r() -> None:
     path = [point(0, "99"), point(1, "94"), point(2, "116")]
     outcome = Replay(costs=free()).run_adaptive(long_position(), path, StopPolicy(cooldown_ns=0))
 
-    summary = ComparisonReport(outcomes=(outcome,)).summary
+    summary = ComparisonReport(outcomes=(outcome,), latency=ActivationLatency.none()).summary
 
     assert "premature-stop rate" in summary
     assert "realized R" in summary
@@ -158,7 +162,7 @@ def test_the_naive_baselines_are_comparable_on_one_path(
     fixed = replay.run_naive(position, rising_path, NaiveFixedPercent())
     atr = replay.run_naive(position, rising_path, NaiveATRTrailing())
 
-    report = ComparisonReport(outcomes=(adaptive, fixed, atr))
+    report = ComparisonReport(outcomes=(adaptive, fixed, atr), latency=ActivationLatency.none())
 
     assert {o.policy for o in report.outcomes} == {
         "adaptive",

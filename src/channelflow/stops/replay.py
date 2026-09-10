@@ -2,6 +2,7 @@
 
 # @trace: REQ-WP-020
 # @trace: REQ-BIAS-009
+# @trace: REQ-WP-033
 
 Replay one price path under several policies and compare what each produced.
 Section 44A.39 requires a naive trailing baseline in the comparison, and
@@ -33,6 +34,53 @@ from channelflow.stops.models import (
 from channelflow.stops.policy import StopPolicy
 
 BPS = Decimal(10_000)
+
+
+@dataclass(frozen=True)
+class ActivationLatency:
+    """The modelled delay between deciding a stop and the exchange obeying it.
+
+    PRD section 44A.27: "Stop updates are effective only after modeled decision
+    + computation + network/exchange latency", with the section's own example:
+
+        signal computed at 10:15:00.100
+        stop modification ack at 10:15:00.260
+        market touch at 10:15:00.180
+
+        The new stop was not yet active.
+
+    Three legs because the section names three. The default puts 160ms on the
+    exchange leg -- the gap in that example, which is exactly what it measures --
+    and zero on the other two, which the PRD never quantifies. The total is
+    therefore a **floor**, not an estimate: a real decision and a real
+    computation both take time nobody here has measured. Inventing plausible
+    figures for them would put a number that looks measured where a floor
+    belongs.
+
+    Zero is expressible, through `none()`, and is deliberately not the default:
+    a replay defaulting to instantaneous obedience hands the optimistic case to
+    everyone who never thought about it, and the optimism arrives looking like
+    a result.
+    """
+
+    decision_ns: int = 0
+    computation_ns: int = 0
+    exchange_ns: int = 160_000_000
+
+    def __post_init__(self) -> None:
+        if min(self.decision_ns, self.computation_ns, self.exchange_ns) < 0:
+            raise ValueError(
+                "a stop obeyed before it was decided is not a slow exchange, it is a broken model"
+            )
+
+    @property
+    def total_ns(self) -> int:
+        return self.decision_ns + self.computation_ns + self.exchange_ns
+
+    @classmethod
+    def none(cls) -> ActivationLatency:
+        """The instantaneous case, for reproducing a replay that assumed it."""
+        return cls(decision_ns=0, computation_ns=0, exchange_ns=0)
 
 
 @dataclass(frozen=True)
@@ -105,25 +153,53 @@ class Replay:
     """One path, several policies, one report."""
 
     costs: CostModel = field(default_factory=CostModel)
+    latency: ActivationLatency = field(default_factory=ActivationLatency)
+
+    def report(self, outcomes: tuple[StopPolicyOutcome, ...]) -> ComparisonReport:
+        """A report carries the latency of the replay that produced it.
+
+        Two reports produced under different latencies are not comparable, and
+        nothing about their shape says so -- so the shape is made to say it.
+        """
+        return ComparisonReport(outcomes=outcomes, latency=self.latency)
 
     def run_adaptive(
         self, position: PositionState, path: list[PricePoint], policy: StopPolicy
     ) -> StopPolicyOutcome:
-        stop = position.current_strategy_stop
+        # The stop the exchange is obeying and the stop the policy has asked
+        # for are two different things, and that difference is this whole
+        # feature. Triggers go against `active`; the policy is shown `decided`,
+        # because a live engine knows what it requested. Shown the active stop
+        # it would re-propose the same movement at every point until the
+        # acknowledgement landed -- a reason histogram describing an engine with
+        # amnesia rather than a market with latency.
+        active = position.current_strategy_stop
+        decided = active
+        pending: list[tuple[int, Decimal]] = []
         reasons: dict[str, int] = {}
         updates = 0
+        activated = 0
         requested: Decimal | None = None
         remaining: list[PricePoint] = []
         walk = _Walk(position)
 
         for index, point in enumerate(path):
-            walk.observe(point, stop)
-            if self._triggered(position, stop, point.price):
-                requested = stop
+            # Strictly after: a touch at exactly the acknowledgement instant
+            # cannot be ordered against the acknowledgement, and section 44A.27
+            # forbids resolving that by outcome ("Never choose whichever
+            # ordering gives better PnL"). The predeclared rule is the one that
+            # does not credit the position with protection it may not have had.
+            while pending and pending[0][0] < point.at_ns:
+                active = pending.pop(0)[1]
+                activated += 1
+
+            walk.observe(point, active)
+            if self._triggered(position, active, point.price):
+                requested = active
                 remaining = list(path[index:])
                 break
 
-            current = position.model_copy(update={"current_strategy_stop": stop})
+            current = position.model_copy(update={"current_strategy_stop": decided})
             proposal = policy.propose(
                 current,
                 anchors=list(point.anchors),
@@ -139,10 +215,13 @@ class Replay:
             for reason in proposal.reasons:
                 reasons[reason.name] = reasons.get(reason.name, 0) + 1
             if proposal.moved:
-                stop = proposal.price
+                decided = proposal.price
+                pending.append((point.at_ns + self.latency.total_ns, proposal.price))
                 updates += 1
 
-        return self._outcome("adaptive", position, requested, remaining, reasons, updates, walk)
+        return self._outcome(
+            "adaptive", position, requested, remaining, reasons, updates, walk, activated
+        )
 
     def run_naive(
         self,
@@ -150,16 +229,27 @@ class Replay:
         path: list[PricePoint],
         policy: NaiveFixedPercent | NaiveATRTrailing,
     ) -> StopPolicyOutcome:
-        stop = position.current_strategy_stop
+        # The baselines send stop updates too, and wait the same way. One
+        # obeyed instantly while the adaptive policy waits is not a comparison
+        # of policies: part of the difference reported would be the latency the
+        # two were given.
+        active = position.current_strategy_stop
+        decided = active
+        pending: list[tuple[int, Decimal]] = []
         updates = 0
+        activated = 0
         requested: Decimal | None = None
         remaining: list[PricePoint] = []
         walk = _Walk(position)
 
         for index, point in enumerate(path):
-            walk.observe(point, stop)
-            if self._triggered(position, stop, point.price):
-                requested = stop
+            while pending and pending[0][0] < point.at_ns:
+                active = pending.pop(0)[1]
+                activated += 1
+
+            walk.observe(point, active)
+            if self._triggered(position, active, point.price):
+                requested = active
                 remaining = list(path[index:])
                 break
             proposed = (
@@ -170,12 +260,15 @@ class Replay:
             # Even the naive baselines respect the monotonic rule: a baseline
             # allowed to widen would not be a stop policy at all, and the
             # comparison would be against something else entirely.
-            tightens = proposed > stop if position.side == "LONG" else proposed < stop
+            tightens = proposed > decided if position.side == "LONG" else proposed < decided
             if tightens:
-                stop = proposed
+                decided = proposed
+                pending.append((point.at_ns + self.latency.total_ns, proposed))
                 updates += 1
 
-        return self._outcome(policy.name, position, requested, remaining, {}, updates, walk)
+        return self._outcome(
+            policy.name, position, requested, remaining, {}, updates, walk, activated
+        )
 
     def _triggered(self, position: PositionState, stop: Decimal, price: Decimal) -> bool:
         return price <= stop if position.side == "LONG" else price >= stop
@@ -189,6 +282,7 @@ class Replay:
         reasons: dict[str, int],
         updates: int,
         walk: _Walk,
+        activated: int,
     ) -> StopPolicyOutcome:
         if requested is None:
             return StopPolicyOutcome(
@@ -201,6 +295,7 @@ class Replay:
                 realized_r=None,
                 reached_target_after_stop=False,
                 stop_updates=updates,
+                stop_updates_activated=activated,
                 reason_counts=reasons,
                 mfe_r=walk.best_r,
                 mae_r=walk.worst_r,
@@ -232,6 +327,7 @@ class Replay:
             realized_r=realized_r,
             reached_target_after_stop=self._reached_target(position, remaining),
             stop_updates=updates,
+            stop_updates_activated=activated,
             reason_counts=reasons,
             mfe_r=walk.best_r,
             mae_r=walk.worst_r,
@@ -306,6 +402,10 @@ class ComparisonReport:
     """
 
     outcomes: tuple[StopPolicyOutcome, ...]
+    #: The latency every outcome here was produced under. Required rather than
+    #: defaulted: a report that quietly assumed one would state the wrong
+    #: latency exactly as confidently as the right one.
+    latency: ActivationLatency
 
     @property
     def premature_stop_rate(self) -> float | None:
