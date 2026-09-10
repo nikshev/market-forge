@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "§45 Phase 3 acceptance, §16, §19"
 prd_lines: "6771-6774"
 phase: 3
-status: specified
+status: implemented
 depends_on: [REQ-WP-013]
 tags: []
 ---
@@ -48,7 +48,23 @@ one without it.
 
 <!-- trace:begin -->
 - **Specs:** [[SPEC-064-stale-derivatives]]
-- **Outcomes:** [[OUT-2026-09-10-requirement-stale-derivatives]], [[OUT-2026-09-10-spec-stale-derivatives]]
+- **Tests:**
+    - `tests/unit/derivatives/test_staleness.py::test_a_feature_inherits_the_refusal_without_re_checking_it`
+    - `tests/unit/derivatives/test_staleness.py::test_a_feature_with_nothing_settled_reports_nothing_rather_than_stale`
+    - `tests/unit/derivatives/test_staleness.py::test_a_negative_tolerance_is_refused`
+    - `tests/unit/derivatives/test_staleness.py::test_a_stale_state_and_no_state_are_different_refusals`
+    - `tests/unit/derivatives/test_staleness.py::test_a_state_exactly_at_the_tolerance_is_fresh`
+    - `tests/unit/derivatives/test_staleness.py::test_a_state_older_than_the_tolerance_is_refused`
+    - `tests/unit/derivatives/test_staleness.py::test_a_state_within_the_tolerance_is_returned`
+    - `tests/unit/derivatives/test_staleness.py::test_a_z_score_still_reads_the_history_behind_a_fresh_value`
+    - `tests/unit/derivatives/test_staleness.py::test_open_interest_refuses_a_stale_reading_too`
+    - `tests/unit/derivatives/test_staleness.py::test_the_default_tolerance_is_about_polling_not_merely_finite`
+    - `tests/unit/derivatives/test_staleness.py::test_which_state_wins_at_one_instant_is_unchanged`
+- **Code:**
+    - `src/channelflow/derivatives/funding.py`
+    - `src/channelflow/derivatives/openinterest.py`
+    - `src/channelflow/derivatives/state.py`
+- **Outcomes:** [[OUT-2026-09-10-implement-stale-derivatives]], [[OUT-2026-09-10-plan-stale-derivatives]], [[OUT-2026-09-10-requirement-stale-derivatives]], [[OUT-2026-09-10-spec-stale-derivatives]]
 <!-- trace:end -->
 
 ## Notes

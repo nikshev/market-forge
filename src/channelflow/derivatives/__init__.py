@@ -30,11 +30,14 @@ from channelflow.derivatives.openinterest import (
     price_oi_regime,
 )
 from channelflow.derivatives.state import (
+    DEFAULT_STALENESS_NS,
     AmbiguousState,
     NoStateAvailable,
+    StaleState,
     ZScore,
     ZScoreUnavailable,
     ratio,
+    require_fresh,
     state_at,
     z_score,
 )
@@ -65,6 +68,9 @@ __all__ = [
     "price_oi_regime",
     "ratio",
     "settled_funding",
+    "DEFAULT_STALENESS_NS",
+    "StaleState",
+    "require_fresh",
     "state_at",
     "time_since_spike",
     "window",

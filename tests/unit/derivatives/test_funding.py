@@ -18,7 +18,7 @@ from channelflow.derivatives import (
 )
 from channelflow.domain import DerivativesState
 
-from .conftest import BASE_NS, MINUTE_NS, state
+from .conftest import BASE_NS, MINUTE_NS, NOT_ABOUT_FRESHNESS, state
 
 
 def at(minute: int) -> int:
@@ -35,11 +35,13 @@ def test_an_unsettled_rate_is_not_used_at_t(settled_history: list[DerivativesSta
     outlier, deliberately, so using it would be obvious in any downstream
     number.
     """
-    settled = settled_funding(settled_history, at_ns=at(500))
+    settled = settled_funding(settled_history, at_ns=at(500), staleness_ns=NOT_ABOUT_FRESHNESS)
 
     assert all(s.settled_at_ns <= at(500) for s in settled)
     assert 0.0099 not in [s.rate for s in settled]
-    assert current_rate(settled_history, at_ns=at(500)) == pytest.approx(0.0008)
+    assert current_rate(
+        settled_history, at_ns=at(500), staleness_ns=NOT_ABOUT_FRESHNESS
+    ) == pytest.approx(0.0008)
 
 
 @pytest.mark.trace("REQ-BIAS-005")
@@ -48,7 +50,9 @@ def test_the_unsettled_rate_becomes_usable_once_its_interval_closes(
 ) -> None:
     """The other side of the boundary: the rule delays the rate, it does not
     discard it."""
-    assert current_rate(settled_history, at_ns=at(600)) == pytest.approx(0.0099)
+    assert current_rate(
+        settled_history, at_ns=at(600), staleness_ns=NOT_ABOUT_FRESHNESS
+    ) == pytest.approx(0.0099)
 
 
 @pytest.mark.trace("REQ-WP-013")
@@ -56,8 +60,8 @@ def test_no_settled_interval_means_no_rate() -> None:
     """The spec's first edge case: no settlement is not a settlement of zero."""
     early = [state(at=0, funding=0.0005, next_funding_at=60)]
 
-    assert current_rate(early, at_ns=at(10)) is None
-    assert settled_funding(early, at_ns=at(10)) == []
+    assert current_rate(early, at_ns=at(10), staleness_ns=NOT_ABOUT_FRESHNESS) is None
+    assert settled_funding(early, at_ns=at(10), staleness_ns=NOT_ABOUT_FRESHNESS) == []
 
 
 @pytest.mark.trace("REQ-WP-013")
@@ -65,7 +69,7 @@ def test_the_z_score_uses_only_settled_rates(
     settled_history: list[DerivativesState],
 ) -> None:
     """FR-001 again, through the statistic rather than the raw feature."""
-    z = funding_z(settled_history, at_ns=at(500), window=8)
+    z = funding_z(settled_history, at_ns=at(500), window=8, staleness_ns=NOT_ABOUT_FRESHNESS)
 
     assert z.observations == 8
     assert z.mean == pytest.approx(0.00045)
@@ -75,7 +79,7 @@ def test_the_z_score_uses_only_settled_rates(
 def test_a_short_window_refuses(settled_history: list[DerivativesState]) -> None:
     """SC-002, FR-002, ADR-026."""
     with pytest.raises(ZScoreUnavailable, match="needs 24"):
-        funding_z(settled_history, at_ns=at(500), window=24)
+        funding_z(settled_history, at_ns=at(500), window=24, staleness_ns=NOT_ABOUT_FRESHNESS)
 
 
 @pytest.mark.trace("REQ-WP-013")
@@ -89,7 +93,7 @@ def test_a_constant_series_has_no_z_score() -> None:
     flat = [state(at=i * 60, funding=0.0001, next_funding_at=(i + 1) * 60) for i in range(10)]
 
     with pytest.raises(ZScoreUnavailable, match="constant"):
-        funding_z(flat, at_ns=at(1000), window=5)
+        funding_z(flat, at_ns=at(1000), window=5, staleness_ns=NOT_ABOUT_FRESHNESS)
 
 
 @pytest.mark.trace("REQ-WP-013")
@@ -98,8 +102,13 @@ def test_acceleration_needs_three_intervals(
 ) -> None:
     """FR-004. With two it would be the first difference wearing another name,
     which reads as a second signal in a feature list."""
-    assert funding_acceleration(settled_history, at_ns=at(130)) is None
-    assert funding_acceleration(settled_history, at_ns=at(500)) == pytest.approx(0.0)
+    assert (
+        funding_acceleration(settled_history, at_ns=at(130), staleness_ns=NOT_ABOUT_FRESHNESS)
+        is None
+    )
+    assert funding_acceleration(
+        settled_history, at_ns=at(500), staleness_ns=NOT_ABOUT_FRESHNESS
+    ) == pytest.approx(0.0)
 
 
 @pytest.mark.trace("REQ-WP-013")
@@ -111,4 +120,6 @@ def test_acceleration_is_signed() -> None:
         state(at=120, funding=0.0005, next_funding_at=180),
     ]
 
-    assert funding_acceleration(accelerating, at_ns=at(200)) == pytest.approx(0.0002)
+    assert funding_acceleration(
+        accelerating, at_ns=at(200), staleness_ns=NOT_ABOUT_FRESHNESS
+    ) == pytest.approx(0.0002)
