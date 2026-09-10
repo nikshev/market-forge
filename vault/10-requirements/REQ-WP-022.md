@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "§23.9, §0 item 13, §29.B"
 prd_lines: "4138-4150"
 phase: 7
-status: draft
+status: specified
 depends_on: [REQ-WP-018, REQ-REPRO-001, REQ-STORE-001]
 tags: []
 ---
@@ -61,7 +61,8 @@ result quoting one of them cites a thing that no longer exists.
 ## Trace
 
 <!-- trace:begin -->
-_No linked artifacts yet._
+- **Specs:** [[SPEC-061-model-registry]]
+- **Outcomes:** [[OUT-2026-09-10-requirement-model-registry]], [[OUT-2026-09-10-spec-model-registry]]
 <!-- trace:end -->
 
 ## Notes
