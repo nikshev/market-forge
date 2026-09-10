@@ -74,6 +74,17 @@ class GradientBoostedTrees:
     _trees: list[TreeNode] = field(default_factory=list)
     _base: float = 0.0
 
+    @property
+    def fitted(self) -> bool:
+        """Whether this model has learned anything.
+
+        Only the model can answer: an unfitted booster has no trees, and a
+        fitted one always has at least the first. [[REQ-WP-022]] asks because an
+        artifact hash of an unfitted model is a stable, meaningless string that
+        every unfitted model of its type would share.
+        """
+        return bool(self._trees)
+
     def fit(self, x: np.ndarray, y: np.ndarray) -> None:
         share = float(np.clip(np.mean(y), 1e-6, 1 - 1e-6))
         self._base = float(np.log(share / (1.0 - share)))

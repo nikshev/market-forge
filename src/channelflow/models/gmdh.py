@@ -83,6 +83,17 @@ class GMDHNetwork:
     _result: SearchResult | None = None
     _input_names: tuple[str, ...] = field(default_factory=tuple)
 
+    @property
+    def fitted(self) -> bool:
+        """Whether this model has learned anything.
+
+        Only the model can answer: the search either ran and left a result or
+        it did not. [[REQ-WP-022]] asks because an
+        artifact hash of an unfitted model is a stable, meaningless string that
+        every unfitted model of its type would share.
+        """
+        return self._result is not None
+
     def fit_with_selection(
         self,
         x_fit: np.ndarray,

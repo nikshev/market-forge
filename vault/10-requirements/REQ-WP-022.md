@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "§23.9, §0 item 13, §29.B"
 prd_lines: "4138-4150"
 phase: 7
-status: specified
+status: implemented
 depends_on: [REQ-WP-018, REQ-REPRO-001, REQ-STORE-001]
 tags: []
 ---
@@ -62,7 +62,33 @@ result quoting one of them cites a thing that no longer exists.
 
 <!-- trace:begin -->
 - **Specs:** [[SPEC-061-model-registry]]
-- **Outcomes:** [[OUT-2026-09-10-requirement-model-registry]], [[OUT-2026-09-10-spec-model-registry]]
+- **Tests:**
+    - `tests/unit/models/test_registry.py::test_a_difference_below_printing_precision_changes_the_hash`
+    - `tests/unit/models/test_registry.py::test_a_hyperparameter_alone_changes_the_hash`
+    - `tests/unit/models/test_registry.py::test_a_model_fitted_on_other_data_hashes_differently`
+    - `tests/unit/models/test_registry.py::test_a_registration_carries_every_field_section_23_9_names`
+    - `tests/unit/models/test_registry.py::test_a_registration_reads_back_field_for_field`
+    - `tests/unit/models/test_registry.py::test_a_registration_with_no_metrics_is_refused`
+    - `tests/unit/models/test_registry.py::test_a_run_citing_a_registered_artifact_is_reportable`
+    - `tests/unit/models/test_registry.py::test_a_run_citing_an_artifact_nobody_registered_is_refused`
+    - `tests/unit/models/test_registry.py::test_a_run_that_fitted_no_model_needs_no_registration`
+    - `tests/unit/models/test_registry.py::test_a_span_that_ends_before_it_starts_is_refused`
+    - `tests/unit/models/test_registry.py::test_a_validation_span_overlapping_the_training_span_is_refused`
+    - `tests/unit/models/test_registry.py::test_an_array_reshaped_without_changing_a_byte_changes_the_hash`
+    - `tests/unit/models/test_registry.py::test_an_empty_named_field_is_refused[calibration_model]`
+    - `tests/unit/models/test_registry.py::test_an_empty_named_field_is_refused[code_commit]`
+    - `tests/unit/models/test_registry.py::test_an_empty_named_field_is_refused[deployment_status]`
+    - `tests/unit/models/test_registry.py::test_an_empty_named_field_is_refused[model_type]`
+    - `tests/unit/models/test_registry.py::test_an_unfitted_model_is_refused_rather_than_hashed`
+    - `tests/unit/models/test_registry.py::test_every_model_type_can_say_whether_it_is_fitted`
+    - `tests/unit/models/test_registry.py::test_recording_one_registration_twice_stores_it_once`
+    - `tests/unit/models/test_registry.py::test_the_hash_is_framed_so_fields_cannot_borrow_from_each_other`
+    - `tests/unit/models/test_registry.py::test_the_registry_knows_which_artifacts_it_holds`
+    - `tests/unit/models/test_registry.py::test_the_stored_hash_is_read_and_not_recomputed`
+    - `tests/unit/models/test_registry.py::test_two_identical_fits_hash_alike`
+    - `tests/unit/models/test_registry.py::test_two_models_with_one_hyperparameter_apart_hash_differently`
+    - `tests/unit/models/test_registry.py::test_two_states_that_concatenate_alike_do_not_hash_alike`
+- **Outcomes:** [[OUT-2026-09-10-implement-model-registry]], [[OUT-2026-09-10-plan-model-registry]], [[OUT-2026-09-10-requirement-model-registry]], [[OUT-2026-09-10-spec-model-registry]]
 <!-- trace:end -->
 
 ## Notes

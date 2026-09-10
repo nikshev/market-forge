@@ -23,6 +23,15 @@ from channelflow.models.metrics import (
     feature_stability,
     pr_auc,
 )
+from channelflow.models.registry import (
+    MODEL_REGISTRY_SCHEMA,
+    MODEL_REGISTRY_TABLE,
+    ModelNotFitted,
+    ModelRegistry,
+    Registration,
+    artifact_hash,
+    require_registered,
+)
 from channelflow.models.regularized import ElasticNetLogistic
 from channelflow.models.report import (
     NOT_RUN,
@@ -34,6 +43,13 @@ from channelflow.models.report import (
 )
 
 __all__ = [
+    "MODEL_REGISTRY_SCHEMA",
+    "MODEL_REGISTRY_TABLE",
+    "ModelNotFitted",
+    "ModelRegistry",
+    "Registration",
+    "artifact_hash",
+    "require_registered",
     "NOT_RUN",
     "REQUIRED_BASELINES",
     "BaseRate",

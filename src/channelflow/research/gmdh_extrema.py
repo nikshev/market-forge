@@ -311,6 +311,18 @@ class _Named:
 
     name: str
 
+    @property
+    def fitted(self) -> bool:
+        """Never.
+
+        This is a name for the report, not a model: every arm supplies its own
+        predictions and nothing here is trained. Answering `True` would let
+        [[REQ-WP-022]]'s artifact hash be taken of an object with no parameters,
+        which is precisely the meaningless, shared string that property exists
+        to refuse.
+        """
+        return False
+
     def fit(self, x: np.ndarray, y: np.ndarray) -> None:
         raise NotEnoughData("EXP-013's arms supply their own predictions")
 
