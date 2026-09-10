@@ -34,6 +34,9 @@ FEATURES: tuple[str, ...] = (
     "liquidation_imbalance_5m",
     "liquidation_intensity_5m",
     "time_since_liquidation_spike",
+    "long_short_ratio",
+    "long_short_z",
+    "top_trader_long_short_ratio",
 )
 
 _DERIVATIVES = {
@@ -46,6 +49,72 @@ _DERIVATIVES = {
 
 
 def _register_all() -> None:
+    register(
+        FeatureSpec(
+            name="long_short_ratio",
+            version=1,
+            description="Longs over shorts among all accounts, as the venue reports it.",
+            formula="the long_short_ratio of the latest state at or before t",
+            unit="ratio",
+            lookback="instant",
+            cadence="per poll",
+            null_policy=(
+                "absent when the venue publishes no positioning. Never 1.0: a ratio "
+                "of 1.0 says longs and shorts are even, and an absent one says nobody "
+                "knows -- a silent venue is not a balanced market (PRD section 16's "
+                "'where available')"
+            ),
+            normalization="none; see long_short_z",
+            test_fixture=(
+                "tests/unit/derivatives/test_positioning.py::"
+                "test_a_venue_that_publishes_nothing_is_not_a_balanced_market"
+            ),
+            **_DERIVATIVES,  # type: ignore[arg-type]
+        )
+    )
+    register(
+        FeatureSpec(
+            name="top_trader_long_short_ratio",
+            version=1,
+            description="The same ratio among the venue's largest accounts.",
+            formula="the top_trader_long_short_ratio of the latest state at or before t",
+            unit="ratio",
+            lookback="instant",
+            cadence="per poll",
+            null_policy=(
+                "absent when the venue publishes none. Kept separate from "
+                "long_short_ratio rather than averaged with it: the two measure "
+                "different populations and their mean describes neither"
+            ),
+            normalization="none; see top_trader_z",
+            test_fixture=(
+                "tests/unit/derivatives/test_positioning.py::test_the_two_ratios_are_independent"
+            ),
+            **_DERIVATIVES,  # type: ignore[arg-type]
+        )
+    )
+    register(
+        FeatureSpec(
+            name="long_short_z",
+            version=1,
+            description="How crowded the book is against this instrument's own recent positioning.",
+            formula="(ratio - mean) / stdev over the trailing window of published ratios",
+            unit="standard deviations",
+            lookback="20 published readings",
+            cadence="per poll",
+            null_policy=(
+                "refused, never zero, when the window cannot be filled or the series "
+                "is constant (ADR-026). A state that published no ratio is not an "
+                "observation, so a silent venue cannot fill the window"
+            ),
+            normalization="z-score over the trailing window",
+            test_fixture=(
+                "tests/unit/derivatives/test_positioning.py::"
+                "test_the_same_ratio_is_unusual_on_one_history_and_ordinary_on_another"
+            ),
+            **_DERIVATIVES,  # type: ignore[arg-type]
+        )
+    )
     register(
         FeatureSpec(
             name="funding_rate_settled",

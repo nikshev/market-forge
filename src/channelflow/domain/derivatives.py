@@ -35,6 +35,16 @@ class DerivativesState(BaseModel):
     #: Signed by nature -- basis can be negative.
     basis_bps: float | None = None
 
+    #: Longs over shorts among all accounts, as the venue reports it. `None`
+    #: when the venue publishes none: an absent ratio says nobody knows, and a
+    #: ratio of 1.0 says longs and shorts are even. A silent venue is not a
+    #: balanced market ([[REQ-WP-031]]).
+    long_short_ratio: float | None = Field(default=None, gt=0.0)
+    #: The same among the venue's largest accounts. A separate field rather than
+    #: an average with the one above: they measure different populations, and
+    #: their mean describes neither.
+    top_trader_long_short_ratio: float | None = Field(default=None, gt=0.0)
+
 
 class LiquidationEvent(BaseModel):
     """A forced position closure."""

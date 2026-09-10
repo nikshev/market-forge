@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "§16, §45 Phase 3"
 prd_lines: "1778, 6767"
 phase: 3
-status: specified
+status: implemented
 depends_on: [REQ-WP-013, REQ-WP-026]
 tags: []
 ---
@@ -47,7 +47,24 @@ who is positioned which way. It is the last entry in [[REQ-PHASE-3]]'s
 
 <!-- trace:begin -->
 - **Specs:** [[SPEC-069-long-short]]
-- **Outcomes:** [[OUT-2026-09-10-requirement-long-short]], [[OUT-2026-09-10-spec-long-short]]
+- **Tests:**
+    - `tests/unit/derivatives/test_positioning.py::test_a_non_positive_ratio_is_refused[-1.0]`
+    - `tests/unit/derivatives/test_positioning.py::test_a_non_positive_ratio_is_refused[0.0]`
+    - `tests/unit/derivatives/test_positioning.py::test_a_ratio_nobody_published_reads_as_nothing`
+    - `tests/unit/derivatives/test_positioning.py::test_a_stale_reading_is_refused`
+    - `tests/unit/derivatives/test_positioning.py::test_a_venue_that_publishes_nothing_is_not_a_balanced_market`
+    - `tests/unit/derivatives/test_positioning.py::test_a_venue_that_stopped_publishing_positioning_is_stale`
+    - `tests/unit/derivatives/test_positioning.py::test_no_state_at_all_is_its_own_refusal`
+    - `tests/unit/derivatives/test_positioning.py::test_states_without_a_ratio_do_not_enter_the_history`
+    - `tests/unit/derivatives/test_positioning.py::test_the_count_travels_with_the_reading`
+    - `tests/unit/derivatives/test_positioning.py::test_the_history_stops_at_the_instant_being_asked_about`
+    - `tests/unit/derivatives/test_positioning.py::test_the_latest_published_ratio_is_the_current_one`
+    - `tests/unit/derivatives/test_positioning.py::test_the_new_features_are_registered_with_a_null_policy`
+    - `tests/unit/derivatives/test_positioning.py::test_the_same_ratio_is_unusual_on_one_history_and_ordinary_on_another`
+    - `tests/unit/derivatives/test_positioning.py::test_the_top_trader_ratio_has_its_own_reading`
+    - `tests/unit/derivatives/test_positioning.py::test_the_two_ratios_are_independent`
+    - `tests/unit/derivatives/test_positioning.py::test_too_little_history_is_refused_rather_than_called_average`
+- **Outcomes:** [[OUT-2026-09-10-implement-long-short]], [[OUT-2026-09-10-plan-long-short]], [[OUT-2026-09-10-requirement-long-short]], [[OUT-2026-09-10-spec-long-short]]
 <!-- trace:end -->
 
 ## Notes
