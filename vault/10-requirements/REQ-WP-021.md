@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "Phase 1 — CEX channel MVP; §29.B; §41 rule 9"
 prd_lines: "6702-6702"
 phase: 1
-status: specified
+status: implemented
 depends_on: [REQ-WP-003, REQ-STORE-002, REQ-API-001]
 tags: []
 ---
@@ -55,7 +55,42 @@ nothing else.
 
 <!-- trace:begin -->
 - **Specs:** [[SPEC-060-instrument-metadata]]
-- **Outcomes:** [[OUT-2026-09-10-requirement-instrument-metadata]], [[OUT-2026-09-10-spec-instrument-metadata]]
+- **Tests:**
+    - `tests/unit/api/test_repository_conformance.py::test_a_market_carries_the_rules_it_was_stored_with[in_memory]`
+    - `tests/unit/api/test_repository_conformance.py::test_a_market_carries_the_rules_it_was_stored_with[lakehouse]`
+    - `tests/unit/api/test_repository_conformance.py::test_a_market_described_twice_appears_once[in_memory]`
+    - `tests/unit/api/test_repository_conformance.py::test_a_market_described_twice_appears_once[lakehouse]`
+    - `tests/unit/api/test_repository_conformance.py::test_a_market_stored_without_rules_has_them_absent[in_memory]`
+    - `tests/unit/api/test_repository_conformance.py::test_a_market_stored_without_rules_has_them_absent[lakehouse]`
+    - `tests/unit/api/test_repository_conformance.py::test_a_spot_market_has_no_contract_size[in_memory]`
+    - `tests/unit/api/test_repository_conformance.py::test_a_spot_market_has_no_contract_size[lakehouse]`
+    - `tests/unit/api/test_repository_conformance.py::test_every_decimal_survives_the_round_trip_exactly[in_memory]`
+    - `tests/unit/api/test_repository_conformance.py::test_every_decimal_survives_the_round_trip_exactly[lakehouse]`
+    - `tests/unit/api/test_repository_conformance.py::test_one_venue_s_rules_are_not_returned_for_another[in_memory]`
+    - `tests/unit/api/test_repository_conformance.py::test_one_venue_s_rules_are_not_returned_for_another[lakehouse]`
+    - `tests/unit/connectors/binance/test_instruments.py::test_a_float_in_the_payload_is_refused_rather_than_converted`
+    - `tests/unit/connectors/binance/test_instruments.py::test_a_missing_filter_is_refused_naming_the_symbol_and_the_field`
+    - `tests/unit/connectors/binance/test_instruments.py::test_a_payload_with_no_symbols_is_refused`
+    - `tests/unit/connectors/binance/test_instruments.py::test_a_repeated_symbol_keeps_the_later_entry`
+    - `tests/unit/connectors/binance/test_instruments.py::test_a_spot_entry_has_no_contract_size`
+    - `tests/unit/connectors/binance/test_instruments.py::test_every_entry_becomes_one_instrument`
+    - `tests/unit/connectors/binance/test_instruments.py::test_numbers_arrive_as_strings_and_stay_decimal`
+    - `tests/unit/connectors/binance/test_instruments.py::test_the_venue_s_field_names_stop_at_the_boundary`
+    - `tests/unit/domain/test_instrument.py::test_a_contract_size_of_zero_is_refused`
+    - `tests/unit/domain/test_instrument.py::test_a_float_rule_is_refused`
+    - `tests/unit/domain/test_instrument.py::test_a_negative_rule_is_refused[min_notional]`
+    - `tests/unit/domain/test_instrument.py::test_a_negative_rule_is_refused[step_size]`
+    - `tests/unit/domain/test_instrument.py::test_a_negative_rule_is_refused[tick_size]`
+    - `tests/unit/domain/test_instrument.py::test_a_rule_of_zero_is_refused[min_notional]`
+    - `tests/unit/domain/test_instrument.py::test_a_rule_of_zero_is_refused[step_size]`
+    - `tests/unit/domain/test_instrument.py::test_a_rule_of_zero_is_refused[tick_size]`
+    - `tests/unit/domain/test_instrument.py::test_a_spot_instrument_has_no_contract_size`
+    - `tests/unit/domain/test_instrument.py::test_an_empty_name_is_refused`
+    - `tests/unit/domain/test_instrument.py::test_an_instrument_carries_every_rule_it_was_given`
+- **Code:**
+    - `src/channelflow/connectors/binance/instruments.py`
+    - `src/channelflow/domain/instrument.py`
+- **Outcomes:** [[OUT-2026-09-10-implement-instrument-metadata]], [[OUT-2026-09-10-plan-instrument-metadata]], [[OUT-2026-09-10-requirement-instrument-metadata]], [[OUT-2026-09-10-spec-instrument-metadata]]
 <!-- trace:end -->
 
 ## Notes

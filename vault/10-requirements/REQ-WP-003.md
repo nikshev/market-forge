@@ -60,6 +60,7 @@ Requirements:
 - **Code:**
     - `src/channelflow/book/book.py`
     - `src/channelflow/connectors/binance/__init__.py`
+    - `src/channelflow/connectors/binance/instruments.py`
     - `src/channelflow/connectors/binance/normalize.py`
     - `src/channelflow/connectors/binance/session.py`
     - `tools/record/binance_capture.py`

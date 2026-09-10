@@ -29,6 +29,7 @@ from typing import Protocol
 from channelflow.alerting import signal_id_for
 from channelflow.bars import Bar
 from channelflow.channels import ChannelSnapshot
+from channelflow.domain import Instrument
 from channelflow.scoring import SignalScore
 from channelflow.signals import Candidate
 
@@ -38,6 +39,10 @@ class Market:
     venue: str
     symbol: str
     market_type: str
+    #: [[REQ-WP-021]]'s trading rules, or nothing for a market nobody has
+    #: ingested rules for. Absent rather than a zeroed instrument: an unknown
+    #: tick size and a tick size of zero must never read alike.
+    instrument: Instrument | None = None
 
 
 @dataclass(frozen=True)
@@ -113,7 +118,7 @@ class InMemoryRepository:
     ADR-019 is the record that storage is owed, not optional.
     """
 
-    _markets: list[Market] = field(default_factory=list)
+    _markets: dict[tuple[str, str], Market] = field(default_factory=dict)
     _bars: list[Bar] = field(default_factory=list)
     _snapshots: dict[tuple[str, str, int], list[ChannelSnapshot]] = field(default_factory=dict)
     _features: dict[tuple[str, str, int], list[FeaturePoint]] = field(default_factory=dict)
@@ -124,8 +129,19 @@ class InMemoryRepository:
 
     # --- writing, for the pipeline and the tests ---
 
-    def add_market(self, *, venue: str, symbol: str, market_type: str) -> None:
-        self._markets.append(Market(venue=venue, symbol=symbol, market_type=market_type))
+    def add_market(
+        self,
+        *,
+        venue: str,
+        symbol: str,
+        market_type: str,
+        instrument: Instrument | None = None,
+    ) -> None:
+        # Keyed rather than appended: a market described twice is one market
+        # described twice, and the lakehouse repository reads it the same way.
+        self._markets[venue, symbol] = Market(
+            venue=venue, symbol=symbol, market_type=market_type, instrument=instrument
+        )
 
     def add_bar(self, bar: Bar) -> None:
         self._bars.append(bar)
@@ -177,7 +193,7 @@ class InMemoryRepository:
     def markets(self, *, venue: str | None = None, market_type: str | None = None) -> list[Market]:
         return [
             m
-            for m in self._markets
+            for m in self._markets.values()
             if (venue is None or m.venue == venue)
             and (market_type is None or m.market_type == market_type)
         ]

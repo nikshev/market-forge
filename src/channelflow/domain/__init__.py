@@ -14,10 +14,13 @@ the convention lives.
 from channelflow.domain.book import BookDelta, BookSnapshot, PriceLevel
 from channelflow.domain.defi import DexLiquidityEvent, DexSwapEvent
 from channelflow.domain.derivatives import DerivativesState, LiquidationEvent
+from channelflow.domain.instrument import Instrument, InstrumentRejected
 from channelflow.domain.meta import ChainMeta, EventMeta
 from channelflow.domain.trades import TradeEvent
 
 __all__ = [
+    "Instrument",
+    "InstrumentRejected",
     "BookDelta",
     "BookSnapshot",
     "ChainMeta",

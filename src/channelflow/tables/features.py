@@ -22,10 +22,19 @@ from __future__ import annotations
 
 import hashlib
 import struct
+from decimal import Decimal
 
+from channelflow.domain import Instrument
 from channelflow.lakehouse import Column, ObjectStore, Schema, Table
 from channelflow.scoring import Group, GroupContribution, SignalScore
-from channelflow.tables.rows import as_float, as_float_map, as_int, as_str, as_str_tuple
+from channelflow.tables.rows import (
+    as_decimal,
+    as_float,
+    as_float_map,
+    as_int,
+    as_str,
+    as_str_tuple,
+)
 
 FEATURES_TABLE_NAME = "feature_snapshots"
 MARKETS_TABLE_NAME = "markets"
@@ -55,6 +64,18 @@ MARKETS_SCHEMA = Schema(
         Column(name="venue", type="string"),
         Column(name="symbol", type="string"),
         Column(name="market_type", type="string"),
+        # [[REQ-WP-021]]'s rules. Decimal rather than float: a tick size that
+        # went through binary floating point is not the venue's tick size.
+        Column(name="base_asset", type="string"),
+        Column(name="quote_asset", type="string"),
+        Column(name="tick_size", type="decimal"),
+        Column(name="step_size", type="decimal"),
+        Column(name="min_notional", type="decimal"),
+        # An instrument with no contracts stores an empty string rather than a
+        # zero, because absent and zero must not read alike -- and the plane has
+        # no null.
+        Column(name="contract_size", type="string"),
+        Column(name="status", type="string"),
     )
 )
 
@@ -146,6 +167,51 @@ def scores_table_for(store: ObjectStore) -> Table:
 
 def contributions_table_for(store: ObjectStore) -> Table:
     return Table(name=CONTRIBUTIONS_TABLE_NAME, schema=CONTRIBUTIONS_SCHEMA, store=store)
+
+
+def market_row(instrument: Instrument) -> dict[str, object]:
+    """One instrument as a row of the markets table."""
+    return {
+        "venue": instrument.venue,
+        "symbol": instrument.symbol,
+        "market_type": instrument.market_type,
+        "base_asset": instrument.base_asset,
+        "quote_asset": instrument.quote_asset,
+        "tick_size": instrument.tick_size,
+        "step_size": instrument.step_size,
+        "min_notional": instrument.min_notional,
+        "contract_size": "" if instrument.contract_size is None else str(instrument.contract_size),
+        "status": instrument.status,
+    }
+
+
+def instrument_from_row(row: dict[str, object]) -> Instrument | None:
+    """The instrument a market row describes, or nothing when it describes none.
+
+    A row written before [[REQ-WP-021]] -- or by `add_market` without rules --
+    carries empty strings, and an instrument reconstructed from those would
+    report a tick size of zero. Absent is the honest answer, and `Instrument`
+    refuses the alternative anyway.
+    """
+    # Numerically, not by truthiness: a decimal column reads back as a string on
+    # some paths, and `not "0"` is False -- so a market with no rules would have
+    # been reconstructed as an instrument and refused on its empty base asset.
+    # Found by four API tests going red.
+    if as_decimal(row, "tick_size") <= 0:
+        return None
+    contract = as_str(row, "contract_size")
+    return Instrument(
+        venue=as_str(row, "venue"),
+        symbol=as_str(row, "symbol"),
+        market_type=as_str(row, "market_type"),
+        base_asset=as_str(row, "base_asset"),
+        quote_asset=as_str(row, "quote_asset"),
+        tick_size=as_decimal(row, "tick_size"),
+        step_size=as_decimal(row, "step_size"),
+        min_notional=as_decimal(row, "min_notional"),
+        contract_size=Decimal(contract) if contract else None,
+        status=as_str(row, "status"),
+    )
 
 
 def feature_rows(
