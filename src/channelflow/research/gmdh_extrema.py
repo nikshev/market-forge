@@ -29,12 +29,13 @@ no incremental value after costs, and the derivative method is rejected.
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import numpy as np
 
 from channelflow.backtest import CostModel, NothingResolved, SignalOutcome, economic_report
 from channelflow.dataset import CertifiedDataset, Row
+from channelflow.experiments import ConfigValue, Field
 from channelflow.models import (
     Calibration,
     ComparisonReport,
@@ -160,6 +161,20 @@ class ExtremaComparison:
     gate: PromotionGate
     call_threshold: float
     unscored: tuple[str, ...]
+    #: The arm the promotion rule picked, or nothing when it promoted none.
+    chosen_arm: str | None = None
+    configs: dict[str, Mapping[str, ConfigValue]] = field(default_factory=dict)
+
+    @property
+    def compared(self) -> Field:
+        """Every arm scored, and the one the gate promoted.
+
+        `chosen` is empty on a `NO_EDGE` verdict even though one arm still
+        scored highest. Being least bad in a field that failed its gate is not
+        being chosen, and recording it as kept would report a promotion the gate
+        refused.
+        """
+        return Field(variants=self.configs, chosen=self.chosen_arm)
 
 
 def compare_gmdh_extrema(
@@ -277,7 +292,7 @@ def compare_gmdh_extrema(
         )
 
     built = _with_increments(built)
-    verdict, reason = _rule(built, gate=gate)
+    verdict, reason, best = _rule(built, gate=gate)
     return ExtremaComparison(
         arms=built,
         verdict=verdict,
@@ -285,6 +300,8 @@ def compare_gmdh_extrema(
         gate=gate,
         call_threshold=call_threshold,
         unscored=tuple(unscored),
+        chosen_arm=best,
+        configs={name: {"arm": name, "call_threshold": call_threshold} for name in built},
     )
 
 
@@ -433,6 +450,12 @@ def _economics(
     return report.expectancy_r, None
 
 
+EXPERIMENT = "EXP-013"
+
+#: The comparison this module's entry point returns.
+COMPARISON = ExtremaComparison
+
+
 def _with_increments(arms: dict[str, ArmReport]) -> dict[str, ArmReport]:
     """Fill in each arm's expectancy against `BASELINE_ARM`."""
     baseline = arms[BASELINE_ARM].expectancy_r
@@ -456,7 +479,7 @@ def _with_increments(arms: dict[str, ArmReport]) -> dict[str, ArmReport]:
     return filled
 
 
-def _rule(arms: dict[str, ArmReport], *, gate: PromotionGate) -> tuple[Verdict, str]:
+def _rule(arms: dict[str, ArmReport], *, gate: PromotionGate) -> tuple[Verdict, str, str | None]:
     """EXP-013's own last sentence: unstable roots or no OOS value, and reject.
 
     Both conditions are checked, and both are reported when both fail. A verdict
@@ -500,10 +523,14 @@ def _rule(arms: dict[str, ArmReport], *, gate: PromotionGate) -> tuple[Verdict, 
         )
 
     if failures:
-        return Verdict.NO_EDGE, "; ".join(failures)
+        return Verdict.NO_EDGE, "; ".join(failures), None
     best = max(gains, key=lambda arm: gains[arm])
     return (
         Verdict.EDGE,
         f"{best} adds {gains[best]:+.4f}R over {BASELINE_ARM} after costs, on roots "
         f"the gate accepts",
+        # Returned rather than recomputed by the caller: the tie-break above is
+        # this function's, and a second copy of it could disagree with the
+        # reason line beside it.
+        best,
     )

@@ -1,5 +1,6 @@
 """Research comparisons over point-in-time datasets.
 
+# @trace: REQ-BIAS-011
 # @trace: REQ-US-006
 # @trace: REQ-EXP-001
 # @trace: REQ-EXP-002
@@ -17,6 +18,12 @@
 # @trace: REQ-EXP-015
 # @trace: REQ-EXP-016
 # @trace: REQ-EXP-017
+
+Every module here declares `EXPERIMENT` and `COMPARISON`, and every comparison
+can be asked what it compared -- see [[REQ-BIAS-011]]. The declaration is not
+documentation: `tests/unit/research/test_gate_adoption.py` walks this package
+and fails on a module that lacks either, so a nineteenth experiment joins the
+rule rather than quietly escaping it.
 """
 
 from channelflow.research.ablation import (

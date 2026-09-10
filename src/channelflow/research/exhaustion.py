@@ -36,6 +36,8 @@ from statistics import fmean, pstdev
 
 import numpy as np
 
+from channelflow.experiments import ConfigValue, Field
+
 #: PRD EXP-014's six bullets, and the series each one needs. "OFI sign and
 #: slope" is one bullet measured as two columns: the direction of the flow and
 #: how fast it is changing are different claims, and a study that averaged them
@@ -197,6 +199,7 @@ class ExhaustionStudy:
     control_gap_bars: int
     call_quantile: float
     rule: ReadingRule
+    configs: dict[str, Mapping[str, ConfigValue]] = field(default_factory=dict)
     note: str = field(
         default=(
             "the conditional arm is retrospective: its window straddles a turn labelled "
@@ -210,6 +213,22 @@ class ExhaustionStudy:
     def explains_but_does_not_predict(self) -> tuple[str, ...]:
         """The signals EXP-014's second sentence exists to catch."""
         return tuple(name for name, study in self.signals.items() if study.reading == EXPLAINS_ONLY)
+
+    @property
+    def compared(self) -> Field:
+        """The order-flow signals studied around the extrema, and no winner.
+
+        EXP-014 runs each signal twice -- contemporaneous and predictive -- and
+        the pair is the finding, not a contest. Naming a winner would collapse
+        the distinction the requirement is built on.
+        """
+        return Field(variants=self.configs, chosen=None)
+
+
+EXPERIMENT = "EXP-014"
+
+#: The comparison this module's entry point returns.
+COMPARISON = ExhaustionStudy
 
 
 def study_exhaustion(
@@ -283,6 +302,14 @@ def study_exhaustion(
 
     return ExhaustionStudy(
         signals=built,
+        configs={
+            name: {
+                "signal": name,
+                "window_bars": window_bars,
+                "horizon_bars": horizon_bars,
+            }
+            for name in built
+        },
         labelled_extrema=len(turns),
         window_bars=window_bars,
         horizon_bars=horizon_bars,

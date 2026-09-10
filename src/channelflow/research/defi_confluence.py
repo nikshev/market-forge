@@ -36,6 +36,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
 from channelflow.dataset import CertifiedDataset
+from channelflow.experiments import Field
 from channelflow.research.ablation import AblationArm, AblationReport, ArmEntry, run_ablation
 from channelflow.research.cumulative import Increment, resolve_membership
 from channelflow.turning.direct import Target
@@ -141,6 +142,17 @@ class ConfluenceReport:
     def redundant(self) -> tuple[str, ...]:
         """Families that help alone and add nothing to the full set."""
         return tuple(name for name, value in self.families.items() if value.reading == REDUNDANT)
+
+    @property
+    def compared(self) -> Field:
+        """The strict arms this confluence study ablated."""
+        return self.ablation.compared
+
+
+EXPERIMENT = "EXP-015"
+
+#: The comparison this module's entry point returns.
+COMPARISON = ConfluenceReport
 
 
 def strict_arms(candidates: Sequence[str] = CANDIDATE_FAMILIES) -> tuple[AblationArm, ...]:

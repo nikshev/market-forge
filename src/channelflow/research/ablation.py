@@ -24,10 +24,16 @@ never reported as what it looked at and found.
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from channelflow.dataset import CertifiedDataset
+from channelflow.experiments import ConfigValue, Field, config_of
 from channelflow.turning.direct import DirectBaselineResult, Target, run_direct_baseline
+
+#: PRD §41 rule 11: which experiment this module is. Not a requirement id --
+#: this one belongs to REQ-US-006/-007 rather than an EXP note, and it compares
+#: arms and ranks them, which is the behaviour the rule is about.
+EXPERIMENT = "ABLATION"
 
 #: REQ-US-006's groups, mapped onto the feature registry's own family names.
 #: `channel` and `dex` have no registered features yet, which is why an arm can
@@ -98,6 +104,19 @@ class AblationReport:
     ranking: tuple[str, ...]
     folds: int
     target: str
+    #: Each arm's own definition, kept because the caller supplies the arms.
+    configs: dict[str, Mapping[str, ConfigValue]] = field(default_factory=dict)
+
+    @property
+    def compared(self) -> Field:
+        """Every arm that was tried, and the one that ranked first.
+
+        An arm that could not run is in the field. It was tried, and PRD §41
+        rule 11 is about the ones that did not survive -- a field that quietly
+        omitted its failures would be the shape of cherry-picking the rule
+        exists to catch.
+        """
+        return Field(variants=self.configs, chosen=self.ranking[0] if self.ranking else None)
 
     @property
     def runnable(self) -> bool:
@@ -183,7 +202,12 @@ def run_ablation(
         ranking=rank_arms(entries),
         folds=len(dataset.folds),
         target=str(target),
+        configs={arm.name: config_of(arm) for arm in arms},
     )
+
+
+#: The comparison this module's entry point returns.
+COMPARISON = AblationReport
 
 
 def rank_arms(entries: Sequence[ArmEntry]) -> tuple[str, ...]:

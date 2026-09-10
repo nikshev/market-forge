@@ -51,7 +51,13 @@ from channelflow.channels import (
     QuantileChannel,
     RollingOLSChannel,
 )
+from channelflow.experiments import ConfigValue, Field, config_of
 from channelflow.signals import CandidateState, SignalMachine
+
+#: PRD §41 rule 11: which experiment this module is, and the comparison its
+#: entry point returns. `tests/unit/research/test_gate_adoption.py` discovers
+#: these rather than being handed a list.
+EXPERIMENT = "EXP-001"
 
 #: EXP-001's five, in the PRD's order. The first two are one fitter under two
 #: width options -- PRD section 13.2 lists both and prefers the second.
@@ -108,6 +114,26 @@ class ChannelComparisonReport:
     horizon: int
     costs: CostModel
     settings: dict[str, str] = field(default_factory=dict)
+    #: Each model's own configuration, kept because the caller may have supplied
+    #: the models. Reconstructing them from `MODELS` would be right for the
+    #: default call and silently wrong for every `models=` one.
+    configs: dict[str, Mapping[str, ConfigValue]] = field(default_factory=dict)
+
+    @property
+    def compared(self) -> Field:
+        """EXP-001 ranks nothing.
+
+        Its seven metrics trade off against each other and the PRD names no
+        weighting, so the report is the whole field and the choice is the
+        reader's. `chosen` is `None` for that reason and not for lack of a
+        winner: inventing one here would manufacture the claim PRD §41 rule 11
+        exists to make checkable.
+        """
+        return Field(variants=self.configs, chosen=None)
+
+
+#: The comparison EXP-001's entry point returns.
+COMPARISON = ChannelComparisonReport
 
 
 def compare_channel_models(
@@ -139,6 +165,15 @@ def compare_channel_models(
             "amounts of history are not being compared with each other"
         )
 
+    # Shared across every variant, and part of each variant's identity: two runs
+    # of one model under different settings are two different runs.
+    settings = {
+        "touch_band": str(TOUCH_BAND),
+        "min_quality": str(min_quality),
+        "risk_per_trade": str(risk_per_trade),
+        "test_fraction": str(test_fraction),
+    }
+
     entries: dict[str, ModelEntry] = {}
     for name, model in chosen.items():
         try:
@@ -160,16 +195,12 @@ def compare_channel_models(
 
     return ChannelComparisonReport(
         entries=entries,
+        configs={name: {**settings, **config_of(model)} for name, model in chosen.items()},
         in_sample_bars=split,
         out_of_sample_bars=len(bars) - split,
         horizon=horizon,
         costs=costs,
-        settings={
-            "touch_band": str(TOUCH_BAND),
-            "min_quality": str(min_quality),
-            "risk_per_trade": str(risk_per_trade),
-            "test_fraction": str(test_fraction),
-        },
+        settings=settings,
     )
 
 

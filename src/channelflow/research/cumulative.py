@@ -19,6 +19,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
 from channelflow.dataset import CertifiedDataset
+from channelflow.experiments import Field
 from channelflow.features import exposed_feature_names
 from channelflow.features.registry import REGISTRY
 from channelflow.research.ablation import AblationArm, AblationReport, run_ablation
@@ -45,6 +46,25 @@ class IncrementalReport:
 
     ablation: AblationReport
     increments: tuple[Increment, ...]
+
+    @property
+    def compared(self) -> Field:
+        """The arms of the ablation underneath.
+
+        An increment is a reading *of* that field, not a variant in it, so this
+        delegates rather than assembling a second one -- two fields for one run
+        could disagree, and the registry would hold whichever was reported.
+        """
+        return self.ablation.compared
+
+
+#: PRD §41 rule 11. Shared machinery rather than one of the seventeen: EXP-004
+#: and EXP-007 both run cumulative ablations through it, and each declares its
+#: own id.
+EXPERIMENT = "CUMULATIVE"
+
+#: The comparison this module's entry point returns.
+COMPARISON = IncrementalReport
 
 
 def resolve_membership(

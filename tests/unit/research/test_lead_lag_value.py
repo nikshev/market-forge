@@ -10,6 +10,7 @@ import pytest
 
 from channelflow.backtest import CostModel, CostsRequired
 from channelflow.research.lead_lag_value import (
+    DEFAULT_THRESHOLDS,
     DivergenceSignal,
     Verdict,
     evaluate_divergence,
@@ -325,3 +326,49 @@ def test_the_costs_refusal_fires_before_anything_is_scored() -> None:
     than a restatement of the economics layer's."""
     with pytest.raises(CostsRequired):
         evaluate_divergence(bars_with_moves(), [], costs=None, latency_bars=0)
+
+
+# --- the field the study chose from (REQ-BIAS-011) ---------------------------
+
+
+@pytest.mark.trace("REQ-BIAS-011")
+def test_every_threshold_swept_is_in_the_field() -> None:
+    """EXP-010 is where PRD §41 rule 11 bites hardest.
+
+    Five thresholds are tried in sample and one is carried out of sample; before
+    this, the four that lost left no trace anywhere. A reader given only the
+    winner cannot tell a threshold that beat four rivals from one that was the
+    only one to resolve a trade at all.
+    """
+    result = evaluate_divergence(
+        bars_with_moves(),
+        predictive_signals(),
+        costs=COSTS,
+        latency_bars=0,
+    )
+
+    field = result.compared
+
+    assert len(field.variants) == len(DEFAULT_THRESHOLDS)
+    assert field.chosen == str(result.chosen_threshold_bps)
+    assert {c["threshold_bps"] for c in field.variants.values()} == set(DEFAULT_THRESHOLDS)
+
+
+@pytest.mark.trace("REQ-BIAS-011")
+def test_a_study_that_could_not_choose_still_names_the_field_it_tried() -> None:
+    """The early returns are where a field would be easiest to forget, and the
+    run that chose nothing is exactly the one whose attempts are worth having:
+    "we tried five and none resolved" is a finding, and an empty record is not.
+    """
+    result = evaluate_divergence(
+        bars_with_moves(),
+        [s for s in predictive_signals() if s.index < 50],
+        costs=COSTS,
+        latency_bars=0,
+    )
+
+    field = result.compared
+
+    assert result.chosen_threshold_bps is None
+    assert field.chosen is None
+    assert len(field.variants) == len(DEFAULT_THRESHOLDS)

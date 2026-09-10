@@ -28,12 +28,13 @@ of an alert actually experiences.
 
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 
 import numpy as np
 
 from channelflow.bars import Bar
+from channelflow.experiments import ConfigValue, Field, config_of
 from channelflow.extrema import CausalTransform, Transform, require_causal
 
 #: EXP-012's horizons, in bars.
@@ -87,6 +88,7 @@ class TurningComparison:
     labelled_turns: int
     label_method: str
     tolerance_bars: int
+    configs: dict[str, Mapping[str, ConfigValue]] = field(default_factory=dict)
     note: str = field(
         default=(
             "the labels come from a centred filter, which sees both sides of a turn "
@@ -94,6 +96,16 @@ class TurningComparison:
             "(PRD section 13A.6)"
         )
     )
+
+    @property
+    def compared(self) -> Field:
+        """Every causal method measured against the centred labels, and no winner.
+
+        The labeller is not in the field. It is how the labels were made, not a
+        candidate for anything -- a centred filter cannot run live, which is the
+        whole reason the causal methods are being compared at all.
+        """
+        return Field(variants=self.configs, chosen=None)
 
 
 class CenteredCandidateRejected(ValueError):
@@ -278,7 +290,14 @@ def compare_turning_methods(
         labelled_turns=len(turns),
         label_method=smoother.name,
         tolerance_bars=tolerance_bars,
+        configs={method.name: config_of(method) for method in candidates},
     )
+
+
+EXPERIMENT = "EXP-012"
+
+#: The comparison this module's entry point returns.
+COMPARISON = TurningComparison
 
 
 def _calls(slopes: Sequence[float]) -> list[int]:

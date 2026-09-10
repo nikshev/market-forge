@@ -25,7 +25,7 @@ report says so rather than collapsing them into one score.
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from statistics import median
 
 from channelflow.backtest import (
@@ -41,6 +41,7 @@ from channelflow.backtest import (
 )
 from channelflow.bars import Bar
 from channelflow.channels import ChannelModel, RollingOLSChannel
+from channelflow.experiments import ConfigValue, Field, config_of
 from channelflow.research.channel_comparison import DEFAULT_HORIZON, DEFAULT_TEST_FRACTION
 from channelflow.signals import (
     CandidateState,
@@ -96,6 +97,19 @@ class DetectorComparisonReport:
         "a detector may win on lag and lose on expectancy; the ranking is by "
         "expectancy after costs and the other three metrics are reported beside it"
     )
+    #: Each detector's own configuration, kept because the caller may supply
+    #: them.
+    configs: dict[str, Mapping[str, ConfigValue]] = field(default_factory=dict)
+
+    @property
+    def compared(self) -> Field:
+        """Every detector tried, and the one the ranking put first.
+
+        A detector that could not be scored is in the field and not in the
+        ranking, which is why `chosen` reads from the ranking and the variants
+        do not.
+        """
+        return Field(variants=self.configs, chosen=self.ranking[0] if self.ranking else None)
 
 
 def compare_detectors(
@@ -146,10 +160,17 @@ def compare_detectors(
     return DetectorComparisonReport(
         entries=entries,
         ranking=ranking,
+        configs={name: config_of(detector) for name, detector in chosen.items()},
         in_sample_bars=split,
         out_of_sample_bars=len(bars) - split,
         costs=costs,
     )
+
+
+EXPERIMENT = "EXP-003"
+
+#: The comparison this module's entry point returns.
+COMPARISON = DetectorComparisonReport
 
 
 def _measure(

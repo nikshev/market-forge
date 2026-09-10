@@ -26,6 +26,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
 from channelflow.dataset import CertifiedDataset
+from channelflow.experiments import Field
 from channelflow.research.ablation import AblationArm
 from channelflow.research.cumulative import (
     IncrementalReport,
@@ -78,6 +79,17 @@ class DexIncrementalReport:
 
     instrument: str
     report: IncrementalReport
+
+    @property
+    def compared(self) -> Field:
+        """The arms of the cumulative ablation underneath."""
+        return self.report.compared
+
+
+EXPERIMENT = "EXP-007"
+
+#: The comparison this module's entry point returns.
+COMPARISON = DexIncrementalReport
 
 
 def available_from_registry() -> dict[str, tuple[str, ...]]:

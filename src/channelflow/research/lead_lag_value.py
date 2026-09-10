@@ -23,8 +23,8 @@ The experiment may conclude that there is nothing here, and does so by returning
 
 from __future__ import annotations
 
-from collections.abc import Sequence
-from dataclasses import dataclass
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass, field
 from enum import StrEnum
 
 from channelflow.backtest import (
@@ -39,6 +39,7 @@ from channelflow.backtest import (
     resolve_outcome,
 )
 from channelflow.bars import Bar
+from channelflow.experiments import ConfigValue, Field
 
 #: Thresholds, in basis points of divergence, that the in-sample half chooses
 #: between. Declared rather than optimized continuously: a grid a reader can see
@@ -75,6 +76,23 @@ class LeadLagResult:
     out_of_sample: EconomicReport | None = None
     signals_in_sample: int = 0
     signals_out_of_sample: int = 0
+    #: Every threshold the in-sample sweep tried. Kept because the result names
+    #: one and this study is where PRD §41 rule 11 bites hardest: four
+    #: thresholds were run, lost, and left no trace before this.
+    configs: dict[str, Mapping[str, ConfigValue]] = field(default_factory=dict)
+
+    @property
+    def compared(self) -> Field:
+        """The thresholds swept in sample, and the one carried out of sample.
+
+        The choice is in sample by construction -- a threshold picked on the
+        data it is scored on always looks profitable, which is what PRD §41
+        rule 10's locked segment exists to stop. So `chosen` is the threshold
+        the sweep kept, and the verdict beside it is about how that threshold
+        then fared on data it never saw.
+        """
+        best = self.chosen_threshold_bps
+        return Field(variants=self.configs, chosen=None if best is None else str(best))
 
 
 def evaluate_divergence(
@@ -102,12 +120,25 @@ def evaluate_divergence(
     if latency_bars < 0:
         raise ValueError("latency cannot be negative; a signal is not actionable before it exists")
 
+    # Built before the early returns: a run that could not choose a threshold
+    # still tried these, and a field that appeared only on the happy path would
+    # be missing exactly where the rule is most useful.
+    configs: dict[str, Mapping[str, ConfigValue]] = {
+        str(threshold): {
+            "threshold_bps": threshold,
+            "latency_bars": latency_bars,
+            "horizon_bars": horizon_bars,
+        }
+        for threshold in thresholds
+    }
+
     split = int(len(bars) * (1.0 - test_fraction))
     early = [s for s in signals if s.index < split]
     late = [s for s in signals if s.index >= split]
 
     if not early or not late:
         return LeadLagResult(
+            configs=configs,
             verdict=Verdict.NO_EDGE,
             reason=(
                 f"{len(early)} signal(s) in sample and {len(late)} out of sample; a "
@@ -136,6 +167,7 @@ def evaluate_divergence(
 
     if best_threshold is None or best_report is None:
         return LeadLagResult(
+            configs=configs,
             verdict=Verdict.NO_EDGE,
             reason="no threshold produced a resolvable trade in the training segment",
             latency_bars=latency_bars,
@@ -153,6 +185,7 @@ def evaluate_divergence(
     )
     if held_out is None:
         return LeadLagResult(
+            configs=configs,
             verdict=Verdict.NO_EDGE,
             reason=(
                 f"the threshold chosen in sample ({best_threshold} bps) produced no "
@@ -167,6 +200,7 @@ def evaluate_divergence(
 
     positive = held_out.expectancy_r > 0.0
     return LeadLagResult(
+        configs=configs,
         verdict=Verdict.EDGE if positive else Verdict.NO_EDGE,
         reason=(
             f"out of sample, after {latency_bars} bar(s) of latency and costs, "
@@ -179,6 +213,12 @@ def evaluate_divergence(
         signals_in_sample=len(early),
         signals_out_of_sample=len(late),
     )
+
+
+EXPERIMENT = "EXP-010"
+
+#: The comparison this module's entry point returns.
+COMPARISON = LeadLagResult
 
 
 def _score(
