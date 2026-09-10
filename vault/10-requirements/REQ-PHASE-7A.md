@@ -8,9 +8,8 @@ phase: 7A
 status: planned
 depends_on: ["REQ-PHASE-7"]
 tags: []
-covers: [REQ-WP-020, REQ-EXP-017, REQ-BIAS-009, REQ-BT-001]
+covers: [REQ-WP-020, REQ-EXP-017, REQ-BIAS-009, REQ-BT-001, REQ-WP-032]
 not_delivered:
-  - "stop-path chart: the web app has no stop-path view"
   - "Telegram stop-update notification: the alerting layer sends signals, not stop updates"
   - "shadow/paper replay of stop-update activation latency: the replay models fills, not activation latency"
 ---

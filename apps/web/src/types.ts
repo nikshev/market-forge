@@ -156,3 +156,45 @@ export interface ExtremaResponse {
   confirmed: ConfirmedExtremumOut[];
   candidates: ExtremumCandidateOut[];
 }
+
+// PRD section 44A's position and stop-decision shapes, mirrored (REQ-WP-032).
+// Prices are strings for the reason every other price here is: a Decimal round
+// -tripped through a JSON float is a different price, and a stop is the one
+// number in this system a rounding error would move.
+
+export interface StopAnchorOut {
+  kind: string;
+  price: string;
+  known_at_ns: number;
+  description: string;
+}
+
+export interface StopProposalOut {
+  at_ns: number;
+  price: string;
+  phase: string;
+  reasons: string[];
+  // Null means this decision rested on no structural level -- which is what a
+  // hold with nothing knowable is. Never the previous anchor.
+  anchor: StopAnchorOut | null;
+  moved: boolean;
+  refused: boolean;
+}
+
+export interface PositionOut {
+  position_id: string;
+  side: "LONG" | "SHORT";
+  entry_time_ns: number;
+  average_entry_price: string;
+  initial_stop_price: string;
+  // Null means no catastrophic stop was set. Never the initial stop: those are
+  // two different promises, and one line where the position has two is a lie
+  // about how much room is left.
+  hard_stop_price: string | null;
+  current_strategy_stop: string;
+}
+
+export interface ExcursionOut {
+  mfe_r: number | null;
+  mae_r: number | null;
+}

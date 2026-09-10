@@ -64,6 +64,8 @@ who is positioned which way. It is the last entry in [[REQ-PHASE-3]]'s
     - `tests/unit/derivatives/test_positioning.py::test_the_top_trader_ratio_has_its_own_reading`
     - `tests/unit/derivatives/test_positioning.py::test_the_two_ratios_are_independent`
     - `tests/unit/derivatives/test_positioning.py::test_too_little_history_is_refused_rather_than_called_average`
+- **Code:**
+    - `src/channelflow/derivatives/positioning.py`
 - **Outcomes:** [[OUT-2026-09-10-implement-long-short]], [[OUT-2026-09-10-plan-long-short]], [[OUT-2026-09-10-requirement-long-short]], [[OUT-2026-09-10-spec-long-short]]
 <!-- trace:end -->
 
