@@ -22,7 +22,7 @@ Store all discarded experiment variants to reduce silent cherry-picking.
 ## Trace
 
 <!-- trace:begin -->
-- **Specs:** [[SPEC-053-experiment-registry]]
+- **Specs:** [[SPEC-053-experiment-registry]], [[SPEC-057-experiment-gate-adoption]]
 - **Tests:**
     - `tests/unit/experiments/test_registry.py::test_a_discarded_variant_is_recorded_exactly_like_a_kept_one`
     - `tests/unit/experiments/test_registry.py::test_the_registry_is_append_only_and_its_history_does_not_change`
@@ -34,7 +34,7 @@ Store all discarded experiment variants to reduce silent cherry-picking.
     - `src/channelflow/experiments/__init__.py`
     - `src/channelflow/experiments/registry.py`
     - `src/channelflow/experiments/report.py`
-- **Outcomes:** [[OUT-2026-09-09-implement-experiment-registry]], [[OUT-2026-09-09-plan-experiment-registry]], [[OUT-2026-09-09-requirement-experiment-registry]], [[OUT-2026-09-09-spec-experiment-registry]]
+- **Outcomes:** [[OUT-2026-09-09-implement-experiment-registry]], [[OUT-2026-09-09-plan-experiment-registry]], [[OUT-2026-09-09-requirement-experiment-registry]], [[OUT-2026-09-09-spec-experiment-registry]], [[OUT-2026-09-10-spec-experiment-gate-adoption]]
 <!-- trace:end -->
 
 ## Notes
