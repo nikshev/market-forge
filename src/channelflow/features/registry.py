@@ -2,6 +2,7 @@
 
 # @trace: REQ-WP-011
 # @trace: REQ-PRIN-008
+# @trace: REQ-BIAS-002
 
 PRD section 19: "Every feature definition must be registered", with sixteen
 required fields. Constitution Principle VI: "An undocumented feature is not
