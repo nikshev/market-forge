@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "§0 item 13, §23.5A, §23.9, §41 rule 11"
 prd_lines: "27, 4065-4074, 4138-4150, 5327"
 phase: null
-status: draft
+status: specified
 depends_on: [REQ-REPRO-001, REQ-BIAS-011, REQ-WP-022, REQ-WP-023, REQ-US-007]
 tags: []
 ---
@@ -56,7 +56,8 @@ refusal is theoretical.
 ## Trace
 
 <!-- trace:begin -->
-_No linked artifacts yet._
+- **Specs:** [[SPEC-063-research-run]]
+- **Outcomes:** [[OUT-2026-09-10-requirement-research-run]], [[OUT-2026-09-10-spec-research-run]]
 <!-- trace:end -->
 
 ## Notes
