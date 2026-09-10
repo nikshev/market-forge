@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "§45 Phase 1A, §13A.1, §27.2, §29.B"
 prd_lines: "6720-6737"
 phase: 1
-status: draft
+status: specified
 depends_on: [REQ-WP-019, REQ-WP-009, REQ-STORE-002, REQ-API-001]
 tags: []
 ---
@@ -51,7 +51,8 @@ quietly.
 ## Trace
 
 <!-- trace:begin -->
-_No linked artifacts yet._
+- **Specs:** [[SPEC-066-extremum-markers]]
+- **Outcomes:** [[OUT-2026-09-10-requirement-extremum-markers]], [[OUT-2026-09-10-spec-extremum-markers]]
 <!-- trace:end -->
 
 ## Notes
