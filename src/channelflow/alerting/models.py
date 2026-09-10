@@ -96,6 +96,31 @@ class Alert(BaseModel):
     def signal_id(self) -> uuid.UUID:
         return signal_id_for(self.candidate)
 
+    # --- the `Notification` protocol the dispatcher speaks ([[REQ-WP-034]]) ---
+
+    @property
+    def notification_id(self) -> uuid.UUID:
+        return self.signal_id
+
+    @property
+    def symbol(self) -> str:
+        return self.candidate.symbol
+
+    def render(self) -> str:
+        # Deferred: `render` imports this module, so importing it at the top
+        # would close a cycle. The two alternatives are worse -- moving PRD
+        # section 26.1's renderer in here puts a formatter inside a frozen
+        # record, and a second dispatcher duplicates section 26.4's retry and
+        # dead-letter behaviour.
+        from channelflow.alerting.render import render_message
+
+        return render_message(self)
+
+    def link(self) -> str:
+        from channelflow.alerting.render import chart_deep_link
+
+        return chart_deep_link(self)
+
 
 class AttemptOutcome(BaseModel):
     """One try at delivering one alert."""
