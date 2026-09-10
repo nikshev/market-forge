@@ -18,7 +18,7 @@ from channelflow.derivatives import (
     price_oi_regime,
 )
 
-from .conftest import BASE_NS, MINUTE_NS, state
+from .conftest import BASE_NS, MINUTE_NS, NOT_ABOUT_FRESHNESS, state
 
 
 def at(minute: int) -> int:
@@ -31,7 +31,7 @@ def test_base_only_states_are_skipped() -> None:
     would invent a figure the venue did not report."""
     states = [state(at=10, oi_base=500.0), state(at=20, oi_usd=1_000.0)]
 
-    points = oi_series(states, at_ns=at(30))
+    points = oi_series(states, at_ns=at(30), staleness_ns=NOT_ABOUT_FRESHNESS)
 
     assert [p.open_interest_usd for p in points] == [1_000.0]
 
@@ -47,7 +47,9 @@ def test_change_is_measured_from_before_the_window() -> None:
         state(at=60, oi_usd=1_800.0),
     ]
 
-    change = oi_change(states, at_ns=at(60), window_ns=30 * MINUTE_NS)
+    change = oi_change(
+        states, at_ns=at(60), window_ns=30 * MINUTE_NS, staleness_ns=NOT_ABOUT_FRESHNESS
+    )
 
     assert change == pytest.approx(800.0), "compared against minute 0, not minute 50"
 
@@ -57,7 +59,10 @@ def test_a_window_with_nothing_before_it_has_no_change() -> None:
     """FR-005. Absent rather than measured from the first observation inside."""
     states = [state(at=50, oi_usd=1_500.0)]
 
-    assert oi_change(states, at_ns=at(60), window_ns=30 * MINUTE_NS) is None
+    assert (
+        oi_change(states, at_ns=at(60), window_ns=30 * MINUTE_NS, staleness_ns=NOT_ABOUT_FRESHNESS)
+        is None
+    )
 
 
 @pytest.mark.trace("REQ-WP-013")
@@ -66,7 +71,7 @@ def test_oi_z_refuses_a_short_window() -> None:
     states = [state(at=i, oi_usd=1_000.0 + i) for i in range(5)]
 
     with pytest.raises(ZScoreUnavailable, match="needs 20"):
-        oi_z(states, at_ns=at(100), window=20)
+        oi_z(states, at_ns=at(100), window=20, staleness_ns=NOT_ABOUT_FRESHNESS)
 
 
 @pytest.mark.trace("REQ-WP-013")

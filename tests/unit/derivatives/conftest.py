@@ -13,6 +13,17 @@ HOUR_NS = 60 * MINUTE_NS
 BASE_NS = 1788838800000000000
 
 
+#: A tolerance wide enough to be irrelevant, for tests about something else.
+#:
+#: [[REQ-WP-026]] gave every state reader a maximum age with a five-minute
+#: default. Most tests here place their states minutes or hours apart because
+#: they are about point-in-time joins, settled intervals or z-scores -- not
+#: about freshness. Passing this says so out loud, rather than letting a test
+#: pass because its fixture happened to stay inside a window it never meant to
+#: be inside.
+NOT_ABOUT_FRESHNESS = 365 * 24 * 60 * MINUTE_NS
+
+
 def meta(at: int, *, ingest_offset: int = 1) -> EventMeta:
     return EventMeta(
         source="test",

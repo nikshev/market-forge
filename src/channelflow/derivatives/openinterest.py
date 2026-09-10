@@ -1,6 +1,7 @@
 """PRD sections 16.2 and 16.3: open interest, and the gap between perp and spot.
 
 # @trace: REQ-WP-013
+# @trace: REQ-WP-026
 
 Section 16.2's four-quadrant matrix is here, and ADR-027 is why nothing acts on
 it. The PRD's own words: "Interpretation matrix stored as feature, not
@@ -16,7 +17,13 @@ from dataclasses import dataclass
 from decimal import Decimal
 from enum import StrEnum
 
-from channelflow.derivatives.state import ZScore, ratio, z_score
+from channelflow.derivatives.state import (
+    DEFAULT_STALENESS_NS,
+    ZScore,
+    ratio,
+    require_fresh,
+    z_score,
+)
 from channelflow.domain import DerivativesState
 
 BPS = 10_000.0
@@ -40,28 +47,46 @@ class OpenInterestPoint:
     open_interest_usd: float
 
 
-def oi_series(states: list[DerivativesState], *, at_ns: int) -> list[OpenInterestPoint]:
+def oi_series(
+    states: list[DerivativesState],
+    *,
+    at_ns: int,
+    staleness_ns: int = DEFAULT_STALENESS_NS,
+) -> list[OpenInterestPoint]:
     """Open interest in USD, at or before `at_ns`, oldest first.
 
     States reporting base units only are skipped: multiplying by a price we
     chose would invent a figure the venue did not report.
+
+    Refuses when the newest point is older than `staleness_ns`: a poll that
+    failed leaves the last figure in place, and without the bound every reading
+    below reports it as open interest now ([[REQ-WP-026]]).
     """
     points = [
         OpenInterestPoint(at_ns=s.meta.event_time_ns, open_interest_usd=s.open_interest_usd)
         for s in states
         if s.open_interest_usd is not None and s.meta.event_time_ns <= at_ns
     ]
-    return sorted(points, key=lambda p: p.at_ns)
+    ordered = sorted(points, key=lambda p: p.at_ns)
+    if ordered:
+        require_fresh(ordered[-1].at_ns, at_ns=at_ns, staleness_ns=staleness_ns)
+    return ordered
 
 
-def oi_change(states: list[DerivativesState], *, at_ns: int, window_ns: int) -> float | None:
+def oi_change(
+    states: list[DerivativesState],
+    *,
+    at_ns: int,
+    window_ns: int,
+    staleness_ns: int = DEFAULT_STALENESS_NS,
+) -> float | None:
     """Change in open interest across a window, in USD.
 
     Measured from the last observation at or before the window's start, not
     from the first observation inside it: a window that opens in a gap should
     compare against what was actually known then.
     """
-    points = oi_series(states, at_ns=at_ns)
+    points = oi_series(states, at_ns=at_ns, staleness_ns=staleness_ns)
     if not points:
         return None
     start = at_ns - window_ns
@@ -71,8 +96,17 @@ def oi_change(states: list[DerivativesState], *, at_ns: int, window_ns: int) -> 
     return points[-1].open_interest_usd - earlier[-1].open_interest_usd
 
 
-def oi_z(states: list[DerivativesState], *, at_ns: int, window: int = 20) -> ZScore:
-    return z_score([p.open_interest_usd for p in oi_series(states, at_ns=at_ns)], window=window)
+def oi_z(
+    states: list[DerivativesState],
+    *,
+    at_ns: int,
+    window: int = 20,
+    staleness_ns: int = DEFAULT_STALENESS_NS,
+) -> ZScore:
+    return z_score(
+        [p.open_interest_usd for p in oi_series(states, at_ns=at_ns, staleness_ns=staleness_ns)],
+        window=window,
+    )
 
 
 def oi_to_volume(open_interest_usd: float, volume_usd: float) -> float | None:
