@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "Phase 1 — CEX channel MVP; §29.B; §41 rule 9"
 prd_lines: "6702-6702"
 phase: 1
-status: draft
+status: specified
 depends_on: [REQ-WP-003, REQ-STORE-002, REQ-API-001]
 tags: []
 ---
@@ -54,7 +54,8 @@ nothing else.
 ## Trace
 
 <!-- trace:begin -->
-_No linked artifacts yet._
+- **Specs:** [[SPEC-060-instrument-metadata]]
+- **Outcomes:** [[OUT-2026-09-10-requirement-instrument-metadata]], [[OUT-2026-09-10-spec-instrument-metadata]]
 <!-- trace:end -->
 
 ## Notes
