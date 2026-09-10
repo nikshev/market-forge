@@ -6,7 +6,7 @@ hard_gated: true
 prd_ref: "§41"
 prd_lines: "5318-5318"
 phase: null
-status: draft
+status: specified
 depends_on: []
 tags: []
 ---
@@ -22,7 +22,8 @@ No centered moving filters in live features.
 ## Trace
 
 <!-- trace:begin -->
-_No linked artifacts yet._
+- **Specs:** [[SPEC-058-live-causality]]
+- **Outcomes:** [[OUT-2026-09-10-spec-live-causality]]
 <!-- trace:end -->
 
 ## Notes
