@@ -8,7 +8,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 
-import { fetchBars, fetchChannel, fetchFeatureSeries } from "./api";
+import { fetchBars, fetchChannel, fetchExtrema, fetchFeatureSeries } from "./api";
 import { Chart } from "./Chart";
 import { ChannelModeControl } from "./ChannelMode";
 import { FlowPane } from "./FlowPane";
@@ -21,6 +21,7 @@ import {
   type BarOut,
   type ChannelMode,
   type ChannelOut,
+  type ExtremaResponse,
   type FeaturePointOut,
 } from "./types";
 
@@ -42,6 +43,7 @@ export function App(): JSX.Element {
   // A pane's own failure, kept apart from the page's: the chart can load while
   // the features do not, and one message for both would blame the wrong thing.
   const [paneFailure, setPaneFailure] = useState<string | null>(null);
+  const [extrema, setExtrema] = useState<ExtremaResponse>({ confirmed: [], candidates: [] });
 
   const load = useCallback(async () => {
     if (link === null) {
@@ -89,6 +91,17 @@ export function App(): JSX.Element {
     });
     setPaneFailure(seriesResult.ok ? null : seriesResult.error);
     setPoints(seriesResult.ok ? seriesResult.value.points : []);
+
+    const extremaResult = await fetchExtrema({
+      instrumentId: `${link.venue}:${link.symbol}`,
+      timeframeNs,
+      // AS-SEEN-THEN asks as of the instant; CURRENT REFIT asks for everything
+      // on record, which is where PRD section 27.5 wants the difference to show.
+      asOfNs: mode === AS_SEEN_THEN ? atNs : null,
+    });
+    // An absent list is not a failure of the page, the way an absent channel is
+    // not: the chart draws what it has.
+    setExtrema(extremaResult.ok ? extremaResult.value : { confirmed: [], candidates: [] });
   }, [link, mode]);
 
   useEffect(() => {
@@ -130,6 +143,8 @@ export function App(): JSX.Element {
         signal={null}
         overlays={link.overlays.overlays}
         focusAtNs={link.atNs}
+        extrema={extrema}
+        mode={mode}
       />
       <FlowPane points={points} feature={pane} onSelect={setPane} failure={paneFailure} />
     </main>

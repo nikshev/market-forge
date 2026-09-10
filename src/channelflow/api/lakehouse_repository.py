@@ -30,15 +30,17 @@ import uuid
 from dataclasses import dataclass, field
 from decimal import Decimal
 
-from channelflow.api.repositories import FeaturePoint, Market, ScoredSetup
+from channelflow.api.repositories import Extrema, FeaturePoint, Market, ScoredSetup
 from channelflow.bars import Bar
 from channelflow.channels import ChannelSnapshot
 from channelflow.domain import Instrument
+from channelflow.extrema.models import ConfirmedExtremum, ExtremumCandidate
 from channelflow.lakehouse import ObjectStore, Table
 from channelflow.scoring import SignalScore
 from channelflow.signals import Candidate
 from channelflow.tables import bars as bars_table
 from channelflow.tables import channels as channels_table
+from channelflow.tables import extrema as extrema_table
 from channelflow.tables import features as features_table
 from channelflow.tables import signals as signals_table
 from channelflow.tables.rows import as_float, as_int, as_str
@@ -62,6 +64,8 @@ class LakehouseRepository:
     _scores: Table = field(init=False)
     _contributions: Table = field(init=False)
     _signals: Table = field(init=False)
+    _confirmed: Table = field(init=False)
+    _candidates: Table = field(init=False)
     _transitions: Table = field(init=False)
 
     def __post_init__(self) -> None:
@@ -72,6 +76,8 @@ class LakehouseRepository:
         self._scores = features_table.scores_table_for(self.store)
         self._contributions = features_table.contributions_table_for(self.store)
         self._signals = signals_table.table_for(self.store)
+        self._confirmed = extrema_table.confirmed_table_for(self.store)
+        self._candidates = extrema_table.candidates_table_for(self.store)
         self._transitions = signals_table.transitions_table_for(self.store)
 
     # --- writing, for the pipeline and the tests ---------------------------
@@ -114,6 +120,12 @@ class LakehouseRepository:
 
     def add_bar(self, bar: Bar) -> None:
         bars_table.write_bars(self._bars, [bar])
+
+    def add_confirmed_extremum(self, extremum: ConfirmedExtremum) -> None:
+        extrema_table.write_confirmed(self._confirmed, [extremum])
+
+    def add_extremum_candidate(self, candidate: ExtremumCandidate) -> None:
+        extrema_table.write_candidates(self._candidates, [candidate])
 
     def add_channel_snapshot(
         self, *, venue: str, symbol: str, timeframe_ns: int, snapshot: ChannelSnapshot
@@ -171,6 +183,34 @@ class LakehouseRepository:
         self._scores.append([core])
 
     # --- reading ------------------------------------------------------------
+
+    def extrema(
+        self,
+        *,
+        instrument_id: str,
+        timeframe_ns: int,
+        as_of_ns: int | None = None,
+    ) -> Extrema:
+        """The plane's own point-in-time read does the knowledge filter.
+
+        `known_at_ns` and `observed_at_ns` are the tables' event times, so a read
+        as of an instant cannot return a turn that had not been confirmed by
+        then -- the rule is enforced by the storage rather than restated here.
+        """
+        return Extrema(
+            confirmed=extrema_table.read_confirmed(
+                self._confirmed,
+                instrument_id=instrument_id,
+                timeframe_ns=timeframe_ns,
+                as_of_ns=as_of_ns,
+            ),
+            candidates=extrema_table.read_candidates(
+                self._candidates,
+                instrument_id=instrument_id,
+                timeframe_ns=timeframe_ns,
+                as_of_ns=as_of_ns,
+            ),
+        )
 
     def markets(self, *, venue: str | None = None, market_type: str | None = None) -> list[Market]:
         """One entry per market, latest row wins.

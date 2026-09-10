@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "§45 Phase 1A, §13A.1, §27.2, §29.B"
 prd_lines: "6720-6737"
 phase: 1
-status: specified
+status: implemented
 depends_on: [REQ-WP-019, REQ-WP-009, REQ-STORE-002, REQ-API-001]
 tags: []
 ---
@@ -52,7 +52,33 @@ quietly.
 
 <!-- trace:begin -->
 - **Specs:** [[SPEC-066-extremum-markers]]
-- **Outcomes:** [[OUT-2026-09-10-requirement-extremum-markers]], [[OUT-2026-09-10-spec-extremum-markers]]
+- **Tests:**
+    - `tests/unit/api/test_reads.py::test_the_extrema_endpoint_hides_a_turn_that_was_not_yet_confirmed[in_memory]`
+    - `tests/unit/api/test_reads.py::test_the_extrema_endpoint_hides_a_turn_that_was_not_yet_confirmed[lakehouse]`
+    - `tests/unit/api/test_repository_conformance.py::test_a_candidate_obeys_the_same_rule[in_memory]`
+    - `tests/unit/api/test_repository_conformance.py::test_a_candidate_obeys_the_same_rule[lakehouse]`
+    - `tests/unit/api/test_repository_conformance.py::test_a_turn_is_not_visible_before_it_was_confirmed[in_memory]`
+    - `tests/unit/api/test_repository_conformance.py::test_a_turn_is_not_visible_before_it_was_confirmed[lakehouse]`
+    - `tests/unit/api/test_repository_conformance.py::test_a_visible_turn_still_reports_where_it_happened[in_memory]`
+    - `tests/unit/api/test_repository_conformance.py::test_a_visible_turn_still_reports_where_it_happened[lakehouse]`
+    - `tests/unit/api/test_repository_conformance.py::test_candidates_and_confirmations_are_kept_apart[in_memory]`
+    - `tests/unit/api/test_repository_conformance.py::test_candidates_and_confirmations_are_kept_apart[lakehouse]`
+    - `tests/unit/api/test_repository_conformance.py::test_one_instrument_does_not_see_another_s_turns[in_memory]`
+    - `tests/unit/api/test_repository_conformance.py::test_one_instrument_does_not_see_another_s_turns[lakehouse]`
+    - `tests/unit/tables/test_extrema.py::test_a_candidate_is_not_returned_before_it_was_observed`
+    - `tests/unit/tables/test_extrema.py::test_a_candidate_reads_back_field_for_field`
+    - `tests/unit/tables/test_extrema.py::test_a_confirmation_reads_back_field_for_field`
+    - `tests/unit/tables/test_extrema.py::test_a_returned_turn_still_carries_the_instant_it_happened`
+    - `tests/unit/tables/test_extrema.py::test_a_turn_is_not_returned_before_it_was_confirmed`
+    - `tests/unit/tables/test_extrema.py::test_an_absent_prominence_is_absent_not_zero`
+    - `tests/unit/tables/test_extrema.py::test_later_data_does_not_change_what_an_earlier_instant_shows`
+    - `tests/unit/tables/test_extrema.py::test_one_instrument_does_not_return_another_s`
+    - `tests/unit/tables/test_extrema.py::test_turns_come_back_oldest_first`
+- **Code:**
+    - `apps/web/src/__tests__/extrema.test.ts`
+    - `apps/web/src/extrema.ts`
+    - `src/channelflow/tables/extrema.py`
+- **Outcomes:** [[OUT-2026-09-10-implement-extremum-markers]], [[OUT-2026-09-10-plan-extremum-markers]], [[OUT-2026-09-10-requirement-extremum-markers]], [[OUT-2026-09-10-spec-extremum-markers]]
 <!-- trace:end -->
 
 ## Notes

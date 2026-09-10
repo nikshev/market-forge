@@ -10,6 +10,7 @@ import type {
   BarOut,
   ChannelMode,
   ChannelOut,
+  ExtremaResponse,
   FeatureSeriesResponse,
   SignalOut,
 } from "./types";
@@ -86,5 +87,20 @@ export function fetchFeatureSeries(params: {
     timeframe_ns: params.timeframeNs,
     start_ns: params.startNs,
     end_ns: params.endNs,
+  });
+}
+
+export function fetchExtrema(params: {
+  instrumentId: string;
+  timeframeNs: number;
+  asOfNs: number | null;
+}): Promise<Result<ExtremaResponse>> {
+  return get("/api/v1/extrema", {
+    instrument_id: params.instrumentId,
+    timeframe_ns: params.timeframeNs,
+    // Omitted rather than sent as null when the caller has no instant: the
+    // endpoint reads an absent `as_of_ns` as "everything on record", which is
+    // what CURRENT REFIT wants.
+    ...(params.asOfNs === null ? {} : { as_of_ns: params.asOfNs }),
   });
 }

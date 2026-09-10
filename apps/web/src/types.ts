@@ -128,3 +128,31 @@ export interface FeaturePointOut {
 export interface FeatureSeriesResponse {
   points: FeaturePointOut[];
 }
+
+/** PRD section 28's confirmed extremum. Both instants travel: `extremum_time_ns`
+ * is where the marker goes and `known_at_ns` is the earliest instant it may be
+ * drawn at all (REQ-WP-028). */
+export interface ConfirmedExtremumOut {
+  extremum_id: string;
+  extremum_type: string;
+  extremum_time_ns: number;
+  known_at_ns: number;
+  price: string;
+  confirmation_lag_bars: number;
+  prominence_bps: number | null;
+  source_candidate_id: string | null;
+}
+
+export interface ExtremumCandidateOut {
+  candidate_id: string;
+  candidate_type: string;
+  candidate_time_ns: number;
+  observed_at_ns: number;
+  price: string;
+  structural_score: number;
+}
+
+export interface ExtremaResponse {
+  confirmed: ConfirmedExtremumOut[];
+  candidates: ExtremumCandidateOut[];
+}

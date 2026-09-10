@@ -30,7 +30,10 @@ from channelflow.api.schemas import (
     BarsResponse,
     ChannelComparisonOut,
     ChannelOut,
+    ConfirmedExtremumOut,
     ExplanationOut,
+    ExtremaResponse,
+    ExtremumCandidateOut,
     FeaturePointOut,
     FeatureSeriesResponse,
     FeatureSnapshotResponse,
@@ -185,6 +188,29 @@ def get_feature_series(
         venue=venue, symbol=symbol, timeframe_ns=timeframe_ns, start_ns=start_ns, end_ns=end_ns
     )
     return FeatureSeriesResponse(points=tuple(FeaturePointOut.of(p) for p in points))
+
+
+@router.get("/extrema", response_model=ExtremaResponse)
+def get_extrema(
+    request: Request,
+    instrument_id: str,
+    timeframe_ns: int,
+    as_of_ns: int | None = None,
+) -> ExtremaResponse:
+    """Turns knowable as of an instant.
+
+    `as_of_ns` is a knowledge filter, not a window: it drops turns that had not
+    been confirmed by then. Omitting it asks for everything on record, which is
+    what `CURRENT REFIT` wants -- PRD §27.5 makes that mode the place where
+    repaint-like differences are meant to be visible ([[REQ-WP-028]]).
+    """
+    found = _repository(request).extrema(
+        instrument_id=instrument_id, timeframe_ns=timeframe_ns, as_of_ns=as_of_ns
+    )
+    return ExtremaResponse(
+        confirmed=tuple(ConfirmedExtremumOut.of(e) for e in found.confirmed),
+        candidates=tuple(ExtremumCandidateOut.of(c) for c in found.candidates),
+    )
 
 
 @router.get("/signals", response_model=SignalsResponse)

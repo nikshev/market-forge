@@ -276,3 +276,59 @@ def test_a_feature_not_recorded_at_an_instant_is_absent_not_zero(
     # And a recorded zero is still a zero: the two must never become one
     # picture, which is the pair REQ-WP-027 tests on the browser side.
     assert points[2]["values"]["cvd"] == 0.0
+
+
+@pytest.mark.trace("REQ-WP-028")
+def test_the_extrema_endpoint_hides_a_turn_that_was_not_yet_confirmed(
+    client: TestClient, repository: object
+) -> None:
+    """PRD §45's Phase 1A acceptance, at the endpoint a chart will call.
+
+    The turn happened at minute 10 and was confirmed at minute 14. An endpoint
+    that returned it as of minute 13 would hand the browser a turn the system
+    did not know about, and no amount of care in the chart would recover it.
+    """
+    from decimal import Decimal
+    from uuid import NAMESPACE_OID, uuid5
+
+    from channelflow.extrema.models import ConfirmedExtremum
+
+    repository.add_confirmed_extremum(  # type: ignore[attr-defined]
+        ConfirmedExtremum(
+            extremum_id=uuid5(NAMESPACE_OID, "endpoint-turn"),
+            instrument_id="binance:BTCUSDT",
+            timeframe_ns=MINUTE_NS,
+            extremum_type="HIGH",
+            extremum_time_ns=BASE_NS + 10 * MINUTE_NS,
+            known_at_ns=BASE_NS + 14 * MINUTE_NS,
+            price=Decimal("112000.10"),
+            confirmation_method="directional_change",
+            confirmation_lag_bars=4,
+            reversal_bps=45.0,
+            threshold_bps=30.0,
+            prominence_bps=None,
+            prominence_atr=None,
+            channel_class=None,
+            source_candidate_id=None,
+        )
+    )
+
+    def read(at: int) -> dict[str, object]:
+        return client.get(
+            "/api/v1/extrema",
+            params={
+                "instrument_id": "binance:BTCUSDT",
+                "timeframe_ns": MINUTE_NS,
+                "as_of_ns": BASE_NS + at * MINUTE_NS,
+            },
+        ).json()
+
+    assert read(13)["confirmed"] == []
+
+    (shown,) = read(14)["confirmed"]
+    # Returned at last, and reporting where the turn was rather than when it
+    # became knowable -- the pair that pins the honest picture.
+    assert shown["extremum_time_ns"] == BASE_NS + 10 * MINUTE_NS
+    assert shown["known_at_ns"] == BASE_NS + 14 * MINUTE_NS
+    # A price as a string, like every other price on the wire.
+    assert shown["price"] == "112000.10"

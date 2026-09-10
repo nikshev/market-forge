@@ -5,12 +5,11 @@ type: phase
 prd_ref: "Phase 1A — Extremum baseline"
 prd_lines: "6720-6737"
 phase: 1A
-status: planned
+status: implemented
 depends_on: ["REQ-PHASE-1"]
 tags: []
-covers: [REQ-WP-019, REQ-NRT-A, REQ-NRT-B, REQ-NRT-C, REQ-NRT-E, REQ-EXP-011, REQ-EXP-012]
-not_delivered:
-  - "chart markers for candidate versus confirmed extrema: the web chart draws channels and volume profile, not extrema"
+covers: [REQ-WP-019, REQ-NRT-A, REQ-NRT-B, REQ-NRT-C, REQ-NRT-E, REQ-EXP-011, REQ-EXP-012, REQ-WP-028]
+not_delivered: []
 ---
 
 ## Requirement
@@ -68,10 +67,22 @@ phase in progress, however much of it is built.
 - **Specs:** [[SPEC-051-phase-coverage]]
 - **Tests:**
     - `tests/tools/trace/test_phase_coverage.py::test_phase_1a_coverage`
-- **Outcomes:** [[OUT-2026-09-09-implement-phase-coverage]], [[OUT-2026-09-09-requirement-phase-acceptance]], [[OUT-2026-09-09-spec-phase-coverage]]
+- **Outcomes:** [[OUT-2026-09-09-implement-phase-coverage]], [[OUT-2026-09-09-requirement-phase-acceptance]], [[OUT-2026-09-09-spec-phase-coverage]], [[OUT-2026-09-10-implement-extremum-markers]]
 <!-- trace:end -->
 
 ## Notes
+
+`not_delivered` is empty as of 2026-09-10 — the sixth phase to reach
+`implemented`. The last entry to leave was "chart markers for candidate versus
+confirmed extrema", closed by [[REQ-WP-028]].
+
+That deliverable turned out to be four layers rather than a drawing change: the
+detector's output reached no table, no repository and no endpoint. The phase's
+own acceptance criterion — no confirmed extremum earlier than `known_at` in
+`AS-SEEN-THEN` — is now enforced by the storage, because `known_at_ns` is the
+table's event time.
+
+**The tables are reachable and empty.** Nothing runs the detector into them yet.
 
 Generated from the PRD by `tools/extract_prd.py`. This section is human
 territory and is never machine-rewritten.
