@@ -55,7 +55,14 @@ class FeatureSpec(BaseModel):
     normalization: str = Field(min_length=1)
     #: Whether the value at `t` uses only data with `event_time <= t`. No
     #: default: Constitution Principle I is not something to leave implied.
-    point_in_time_safe: bool
+    #: `Literal[True]`, not `bool`: PRD §41 rule 2 forbids a centred filter in a
+    #: live feature, and this registry is the live feature list. A feature that
+    #: cannot claim point-in-time safety has no business in it, so it is
+    #: unregisterable rather than registered and caught later. The author still
+    #: writes the value out, so [[ADR-015]]'s "no field an author can forget to
+    #: think about" is unchanged -- what changes is that the only writable value
+    #: is the one the rule permits.
+    point_in_time_safe: Literal[True]
     #: The test that pins this feature's arithmetic to hand-computed values.
     test_fixture: str = Field(min_length=1)
     entity: Literal["venue_symbol"] = "venue_symbol"

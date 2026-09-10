@@ -108,8 +108,8 @@ one is indistinguishable from an oversight.
 ### Functional Requirements
 
 - **FR-001**: Every package under `src/channelflow/` MUST be scanned for centred-smoothing and offline peak-finding helpers.
-- **FR-002**: A package MUST be exempt only by being named in an explicit list, with a recorded reason.
-- **FR-003**: An exemption naming a package that does not exist MUST fail the suite.
+- **FR-002**: A module MUST be exempt only by being named in an explicit list, with a recorded reason. The exemption is per module, not per package: exempting a package would exempt the modules beside the one that needs it.
+- **FR-003**: An exemption naming a module that does not exist MUST fail the suite.
 - **FR-004**: The scan MUST name the file and the helper when it fails.
 - **FR-005**: The scan MUST fail rather than pass when it finds no modules to scan.
 - **FR-006**: Every registered feature MUST declare `point_in_time_safe=True`.
@@ -119,8 +119,8 @@ one is indistinguishable from an oversight.
 
 ### Key Entities
 
-- **Live package**: a package under `src/channelflow/` that is not on the exemption list.
-- **Exemption**: a package name and the reason centred filters are legitimate in it.
+- **Live module**: a module under `src/channelflow/` that is not on the exemption list.
+- **Exemption**: a module path and the reason centred helpers are legitimate in it.
 
 ## Success Criteria *(mandatory)*
 
@@ -128,8 +128,8 @@ one is indistinguishable from an oversight.
 
 - **SC-001**: The number of packages scanned equals the number of packages under `src/channelflow/` less the exemptions.
 - **SC-002**: A forbidden helper added to any live package turns the suite red, and the failure names the file.
-- **SC-003**: The same helper in an exempt package leaves the suite green.
-- **SC-004**: An exemption for a package that does not exist turns the suite red.
+- **SC-003**: The same helper in an exempt module leaves the suite green, and in another module of the same package does not.
+- **SC-004**: An exemption for a module that does not exist turns the suite red.
 - **SC-005**: Every feature in the registry declares `point_in_time_safe=True`, and the check reports the count.
 - **SC-006**: A feature registered with `point_in_time_safe=False` turns the suite red, naming the feature.
 - **SC-007**: Every existing feature's value is unchanged.
@@ -139,4 +139,4 @@ one is indistinguishable from an oversight.
 - **The declaration is a claim, and a false one is not caught here.** `causality.py` says so already: a transform peeking forward while declaring itself causal is Test A's business, not this one's. This feature widens the reach of two existing guards; it does not make them detectors.
 - **The forbidden list stays a short list of specific helpers**, not a general detector. [[ADR-022]] settled that: a centred moving average, a symmetric Savitzky-Golay window, `argrelextrema`, and a loop reading `series[i + 1]` are the same defect and look nothing alike.
 - **An import edge is not a call.** A live package importing a research module is out of scope here, and named as such rather than left ambiguous.
-- **The exemption list will be short and is expected to shrink.** Research packages are the legitimate case; anything else on it is a finding.
+- **The exemption list will be short and is expected to shrink.** Research modules are the legitimate case for centred filters under PRD §13A.6; anything else on it is a finding.
