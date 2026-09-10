@@ -2,6 +2,7 @@
 
 # @trace: REQ-WP-019
 # @trace: REQ-NRT-D
+# @trace: REQ-BIAS-002
 
 Test D: "Production feature path fails validation if a transform declares
 symmetric/centered future dependence."
@@ -38,6 +39,39 @@ FORBIDDEN_IMPORTS = (
     "filtfilt",
     "centered_rolling",
 )
+
+#: Modules allowed to name a forbidden helper, and why. PRD §41 rule 2 is about
+#: live features, so the default is that every module under `src/channelflow/`
+#: is scanned and this list is the whole of the exception.
+#:
+#: Keyed by module rather than by package, because the only real case is one
+#: file: exempting `extrema` would exempt every module beside this one, and
+#: `extrema` is where the rule most wants to look.
+#:
+#: The reason is not decoration. An exemption without one cannot be told apart
+#: from an oversight, and it is what the next reader has to disagree with. No
+#: research module is here: PRD §13A.6 would permit one, and none needs it --
+#: `derivative_turning` writes its own centred labeller rather than importing a
+#: helper. An entry added for a case that has not arrived is an entry nobody
+#: checked.
+EXEMPT: dict[str, str] = {
+    "extrema/causality.py": (
+        "names the forbidden helpers in order to forbid them; the list has to "
+        "live somewhere and this is the module that owns the rule"
+    ),
+}
+
+
+def forbidden_in(source: str) -> tuple[str, ...]:
+    """Every forbidden helper named anywhere in `source`.
+
+    A substring match, not an import parse, for [[ADR-022]]'s reason: this is a
+    tripwire and not a detector. Parsing imports would ignore a docstring and
+    would also miss `getattr(scipy.signal, "savgol_filter")`, which trades a real
+    hole for a cosmetic one. A module that mentions one of these in prose should
+    say so out loud and be exempted, or should not mention it.
+    """
+    return tuple(helper for helper in FORBIDDEN_IMPORTS if helper in source)
 
 
 class CenteredTransformRejected(ValueError):
