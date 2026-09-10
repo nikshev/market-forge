@@ -29,6 +29,12 @@ from channelflow.derivatives.openinterest import (
     oi_z,
     price_oi_regime,
 )
+from channelflow.derivatives.positioning import (
+    long_short_ratio,
+    long_short_z,
+    top_trader_ratio,
+    top_trader_z,
+)
 from channelflow.derivatives.state import (
     DEFAULT_STALENESS_NS,
     AmbiguousState,
@@ -45,6 +51,10 @@ from channelflow.derivatives.state import (
 FEATURES = registry_entries.FEATURES
 
 __all__ = [
+    "long_short_ratio",
+    "long_short_z",
+    "top_trader_ratio",
+    "top_trader_z",
     "FEATURES",
     "AmbiguousState",
     "LiquidationWindow",
