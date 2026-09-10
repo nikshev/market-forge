@@ -5,7 +5,7 @@ type: infrastructure
 prd_ref: "Phase 0 — Repository + correctness skeleton"
 prd_lines: "6685-6685"
 phase: 0
-status: draft
+status: specified
 depends_on: [REQ-WP-005, REQ-WP-010, REQ-PIPE-001]
 tags: [tooling]
 ---
@@ -56,7 +56,8 @@ would break that at its foundation while looking like an implementation detail.
 ## Trace
 
 <!-- trace:begin -->
-- **Outcomes:** [[OUT-2026-09-10-requirement-event-bus]]
+- **Specs:** [[SPEC-059-event-bus]]
+- **Outcomes:** [[OUT-2026-09-10-requirement-event-bus]], [[OUT-2026-09-10-spec-event-bus]]
 <!-- trace:end -->
 
 ## Notes
