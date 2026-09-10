@@ -230,3 +230,30 @@ def test_an_artifact_only_resolves_against_the_registry_that_holds_it(
     for identity in result.identities.values():
         with pytest.raises(NotReproducible, match="registration"):
             require_registered(identity, models=elsewhere)
+
+
+@pytest.mark.trace("REQ-WP-024")
+def test_the_registration_carries_the_run_s_real_spans(
+    certified, signal_rows, store: InMemoryObjectStore
+) -> None:
+    """They held 1/2/2/3 until [[ADR-058]].
+
+    A registry whose whole job is to describe an artifact truthfully carried
+    four invented numbers, because the rule it was written against refused any
+    overlap and a walk-forward run cannot satisfy that. The spans are now the
+    folds' own, and they overlap -- correctly.
+    """
+    dataset = certified(signal_rows)
+
+    result = study(dataset, store=store)
+
+    train = [row.as_of_ns for fold in dataset.folds for row in fold.train]
+    validate = [row.as_of_ns for fold in dataset.folds for row in fold.validate]
+    for registration in result.registrations:
+        assert registration.validation_regime == "walk_forward"
+        assert registration.train_start_ns == min(train)
+        assert registration.train_end_ns == max(train)
+        assert registration.validation_start_ns == min(validate)
+        assert registration.validation_end_ns == max(validate)
+    # The overlap that the first version of the rule refused.
+    assert min(validate) < max(train)
