@@ -21,12 +21,13 @@ EXP-005 names VAH and VAL alongside the nodes.
 
 from __future__ import annotations
 
-from collections.abc import Sequence
-from dataclasses import dataclass
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass, field
 from decimal import Decimal
 from enum import StrEnum
 
 from channelflow.backtest.outcomes import Outcome, SignalOutcome
+from channelflow.experiments import ConfigValue, Field
 from channelflow.volume import VolumeProfile, nodes_at
 
 #: How close to a value-area edge counts as touching it, in basis points of the
@@ -102,6 +103,18 @@ class ConfluenceResult:
     effect_size: float
     verdict: Verdict
     excluded_ambiguous: int
+    configs: dict[str, Mapping[str, ConfigValue]] = field(default_factory=dict)
+
+    @property
+    def compared(self) -> Field:
+        """The two arms, and no winner.
+
+        EXP-005 asks a yes/no question rather than ranking a list, and its
+        verdict answers *whether the difference is material* -- it does not pick
+        an arm to keep. "With confluence wins" is a different claim from "the
+        difference is material", and only the second was measured.
+        """
+        return Field(variants=self.configs, chosen=None)
 
 
 def classify(
@@ -158,12 +171,25 @@ def confluence_study(
 
     return ConfluenceResult(
         with_confluence=with_confluence,
+        configs={
+            "with_confluence": {"arm": "with_confluence", "effect_size": effect_size},
+            "without_confluence": {
+                "arm": "without_confluence",
+                "effect_size": effect_size,
+            },
+        },
         without_confluence=without,
         difference=difference,
         effect_size=effect_size,
         verdict=verdict,
         excluded_ambiguous=excluded,
     )
+
+
+EXPERIMENT = "EXP-005"
+
+#: The comparison this module's entry point returns.
+COMPARISON = ConfluenceResult
 
 
 def _population(observations: Sequence[Observation]) -> Population:

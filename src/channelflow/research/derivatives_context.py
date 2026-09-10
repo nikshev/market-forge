@@ -25,6 +25,7 @@ from dataclasses import dataclass, field
 
 from channelflow.backtest import CostModel, CostsRequired, EconomicReport, economic_report
 from channelflow.backtest.outcomes import Outcome, SignalOutcome
+from channelflow.experiments import ConfigValue, Field
 
 #: EXP-006's four, by their registered feature names.
 VARIABLES: tuple[str, ...] = (
@@ -91,6 +92,7 @@ class ConditionalReport:
     #: around the outcome. EXP-014's distinction, carried rather than assumed.
     point_in_time: bool
     excluded_ambiguous: int
+    configs: dict[str, Mapping[str, ConfigValue]] = field(default_factory=dict)
     note: str = field(default="")
 
     def __post_init__(self) -> None:
@@ -103,6 +105,22 @@ class ConditionalReport:
                 "conditionals explain rather than forecast (EXP-014)"
             )
             object.__setattr__(self, "note", label)
+
+    @property
+    def compared(self) -> Field:
+        """The variables this study conditioned on, and no winner.
+
+        A conditional study ranks nothing -- but the variables are a field in
+        PRD §41 rule 11's sense all the same. Someone quoting the one that
+        looked good needs the other three on record, which is the whole of what
+        the rule asks for.
+
+        `point_in_time` is in every variant's config because it changes what the
+        number means: the same variable computed around the outcome explains it
+        and computed at signal time predicts it, and recording both under one
+        identity would merge an explanation with a forecast.
+        """
+        return Field(variants=self.configs, chosen=None)
 
 
 def conditional_study(
@@ -161,7 +179,14 @@ def conditional_study(
         costs=costs,
         point_in_time=point_in_time,
         excluded_ambiguous=excluded,
+        configs={name: {"variable": name, "point_in_time": point_in_time} for name in variables},
     )
+
+
+EXPERIMENT = "EXP-006"
+
+#: The comparison this module's entry point returns.
+COMPARISON = ConditionalReport
 
 
 def _buckets(

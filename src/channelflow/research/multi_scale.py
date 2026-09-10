@@ -34,10 +34,11 @@ a frame set that has not closed.
 
 from __future__ import annotations
 
-from collections.abc import Sequence
-from dataclasses import dataclass
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass, field
 
 from channelflow.backtest import CostModel, NothingResolved, SignalOutcome, economic_report
+from channelflow.experiments import ConfigValue, Field
 
 #: EXP-016's three nesting rules, in the PRD's order.
 RULES: tuple[str, ...] = (
@@ -132,6 +133,7 @@ class MultiScaleReport:
     candidates: int
     without_context: int
     improvement_floor: float
+    configs: dict[str, Mapping[str, ConfigValue]] = field(default_factory=dict)
     note: str = (
         "a filter improves the average trade almost by definition -- that is what a "
         "filter does -- and can lose on the total by removing winners along with "
@@ -145,6 +147,17 @@ class MultiScaleReport:
         return tuple(
             name for name, result in self.rules.items() if result.reading == COSTS_THE_TOTAL
         )
+
+    @property
+    def compared(self) -> Field:
+        """The three nesting rules, and no winner.
+
+        Each rule gets two readings that can disagree -- a filter improves the
+        average trade almost by definition and can lose on the total -- and
+        EXP-016 names no weighting between them. Picking one here would be this
+        module answering a question its own note says it does not answer.
+        """
+        return Field(variants=self.configs, chosen=None)
 
 
 def available_frame(frames: Sequence[HigherFrame], as_of_ns: int) -> HigherFrame | None:
@@ -254,7 +267,14 @@ def evaluate_nesting(
         candidates=len(candidates),
         without_context=without_context,
         improvement_floor=improvement_floor,
+        configs={rule: {"rule": rule, "improvement_floor": improvement_floor} for rule in rules},
     )
+
+
+EXPERIMENT = "EXP-016"
+
+#: The comparison this module's entry point returns.
+COMPARISON = MultiScaleReport
 
 
 def _rule_result(

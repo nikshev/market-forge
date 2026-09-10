@@ -20,12 +20,13 @@ kind of choice that survives new data.
 
 from __future__ import annotations
 
-from collections.abc import Sequence
-from dataclasses import dataclass
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass, field
 
 from channelflow.backtest import CostModel, CostsRequired
 from channelflow.bars import Bar
 from channelflow.channels import RollingOLSChannel
+from channelflow.experiments import ConfigValue, Field
 from channelflow.research.channel_comparison import (
     DEFAULT_HORIZON,
     DEFAULT_TEST_FRACTION,
@@ -87,6 +88,19 @@ class SweepReport:
     recommendation: Recommendation
     tolerance: float
     costs: CostModel
+    configs: dict[str, Mapping[str, ConfigValue]] = field(default_factory=dict)
+
+    @property
+    def compared(self) -> Field:
+        """Every lookback swept, and the one recommended.
+
+        The recommendation can be nothing -- a sweep where no lookback resolved
+        a trade recommends none -- and `chosen` is `None` there rather than the
+        peak. A peak that the recommendation refused to endorse is not a choice
+        this study made.
+        """
+        best = self.recommendation.lookback
+        return Field(variants=self.configs, chosen=None if best is None else str(best))
 
 
 def sweep_lookbacks(
@@ -136,7 +150,21 @@ def sweep_lookbacks(
         recommendation=recommend(entries, tolerance=tolerance),
         tolerance=tolerance,
         costs=costs,
+        configs={
+            str(lookback): {
+                "lookback": lookback,
+                "horizon": horizon,
+                "tolerance": tolerance,
+            }
+            for lookback in lookbacks
+        },
     )
+
+
+EXPERIMENT = "EXP-002"
+
+#: The comparison this module's entry point returns.
+COMPARISON = SweepReport
 
 
 def find_plateau(entries: Sequence[SweepEntry], *, tolerance: float) -> Plateau | None:

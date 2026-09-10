@@ -29,8 +29,8 @@ rate rather than only the spread, so a reader sees which way it failed.
 
 from __future__ import annotations
 
-from collections.abc import Sequence
-from dataclasses import dataclass
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass, field
 from statistics import median
 
 import numpy as np
@@ -48,6 +48,7 @@ from channelflow.backtest import (
 )
 from channelflow.bars import Bar
 from channelflow.channels import ChannelFitError, ChannelModel
+from channelflow.experiments import ConfigValue, Field, config_of
 from channelflow.extrema import (
     ConfirmedExtremum,
     DirectionalChangeDetector,
@@ -106,6 +107,18 @@ class DetectorComparison:
         "confirms more and confirms noise. Nothing is ranked -- the choice depends "
         "on what is being built"
     )
+    configs: dict[str, Mapping[str, ConfigValue]] = field(default_factory=dict)
+
+    @property
+    def compared(self) -> Field:
+        """Every threshold mode measured, and no winner.
+
+        `chosen` is `None` because this comparison ranks nothing, and the note
+        beside it says why: the five metrics pull against each other and the
+        choice depends on what is being built. Naming one here would be this
+        module contradicting its own report.
+        """
+        return Field(variants=self.configs, chosen=None)
 
 
 def compare_detectors(
@@ -191,7 +204,18 @@ def compare_detectors(
             expectancy=expectancy,
         )
 
-    return DetectorComparison(entries=entries, bars=len(bars), costs=costs)
+    return DetectorComparison(
+        entries=entries,
+        bars=len(bars),
+        costs=costs,
+        configs={str(method): config_of(method) for method in methods},
+    )
+
+
+EXPERIMENT = "EXP-011"
+
+#: The comparison this module's entry point returns.
+COMPARISON = DetectorComparison
 
 
 def volatility_regime(bars: list[Bar]) -> tuple[str, ...]:

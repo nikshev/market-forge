@@ -24,14 +24,15 @@ has recently been.
 
 from __future__ import annotations
 
-from collections.abc import Sequence
-from dataclasses import dataclass
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass, field
 from enum import StrEnum
 
 import numpy as np
 
 from channelflow.bars import Bar
 from channelflow.channels import ChannelFitError, ChannelModel, ChannelSnapshot, RollingOLSChannel
+from channelflow.experiments import ConfigValue, Field, config_of
 
 #: PRD section 13.8's configurable levels.
 SUPPORTED_COVERAGE: tuple[float, ...] = (0.80, 0.90, 0.95)
@@ -100,6 +101,18 @@ class CalibrationReport:
     horizon: int
     winner: Method | None
     reason: str = ""
+    #: Each method's own identity. An enum member keeps it in a private
+    #: attribute, so `config_of` reads the value rather than the public state --
+    #: without that, all three methods carried one config.
+    configs: dict[str, Mapping[str, ConfigValue]] = field(default_factory=dict)
+
+    @property
+    def compared(self) -> Field:
+        """The methods measured, and the narrowest one that held its promise."""
+        return Field(
+            variants=self.configs,
+            chosen=None if self.winner is None else str(self.winner),
+        )
 
 
 def compare_corridors(
@@ -144,11 +157,20 @@ def compare_corridors(
     winner, reason = pick_winner(results, target_coverage=target_coverage)
     return CalibrationReport(
         results=results,
+        configs={
+            **{str(method): config_of(method) for method in results},
+        },
         target_coverage=target_coverage,
         horizon=horizon,
         winner=winner,
         reason=reason,
     )
+
+
+EXPERIMENT = "EXP-009"
+
+#: The comparison this module's entry point returns.
+COMPARISON = CalibrationReport
 
 
 def pick_winner(

@@ -40,11 +40,12 @@ which.
 
 from __future__ import annotations
 
-from collections.abc import Sequence
-from dataclasses import dataclass, replace
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass, field, replace
 from decimal import Decimal
 from statistics import fmean, median
 
+from channelflow.experiments import ConfigValue, Field
 from channelflow.stops import (
     AnchorKind,
     CostModel,
@@ -263,6 +264,7 @@ class StopComparison:
     improvement_floor: float
     verdict: str
     reason: str
+    configs: dict[str, Mapping[str, ConfigValue]] = field(default_factory=dict)
 
     @property
     def best_simpler_policy(self) -> str | None:
@@ -275,6 +277,18 @@ class StopComparison:
         if not scored:
             return None
         return max(scored, key=lambda pair: (pair[1], pair[0]))[0]
+
+    @property
+    def compared(self) -> Field:
+        """The seven policies replayed over the same entries, and the engine when
+        it earned promotion.
+
+        `chosen` is the engine only on an `edge` verdict. EXP-017 puts the
+        burden on the engine -- it has to beat the best of the six simpler
+        policies by the floor -- so a `no_edge` run chose nothing, and recording
+        the engine as kept there would report a promotion that did not happen.
+        """
+        return Field(variants=self.configs, chosen=ENGINE if self.verdict == EDGE else None)
 
 
 def fingerprint(entries: Sequence[Entry]) -> EntryFingerprint:
@@ -425,6 +439,9 @@ def compare_stop_policies(
         improvement_floor=improvement_floor,
         verdict=verdict,
         reason=reason,
+        configs={
+            name: {"policy": name, "improvement_floor": improvement_floor} for name in policies
+        },
     )
 
 
@@ -578,6 +595,12 @@ def _regimes(
         quiet_expectancy_r=fmean(quiet) if quiet else None,
         busy_expectancy_r=fmean(busy) if busy else None,
     )
+
+
+EXPERIMENT = "EXP-017"
+
+#: The comparison this module's entry point returns.
+COMPARISON = StopComparison
 
 
 def _rule(policies: dict[str, PolicyMetrics], floor: float) -> tuple[str, str]:

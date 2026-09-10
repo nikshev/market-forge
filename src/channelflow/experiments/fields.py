@@ -32,7 +32,8 @@ from __future__ import annotations
 import dataclasses
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Protocol, runtime_checkable
+from enum import Enum
+from typing import Protocol, cast, runtime_checkable
 
 from channelflow.experiments.hashing import ConfigValue, UnhashableConfig, config_hash
 from channelflow.experiments.identity import (
@@ -76,32 +77,99 @@ class Field:
 class Compared(Protocol):
     """A comparison that can say what it compared.
 
+    The member is `compared` rather than `field` because almost every comparison
+    in the research package does `from dataclasses import field`, and a property
+    of that name in the same class body is a collision waiting for the second
+    person to add a defaulted attribute.
+
     Runtime-checkable because the check that keeps this rule enforced tests
     types it has never heard of -- see `tests/unit/research/test_gate_adoption.py`.
     """
 
     @property
-    def field(self) -> Field: ...
+    def compared(self) -> Field: ...
 
 
 def config_of(variant: object) -> dict[str, ConfigValue]:
-    """The configuration of one variant object.
+    """The configuration of one variant object: everything it exposes about itself.
 
-    The class name travels with the fields because two dataclasses can carry
+    The class name travels with the state because two objects can carry
     identical fields and mean different things.
+
+    A dataclass gives its fields, which is every real variant in the research
+    package. Anything else gives its instance attributes, because a variant
+    reaching here is a caller's object satisfying a Protocol -- `ChannelModel`
+    and the rest are protocols, and requiring a dataclass would narrow a working
+    API to serve a bookkeeping rule.
+
+    **The identity is only as good as what the object exposes.** An object
+    holding its configuration in a closure, or on its class rather than its
+    instance, reports a config of its type alone, and two such objects that
+    differ are recorded as the same run. Class attributes are deliberately not
+    scraped: `dir()` would pull in methods, inherited constants, and properties
+    that compute, so the config would depend on the shape of a class hierarchy
+    rather than on the variant. Predictably incomplete beats unpredictably full.
     """
-    if not dataclasses.is_dataclass(variant):
-        raise UnhashableConfig(
-            f"a {type(variant).__name__} carries no readable configuration; recording "
-            "the variant under an empty one would say the run had no configuration, "
-            "which is a different and false claim"
-        )
     if isinstance(variant, type):
         raise UnhashableConfig(
             f"{variant.__name__} is the class, not a variant of it; its configuration "
             "is whatever it was constructed with, and a class has not been constructed"
         )
-    return {"variant": type(variant).__name__, **dataclasses.asdict(variant)}
+    if isinstance(variant, Enum):
+        # An enum member keeps its identity in `_value_`, which the underscore
+        # filter below would drop -- leaving every member of one enum with the
+        # same config. Found by running it: EXP-009's three corridor methods are
+        # an enum, and all three hashed alike.
+        return {"variant": type(variant).__name__, "value": str(variant.value)}
+    # The second half repeats the guard above. `is_dataclass` accepts a class as
+    # readily as an instance, and only the instance form narrows for the type
+    # checker; the runtime answer is already settled.
+    if dataclasses.is_dataclass(variant) and not isinstance(variant, type):
+        return {
+            "variant": type(variant).__name__,
+            **{name: _stable(value) for name, value in dataclasses.asdict(variant).items()},
+        }
+    state = getattr(variant, "__dict__", {})
+    return {
+        "variant": type(variant).__name__,
+        **{name: _stable(value) for name, value in state.items() if not name.startswith("_")},
+    }
+
+
+def _stable(value: object) -> ConfigValue:
+    """A value that means the same thing on the next run.
+
+    A function is not configuration; it is behaviour, and its object identity
+    changes every time a factory builds one. EXP-012's turning methods hold
+    exactly that -- `local_polynomial` returns a `Method` carrying a fresh
+    closure per call -- and keeping the object made two identical runs produce
+    two different configs. An identity that changes between identical runs is
+    not an identity, so the qualified name stands in for it: stable, and still
+    distinguishing between two genuinely different functions.
+
+    `hashing.py` had already written down the shape of this failure -- "repr of
+    an object includes its memory address on some types, which would make a
+    config hash different on every run for a reason nobody would find". This is
+    that, arriving through a dataclass field instead of a repr.
+
+    **The limit**: two closures from one factory share a qualified name. Where
+    that is the only difference between two variants, they are recorded as one
+    run. In EXP-012 it is not -- the `name` field separates them -- but nothing
+    here guarantees the next module is so lucky.
+    """
+    if callable(value):
+        module = getattr(value, "__module__", "?")
+        return f"{module}.{getattr(value, '__qualname__', '?')}"
+    if isinstance(value, dict):
+        return {str(key): _stable(item) for key, item in value.items()}
+    if isinstance(value, tuple):
+        return tuple(_stable(item) for item in value)
+    if isinstance(value, list):
+        return [_stable(item) for item in value]
+    # Anything else goes through as it is, and `config_hash` refuses it if it
+    # has no canonical encoding. Validating twice would put the same rule in two
+    # places, and this is not the one that owns it.
+    return cast(ConfigValue, value)
 
 
 @dataclass(frozen=True)
@@ -134,7 +202,7 @@ def report_comparison(
     it any of the four would break [[REQ-REPRO-001]]'s FR-013, which this
     inherits rather than restates.
     """
-    field = comparison.field
+    field = comparison.compared
 
     # Every identity before any write: a config that cannot be hashed is a
     # refusal about the field, and a registry holding half a field would be

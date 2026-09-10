@@ -70,6 +70,14 @@ ARMS: tuple[AblationArm, ...] = tuple(
 )
 
 
+EXPERIMENT = "EXP-004"
+
+#: The comparison this module's entry point returns. Its own module is
+#: `cumulative`: EXP-004 asks what order flow adds, and the cumulative ablation
+#: is how it asks.
+COMPARISON = IncrementalReport
+
+
 def available_from_registry() -> dict[str, tuple[str, ...]]:
     """Which registered features belong to each of EXP-004's families."""
     return resolve_membership(_MEMBERSHIP)
