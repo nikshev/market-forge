@@ -62,7 +62,7 @@ the distinction is precisely what someone inspecting a stop decision came for.
 
 1. **Given** a position, **When** its levels are read, **Then** entry, initial stop, hard stop and current adaptive stop are separate.
 2. **Given** a position with no hard stop, **When** its levels are read, **Then** the hard stop is absent — not the initial stop, not zero.
-3. **Given** an empty path, **When** risk and excursion are read, **Then** they are unavailable with a reason rather than zero.
+3. **Given** an empty path, **When** excursion is read, **Then** it is unavailable with a reason rather than zero, while open risk still reads from the position's own accepted risk.
 
 ### Edge Cases
 
@@ -84,7 +84,7 @@ the distinction is precisely what someone inspecting a stop decision came for.
 - **FR-006**: Every proposal MUST carry its anchor and reason codes to the view.
 - **FR-007**: Entry, initial stop, hard stop and current adaptive stop MUST be separate levels.
 - **FR-008**: An absent hard stop MUST be absent.
-- **FR-009**: Risk and excursion figures MUST be refused, with a reason, rather than reported as zero over an empty path.
+- **FR-009**: Excursion figures MUST be unavailable, with a reason, when no path has been observed — never reported as zero. Risk figures MUST come from the position's own levels, which are knowable whether or not the policy ever ran.
 - **FR-010**: Existing chart views MUST be unchanged.
 
 ### Key Entities
@@ -99,7 +99,7 @@ the distinction is precisely what someone inspecting a stop decision came for.
 - **SC-002**: A path filtered at an instant contains no proposal after it.
 - **SC-003**: Given a path of holds only, every drawn point states a reason and the path is not empty.
 - **SC-004**: A position with no hard stop reports no hard-stop level.
-- **SC-005**: An empty path yields unavailable risk and excursion figures, each naming why.
+- **SC-005**: An empty path yields unavailable excursion figures naming why, and open risk still reads 1.0R from the accepted initial risk.
 - **SC-006**: Every existing web test passes unchanged.
 
 ## Assumptions
