@@ -60,9 +60,22 @@ class BaseRate:
 
     name: str = "no_skill_base_rate"
     _rate: float = 0.5
+    _fitted: bool = False
+
+    @property
+    def fitted(self) -> bool:
+        """Remembered, because it cannot be inferred.
+
+        An unfitted base rate is 0.5 and a base rate fitted on a balanced target
+        is also 0.5, so no test over `_rate` can tell them apart. This is the
+        case [[REQ-WP-022]]'s protocol member exists for: only the model knows,
+        and here it has to keep the answer rather than derive it.
+        """
+        return self._fitted
 
     def fit(self, x: np.ndarray, y: np.ndarray) -> None:
         self._rate = float(np.mean(y)) if len(y) else 0.5
+        self._fitted = True
 
     def predict_proba(self, x: np.ndarray) -> np.ndarray:
         return np.full(len(x), self._rate, dtype=np.float64)

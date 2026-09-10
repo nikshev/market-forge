@@ -273,6 +273,29 @@ def require_registered(identity: RunIdentity, *, models: ModelRegistry) -> None:
         )
 
 
+def combined_artifact(parts: Sequence[str]) -> str:
+    """One artifact hash over a variant's folds.
+
+    A variant is fitted once per fold, and what a result cites is the variant
+    *as run* -- the whole set. Registering each fold separately would produce
+    artifacts nothing cites and leave the run's own identity ambiguous between
+    them.
+
+    Order matters and is the caller's: fold one and fold two are not
+    interchangeable, and a hash that sorted them would call two different
+    walk-forward orders the same run.
+    """
+    if not parts:
+        raise ModelNotFitted(
+            "a variant with no scored fold has no artifact; combining nothing would "
+            "produce a stable hash that every empty variant would share"
+        )
+    digest = hashlib.sha256()
+    for part in parts:
+        _part(digest, _TAG_STR, part.encode())
+    return digest.hexdigest()
+
+
 def _as_row(entry: Registration) -> dict[str, object]:
     return {
         "event_time_ns": entry.train_start_ns,

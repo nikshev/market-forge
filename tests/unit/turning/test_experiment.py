@@ -12,8 +12,7 @@ from channelflow.turning import (
     run_derivative_experiment,
 )
 from channelflow.turning.direct import FeatureMissing
-
-from .conftest import Certify
+from tests.unit.conftest import Certify
 
 SECOND = 1_000_000_000
 HORIZON_NS = 10 * SECOND

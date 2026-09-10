@@ -185,6 +185,15 @@ class Reported:
     report: Report | None = None
 
 
+def _artifact_for(
+    variant: str, model: ModelArtifact | Mapping[str, ModelArtifact]
+) -> ModelArtifact:
+    """This variant's artifact, from one value or a mapping of them."""
+    if isinstance(model, Mapping):
+        return model.get(variant, ModelAbsence.NO_MODEL)
+    return model
+
+
 def report_comparison(
     comparison: Compared,
     *,
@@ -192,7 +201,7 @@ def report_comparison(
     dataset: str,
     code: CodeVersion,
     registry: Registry,
-    model: ModelArtifact = ModelAbsence.NO_MODEL,
+    model: ModelArtifact | Mapping[str, ModelArtifact] = ModelAbsence.NO_MODEL,
     as_of_ns: int,
 ) -> Reported:
     """Record every variant a comparison tried, and report the one it chose.
@@ -201,6 +210,15 @@ def report_comparison(
     function is pure over its inputs -- no store, no git, no clock -- and giving
     it any of the four would break [[REQ-REPRO-001]]'s FR-013, which this
     inherits rather than restates.
+
+    `model` is one artifact for the whole field, or one per variant. The mapping
+    form arrived with [[REQ-WP-024]] and is a finding about this function rather
+    than about its caller: a comparison that *fits* its variants gives each a
+    different artifact, and a single value would have recorded four models under
+    one hash. [[SPEC-057-experiment-gate-adoption]] said in as many words that if
+    adoption needed the gate to change, that was a finding to record rather than
+    absorb -- so it is recorded here. A variant absent from the mapping falls
+    back to `NO_MODEL`, which is the honest answer for a variant nothing fitted.
     """
     field = comparison.compared
 
@@ -212,7 +230,7 @@ def report_comparison(
             dataset=dataset,
             config=config_hash(dict(config)),
             code=code,
-            model_artifact=model,
+            model_artifact=_artifact_for(name, model),
         )
         for name, config in field.variants.items()
     }

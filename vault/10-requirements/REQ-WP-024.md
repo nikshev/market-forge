@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "§0 item 13, §23.5A, §23.9, §41 rule 11"
 prd_lines: "27, 4065-4074, 4138-4150, 5327"
 phase: null
-status: specified
+status: implemented
 depends_on: [REQ-REPRO-001, REQ-BIAS-011, REQ-WP-022, REQ-WP-023, REQ-US-007]
 tags: []
 ---
@@ -57,7 +57,27 @@ refusal is theoretical.
 
 <!-- trace:begin -->
 - **Specs:** [[SPEC-063-research-run]]
-- **Outcomes:** [[OUT-2026-09-10-requirement-research-run]], [[OUT-2026-09-10-spec-research-run]]
+- **Tests:**
+    - `tests/unit/experiments/test_fields.py::test_each_variant_can_carry_its_own_model_artifact`
+    - `tests/unit/models/test_registry.py::test_a_comparison_handed_predictions_reports_no_artifact`
+    - `tests/unit/models/test_registry.py::test_a_comparison_reports_the_artifact_of_the_model_it_fitted`
+    - `tests/unit/models/test_registry.py::test_a_variant_s_artifact_covers_every_fold_and_their_order`
+    - `tests/unit/models/test_registry.py::test_a_variant_with_no_scored_fold_has_no_artifact`
+    - `tests/unit/pipeline/test_study.py::test_a_dataset_with_nothing_scorable_is_refused`
+    - `tests/unit/pipeline/test_study.py::test_a_dirty_run_is_still_recorded_before_it_is_refused`
+    - `tests/unit/pipeline/test_study.py::test_a_dirty_tree_stops_the_report_and_says_so`
+    - `tests/unit/pipeline/test_study.py::test_a_thin_horizon_says_so_rather_than_showing_a_curve`
+    - `tests/unit/pipeline/test_study.py::test_a_variant_s_artifact_covers_its_folds_rather_than_one_of_them`
+    - `tests/unit/pipeline/test_study.py::test_a_variant_that_lost_is_on_record_too`
+    - `tests/unit/pipeline/test_study.py::test_a_winner_is_published_only_when_something_beat_the_base_rate`
+    - `tests/unit/pipeline/test_study.py::test_an_artifact_only_resolves_against_the_registry_that_holds_it`
+    - `tests/unit/pipeline/test_study.py::test_every_variant_is_registered_and_on_record`
+    - `tests/unit/pipeline/test_study.py::test_reliability_is_reported_at_each_horizon`
+    - `tests/unit/pipeline/test_study.py::test_the_fourth_hash_resolves_instead_of_reading_unrecorded`
+    - `tests/unit/pipeline/test_study.py::test_two_runs_over_one_dataset_produce_equal_identities`
+- **Code:**
+    - `src/channelflow/pipeline/study.py`
+- **Outcomes:** [[OUT-2026-09-10-implement-research-run]], [[OUT-2026-09-10-plan-research-run]], [[OUT-2026-09-10-requirement-research-run]], [[OUT-2026-09-10-spec-research-run]]
 <!-- trace:end -->
 
 ## Notes

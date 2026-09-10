@@ -354,3 +354,32 @@ def test_a_winner_missing_from_the_registry_is_still_refused(
             considered=[("a", identity())],
             registry=registry,
         )
+
+
+@pytest.mark.trace("REQ-WP-024")
+def test_each_variant_can_carry_its_own_model_artifact(
+    registry: Registry, code: CodeVersion
+) -> None:
+    """The finding REQ-WP-024 made about this function.
+
+    A comparison that *fits* its variants gives each a different artifact, and a
+    single value for the whole field would record several models under one hash
+    -- four runs that look like reproductions of each other.
+    """
+    result = report_comparison(
+        Comparison(compared=a_field(chosen=None)),
+        experiment="EXP-008",
+        dataset=dataset(),
+        code=code,
+        registry=registry,
+        model={"a": "a" * 64, "b": "b" * 64},
+        as_of_ns=10,
+    )
+
+    assert result.recorded == 3
+    artifacts = {run.variant: str(run.model_artifact) for run in registry.runs()}
+    assert artifacts["a"] == "a" * 64
+    assert artifacts["b"] == "b" * 64
+    # `c` was in the field and not in the mapping: nothing fitted it, and
+    # `no_model` is the honest answer rather than borrowing a neighbour's hash.
+    assert artifacts["c"] == "no_model"

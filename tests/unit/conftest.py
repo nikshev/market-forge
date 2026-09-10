@@ -1,4 +1,11 @@
-"""Rows for the direct turning-point target (REQ-WP-019, PRD section 23.5A)."""
+"""Rows, folds and a certificate, shared by every package that runs a study.
+
+Moved up from `tests/unit/turning/` when [[REQ-WP-024]] needed the same three
+fixtures from `tests/unit/pipeline/`. Duplicating them would have been two
+fixtures that drift, and a study test asserting against a copy of a dataset the
+turning tests no longer use is a test asserting about its own fixture.
+
+Rows for the direct turning-point target (REQ-WP-019, PRD section 23.5A)."""
 
 from __future__ import annotations
 
