@@ -28,10 +28,12 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass, field
+from decimal import Decimal
 
 from channelflow.api.repositories import FeaturePoint, Market, ScoredSetup
 from channelflow.bars import Bar
 from channelflow.channels import ChannelSnapshot
+from channelflow.domain import Instrument
 from channelflow.lakehouse import ObjectStore, Table
 from channelflow.scoring import SignalScore
 from channelflow.signals import Candidate
@@ -79,8 +81,36 @@ class LakehouseRepository:
     # a commit -- which is right for a test and wrong for a backfill. A backfill
     # uses the table modules directly, where the batch is the unit.
 
-    def add_market(self, *, venue: str, symbol: str, market_type: str) -> None:
-        self._markets.append([{"venue": venue, "symbol": symbol, "market_type": market_type}])
+    def add_market(
+        self,
+        *,
+        venue: str,
+        symbol: str,
+        market_type: str,
+        instrument: Instrument | None = None,
+    ) -> None:
+        if instrument is not None:
+            self._markets.append([features_table.market_row(instrument)])
+            return
+        # No rules yet: the row still has to satisfy the schema, and every rule
+        # column is written empty rather than zeroed. `instrument_from_row`
+        # reads an empty tick size back as "no rules", which is what it is.
+        self._markets.append(
+            [
+                {
+                    "venue": venue,
+                    "symbol": symbol,
+                    "market_type": market_type,
+                    "base_asset": "",
+                    "quote_asset": "",
+                    "tick_size": Decimal(0),
+                    "step_size": Decimal(0),
+                    "min_notional": Decimal(0),
+                    "contract_size": "",
+                    "status": "",
+                }
+            ]
+        )
 
     def add_bar(self, bar: Bar) -> None:
         bars_table.write_bars(self._bars, [bar])
@@ -143,16 +173,27 @@ class LakehouseRepository:
     # --- reading ------------------------------------------------------------
 
     def markets(self, *, venue: str | None = None, market_type: str | None = None) -> list[Market]:
-        return [
-            Market(
-                venue=as_str(row, "venue"),
-                symbol=as_str(row, "symbol"),
+        """One entry per market, latest row wins.
+
+        The plane is append-only, so a market described twice is two rows. The
+        later one is the amendment ([[ADR-056]]'s reasoning on the scores table,
+        which reads the same way), and returning both would make a re-ingest
+        look like a second venue.
+        """
+        latest: dict[tuple[str, str], Market] = {}
+        for row in self._markets.read().to_pylist():
+            if venue is not None and row["venue"] != venue:
+                continue
+            if market_type is not None and row["market_type"] != market_type:
+                continue
+            key = (as_str(row, "venue"), as_str(row, "symbol"))
+            latest[key] = Market(
+                venue=key[0],
+                symbol=key[1],
                 market_type=as_str(row, "market_type"),
+                instrument=features_table.instrument_from_row(row),
             )
-            for row in self._markets.read().to_pylist()
-            if (venue is None or row["venue"] == venue)
-            and (market_type is None or row["market_type"] == market_type)
-        ]
+        return list(latest.values())
 
     def bars(
         self,

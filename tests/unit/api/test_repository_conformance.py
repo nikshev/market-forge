@@ -23,6 +23,7 @@ from channelflow.alerting import signal_id_for
 from channelflow.api import InMemoryRepository, LakehouseRepository
 from channelflow.bars import Bar
 from channelflow.channels import ChannelQuality, ChannelSnapshot
+from channelflow.domain import Instrument
 from channelflow.lakehouse import InMemoryObjectStore
 from channelflow.scoring import Group, GroupContribution, SignalScore
 from channelflow.signals import Candidate, CandidateState, Transition
@@ -452,3 +453,114 @@ def test_the_latest_score_is_the_one_returned(repo: Repo) -> None:
     # group: a reader that took every contribution for the market would report a
     # score that does not add up.
     assert read.score == later
+
+
+# --- an instrument's trading rules (REQ-WP-021) ------------------------------
+
+
+def an_instrument(symbol: str = "BTCUSDT", **overrides: object) -> Instrument:
+    fields: dict[str, object] = {
+        "venue": "binance",
+        "symbol": symbol,
+        "market_type": "perp",
+        "base_asset": symbol[:3],
+        "quote_asset": "USDT",
+        "tick_size": Decimal("0.10"),
+        "step_size": Decimal("0.001"),
+        "min_notional": Decimal("5"),
+        "contract_size": Decimal("1"),
+        "status": "TRADING",
+    }
+    fields.update(overrides)
+    return Instrument(**fields)  # type: ignore[arg-type]
+
+
+@pytest.mark.trace("REQ-WP-021")
+def test_a_market_carries_the_rules_it_was_stored_with(repo: Repo) -> None:
+    instrument = an_instrument()
+    repo.add_market(venue="binance", symbol="BTCUSDT", market_type="perp", instrument=instrument)
+
+    (market,) = repo.markets()
+
+    assert market.instrument == instrument
+
+
+@pytest.mark.trace("REQ-WP-021")
+def test_every_decimal_survives_the_round_trip_exactly(repo: Repo) -> None:
+    """`0.10` is the venue's tick size and `float("0.10")` is not. A rule that
+    came back as `0.1000000000000000055511151231257827` would round a price to a
+    tick the venue does not have."""
+    instrument = an_instrument(tick_size=Decimal("0.010"), min_notional=Decimal("5.25"))
+    repo.add_market(venue="binance", symbol="BTCUSDT", market_type="perp", instrument=instrument)
+
+    (market,) = repo.markets()
+
+    assert market.instrument is not None
+    assert market.instrument.tick_size == Decimal("0.010")
+    assert market.instrument.min_notional == Decimal("5.25")
+
+
+@pytest.mark.trace("REQ-WP-021")
+def test_a_market_stored_without_rules_has_them_absent(repo: Repo) -> None:
+    """Absent, not zeroed. An unknown tick size and a tick size of zero must
+    never read alike -- the second is a rule, and it is one nothing could
+    satisfy."""
+    repo.add_market(venue="binance", symbol="BTCUSDT", market_type="perp")
+
+    (market,) = repo.markets()
+
+    assert market.instrument is None
+
+
+@pytest.mark.trace("REQ-WP-021")
+def test_a_market_described_twice_appears_once(repo: Repo) -> None:
+    """A re-ingest is one market described twice, not two markets. Returning
+    both would make a routine refresh look like a second venue."""
+    repo.add_market(
+        venue="binance", symbol="BTCUSDT", market_type="perp", instrument=an_instrument()
+    )
+    repo.add_market(
+        venue="binance",
+        symbol="BTCUSDT",
+        market_type="perp",
+        instrument=an_instrument(tick_size=Decimal("0.50")),
+    )
+
+    markets = repo.markets()
+
+    assert len(markets) == 1
+    assert markets[0].instrument is not None
+    assert markets[0].instrument.tick_size == Decimal("0.50")
+
+
+@pytest.mark.trace("REQ-WP-021")
+def test_one_venue_s_rules_are_not_returned_for_another(repo: Repo) -> None:
+    repo.add_market(
+        venue="binance", symbol="BTCUSDT", market_type="perp", instrument=an_instrument()
+    )
+    repo.add_market(
+        venue="bybit",
+        symbol="BTCUSDT",
+        market_type="perp",
+        instrument=an_instrument(venue="bybit", tick_size=Decimal("0.25")),
+    )
+
+    (market,) = repo.markets(venue="bybit")
+
+    assert market.instrument is not None
+    assert market.instrument.tick_size == Decimal("0.25")
+
+
+@pytest.mark.trace("REQ-WP-021")
+def test_a_spot_market_has_no_contract_size(repo: Repo) -> None:
+    repo.add_market(
+        venue="binance",
+        symbol="BTCUSDT",
+        market_type="spot",
+        instrument=an_instrument(market_type="spot", contract_size=None),
+    )
+
+    (market,) = repo.markets()
+
+    assert market.instrument is not None
+    assert market.instrument.contract_size is None
