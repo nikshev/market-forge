@@ -25,6 +25,7 @@ from channelflow.api.comparison import ChannelComparison
 from channelflow.api.repositories import FeaturePoint, Market, ScoredSetup
 from channelflow.bars import Bar
 from channelflow.channels import ChannelSnapshot
+from channelflow.extrema.models import ConfirmedExtremum, ExtremumCandidate
 from channelflow.scoring import Explanation, Factor
 from channelflow.signals import Candidate
 
@@ -293,6 +294,76 @@ class FeaturePointOut(BaseModel):
 
 class MarketsResponse(BaseModel):
     markets: tuple[MarketOut, ...]
+
+
+class ConfirmedExtremumOut(BaseModel):
+    """A turn, when it happened, and when it became knowable.
+
+    Both instants travel, because they mean different things and a client that
+    received only one would have to guess which ([[REQ-WP-028]]).
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    extremum_id: str
+    extremum_type: str
+    #: Where the marker goes.
+    extremum_time_ns: int
+    #: The earliest instant this may be shown at all.
+    known_at_ns: int
+    price: str
+    confirmation_lag_bars: int
+    prominence_bps: float | None
+    source_candidate_id: str | None
+
+    @classmethod
+    def of(cls, extremum: ConfirmedExtremum) -> ConfirmedExtremumOut:
+        return cls(
+            extremum_id=str(extremum.extremum_id),
+            extremum_type=extremum.extremum_type,
+            extremum_time_ns=extremum.extremum_time_ns,
+            known_at_ns=extremum.known_at_ns,
+            # A string, like every other price on the wire: a Decimal through a
+            # JSON float is a different price.
+            price=str(extremum.price),
+            confirmation_lag_bars=extremum.confirmation_lag_bars,
+            prominence_bps=extremum.prominence_bps,
+            source_candidate_id=(
+                None if extremum.source_candidate_id is None else str(extremum.source_candidate_id)
+            ),
+        )
+
+
+class ExtremumCandidateOut(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    candidate_id: str
+    candidate_type: str
+    candidate_time_ns: int
+    observed_at_ns: int
+    price: str
+    structural_score: float
+
+    @classmethod
+    def of(cls, candidate: ExtremumCandidate) -> ExtremumCandidateOut:
+        return cls(
+            candidate_id=str(candidate.candidate_id),
+            candidate_type=candidate.candidate_type,
+            candidate_time_ns=candidate.candidate_time_ns,
+            observed_at_ns=candidate.observed_at_ns,
+            price=str(candidate.price),
+            structural_score=candidate.structural_score,
+        )
+
+
+class ExtremaResponse(BaseModel):
+    """Kept apart on the wire, for the reason the repository keeps them apart:
+    a candidate and a confirmation are different claims."""
+
+    model_config = ConfigDict(frozen=True)
+
+    confirmed: tuple[ConfirmedExtremumOut, ...]
+    candidates: tuple[ExtremumCandidateOut, ...]
 
 
 class BarsResponse(BaseModel):

@@ -30,6 +30,7 @@ from channelflow.alerting import signal_id_for
 from channelflow.bars import Bar
 from channelflow.channels import ChannelSnapshot
 from channelflow.domain import Instrument
+from channelflow.extrema.models import ConfirmedExtremum, ExtremumCandidate
 from channelflow.scoring import SignalScore
 from channelflow.signals import Candidate
 
@@ -43,6 +44,19 @@ class Market:
     #: ingested rules for. Absent rather than a zeroed instrument: an unknown
     #: tick size and a tick size of zero must never read alike.
     instrument: Instrument | None = None
+
+
+@dataclass(frozen=True)
+class Extrema:
+    """What the chart may draw about turns, as of an instant.
+
+    Two lists rather than one: a candidate and a confirmation are different
+    claims, and a caller that had to tell them apart by a flag would eventually
+    forget to ([[REQ-WP-028]]).
+    """
+
+    confirmed: list[ConfirmedExtremum]
+    candidates: list[ExtremumCandidate]
 
 
 @dataclass(frozen=True)
@@ -74,6 +88,14 @@ class Repository(Protocol):
     """What the API needs to be able to read."""
 
     def markets(self, *, venue: str | None, market_type: str | None) -> list[Market]: ...
+
+    def extrema(
+        self,
+        *,
+        instrument_id: str,
+        timeframe_ns: int,
+        as_of_ns: int | None,
+    ) -> Extrema: ...
 
     def bars(
         self,
@@ -119,6 +141,8 @@ class InMemoryRepository:
     """
 
     _markets: dict[tuple[str, str], Market] = field(default_factory=dict)
+    _confirmed: list[ConfirmedExtremum] = field(default_factory=list)
+    _candidates: list[ExtremumCandidate] = field(default_factory=list)
     _bars: list[Bar] = field(default_factory=list)
     _snapshots: dict[tuple[str, str, int], list[ChannelSnapshot]] = field(default_factory=dict)
     _features: dict[tuple[str, str, int], list[FeaturePoint]] = field(default_factory=dict)
@@ -145,6 +169,12 @@ class InMemoryRepository:
 
     def add_bar(self, bar: Bar) -> None:
         self._bars.append(bar)
+
+    def add_confirmed_extremum(self, extremum: ConfirmedExtremum) -> None:
+        self._confirmed.append(extremum)
+
+    def add_extremum_candidate(self, candidate: ExtremumCandidate) -> None:
+        self._candidates.append(candidate)
 
     def add_channel_snapshot(
         self, *, venue: str, symbol: str, timeframe_ns: int, snapshot: ChannelSnapshot
@@ -189,6 +219,39 @@ class InMemoryRepository:
         )
 
     # --- reading ---
+
+    def extrema(
+        self,
+        *,
+        instrument_id: str,
+        timeframe_ns: int,
+        as_of_ns: int | None = None,
+    ) -> Extrema:
+        """Turns knowable as of `as_of_ns`, in the shape the chart draws them.
+
+        `as_of_ns` filters on when each became knowable -- `known_at_ns` for a
+        confirmation, `observed_at_ns` for a candidate -- never on when the turn
+        itself happened. That is PRD section 45's Phase 1A acceptance, and it is
+        a knowledge filter rather than a window.
+        """
+        confirmed = [
+            e
+            for e in self._confirmed
+            if e.instrument_id == instrument_id
+            and e.timeframe_ns == timeframe_ns
+            and (as_of_ns is None or e.known_at_ns <= as_of_ns)
+        ]
+        candidates = [
+            c
+            for c in self._candidates
+            if c.instrument_id == instrument_id
+            and c.timeframe_ns == timeframe_ns
+            and (as_of_ns is None or c.observed_at_ns <= as_of_ns)
+        ]
+        return Extrema(
+            confirmed=sorted(confirmed, key=lambda e: e.extremum_time_ns),
+            candidates=sorted(candidates, key=lambda c: c.candidate_time_ns),
+        )
 
     def markets(self, *, venue: str | None = None, market_type: str | None = None) -> list[Market]:
         return [

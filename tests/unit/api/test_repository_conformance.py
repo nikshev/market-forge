@@ -24,6 +24,7 @@ from channelflow.api import InMemoryRepository, LakehouseRepository
 from channelflow.bars import Bar
 from channelflow.channels import ChannelQuality, ChannelSnapshot
 from channelflow.domain import Instrument
+from channelflow.extrema.models import ConfirmedExtremum, ExtremumCandidate
 from channelflow.lakehouse import InMemoryObjectStore
 from channelflow.scoring import Group, GroupContribution, SignalScore
 from channelflow.signals import Candidate, CandidateState, Transition
@@ -564,3 +565,126 @@ def test_a_spot_market_has_no_contract_size(repo: Repo) -> None:
 
     assert market.instrument is not None
     assert market.instrument.contract_size is None
+
+
+# --- extrema, and when they may be seen (REQ-WP-028) -------------------------
+
+
+def a_turn(
+    *, turn_at: int, known_at: int, instrument: str = "binance:BTCUSDT"
+) -> ConfirmedExtremum:
+    return ConfirmedExtremum(
+        extremum_id=uuid.uuid5(uuid.NAMESPACE_OID, f"{instrument}:{turn_at}:{known_at}"),
+        instrument_id=instrument,
+        timeframe_ns=MINUTE_NS,
+        extremum_type="HIGH",
+        extremum_time_ns=BASE_NS + turn_at * MINUTE_NS,
+        known_at_ns=BASE_NS + known_at * MINUTE_NS,
+        price=Decimal("112000.10"),
+        confirmation_method="directional_change",
+        confirmation_lag_bars=known_at - turn_at,
+        reversal_bps=45.0,
+        threshold_bps=30.0,
+        prominence_bps=None,
+        prominence_atr=None,
+        channel_class=None,
+        source_candidate_id=None,
+    )
+
+
+def a_candidate(*, at: int, observed: int) -> ExtremumCandidate:
+    return ExtremumCandidate(
+        candidate_id=uuid.uuid5(uuid.NAMESPACE_OID, f"cand:{at}"),
+        instrument_id="binance:BTCUSDT",
+        venue_scope="binance",
+        timeframe_ns=MINUTE_NS,
+        candidate_type="LOW",
+        candidate_time_ns=BASE_NS + at * MINUTE_NS,
+        observed_at_ns=BASE_NS + observed * MINUTE_NS,
+        price=Decimal("111000.00"),
+        method="directional_change",
+        structural_score=0.4,
+        channel_position=None,
+        data_quality="ok",
+    )
+
+
+@pytest.mark.trace("REQ-WP-028")
+def test_a_turn_is_not_visible_before_it_was_confirmed(repo: Repo) -> None:
+    """PRD section 45's Phase 1A acceptance, asserted of both implementations.
+
+    The turn happened at minute 10 and was confirmed at minute 14. Returning it
+    as of minute 13 would be the chart claiming the system knew about a turn
+    before it did.
+    """
+    repo.add_confirmed_extremum(a_turn(turn_at=10, known_at=14))
+
+    before = repo.extrema(
+        instrument_id="binance:BTCUSDT",
+        timeframe_ns=MINUTE_NS,
+        as_of_ns=BASE_NS + 13 * MINUTE_NS,
+    )
+    after = repo.extrema(
+        instrument_id="binance:BTCUSDT",
+        timeframe_ns=MINUTE_NS,
+        as_of_ns=BASE_NS + 14 * MINUTE_NS,
+    )
+
+    assert before.confirmed == []
+    assert len(after.confirmed) == 1
+
+
+@pytest.mark.trace("REQ-WP-028")
+def test_a_visible_turn_still_reports_where_it_happened(repo: Repo) -> None:
+    """The other half of the pair. Drawing it at `known_at` never appears too
+    early and is also not where the turn was."""
+    repo.add_confirmed_extremum(a_turn(turn_at=10, known_at=14))
+
+    (found,) = repo.extrema(
+        instrument_id="binance:BTCUSDT", timeframe_ns=MINUTE_NS, as_of_ns=None
+    ).confirmed
+
+    assert found.extremum_time_ns == BASE_NS + 10 * MINUTE_NS
+    assert found.known_at_ns == BASE_NS + 14 * MINUTE_NS
+
+
+@pytest.mark.trace("REQ-WP-028")
+def test_a_candidate_obeys_the_same_rule(repo: Repo) -> None:
+    repo.add_extremum_candidate(a_candidate(at=10, observed=12))
+
+    before = repo.extrema(
+        instrument_id="binance:BTCUSDT",
+        timeframe_ns=MINUTE_NS,
+        as_of_ns=BASE_NS + 11 * MINUTE_NS,
+    )
+    after = repo.extrema(
+        instrument_id="binance:BTCUSDT",
+        timeframe_ns=MINUTE_NS,
+        as_of_ns=BASE_NS + 12 * MINUTE_NS,
+    )
+
+    assert before.candidates == []
+    assert len(after.candidates) == 1
+
+
+@pytest.mark.trace("REQ-WP-028")
+def test_candidates_and_confirmations_are_kept_apart(repo: Repo) -> None:
+    """Two lists rather than one with a flag: a caller that had to tell them
+    apart by inspecting a field would eventually forget to."""
+    repo.add_confirmed_extremum(a_turn(turn_at=10, known_at=14))
+    repo.add_extremum_candidate(a_candidate(at=20, observed=21))
+
+    found = repo.extrema(instrument_id="binance:BTCUSDT", timeframe_ns=MINUTE_NS, as_of_ns=None)
+
+    assert len(found.confirmed) == 1
+    assert len(found.candidates) == 1
+
+
+@pytest.mark.trace("REQ-WP-028")
+def test_one_instrument_does_not_see_another_s_turns(repo: Repo) -> None:
+    repo.add_confirmed_extremum(a_turn(turn_at=10, known_at=14))
+    repo.add_confirmed_extremum(a_turn(turn_at=10, known_at=14, instrument="binance:ETHUSDT"))
+
+    found = repo.extrema(instrument_id="binance:ETHUSDT", timeframe_ns=MINUTE_NS, as_of_ns=None)
+
+    assert [e.instrument_id for e in found.confirmed] == ["binance:ETHUSDT"]

@@ -10,12 +10,20 @@
 // so a component test here would assert nothing about the picture -- which is
 // why the split exists.
 
-import { createChart, type IChartApi } from "lightweight-charts";
+import { createChart, type IChartApi, type Time } from "lightweight-charts";
 import { useEffect, useRef } from "react";
 
+import { extremumMarkers } from "./extrema";
 import { buildSeries, markerFor, visibleRangeFor } from "./series";
-import { DEFAULT_OVERLAYS } from "./types";
-import type { BarOut, ChannelOut, Overlay, SignalOut } from "./types";
+import { AS_SEEN_THEN, DEFAULT_OVERLAYS } from "./types";
+import type {
+  BarOut,
+  ChannelMode,
+  ChannelOut,
+  ExtremaResponse,
+  Overlay,
+  SignalOut,
+} from "./types";
 import { profileBars } from "./volumeProfile";
 import type { Profile } from "./volumeProfile";
 
@@ -36,6 +44,8 @@ export function Chart({
   profile = null,
   overlays = DEFAULT_OVERLAYS,
   focusAtNs = null,
+  extrema = { confirmed: [], candidates: [] },
+  mode = AS_SEEN_THEN,
 }: {
   bars: BarOut[];
   channel: ChannelOut | null;
@@ -43,6 +53,9 @@ export function Chart({
   profile?: Profile | null;
   overlays?: readonly Overlay[];
   focusAtNs?: number | null;
+  extrema?: ExtremaResponse;
+  /** Which mode the chart is in. The extremum filter is AS-SEEN-THEN's only. */
+  mode?: ChannelMode;
 }): JSX.Element {
   const container = useRef<HTMLDivElement>(null);
   const chart = useRef<IChartApi | null>(null);
@@ -75,8 +88,28 @@ export function Chart({
 
     const candlestick = instance.addCandlestickSeries();
     candlestick.setData(on.has("candles") ? candles : []);
-    if (signal !== null && on.has("signal_marker")) {
-      candlestick.setMarkers([markerFor(signal, channel)]);
+
+    // One `setMarkers` call: lightweight-charts replaces the whole set, so a
+    // second call for the extrema would silently drop the signal's marker.
+    const marks = [
+      ...(signal !== null && on.has("signal_marker") ? [markerFor(signal, channel)] : []),
+      ...extremumMarkers({
+        confirmed: extrema.confirmed,
+        candidates: extrema.candidates,
+        mode,
+        atNs: focusAtNs ?? bars.at(-1)?.close_time_ns ?? 0,
+      }).map((mark) => ({
+        time: (mark.at_ns / 1_000_000_000) as Time,
+        position: mark.type === "HIGH" ? ("aboveBar" as const) : ("belowBar" as const),
+        // A confirmation is filled and a candidate is hollow: the same glyph
+        // in two weights, so a reader sees one alphabet rather than two.
+        shape: mark.type === "HIGH" ? ("arrowDown" as const) : ("arrowUp" as const),
+        color: mark.kind === "confirmed" ? "#2f9e44" : "#adb5bd",
+        text: mark.kind === "confirmed" ? "" : "?",
+      })),
+    ];
+    if (marks.length > 0) {
+      candlestick.setMarkers(marks);
     }
 
     for (const [name, points] of Object.entries(channelLines)) {
@@ -138,7 +171,7 @@ export function Chart({
       // REQ-US-002: "opens the chart at exactly the signal's timestamp".
       instance.timeScale().setVisibleLogicalRange(range);
     }
-  }, [bars, channel, signal, profile, overlays, focusAtNs]);
+  }, [bars, channel, signal, profile, overlays, focusAtNs, extrema, mode]);
 
   return <div ref={container} data-testid="chart" />;
 }
