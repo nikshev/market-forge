@@ -1,6 +1,7 @@
 """A replay that writes what it produced to the canonical plane.
 
 # @trace: REQ-PIPE-001
+# @trace: REQ-WP-029
 
 [[REQ-STORE-001]] built the plane, [[REQ-TBL-001]] and [[REQ-STORE-002]] put
 seven tables on it, and every one of them was empty. Each of those requirements
@@ -36,12 +37,21 @@ from channelflow.backtest import BacktestReport, BacktestRunner
 from channelflow.bars import Bar, BarBuilder
 from channelflow.bus import EventBus
 from channelflow.domain import TradeEvent
-from channelflow.events import BarFinalized, CandidateUpdated, ChannelFitted
+from channelflow.events import (
+    BarFinalized,
+    CandidateUpdated,
+    ChannelFitted,
+    ExtremumConfirmed,
+    ExtremumObserved,
+)
 from channelflow.experiments import dataset_reference
+from channelflow.extrema import DirectionalChangeDetector
+from channelflow.extrema.models import ConfirmedExtremum, ExtremumCandidate
 from channelflow.lakehouse import ObjectStore, Table
 from channelflow.signals import Candidate
 from channelflow.tables import bars as bars_table
 from channelflow.tables import channels as channels_table
+from channelflow.tables import extrema as extrema_table
 from channelflow.tables import signals as signals_table
 
 
@@ -81,6 +91,9 @@ class Recording:
     bars: int
     channel_snapshots: int
     signals: int
+    #: Turns detected over the replayed bars and written. [[REQ-WP-029]].
+    confirmed_extrema: int = 0
+    extremum_candidates: int = 0
     #: Rows the tables already covered, and which this replay therefore did not
     #: write. Counted rather than silent, for the reason `BarBuilder` counts its
     #: late trades: a re-run over overlapping input is a no-op and should look
@@ -204,6 +217,60 @@ class SignalRecorder:
         return None if current is None else current.content_hash
 
 
+@dataclass
+class ExtremumRecorder:
+    """Collects what the detector emitted and writes each kind in one batch.
+
+    Suitable as a subscriber to `ExtremumConfirmed` and `ExtremumObserved`. It
+    buffers for the reason every other recorder here does: every append is a
+    commit, and a commit per turn would make the chain as long as the series.
+
+    The watermarks are on **knowledge** -- `known_at_ns` and `observed_at_ns` --
+    because that is what the tables are keyed by ([[REQ-WP-028]]) and what
+    [[ADR-056]] asks a writer on an append-only plane to read before it writes.
+    """
+
+    confirmed_table: Table
+    candidates_table: Table
+    after_confirmed_ns: int | None = None
+    after_observed_ns: int | None = None
+    skipped: int = 0
+    _confirmed: list[ConfirmedExtremum] = field(default_factory=list)
+    _candidates: list[ExtremumCandidate] = field(default_factory=list)
+
+    def on_confirmed(self, event: ExtremumConfirmed) -> None:
+        if (
+            self.after_confirmed_ns is not None
+            and event.extremum.known_at_ns <= self.after_confirmed_ns
+        ):
+            self.skipped += 1
+            return
+        self._confirmed.append(event.extremum)
+
+    def on_observed(self, event: ExtremumObserved) -> None:
+        if (
+            self.after_observed_ns is not None
+            and event.candidate.observed_at_ns <= self.after_observed_ns
+        ):
+            self.skipped += 1
+            return
+        self._candidates.append(event.candidate)
+
+    @property
+    def pending_confirmed(self) -> int:
+        return len(self._confirmed)
+
+    @property
+    def pending_candidates(self) -> int:
+        return len(self._candidates)
+
+    def flush(self) -> None:
+        extrema_table.write_confirmed(self.confirmed_table, self._confirmed)
+        extrema_table.write_candidates(self.candidates_table, self._candidates)
+        self._confirmed.clear()
+        self._candidates.clear()
+
+
 def record_bars(
     trades: Sequence[TradeEvent],
     *,
@@ -324,6 +391,28 @@ def record_replay(
     bus.subscribe(ChannelFitted, channel_recorder)
     bus.subscribe(CandidateUpdated, signal_recorder)
 
+    instrument_id = f"{venue}:{symbol}"
+    confirmed_table = extrema_table.confirmed_table_for(store)
+    candidates_table = extrema_table.candidates_table_for(store)
+    extremum_recorder = ExtremumRecorder(
+        confirmed_table=confirmed_table,
+        candidates_table=candidates_table,
+        after_confirmed_ns=watermark(
+            confirmed_table,
+            "known_at_ns",
+            instrument_id=instrument_id,
+            timeframe_ns=timeframe_ns,
+        ),
+        after_observed_ns=watermark(
+            candidates_table,
+            "observed_at_ns",
+            instrument_id=instrument_id,
+            timeframe_ns=timeframe_ns,
+        ),
+    )
+    bus.subscribe(ExtremumConfirmed, extremum_recorder.on_confirmed)
+    bus.subscribe(ExtremumObserved, extremum_recorder.on_observed)
+
     base = runner or BacktestRunner()
     # A copy with the observers attached: the caller's runner is theirs, and a
     # runner that came back carrying sinks would write again on its next use.
@@ -336,10 +425,20 @@ def record_replay(
     )
     report = observed.run(list(bars))
 
+    # The detector's own pass over the same bars. The runner owns its loop and
+    # offers no per-bar hook, and adding one to feed a detector would change a
+    # component with nothing to do with extrema. Principle VII is satisfied by
+    # the *events* being identical to a live process's, not by the iteration
+    # being shared.
+    _detect(bars, bus=bus, instrument_id=instrument_id, venue=venue, timeframe_ns=timeframe_ns)
+
     snapshots_written = channel_recorder.pending
     signals_written = signal_recorder.pending
+    confirmed_written = extremum_recorder.pending_confirmed
+    candidates_written = extremum_recorder.pending_candidates
     channel_recorder.flush()
     signal_recorder.flush()
+    extremum_recorder.flush()
 
     # Rows this replay is answerable for, written and skipped together. The
     # bars table is not among them at any count: this function reads it and
@@ -352,15 +451,56 @@ def record_replay(
             bars=0,
             snapshots=snapshots_written,
             signals=signals_written,
-            skipped=channel_recorder.skipped + signal_recorder.skipped,
+            confirmed_extrema=confirmed_written,
+            extremum_candidates=candidates_written,
+            skipped=channel_recorder.skipped + signal_recorder.skipped + extremum_recorder.skipped,
             accounted={
                 channels_table.TABLE_NAME: (channels, channel_rows),
                 signals_table.TABLE_NAME: (signal_cores, signal_rows),
                 signals_table.TRANSITIONS_TABLE_NAME: (signal_transitions, signal_rows),
+                extrema_table.CONFIRMED_TABLE_NAME: (
+                    confirmed_table,
+                    confirmed_written + extremum_recorder.skipped,
+                ),
+                extrema_table.CANDIDATES_TABLE_NAME: (
+                    candidates_table,
+                    candidates_written + extremum_recorder.skipped,
+                ),
             },
         ),
         report,
     )
+
+
+def _detect(
+    bars: Sequence[Bar],
+    *,
+    bus: EventBus,
+    instrument_id: str,
+    venue: str,
+    timeframe_ns: int,
+) -> None:
+    """Run the detector and publish what it emits, bar by bar.
+
+    Per bar rather than in a batch at the end: a live process attaching the same
+    subscribers has to see the same order, and a burst would be a second path
+    that only a replay takes.
+
+    The detector accumulates its candidates on a list of its own rather than
+    calling back, so the new ones are noticed by their count. That reads a little
+    awkwardly and is the honest shape: changing the detector to emit them is
+    [[REQ-WP-019]]'s decision to make, not this caller's.
+    """
+    del timeframe_ns  # the detector reads it from the bars it is given
+    detector = DirectionalChangeDetector(instrument_id=instrument_id, venue_scope=venue)
+    published = 0
+    for bar in bars:
+        confirmation = detector.on_bar(bar)
+        while published < len(detector.candidates):
+            bus.publish(ExtremumObserved(detector.candidates[published]))
+            published += 1
+        if confirmation is not None:
+            bus.publish(ExtremumConfirmed(confirmation))
 
 
 def _recording(
@@ -368,6 +508,8 @@ def _recording(
     bars: int,
     snapshots: int,
     signals: int,
+    confirmed_extrema: int = 0,
+    extremum_candidates: int = 0,
     accounted: dict[str, tuple[Table, int]],
     skipped: int = 0,
 ) -> Recording:
@@ -404,6 +546,8 @@ def _recording(
         bars=bars,
         channel_snapshots=snapshots,
         signals=signals,
+        confirmed_extrema=confirmed_extrema,
+        extremum_candidates=extremum_candidates,
         skipped=skipped,
         tables=referenced,
     )
