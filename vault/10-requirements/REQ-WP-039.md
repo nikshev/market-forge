@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "§6.4, §7"
 prd_lines: "440-450, 600-642, 786"
 phase: 8
-status: draft
+status: specified
 depends_on: [REQ-STORE-001, REQ-WP-037]
 tags: []
 ---
