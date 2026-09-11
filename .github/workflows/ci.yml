@@ -88,6 +88,32 @@ jobs:
             sleep 1
           done
 
+      - name: Start the event backbone
+        run: |
+          # Redpanda as a step rather than a job service, for the same reason
+          # MinIO is: a job service runs the image's default entrypoint with no
+          # way to pass a command, and this needs `redpanda start` with its
+          # addresses. Tag matches docker-compose.yml (ADR-063).
+          docker run -d --name redpanda \
+            -p 19092:9092 \
+            redpandadata/redpanda:v25.2.5 \
+            redpanda start --smp=1 --memory=512M --overprovisioned \
+              --node-id=0 --check=false \
+              --kafka-addr=PLAINTEXT://0.0.0.0:9092 \
+              --advertise-kafka-addr=PLAINTEXT://127.0.0.1:19092
+          # Wait for the cluster to report healthy rather than for the port to
+          # open: the port accepts connections before the cluster will serve,
+          # and reporting success into that gap is the race a test would lose.
+          for i in $(seq 1 40); do
+            if docker exec redpanda rpk cluster health 2>/dev/null | grep -q 'Healthy:.*true'; then
+              echo "event backbone ready after ${i}s"; break
+            fi
+            if [ "$i" = "40" ]; then
+              echo "event backbone did not become ready in 40s"; docker logs redpanda; exit 1
+            fi
+            sleep 1
+          done
+
       - name: Create the object store bucket
         run: |
           # What `make up` does locally via the minio_init one-shot container.

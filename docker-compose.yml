@@ -71,6 +71,42 @@ services:
       echo 'bucket ready: '$${MINIO_BUCKET}
       "
 
+  # The Kafka-protocol event backbone (ADR-063). Redpanda rather than Apache
+  # Kafka because it is a single binary with no JVM and no ZooKeeper, which
+  # matters for a stack a developer runs on a laptop -- and because the choice
+  # is reversible: it speaks the Kafka protocol, so swapping it for Kafka
+  # changes this file and a bootstrap address, not a line of application code.
+  #
+  # Community Edition is BSL, converting to Apache 2.0 four years after each
+  # merge. Self-hosted production is permitted; reselling it as a service is
+  # not, which is not something this project does.
+  redpanda:
+    image: redpandadata/redpanda:v25.2.5
+    command:
+      - redpanda
+      - start
+      - --smp=1
+      - --memory=512M
+      - --overprovisioned
+      - --node-id=0
+      - --check=false
+      - --kafka-addr=PLAINTEXT://0.0.0.0:29092,OUTSIDE://0.0.0.0:9092
+      - --advertise-kafka-addr=PLAINTEXT://redpanda:29092,OUTSIDE://127.0.0.1:${REDPANDA_PORT}
+    ports:
+      - "${REDPANDA_PORT}:9092"
+    volumes:
+      - redpanda_data:/var/lib/redpanda/data
+    healthcheck:
+      # `cluster health` rather than a TCP probe, for the reason Postgres uses
+      # pg_isready: the port opens before the cluster will serve, and reporting
+      # success into that gap is a race a test would lose.
+      test: ["CMD-SHELL", "rpk cluster health | grep -q 'Healthy:.*true'"]
+      interval: 2s
+      timeout: 5s
+      retries: 20
+      start_period: 5s
+
 volumes:
   postgres_data:
   minio_data:
+  redpanda_data:

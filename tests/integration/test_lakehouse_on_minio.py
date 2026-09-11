@@ -33,7 +33,12 @@ def _env() -> dict[str, str]:
     not running" rather than "no configuration".
     """
     values: dict[str, str] = {}
-    for name in (".env", ".env.example"):
+    # `.env.example` first as the documented defaults, `.env` over it as the
+    # developer's overrides. An earlier version read whichever existed and
+    # stopped, so a key added to the example -- a new service, say -- was
+    # missing on every checkout whose `.env` predated it, and the failure said
+    # `KeyError` rather than "copy the new line".
+    for name in (".env.example", ".env"):
         path = Path(__file__).resolve().parents[2] / name
         if not path.is_file():
             continue
@@ -42,8 +47,7 @@ def _env() -> dict[str, str]:
             if not line or line.startswith("#") or "=" not in line:
                 continue
             key, _, value = line.partition("=")
-            values.setdefault(key.strip(), value.strip())
-        break
+            values[key.strip()] = value.strip()
     values.update({k: v for k, v in os.environ.items() if k in values})
     return values
 
