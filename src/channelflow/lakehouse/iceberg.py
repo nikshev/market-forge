@@ -2,6 +2,7 @@
 
 # @trace: REQ-WP-039
 # @trace: REQ-STORE-001
+# @trace: REQ-WP-041
 
 [[ADR-002]] chose "Parquet on S3-compatible object storage with Iceberg table
 semantics"; `table.py` implements those semantics by hand and [[ADR-060]]
@@ -73,7 +74,7 @@ class EmptyAppend(ValueError):
     """
 
 
-def catalog(*, uri: str, warehouse: str) -> Catalog:
+def catalog(*, uri: str, warehouse: str, **properties: str) -> Catalog:
     """The catalog, wherever it lives.
 
     A SQLite URI and a local directory for tests and the fast gate; a PostgreSQL
@@ -81,8 +82,18 @@ def catalog(*, uri: str, warehouse: str) -> Catalog:
     the line [[ADR-002]] drew between a test double and a second production
     path, and what keeps REQ-INFRA-002's "a commit needs no running service"
     true.
+
+    **Nothing here branches on the scheme**, and a test reads this function to
+    check that ([[REQ-WP-041]]). A catalog that reached PostgreSQL through a
+    second path would pass every behavioural test and be the second production
+    path [[ADR-002]] refused.
+
+    `properties` is what the storage needs -- an endpoint and credentials for
+    S3, nothing for a local directory. It is passed through rather than
+    interpreted: the moment this function knew what an `s3.endpoint` was, it
+    would be the place a second backend's options went too.
     """
-    store = SqlCatalog("channelflow", uri=uri, warehouse=_as_location(warehouse))
+    store = SqlCatalog("channelflow", uri=uri, warehouse=_as_location(warehouse), **properties)
     try:
         store.create_namespace(NAMESPACE)
     except NamespaceAlreadyExistsError:

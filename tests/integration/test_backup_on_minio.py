@@ -17,6 +17,7 @@ from pathlib import Path
 import pytest
 
 from channelflow.lakehouse import Column, IcebergTable, Schema, back_up, verify
+from channelflow.lakehouse import catalog as open_catalog
 
 SECOND = 1_000_000_000
 
@@ -40,24 +41,19 @@ def _env() -> dict[str, str]:
 
 @pytest.fixture
 def catalog(tmp_path: Path) -> object:
-    from pyiceberg.catalog.sql import SqlCatalog
-
     env = _env()
-    store = SqlCatalog(
-        "channelflow",
-        uri=f"sqlite:///{tmp_path}/catalog.db",
-        warehouse=f"s3://{env['MINIO_BUCKET']}/backup-test/{uuid.uuid4()}",
-        **{
-            "s3.endpoint": f"http://127.0.0.1:{env['MINIO_PORT']}",
-            "s3.access-key-id": env["MINIO_ROOT_USER"],
-            "s3.secret-access-key": env["MINIO_ROOT_PASSWORD"],
-        },
-    )
     try:
-        store.create_namespace("channelflow")
+        return open_catalog(
+            uri=f"sqlite:///{tmp_path}/catalog.db",
+            warehouse=f"s3://{env['MINIO_BUCKET']}/backup-test/{uuid.uuid4()}",
+            **{
+                "s3.endpoint": f"http://127.0.0.1:{env['MINIO_PORT']}",
+                "s3.access-key-id": env["MINIO_ROOT_USER"],
+                "s3.secret-access-key": env["MINIO_ROOT_PASSWORD"],
+            },
+        )
     except Exception as exc:  # noqa: BLE001
         pytest.fail(f"Object store is not answering: {exc}. Run `make up`.")
-    return store
 
 
 def _schema() -> Schema:

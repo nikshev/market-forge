@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "§7, §29.0"
 prd_lines: "786-790"
 phase: 8
-status: draft
+status: implemented
 depends_on: [REQ-WP-039]
 tags: []
 ---
@@ -52,7 +52,14 @@ which is the day nobody wants a surprise.
 ## Trace
 
 <!-- trace:begin -->
-_Not yet generated. Run `make graph`._
+- **Specs:** [[SPEC-079-stack-catalog]]
+- **Tests:**
+    - `tests/integration/test_catalog_on_postgres.py::test_a_table_commits_reads_and_time_travels_through_the_stack_catalog`
+    - `tests/integration/test_catalog_on_postgres.py::test_an_earlier_read_is_unchanged_by_a_later_commit`
+    - `tests/integration/test_catalog_on_postgres.py::test_the_same_factory_opens_both_catalogs`
+- **Code:**
+    - `src/channelflow/lakehouse/iceberg.py`
+- **Outcomes:** [[OUT-2026-09-11-implement-stack-catalog]], [[OUT-2026-09-11-requirement-stack-catalog]]
 <!-- trace:end -->
 
 ## Notes

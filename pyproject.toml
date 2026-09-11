@@ -36,6 +36,12 @@ dependencies = [
     # 0.12 is the floor because that is the version the behaviour in ADR-060
     # was measured against.
     "pyiceberg[sql-sqlite]>=0.12",
+    # The catalog on the stack ([[ADR-060]], REQ-WP-041). pyiceberg's SQL
+    # catalog goes through SQLAlchemy, which needs a *synchronous* PostgreSQL
+    # driver; `asyncpg` above is asynchronous and serves the API's own queries.
+    # PRD section 7 names "SQLAlchemy or asyncpg for Postgres metadata", so both
+    # belong. The binary wheel is chosen so no build toolchain is needed in CI.
+    "psycopg[binary]>=3.2",
 ]
 
 [project.optional-dependencies]
