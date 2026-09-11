@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "§0 item 13, §23.9"
 prd_lines: "27, 4137-4151"
 phase: 7
-status: planned
+status: implemented
 depends_on: [REQ-WP-022, REQ-WP-039]
 tags: []
 ---
@@ -70,7 +70,26 @@ artifact; §0 governs.
 ## Trace
 
 <!-- trace:begin -->
-_Not yet generated. Run `make graph`._
+- **Specs:** [[SPEC-078-dataset-lineage]]
+- **Tests:**
+    - `tests/unit/models/test_dataset_lineage.py::test_a_citation_by_name_without_a_claim_is_refused`
+    - `tests/unit/models/test_dataset_lineage.py::test_a_dataset_that_is_still_there_resolves`
+    - `tests/unit/models/test_dataset_lineage.py::test_a_registered_snapshot_survives_a_pass_that_would_have_expired_it`
+    - `tests/unit/models/test_dataset_lineage.py::test_a_registration_without_a_dataset_is_refused`
+    - `tests/unit/models/test_dataset_lineage.py::test_a_registry_holding_nothing_for_a_table_pins_nothing`
+    - `tests/unit/models/test_dataset_lineage.py::test_a_snapshot_retention_expired_resolves_as_gone`
+    - `tests/unit/models/test_dataset_lineage.py::test_a_snapshot_that_now_holds_something_else_is_not_the_same_dataset`
+    - `tests/unit/models/test_dataset_lineage.py::test_an_origin_can_name_an_earlier_snapshot`
+    - `tests/unit/models/test_dataset_lineage.py::test_an_origin_carries_the_table_the_snapshot_and_the_hash`
+    - `tests/unit/models/test_dataset_lineage.py::test_an_origin_with_no_table_is_refused`
+    - `tests/unit/models/test_dataset_lineage.py::test_an_unresolvable_dataset_does_not_stop_the_registration_being_read`
+    - `tests/unit/models/test_dataset_lineage.py::test_pins_are_the_snapshots_registrations_name`
+    - `tests/unit/models/test_dataset_lineage.py::test_pins_for_one_table_are_not_pins_for_another`
+    - `tests/unit/models/test_dataset_lineage.py::test_the_same_rows_give_the_same_citation`
+    - `tests/unit/models/test_dataset_lineage.py::test_two_registrations_over_one_snapshot_are_one_pin`
+- **Code:**
+    - `src/channelflow/models/registry.py`
+- **Outcomes:** [[OUT-2026-09-11-implement-dataset-lineage]], [[OUT-2026-09-11-requirement-dataset-lineage]], [[OUT-2026-09-11-spec-plan-dataset-lineage]]
 <!-- trace:end -->
 
 ## Notes

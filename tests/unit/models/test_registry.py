@@ -27,6 +27,7 @@ from channelflow.models import (
     combined_artifact,
     require_registered,
 )
+from channelflow.models.registry import DatasetOrigin
 
 
 def data(seed: int = 0, rows: int = 80) -> tuple[np.ndarray, np.ndarray]:
@@ -223,6 +224,9 @@ def registration(**overrides: object) -> Registration:
         "metrics": {"brier": 0.19},
         "artifact_hash": "b" * 64,
         "deployment_status": "shadow",
+        # PRD §0 item 13's fourth thing ([[REQ-WP-040]]). Every registration
+        # cites a dataset, so the factory does too.
+        "dataset": DatasetOrigin(table="features", snapshot_id=1, content_hash="c" * 64),
     }
     fields.update(overrides)
     return Registration(**fields)  # type: ignore[arg-type]
