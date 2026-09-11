@@ -14,7 +14,7 @@ not_delivered:
   - "Curve Stableswap-NG/Cryptoswap adapter: not built"
   - "Uniswap v4 PoolManager adapter and hook safety classification: not built"
   - "HyperCore CLOB adapter and HyperEVM ingestion profile: not built"
-  - "Iceberg canonical DeFi tables: no Parquet/Iceberg plane exists; the API reads from an in-memory repository (ADR-019)"
+  - "Iceberg canonical DeFi tables: the plane is Iceberg since [[REQ-WP-039]], and no DeFi table is defined on it"
   - "Pinot HOT DeFi datasets: deferred by ADR-002 until a HOT serving requirement exists, not missing by oversight"
   - "UI liquidity/depth overlay: the web app has no DEX overlay"
 ---
@@ -122,3 +122,10 @@ phase in progress, however much of it is built.
 
 Generated from the PRD by `tools/extract_prd.py`. This section is human
 territory and is never machine-rewritten.
+
+**Corrected 2026-09-11.** The Iceberg entry said "no Parquet/Iceberg plane
+exists". That stopped being true when [[REQ-WP-039]] landed, and a `not_delivered`
+line that overstates what is missing is as misleading as one that understates
+it: somebody reading this to plan Phase 4 would have budgeted for building a
+plane that is already there. What remains undelivered is narrower and is what
+the line now says — the plane exists and no DeFi table is defined on it.
