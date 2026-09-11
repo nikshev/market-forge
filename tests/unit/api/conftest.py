@@ -17,7 +17,7 @@ from fastapi.testclient import TestClient
 from channelflow.api import InMemoryRepository, LakehouseRepository, create_app
 from channelflow.bars import Bar
 from channelflow.channels import ChannelQuality, ChannelSnapshot
-from channelflow.lakehouse import InMemoryObjectStore
+from channelflow.lakehouse import Catalog
 from channelflow.signals import Candidate, CandidateState, Transition
 
 MINUTE_NS = 60 * 1_000_000_000
@@ -98,7 +98,7 @@ Repository = InMemoryRepository | LakehouseRepository
 
 
 @pytest.fixture(params=["in_memory", "lakehouse"])
-def repository(request: pytest.FixtureRequest) -> Repository:
+def repository(request: pytest.FixtureRequest, catalog: Catalog) -> Repository:
     """Ten minutes of bars, one stored snapshot, one signal.
 
     Built twice, once per implementation. A test that passes against one and not
@@ -107,7 +107,7 @@ def repository(request: pytest.FixtureRequest) -> Repository:
     repo: Repository = (
         InMemoryRepository()
         if request.param == "in_memory"
-        else LakehouseRepository(store=InMemoryObjectStore())
+        else LakehouseRepository(catalog=catalog)
     )
     repo.add_market(venue="binance", symbol="BTCUSDT", market_type="spot")
     repo.add_market(venue="binance", symbol="ETHUSDT", market_type="spot")

@@ -15,7 +15,7 @@ from channelflow.experiments import (
     config_hash,
     dataset_reference,
 )
-from channelflow.lakehouse import InMemoryObjectStore
+from channelflow.lakehouse import Catalog
 from channelflow.models import (
     ElasticNetLogistic,
     GradientBoostedTrees,
@@ -326,8 +326,8 @@ def test_a_span_that_ends_before_it_starts_is_refused() -> None:
 
 
 @pytest.fixture
-def registry() -> ModelRegistry:
-    return ModelRegistry(store=InMemoryObjectStore())
+def registry(catalog: Catalog) -> ModelRegistry:
+    return ModelRegistry(catalog=catalog)
 
 
 @pytest.mark.trace("REQ-WP-022")

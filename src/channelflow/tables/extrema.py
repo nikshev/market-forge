@@ -27,7 +27,7 @@ from __future__ import annotations
 import uuid
 
 from channelflow.extrema.models import ConfirmedExtremum, ExtremumCandidate, ExtremumType
-from channelflow.lakehouse import Column, ObjectStore, Schema, Table
+from channelflow.lakehouse import Catalog, Column, IcebergTable, Schema
 from channelflow.tables.rows import as_decimal, as_float, as_int, as_str
 
 CONFIRMED_TABLE_NAME = "confirmed_extrema"
@@ -77,12 +77,12 @@ CANDIDATES_SCHEMA = Schema(
 )
 
 
-def confirmed_table_for(store: ObjectStore) -> Table:
-    return Table(name=CONFIRMED_TABLE_NAME, schema=CONFIRMED_SCHEMA, store=store)
+def confirmed_table_for(catalog: Catalog) -> IcebergTable:
+    return IcebergTable(name=CONFIRMED_TABLE_NAME, schema=CONFIRMED_SCHEMA, catalog=catalog)
 
 
-def candidates_table_for(store: ObjectStore) -> Table:
-    return Table(name=CANDIDATES_TABLE_NAME, schema=CANDIDATES_SCHEMA, store=store)
+def candidates_table_for(catalog: Catalog) -> IcebergTable:
+    return IcebergTable(name=CANDIDATES_TABLE_NAME, schema=CANDIDATES_SCHEMA, catalog=catalog)
 
 
 def _optional(value: float | None) -> str:
@@ -182,18 +182,18 @@ def _a_type(raw: str) -> ExtremumType:
     return raw  # type: ignore[return-value]
 
 
-def write_confirmed(table: Table, extrema: list[ConfirmedExtremum]) -> None:
+def write_confirmed(table: IcebergTable, extrema: list[ConfirmedExtremum]) -> None:
     if extrema:
         table.append([confirmed_row(e) for e in extrema])
 
 
-def write_candidates(table: Table, candidates: list[ExtremumCandidate]) -> None:
+def write_candidates(table: IcebergTable, candidates: list[ExtremumCandidate]) -> None:
     if candidates:
         table.append([candidate_row(c) for c in candidates])
 
 
 def read_confirmed(
-    table: Table,
+    table: IcebergTable,
     *,
     instrument_id: str | None = None,
     timeframe_ns: int | None = None,
@@ -216,7 +216,7 @@ def read_confirmed(
 
 
 def read_candidates(
-    table: Table,
+    table: IcebergTable,
     *,
     instrument_id: str | None = None,
     timeframe_ns: int | None = None,

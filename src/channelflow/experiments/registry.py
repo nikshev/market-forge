@@ -27,7 +27,7 @@ from dataclasses import dataclass
 from enum import StrEnum
 
 from channelflow.experiments.identity import ModelAbsence, ModelArtifact, RunIdentity
-from channelflow.lakehouse import Column, ObjectStore, Schema, Table
+from channelflow.lakehouse import Catalog, Column, IcebergTable, Schema
 
 #: PRD §29.B's `experiment_membership`, under a name that says what a row is.
 TABLE_NAME = "experiment_runs"
@@ -120,11 +120,11 @@ class RecordedRun:
 class Registry:
     """Append-only experiment history over an object store."""
 
-    store: ObjectStore
+    catalog: Catalog
 
     @property
-    def table(self) -> Table:
-        return Table(name=TABLE_NAME, schema=SCHEMA, store=self.store)
+    def table(self) -> IcebergTable:
+        return IcebergTable(name=TABLE_NAME, schema=SCHEMA, catalog=self.catalog)
 
     def record(self, runs: Sequence[Run]) -> str:
         """Append these runs and return the registry's new content hash.

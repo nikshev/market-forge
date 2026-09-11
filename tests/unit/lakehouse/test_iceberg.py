@@ -298,3 +298,28 @@ def test_the_snapshot_records_what_it_holds(trades: IcebergTable) -> None:
     assert snapshot.record_count == 2
     assert snapshot.event_time_max_ns == 5 * SECOND
     assert snapshot.parent_id is None
+
+
+@pytest.mark.trace("REQ-WP-039")
+def test_rows_come_back_in_commit_order(trades: IcebergTable) -> None:
+    """The guarantee nothing had a test for, and the one the migration nearly
+    reversed in silence.
+
+    Iceberg's own scan returns the newest manifest first -- measured. The plane
+    this replaces returned oldest first, and every "latest row wins" reader in
+    the API folds rows in order, so the reversal would have made each of them
+    return the *oldest* value for its key. Reversed rows are still rows; nothing
+    would have raised.
+    """
+    trades.append([row(1)])
+    trades.append([row(2)])
+    trades.append([row(3)])
+
+    assert trades.read()["event_time_ns"].to_pylist() == [1 * SECOND, 2 * SECOND, 3 * SECOND]
+
+
+@pytest.mark.trace("REQ-WP-039")
+def test_order_within_one_commit_is_the_order_written(trades: IcebergTable) -> None:
+    trades.append([row(3), row(1), row(2)])
+
+    assert trades.read()["event_time_ns"].to_pylist() == [3 * SECOND, 1 * SECOND, 2 * SECOND]

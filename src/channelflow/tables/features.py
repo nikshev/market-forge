@@ -25,7 +25,7 @@ import struct
 from decimal import Decimal
 
 from channelflow.domain import Instrument
-from channelflow.lakehouse import Column, ObjectStore, Schema, Table
+from channelflow.lakehouse import Catalog, Column, IcebergTable, Schema
 from channelflow.scoring import Group, GroupContribution, SignalScore
 from channelflow.tables.rows import (
     as_decimal,
@@ -153,20 +153,20 @@ CONTRIBUTIONS_SCHEMA = Schema(
 )
 
 
-def features_table_for(store: ObjectStore) -> Table:
-    return Table(name=FEATURES_TABLE_NAME, schema=FEATURES_SCHEMA, store=store)
+def features_table_for(catalog: Catalog) -> IcebergTable:
+    return IcebergTable(name=FEATURES_TABLE_NAME, schema=FEATURES_SCHEMA, catalog=catalog)
 
 
-def markets_table_for(store: ObjectStore) -> Table:
-    return Table(name=MARKETS_TABLE_NAME, schema=MARKETS_SCHEMA, store=store)
+def markets_table_for(catalog: Catalog) -> IcebergTable:
+    return IcebergTable(name=MARKETS_TABLE_NAME, schema=MARKETS_SCHEMA, catalog=catalog)
 
 
-def scores_table_for(store: ObjectStore) -> Table:
-    return Table(name=SCORES_TABLE_NAME, schema=SCORES_SCHEMA, store=store)
+def scores_table_for(catalog: Catalog) -> IcebergTable:
+    return IcebergTable(name=SCORES_TABLE_NAME, schema=SCORES_SCHEMA, catalog=catalog)
 
 
-def contributions_table_for(store: ObjectStore) -> Table:
-    return Table(name=CONTRIBUTIONS_TABLE_NAME, schema=CONTRIBUTIONS_SCHEMA, store=store)
+def contributions_table_for(catalog: Catalog) -> IcebergTable:
+    return IcebergTable(name=CONTRIBUTIONS_TABLE_NAME, schema=CONTRIBUTIONS_SCHEMA, catalog=catalog)
 
 
 def market_row(instrument: Instrument) -> dict[str, object]:

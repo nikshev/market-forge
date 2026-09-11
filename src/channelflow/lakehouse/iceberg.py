@@ -35,16 +35,17 @@ from __future__ import annotations
 import hashlib
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
+from decimal import Decimal
 
 import pyarrow as pa
 import pyarrow.compute as pc
-from pyiceberg.catalog import Catalog
+from pyiceberg.catalog import Catalog as Catalog
 from pyiceberg.catalog.sql import SqlCatalog
 from pyiceberg.exceptions import NamespaceAlreadyExistsError, NoSuchTableError
 from pyiceberg.table import Table as _IcebergTable
 
 from channelflow.lakehouse.schema import Schema
-from channelflow.lakehouse.table import NoEventTime, NoSuchSnapshot
+from channelflow.lakehouse.table import NoEventTime, NoSuchSnapshot, _for_arrow
 
 #: One namespace for the whole plane. Tables are named by the domain, and a
 #: second level of naming would be a place for two tables to disagree about
@@ -151,10 +152,8 @@ class IcebergTable:
         if table is None:
             return self.schema.arrow().empty_table()
 
-        if snapshot_id is None:
-            rows = table.scan().to_arrow()
-        else:
-            rows = table.scan(snapshot_id=self._iceberg_id(snapshot_id)).to_arrow()
+        wanted = len(table.metadata.snapshots) if snapshot_id is None else snapshot_id
+        rows = self._in_commit_order(table, wanted)
 
         if as_of_ns is None:
             return rows
@@ -167,6 +166,41 @@ class IcebergTable:
                 "question in a way the caller could not detect"
             )
         return rows.filter(pc.less_equal(rows[column], pa.scalar(as_of_ns, pa.int64())))
+
+    def _in_commit_order(self, table: _IcebergTable, snapshot_id: int) -> pa.Table:
+        """Rows oldest commit first, within a commit in the order written.
+
+        Iceberg's own scan returns the newest manifest first -- measured, and it
+        is the reverse of what the plane this replaces guaranteed. That
+        guarantee is load-bearing: every "latest row wins" reader in the API
+        folds rows in order and would silently start returning the *oldest*
+        value for each key. It is also the kind of change nothing announces,
+        because reversed rows are still rows.
+
+        So the order is reconstructed from the snapshot chain rather than taken
+        from the scan: walk the snapshots oldest first, and take each file the
+        first time a snapshot names it. Costs one plan per snapshot, which is a
+        price worth paying for an ordering readers already depend on.
+        """
+        ordered: list[str] = []
+        seen: set[str] = set()
+        for index in range(1, snapshot_id + 1):
+            iceberg_id = int(table.metadata.snapshots[index - 1].snapshot_id)
+            for task in table.scan(snapshot_id=iceberg_id).plan_files():
+                path = task.file.file_path
+                if path not in seen:
+                    seen.add(path)
+                    ordered.append(path)
+        if not ordered:
+            return self.schema.arrow().empty_table()
+
+        import pyarrow.parquet as pq
+
+        pieces = [
+            pq.read_table(table.io.new_input(path).open()).cast(self.schema.arrow())
+            for path in ordered
+        ]
+        return pa.concat_tables(pieces)
 
     # --- appending ---------------------------------------------------------
 
@@ -296,15 +330,42 @@ class IcebergTable:
         not depend on which file a row landed in or how many commits carried it
         -- two facts about a writer, not about the data.
         """
-        encoded = sorted(self.schema.encode_row(dict(row)) for row in rows.to_pylist())
+        encoded = sorted(self.schema.encode_row(self._to_domain(row)) for row in rows.to_pylist())
         digest = hashlib.sha256()
         for line in encoded:
             digest.update(line)
         return digest.hexdigest()
 
+    def _to_domain(self, row: Mapping[str, object]) -> dict[str, object]:
+        """A stored row back in the shapes the schema's encoder expects.
+
+        The inverse of the conversion on the way in. It exists so the canonical
+        encoder stays the single definition of what a row *is*: hashing storage
+        shapes instead would work and would put a second canonicalisation in the
+        codebase, and two canonical forms drift.
+        """
+        out: dict[str, object] = {}
+        for column in self.schema.columns:
+            value = row[column.name]
+            if column.type == "decimal":
+                out[column.name] = None if value is None else Decimal(str(value))
+            elif column.type == "float_map":
+                out[column.name] = None if value is None else dict(value)  # type: ignore[call-overload]
+            else:
+                out[column.name] = value
+        return out
+
     def _arrow(self, rows: Sequence[Mapping[str, object]]) -> pa.Table:
+        """Rows in the shape Arrow wants.
+
+        The conversion happens here rather than in the caller, as it did in the
+        layer this replaces: a table that took storage shapes would push the
+        round trip onto every producer, and one of them would store a price as a
+        float by accident.
+        """
         columns = {
-            column.name: [row[column.name] for row in rows] for column in self.schema.columns
+            column.name: [_for_arrow(column.type, row[column.name]) for row in rows]
+            for column in self.schema.columns
         }
         return pa.table(columns, schema=self.schema.arrow())
 

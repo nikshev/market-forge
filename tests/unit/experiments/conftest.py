@@ -13,7 +13,7 @@ from channelflow.experiments import (
     config_hash,
     dataset_reference,
 )
-from channelflow.lakehouse import InMemoryObjectStore
+from channelflow.lakehouse import Catalog
 
 SECOND = 1_000_000_000
 COMMIT = "a" * 40
@@ -41,5 +41,5 @@ def identity(
 
 
 @pytest.fixture
-def registry() -> Registry:
-    return Registry(store=InMemoryObjectStore())
+def registry(catalog: Catalog) -> Registry:
+    return Registry(catalog=catalog)

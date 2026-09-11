@@ -8,7 +8,7 @@ from decimal import Decimal
 import pytest
 
 from channelflow.extrema.models import ConfirmedExtremum, ExtremumCandidate
-from channelflow.lakehouse import InMemoryObjectStore
+from channelflow.lakehouse import Catalog
 from channelflow.tables import extrema as extrema_table
 
 SECOND = 1_000_000_000
@@ -59,14 +59,9 @@ def candidate(*, at: int, observed: int) -> ExtremumCandidate:
     )
 
 
-@pytest.fixture
-def store() -> InMemoryObjectStore:
-    return InMemoryObjectStore()
-
-
 @pytest.mark.trace("REQ-WP-028")
-def test_a_confirmation_reads_back_field_for_field(store: InMemoryObjectStore) -> None:
-    table = extrema_table.confirmed_table_for(store)
+def test_a_confirmation_reads_back_field_for_field(catalog: Catalog) -> None:
+    table = extrema_table.confirmed_table_for(catalog)
     original = confirmed(turn_at=10, known_at=14)
 
     extrema_table.write_confirmed(table, [original])
@@ -75,8 +70,8 @@ def test_a_confirmation_reads_back_field_for_field(store: InMemoryObjectStore) -
 
 
 @pytest.mark.trace("REQ-WP-028")
-def test_a_candidate_reads_back_field_for_field(store: InMemoryObjectStore) -> None:
-    table = extrema_table.candidates_table_for(store)
+def test_a_candidate_reads_back_field_for_field(catalog: Catalog) -> None:
+    table = extrema_table.candidates_table_for(catalog)
     original = candidate(at=10, observed=12)
 
     extrema_table.write_candidates(table, [original])
@@ -85,11 +80,11 @@ def test_a_candidate_reads_back_field_for_field(store: InMemoryObjectStore) -> N
 
 
 @pytest.mark.trace("REQ-WP-028")
-def test_an_absent_prominence_is_absent_not_zero(store: InMemoryObjectStore) -> None:
+def test_an_absent_prominence_is_absent_not_zero(catalog: Catalog) -> None:
     """A prominence of zero is a real reading. A sentinel would make an
     unmeasured turn and a flat one the same row, which is the distinction this
     repository has had to draw in four other places."""
-    table = extrema_table.confirmed_table_for(store)
+    table = extrema_table.confirmed_table_for(catalog)
     extrema_table.write_confirmed(
         table,
         [
@@ -105,14 +100,14 @@ def test_an_absent_prominence_is_absent_not_zero(store: InMemoryObjectStore) -> 
 
 
 @pytest.mark.trace("REQ-WP-028")
-def test_a_turn_is_not_returned_before_it_was_confirmed(store: InMemoryObjectStore) -> None:
+def test_a_turn_is_not_returned_before_it_was_confirmed(catalog: Catalog) -> None:
     """PRD section 45's Phase 1A acceptance, at the layer that can enforce it.
 
     The turn happened at second 10 and was confirmed at second 14. A read as of
     second 13 that returned it would be the chart claiming the system knew about
     a turn before it did -- the repaint section 13A.1 forbids.
     """
-    table = extrema_table.confirmed_table_for(store)
+    table = extrema_table.confirmed_table_for(catalog)
     extrema_table.write_confirmed(table, [confirmed(turn_at=10, known_at=14)])
 
     assert extrema_table.read_confirmed(table, as_of_ns=BASE + 13 * SECOND) == []
@@ -121,12 +116,12 @@ def test_a_turn_is_not_returned_before_it_was_confirmed(store: InMemoryObjectSto
 
 @pytest.mark.trace("REQ-WP-028")
 def test_a_returned_turn_still_carries_the_instant_it_happened(
-    store: InMemoryObjectStore,
+    catalog: Catalog,
 ) -> None:
     """The other half. A confirmation drawn at its `known_at` never appears too
     early and is also not where the turn was -- which satisfies the criterion
     and draws the wrong picture."""
-    table = extrema_table.confirmed_table_for(store)
+    table = extrema_table.confirmed_table_for(catalog)
     extrema_table.write_confirmed(table, [confirmed(turn_at=10, known_at=14)])
 
     (found,) = extrema_table.read_confirmed(table, as_of_ns=BASE + 20 * SECOND)
@@ -137,12 +132,12 @@ def test_a_returned_turn_still_carries_the_instant_it_happened(
 
 @pytest.mark.trace("REQ-WP-028")
 def test_a_candidate_is_not_returned_before_it_was_observed(
-    store: InMemoryObjectStore,
+    catalog: Catalog,
 ) -> None:
     """The criterion names confirmations only. A candidate leaking in early is
     the same defect under a different name, and nothing in the PRD would have
     caught it."""
-    table = extrema_table.candidates_table_for(store)
+    table = extrema_table.candidates_table_for(catalog)
     extrema_table.write_candidates(table, [candidate(at=10, observed=12)])
 
     assert extrema_table.read_candidates(table, as_of_ns=BASE + 11 * SECOND) == []
@@ -151,12 +146,12 @@ def test_a_candidate_is_not_returned_before_it_was_observed(
 
 @pytest.mark.trace("REQ-WP-028")
 def test_later_data_does_not_change_what_an_earlier_instant_shows(
-    store: InMemoryObjectStore,
+    catalog: Catalog,
 ) -> None:
     """Principle III. The plane is append-only and its snapshots are immutable,
     so this is a property to confirm rather than to build -- and confirming it
     is what makes the chart's claim about the past worth anything."""
-    table = extrema_table.confirmed_table_for(store)
+    table = extrema_table.confirmed_table_for(catalog)
     extrema_table.write_confirmed(table, [confirmed(turn_at=10, known_at=14)])
     before = extrema_table.read_confirmed(table, as_of_ns=BASE + 20 * SECOND)
 
@@ -166,8 +161,8 @@ def test_later_data_does_not_change_what_an_earlier_instant_shows(
 
 
 @pytest.mark.trace("REQ-WP-028")
-def test_one_instrument_does_not_return_another_s(store: InMemoryObjectStore) -> None:
-    table = extrema_table.confirmed_table_for(store)
+def test_one_instrument_does_not_return_another_s(catalog: Catalog) -> None:
+    table = extrema_table.confirmed_table_for(catalog)
     other = confirmed(turn_at=10, known_at=14).model_copy(
         update={"instrument_id": "binance:ETHUSDT"}
     )
@@ -179,8 +174,8 @@ def test_one_instrument_does_not_return_another_s(store: InMemoryObjectStore) ->
 
 
 @pytest.mark.trace("REQ-WP-028")
-def test_turns_come_back_oldest_first(store: InMemoryObjectStore) -> None:
-    table = extrema_table.confirmed_table_for(store)
+def test_turns_come_back_oldest_first(catalog: Catalog) -> None:
+    table = extrema_table.confirmed_table_for(catalog)
     extrema_table.write_confirmed(
         table, [confirmed(turn_at=30, known_at=32), confirmed(turn_at=10, known_at=14)]
     )

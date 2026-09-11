@@ -22,7 +22,7 @@ would lose the distinction at the storage boundary.
 from __future__ import annotations
 
 from channelflow.channels import ChannelQuality, ChannelSnapshot
-from channelflow.lakehouse import Column, ObjectStore, Schema, Table
+from channelflow.lakehouse import Catalog, Column, IcebergTable, Schema
 from channelflow.tables.rows import (
     as_float,
     as_float_map,
@@ -121,12 +121,12 @@ def from_row(row: dict[str, object]) -> ChannelSnapshot:
     )
 
 
-def table_for(store: ObjectStore) -> Table:
-    return Table(name=TABLE_NAME, schema=SCHEMA, store=store)
+def table_for(catalog: Catalog) -> IcebergTable:
+    return IcebergTable(name=TABLE_NAME, schema=SCHEMA, catalog=catalog)
 
 
 def latest_at(
-    table: Table, *, venue: str, symbol: str, timeframe_ns: int, at_ns: int
+    table: IcebergTable, *, venue: str, symbol: str, timeframe_ns: int, at_ns: int
 ) -> ChannelSnapshot | None:
     """The newest snapshot at or before `at_ns` -- never a later one.
 

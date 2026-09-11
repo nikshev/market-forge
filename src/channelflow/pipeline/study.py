@@ -41,7 +41,7 @@ from channelflow.experiments import (
     config_hash,
     report_comparison,
 )
-from channelflow.lakehouse import ObjectStore
+from channelflow.lakehouse import Catalog
 from channelflow.models import (
     ComparisonReport,
     HorizonCalibration,
@@ -88,7 +88,7 @@ class _Compared:
 def run_study(
     dataset: CertifiedDataset,
     *,
-    store: ObjectStore,
+    catalog: Catalog,
     code: CodeVersion,
     experiment: str,
     target: Target,
@@ -112,7 +112,7 @@ def run_study(
         )
 
     artifacts = _artifacts_per_variant(result.folds)
-    models = ModelRegistry(store=store)
+    models = ModelRegistry(catalog=catalog)
     registrations = tuple(
         _registration(
             variant=variant,
@@ -145,7 +145,7 @@ def run_study(
         experiment=experiment,
         dataset=dataset_ref,
         code=code,
-        registry=Registry(store=store),
+        registry=Registry(catalog=catalog),
         model=dict(artifacts),
         as_of_ns=as_of_ns,
     )

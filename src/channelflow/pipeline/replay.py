@@ -47,7 +47,7 @@ from channelflow.events import (
 from channelflow.experiments import dataset_reference
 from channelflow.extrema import DirectionalChangeDetector
 from channelflow.extrema.models import ConfirmedExtremum, ExtremumCandidate
-from channelflow.lakehouse import ObjectStore, Table
+from channelflow.lakehouse import Catalog, IcebergTable
 from channelflow.signals import Candidate
 from channelflow.tables import bars as bars_table
 from channelflow.tables import channels as channels_table
@@ -59,7 +59,7 @@ class MixedSeries(ValueError):
     """One recording was handed trades from more than one series."""
 
 
-def watermark(table: Table, column: str, **scope: object) -> int | None:
+def watermark(table: IcebergTable, column: str, **scope: object) -> int | None:
     """The latest event this table already holds for one series, or nothing.
 
     Scoped, because a table holds many series and a watermark over all of them
@@ -99,7 +99,7 @@ class Recording:
     #: late trades: a re-run over overlapping input is a no-op and should look
     #: like one, and a number that stays at zero is a run that added something.
     skipped: int = 0
-    #: Table name to the snapshot it was left at and that snapshot's content
+    #: IcebergTable name to the snapshot it was left at and that snapshot's content
     #: hash. Only the tables this run is answerable for -- wrote to, or skipped
     #: rows destined for. A table it neither wrote nor skipped is not part of
     #: what it produced, and naming it would put a stranger in the dataset.
@@ -130,7 +130,7 @@ class ChannelRecorder:
     bar would make the snapshot chain as long as the series.
     """
 
-    table: Table
+    table: IcebergTable
     venue: str
     symbol: str
     timeframe_ns: int
@@ -178,8 +178,8 @@ class SignalRecorder:
     be the same candidate.
     """
 
-    core_table: Table
-    transitions_table: Table
+    core_table: IcebergTable
+    transitions_table: IcebergTable
     #: The latest signal already on record for this series. One that opened at
     #: or before it is a duplicate -- and a duplicate signal is worse than a
     #: duplicate bar, because its transitions land in the child table too and
@@ -230,8 +230,8 @@ class ExtremumRecorder:
     [[ADR-056]] asks a writer on an append-only plane to read before it writes.
     """
 
-    confirmed_table: Table
-    candidates_table: Table
+    confirmed_table: IcebergTable
+    candidates_table: IcebergTable
     after_confirmed_ns: int | None = None
     after_observed_ns: int | None = None
     skipped: int = 0
@@ -274,7 +274,7 @@ class ExtremumRecorder:
 def record_bars(
     trades: Sequence[TradeEvent],
     *,
-    store: ObjectStore,
+    catalog: Catalog,
     timeframe_ns: int,
     bus: EventBus | None = None,
 ) -> Recording:
@@ -303,7 +303,7 @@ def record_bars(
         )
     venue, symbol = venues.pop(), symbols.pop()
 
-    table = bars_table.table_for(store)
+    table = bars_table.table_for(catalog)
     already = watermark(
         table, "close_time_ns", venue=venue, symbol=symbol, timeframe_ns=timeframe_ns
     )
@@ -342,7 +342,7 @@ def record_bars(
 def record_replay(
     bars: Sequence[Bar],
     *,
-    store: ObjectStore,
+    catalog: Catalog,
     venue: str,
     symbol: str,
     timeframe_ns: int,
@@ -360,9 +360,9 @@ def record_replay(
     make a replay over a table's own contents duplicate them, and `record_bars`
     is where they come from.
     """
-    channels = channels_table.table_for(store)
-    signal_cores = signals_table.table_for(store)
-    signal_transitions = signals_table.transitions_table_for(store)
+    channels = channels_table.table_for(catalog)
+    signal_cores = signals_table.table_for(catalog)
+    signal_transitions = signals_table.transitions_table_for(catalog)
 
     channel_recorder = ChannelRecorder(
         table=channels,
@@ -392,8 +392,8 @@ def record_replay(
     bus.subscribe(CandidateUpdated, signal_recorder)
 
     instrument_id = f"{venue}:{symbol}"
-    confirmed_table = extrema_table.confirmed_table_for(store)
-    candidates_table = extrema_table.candidates_table_for(store)
+    confirmed_table = extrema_table.confirmed_table_for(catalog)
+    candidates_table = extrema_table.candidates_table_for(catalog)
     extremum_recorder = ExtremumRecorder(
         confirmed_table=confirmed_table,
         candidates_table=candidates_table,
@@ -510,7 +510,7 @@ def _recording(
     signals: int,
     confirmed_extrema: int = 0,
     extremum_candidates: int = 0,
-    accounted: dict[str, tuple[Table, int]],
+    accounted: dict[str, tuple[IcebergTable, int]],
     skipped: int = 0,
 ) -> Recording:
     """Name each table this run is answerable for, and where it stands.
