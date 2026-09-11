@@ -30,6 +30,12 @@ from channelflow.lakehouse.backup import (
     restore,
     verify,
 )
+from channelflow.lakehouse.iceberg import (
+    EmptyAppend,
+    IcebergTable,
+    TableSnapshot,
+    catalog,
+)
 from channelflow.lakehouse.research import (
     SnapshotEmpty,
     extract,
@@ -67,6 +73,10 @@ from channelflow.lakehouse.table import (
 )
 
 __all__ = [
+    "catalog",
+    "TableSnapshot",
+    "IcebergTable",
+    "EmptyAppend",
     "verify",
     "restore",
     "back_up",

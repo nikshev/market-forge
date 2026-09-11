@@ -27,6 +27,15 @@ dependencies = [
     # it has `to_arrow_table` and deprecates `fetch_arrow_table`. An earlier
     # floor would be a guess about when the rename landed.
     "duckdb>=1.5",
+    # PRD section 7 names Apache Iceberg as the table format for normalized,
+    # feature and research-grade datasets, and ADR-002 adopted it from the
+    # start; ADR-060 records why the hand-rolled approximation is being
+    # replaced. `sql-sqlite` is the catalog: a file locally and in the fast
+    # gate, the same implementation against PostgreSQL on the stack, so
+    # REQ-INFRA-002's rule that a commit needs no running service survives.
+    # 0.12 is the floor because that is the version the behaviour in ADR-060
+    # was measured against.
+    "pyiceberg[sql-sqlite]>=0.12",
 ]
 
 [project.optional-dependencies]
