@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "§5.2, §45 Phase 5, §35.6"
 prd_lines: "315-319, 6825, 4897-4906"
 phase: 5
-status: draft
+status: implemented
 depends_on: [REQ-WP-003]
 tags: []
 ---
@@ -64,7 +64,26 @@ symptom.
 ## Trace
 
 <!-- trace:begin -->
-_Not yet generated. Run `make graph`._
+- **Tests:**
+    - `tests/unit/connectors/bybit/test_normalize.py::test_a_delta_names_one_update_and_its_predecessor`
+    - `tests/unit/connectors/bybit/test_normalize.py::test_a_message_missing_a_field_is_refused`
+    - `tests/unit/connectors/bybit/test_normalize.py::test_a_price_that_float64_cannot_hold_survives`
+    - `tests/unit/connectors/bybit/test_normalize.py::test_an_unknown_message_type_is_refused`
+    - `tests/unit/connectors/bybit/test_normalize.py::test_an_unknown_side_is_refused`
+    - `tests/unit/connectors/bybit/test_normalize.py::test_every_recorded_trade_normalises`
+    - `tests/unit/connectors/bybit/test_normalize.py::test_the_bids_are_the_bids`
+    - `tests/unit/connectors/bybit/test_normalize.py::test_the_book_s_event_time_is_the_matching_engine_s`
+    - `tests/unit/connectors/bybit/test_normalize.py::test_the_event_time_is_the_fill_and_not_the_push`
+    - `tests/unit/connectors/bybit/test_normalize.py::test_the_first_message_is_a_snapshot_and_the_rest_are_deltas`
+    - `tests/unit/connectors/bybit/test_normalize.py::test_the_recorded_stream_reconstructs_without_a_gap`
+    - `tests/unit/connectors/bybit/test_normalize.py::test_the_rest_snapshot_has_its_own_event_time`
+    - `tests/unit/connectors/bybit/test_normalize.py::test_the_side_is_the_taker_s_and_is_not_derived`
+    - `tests/unit/connectors/bybit/test_normalize.py::test_the_update_id_is_what_increments_and_the_cross_sequence_is_not`
+- **Code:**
+    - `src/channelflow/connectors/bybit/__init__.py`
+    - `src/channelflow/connectors/bybit/normalize.py`
+    - `tools/record/bybit_capture.py`
+- **Outcomes:** [[OUT-2026-09-11-implement-bybit]], [[OUT-2026-09-11-requirement-bybit]]
 <!-- trace:end -->
 
 ## Notes
