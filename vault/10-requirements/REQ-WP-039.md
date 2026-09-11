@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "§6.4, §7"
 prd_lines: "440-450, 600-642, 786"
 phase: 8
-status: planned
+status: implemented
 depends_on: [REQ-STORE-001, REQ-WP-037]
 tags: []
 ---
@@ -66,6 +66,9 @@ them.
 <!-- trace:begin -->
 - **Specs:** [[SPEC-077-iceberg]]
 - **Tests:**
+    - `tests/integration/test_lakehouse_on_minio.py::test_a_table_commits_reads_and_time_travels_on_a_real_object_store`
+    - `tests/integration/test_lakehouse_on_minio.py::test_an_earlier_read_is_unchanged_by_a_later_commit`
+    - `tests/integration/test_lakehouse_on_minio.py::test_rows_come_back_in_commit_order_from_the_real_store`
     - `tests/unit/lakehouse/test_iceberg.py::test_a_backfill_is_not_visible_to_an_earlier_read`
     - `tests/unit/lakehouse/test_iceberg.py::test_a_delete_alone_frees_nothing_because_the_history_still_points_at_it`
     - `tests/unit/lakehouse/test_iceberg.py::test_a_delete_leaves_files_nothing_references`
@@ -84,9 +87,11 @@ them.
     - `tests/unit/lakehouse/test_iceberg.py::test_the_same_rows_hash_the_same_in_two_tables`
     - `tests/unit/lakehouse/test_iceberg.py::test_the_snapshot_records_what_it_holds`
     - `tests/unit/lakehouse/test_iceberg.py::test_two_writers_from_one_parent_both_land`
+    - `tests/unit/lakehouse/test_identity.py::test_the_identity_covers_the_schema`
+    - `tests/unit/lakehouse/test_identity.py::test_the_identity_does_not_depend_on_the_bytes_of_the_file`
 - **Code:**
     - `src/channelflow/lakehouse/iceberg.py`
-- **Outcomes:** [[OUT-2026-09-11-implement-iceberg]], [[OUT-2026-09-11-implement-iceberg-callers]], [[OUT-2026-09-11-implement-iceberg-research]], [[OUT-2026-09-11-plan-iceberg]], [[OUT-2026-09-11-requirement-iceberg]], [[OUT-2026-09-11-spec-iceberg]]
+- **Outcomes:** [[OUT-2026-09-11-implement-iceberg]], [[OUT-2026-09-11-implement-iceberg-callers]], [[OUT-2026-09-11-implement-iceberg-complete]], [[OUT-2026-09-11-implement-iceberg-research]], [[OUT-2026-09-11-plan-iceberg]], [[OUT-2026-09-11-requirement-iceberg]], [[OUT-2026-09-11-spec-iceberg]]
 <!-- trace:end -->
 
 ## Notes

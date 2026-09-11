@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from channelflow.lakehouse import Catalog, Column, IcebergTable, InMemoryObjectStore, Schema, Table
+from channelflow.lakehouse import Catalog, Column, IcebergTable, Schema
 
 SECOND = 1_000_000_000
 
@@ -44,11 +44,6 @@ def trade(index: int, *, symbol: str = "BTCUSDT", price: float = 50_000.0) -> di
 
 
 @pytest.fixture
-def store() -> InMemoryObjectStore:
-    return InMemoryObjectStore()
-
-
-@pytest.fixture
 def trades(catalog: Catalog) -> IcebergTable:
     return IcebergTable(name="cex_trades", schema=trades_schema(), catalog=catalog)
 
@@ -56,15 +51,3 @@ def trades(catalog: Catalog) -> IcebergTable:
 @pytest.fixture
 def config(catalog: Catalog) -> IcebergTable:
     return IcebergTable(name="market_config", schema=config_schema(), catalog=catalog)
-
-
-@pytest.fixture
-def legacy_trades(store: InMemoryObjectStore) -> Table:
-    """The format being replaced. Only the suites that test it use this, and
-    they go when it does ([[REQ-WP-039]])."""
-    return Table(name="cex_trades", schema=trades_schema(), store=store)
-
-
-@pytest.fixture
-def legacy_config(store: InMemoryObjectStore) -> Table:
-    return Table(name="market_config", schema=config_schema(), store=store)

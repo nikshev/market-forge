@@ -14,35 +14,27 @@ import pytest
 
 from channelflow.lakehouse import (
     Column,
-    DataFile,
-    InMemoryObjectStore,
-    ManifestTampered,
+    IcebergTable,
     Schema,
-    Snapshot,
-    Table,
 )
 
 from .conftest import trade, trades_schema
 
 
-def _file(content: str, *, stored: str) -> DataFile:
-    return DataFile(
-        key="k",
-        record_count=1,
-        byte_size=1,
-        file_sha256=stored,
-        content_sha256=content,
-    )
+def _plane() -> object:
+    """A plane of its own.
 
+    These tests compare identities across *separate* planes on purpose: the
+    claim is that the same rows get the same identity wherever they were
+    written, and sharing one catalog would make that true for a reason nobody
+    cares about.
+    """
+    import tempfile
 
-def _snapshot(*files: DataFile, fingerprint: str = "fp") -> Snapshot:
-    return Snapshot(
-        snapshot_id=1,
-        parent_id=None,
-        schema_fingerprint=fingerprint,
-        files=files,
-        event_time_max_ns=0,
-    )
+    from channelflow.lakehouse import catalog as open_catalog
+
+    home = tempfile.mkdtemp(prefix="channelflow-identity-")
+    return open_catalog(uri=f"sqlite:///{home}/catalog.db", warehouse=home)
 
 
 @pytest.mark.trace("REQ-STORE-001")
@@ -52,44 +44,22 @@ def test_the_same_rows_get_the_same_identity_in_a_different_store() -> None:
     written."""
     rows = [trade(1), trade(2)]
 
-    first = Table(name="cex_trades", schema=trades_schema(), store=InMemoryObjectStore()).append(
-        rows
-    )
-    second = Table(name="cex_trades", schema=trades_schema(), store=InMemoryObjectStore()).append(
-        rows
-    )
+    first = IcebergTable(name="cex_trades", schema=trades_schema(), catalog=_plane()).append(rows)
+    second = IcebergTable(name="cex_trades", schema=trades_schema(), catalog=_plane()).append(rows)
 
     assert first.content_hash == second.content_hash
 
 
 @pytest.mark.trace("REQ-STORE-001")
 def test_changing_one_value_changes_the_identity() -> None:
-    store = InMemoryObjectStore()
-    table = Table(name="cex_trades", schema=trades_schema(), store=store)
+    table = IcebergTable(name="cex_trades", schema=trades_schema(), catalog=_plane())
     original = table.append([trade(1)])
 
-    changed = Table(name="cex_trades", schema=trades_schema(), store=InMemoryObjectStore()).append(
+    changed = IcebergTable(name="cex_trades", schema=trades_schema(), catalog=_plane()).append(
         [{**trade(1), "price": 50_000.01}]
     )
 
     assert changed.content_hash != original.content_hash
-
-
-@pytest.mark.trace("REQ-STORE-001")
-def test_the_identity_does_not_depend_on_the_bytes_of_the_file() -> None:
-    """The decision this whole module exists for ([[ADR-053]]).
-
-    Parquet's footer carries a `created_by` string naming the writer version, so
-    the same rows written after a library upgrade are different bytes. A dataset
-    identity taken over those bytes would change when nobody changed the data,
-    and PRD §0 item 13's reproducibility claim would break on a dependency
-    bump.
-    """
-    same_content = _snapshot(_file("content", stored="written-by-version-a"))
-    after_upgrade = _snapshot(_file("content", stored="written-by-version-b"))
-
-    assert same_content.content_hash == after_upgrade.content_hash
-    assert same_content.files[0].file_sha256 != after_upgrade.files[0].file_sha256
 
 
 @pytest.mark.trace("REQ-STORE-001")
@@ -104,41 +74,6 @@ def test_the_parquet_footer_really_does_carry_the_writer_version() -> None:
     pq.write_table(pa.table({"a": pa.array([1], pa.int64())}), buffer)
 
     assert b"parquet-cpp-arrow version" in buffer.getvalue()
-
-
-@pytest.mark.trace("REQ-STORE-001")
-def test_the_identity_covers_the_schema() -> None:
-    """Two tables holding the same values under different column names are not
-    the same dataset, and a hash that said so would let a rename go unnoticed."""
-    files = (_file("content", stored="bytes"),)
-
-    assert (
-        _snapshot(*files, fingerprint="one").content_hash
-        != _snapshot(*files, fingerprint="two").content_hash
-    )
-
-
-@pytest.mark.trace("REQ-STORE-001")
-def test_the_identity_does_not_depend_on_the_order_the_files_are_listed_in() -> None:
-    """A snapshot is a set of files, not a sequence of them. Ordering the digests
-    keeps the identity from changing when a manifest lists the same files in a
-    different order."""
-    a, b = _file("aaa", stored="x"), _file("bbb", stored="y")
-
-    assert _snapshot(a, b).content_hash == _snapshot(b, a).content_hash
-
-
-@pytest.mark.trace("REQ-STORE-001")
-def test_a_snapshot_with_no_files_still_has_an_identity() -> None:
-    """A table that exists and holds nothing is not the same as one that holds a
-    row, and neither is the same as one with other columns."""
-    empty_one = _snapshot(fingerprint="one")
-    empty_two = _snapshot(fingerprint="two")
-
-    assert empty_one.content_hash != empty_two.content_hash
-    assert (
-        empty_one.content_hash != _snapshot(_file("c", stored="s"), fingerprint="one").content_hash
-    )
 
 
 @pytest.mark.trace("REQ-STORE-001")
@@ -203,45 +138,62 @@ def test_negative_zero_is_not_zero() -> None:
 
 
 @pytest.mark.trace("REQ-STORE-001")
-def test_a_manifest_edited_after_it_was_committed_is_refused() -> None:
-    """The manifest records its own content hash as well as its files, so an
-    edit that changes one without the other is caught on the next read."""
-    snapshot = _snapshot(_file("content", stored="bytes"))
-    tampered = snapshot.serialize().replace(
-        b'"content_sha256":"content"', b'"content_sha256":"other!!"'
-    )
-
-    with pytest.raises(ManifestTampered, match="changed after it was committed"):
-        Snapshot.deserialize(tampered)
-
-
-@pytest.mark.trace("REQ-STORE-001")
-def test_a_manifest_whose_counts_are_not_integers_is_refused() -> None:
-    """A manifest is JSON something else wrote. Coercing `"12"` into a record
-    count is how a truncated read looks like a short table."""
-    snapshot = _snapshot(_file("content", stored="bytes"))
-    tampered = snapshot.serialize().replace(b'"record_count":1', b'"record_count":"1"')
-
-    with pytest.raises(ManifestTampered, match="record_count"):
-        Snapshot.deserialize(tampered)
-
-
-@pytest.mark.trace("REQ-STORE-001")
-def test_a_manifest_survives_a_round_trip() -> None:
-    """The control for the two refusals above: an untouched manifest reads back
-    as itself, so those tests are about tampering rather than about parsing."""
-    snapshot = _snapshot(_file("content", stored="bytes"))
-
-    assert Snapshot.deserialize(snapshot.serialize()) == snapshot
-
-
-@pytest.mark.trace("REQ-STORE-001")
 def test_each_snapshot_in_a_chain_has_its_own_identity() -> None:
     """Appending changes the dataset, so it has to change the dataset's name."""
-    table = Table(name="cex_trades", schema=trades_schema(), store=InMemoryObjectStore())
+    table = IcebergTable(name="cex_trades", schema=trades_schema(), catalog=_plane())
 
     first = table.append([trade(1)])
     second = table.append([trade(2)])
 
     assert first.content_hash != second.content_hash
     assert table.snapshot(1).content_hash == first.content_hash
+
+
+@pytest.mark.trace("REQ-STORE-001")
+@pytest.mark.trace("REQ-WP-039")
+def test_the_identity_covers_the_schema() -> None:
+    """Two datasets holding the same values under different columns are two
+    datasets.
+
+    Found when the old format was deleted: its hash mixed the schema
+    fingerprint in and the first Iceberg version did not, so a run could have
+    cited the wrong dataset and still verified.
+    """
+    rows = [
+        {
+            "event_time_ns": 1,
+            "symbol": "BTCUSDT",
+            "price": 1.0,
+            "size": 1.0,
+            "buyer_is_maker": False,
+        }
+    ]
+
+    one = IcebergTable(name="cex_trades", schema=trades_schema(), catalog=_plane()).append(rows)
+    widened = Schema(
+        columns=(*trades_schema().columns, Column(name="venue", type="string")),
+        event_time_column="event_time_ns",
+    )
+    other = IcebergTable(name="cex_trades", schema=widened, catalog=_plane()).append(
+        [{**rows[0], "venue": "binance"}]
+    )
+
+    assert one.content_hash != other.content_hash
+
+
+@pytest.mark.trace("REQ-STORE-001")
+@pytest.mark.trace("REQ-WP-039")
+def test_the_identity_does_not_depend_on_the_bytes_of_the_file() -> None:
+    """[[ADR-053]]'s rule, on the new layout.
+
+    The same rows split across a different number of commits produce different
+    Parquet files and the same identity.
+    """
+    rows = [trade(1), trade(2)]
+
+    once = IcebergTable(name="cex_trades", schema=trades_schema(), catalog=_plane()).append(rows)
+    apart = IcebergTable(name="cex_trades", schema=trades_schema(), catalog=_plane())
+    apart.append([rows[0]])
+    twice = apart.append([rows[1]])
+
+    assert once.content_hash == twice.content_hash

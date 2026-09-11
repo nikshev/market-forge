@@ -1,19 +1,15 @@
-"""The canonical plane against a real object store (REQ-STORE-001).
+"""The canonical plane against a real object store (REQ-STORE-001, REQ-WP-039).
 
-The unit tests run against a double behind the port. These run against MinIO,
-because two things about `S3ObjectStore` cannot be tested any other way and both
-are load-bearing:
+The unit tests run against a SQLite catalog and a local warehouse. These run
+against MinIO, because [[ADR-002]] made S3-compatible object storage the
+canonical plane precisely so local and production would not diverge -- and that
+is only true if something checks the real thing, which is what CLAUDE.md means
+by "CI is where `implemented` is earned".
 
-- whether `If-None-Match: *` actually works on the backend the stack provides.
-  A double that raises the error code it was told to raise proves the mapping,
-  not the guarantee -- and the whole table layer's atomicity is that guarantee.
-- whether a real listing pages, prefixes and sorts the way the table layer's
-  version discovery assumes.
-
-[[ADR-002]] made S3-compatible object storage the canonical data plane precisely
-so that local and production would not diverge. That is only true if something
-checks the real thing, which is what CLAUDE.md means by "CI is where
-`implemented` is earned".
+What a local warehouse cannot prove: that `pyiceberg`'s FileIO reaches this
+backend at all, that a commit's metadata round-trips through it, and that a
+point-in-time read still answers correctly when every file it names lives behind
+an S3 API rather than a filesystem.
 """
 
 from __future__ import annotations
@@ -24,14 +20,7 @@ from pathlib import Path
 
 import pytest
 
-from channelflow.lakehouse import (
-    Column,
-    KeyExists,
-    S3ObjectStore,
-    Schema,
-    Table,
-    query,
-)
+from channelflow.lakehouse import Column, IcebergTable, Schema
 
 SECOND = 1_000_000_000
 
@@ -39,9 +28,8 @@ SECOND = 1_000_000_000
 def _env() -> dict[str, str]:
     """The stack's settings, from `.env` or `.env.example`.
 
-    Same reader as `test_dev_stack.py`: a fresh checkout has no `.env` yet, and
-    the failure should be "the stack is not running" rather than "no
-    configuration".
+    A fresh checkout has no `.env` yet, and the failure should be "the stack is
+    not running" rather than "no configuration".
     """
     values: dict[str, str] = {}
     for name in (".env", ".env.example"):
@@ -60,28 +48,33 @@ def _env() -> dict[str, str]:
 
 
 @pytest.fixture
-def store() -> S3ObjectStore:
-    import boto3
-    from botocore.config import Config
-    from botocore.exceptions import BotoCoreError, ClientError
+def catalog(tmp_path: Path) -> object:
+    """A catalog whose warehouse is the real bucket.
+
+    The catalog itself is SQLite in a temp directory: what is under test is the
+    storage, not where the pointer lives. A fresh prefix per test, because these
+    write real objects and a reused one would read another run's snapshots and
+    pass for the wrong reason.
+    """
+    from pyiceberg.catalog.sql import SqlCatalog
 
     env = _env()
-    client = boto3.client(
-        "s3",
-        endpoint_url=f"http://127.0.0.1:{env['MINIO_PORT']}",
-        aws_access_key_id=env["MINIO_ROOT_USER"],
-        aws_secret_access_key=env["MINIO_ROOT_PASSWORD"],
-        config=Config(connect_timeout=5, read_timeout=5, retries={"max_attempts": 1}),
+    store = SqlCatalog(
+        "channelflow",
+        uri=f"sqlite:///{tmp_path}/catalog.db",
+        warehouse=f"s3://{env['MINIO_BUCKET']}/iceberg-test/{uuid.uuid4()}",
+        **{
+            "s3.endpoint": f"http://127.0.0.1:{env['MINIO_PORT']}",
+            "s3.access-key-id": env["MINIO_ROOT_USER"],
+            "s3.secret-access-key": env["MINIO_ROOT_PASSWORD"],
+        },
     )
     try:
-        client.list_buckets()
-    except (BotoCoreError, ClientError, OSError) as exc:
-        pytest.fail(
-            f"Object store is not answering on port {env['MINIO_PORT']}: {exc}. Run `make up`."
-        )
-    # A fresh prefix per test: these write real objects, and a test that reused
-    # a prefix would read another run's snapshots and pass for the wrong reason.
-    return S3ObjectStore(client, env["MINIO_BUCKET"], prefix=f"lakehouse-test/{uuid.uuid4()}")
+        store.create_namespace("channelflow")
+    except Exception as exc:  # noqa: BLE001 -- the stack being down is the
+        # failure worth naming, and it arrives as whatever the client raises.
+        pytest.fail(f"Object store is not answering: {exc}. Run `make up`.")
+    return store
 
 
 def _schema() -> Schema:
@@ -101,71 +94,46 @@ def _row(index: int) -> dict[str, object]:
 
 @pytest.mark.integration
 @pytest.mark.trace("REQ-STORE-001")
+@pytest.mark.trace("REQ-WP-039")
 def test_a_table_commits_reads_and_time_travels_on_a_real_object_store(
-    store: S3ObjectStore,
+    catalog: object,
 ) -> None:
     """The whole round trip, against the store [[ADR-002]] chose."""
-    table = Table(name="cex_trades", schema=_schema(), store=store)
+    table = IcebergTable(name="cex_trades", schema=_schema(), catalog=catalog)  # type: ignore[arg-type]
 
     first = table.append([_row(1), _row(2)])
-    second = table.append([_row(3)])
+    table.append([_row(3)])
 
     assert table.snapshot_ids() == (1, 2)
     assert table.read(snapshot_id=1).num_rows == 2
     assert table.read().num_rows == 3
     assert table.read(as_of_ns=2 * SECOND).num_rows == 2
     assert table.snapshot(1).content_hash == first.content_hash
-    assert second.parent_id == 1
 
 
 @pytest.mark.integration
 @pytest.mark.trace("REQ-STORE-001")
-def test_the_backend_really_refuses_a_second_write_to_the_same_key(
-    store: S3ObjectStore,
-) -> None:
-    """The guarantee, not the mapping.
-
-    A unit test proves that a `PreconditionFailed` becomes a `KeyExists`. Only
-    this one proves the backend sends a `PreconditionFailed` at all -- and if it
-    does not, every commit in the table layer is a race nobody loses and nobody
-    notices.
-    """
-    store.put_if_absent("probe.json", b"first")
-
-    with pytest.raises(KeyExists):
-        store.put_if_absent("probe.json", b"second")
-    assert store.get("probe.json") == b"first"
-
-
-@pytest.mark.integration
-@pytest.mark.trace("REQ-STORE-001")
-def test_a_listing_from_a_real_store_orders_manifest_versions(
-    store: S3ObjectStore,
-) -> None:
-    """The table layer takes the newest snapshot off the end of this list.
-
-    Zero-padded versions make a lexical listing a numeric ordering, which is the
-    assumption that would break silently at the tenth commit if the padding were
-    dropped.
-    """
-    table = Table(name="cex_trades", schema=_schema(), store=store)
-    for index in range(1, 12):
+@pytest.mark.trace("REQ-WP-039")
+def test_rows_come_back_in_commit_order_from_the_real_store(catalog: object) -> None:
+    """The guarantee the migration nearly reversed in silence, checked where the
+    file listing is a real listing."""
+    table = IcebergTable(name="cex_trades", schema=_schema(), catalog=catalog)  # type: ignore[arg-type]
+    for index in (1, 2, 3):
         table.append([_row(index)])
 
-    assert table.snapshot_ids() == tuple(range(1, 12))
-    current = table.current()
-    assert current is not None and current.snapshot_id == 11
+    assert table.read()["event_time_ns"].to_pylist() == [SECOND, 2 * SECOND, 3 * SECOND]
 
 
 @pytest.mark.integration
 @pytest.mark.trace("REQ-STORE-001")
-def test_duckdb_queries_an_extract_from_a_real_store(store: S3ObjectStore) -> None:
-    """PRD §29.0's "bounded extracts with DuckDB", over objects that really came
-    off the network."""
-    table = Table(name="cex_trades", schema=_schema(), store=store)
+@pytest.mark.trace("REQ-WP-039")
+def test_an_earlier_read_is_unchanged_by_a_later_commit(catalog: object) -> None:
+    """Point-in-time safety is the reason the plane exists, so it is checked
+    against the storage it actually runs on."""
+    table = IcebergTable(name="cex_trades", schema=_schema(), catalog=catalog)  # type: ignore[arg-type]
     table.append([_row(1), _row(2)])
+    before = table.read(snapshot_id=1).num_rows
+
     table.append([_row(3)])
 
-    rows = query(table, 'SELECT count(*) AS n FROM "cex_trades"')
-
-    assert rows.to_pylist() == [{"n": 3}]
+    assert table.read(snapshot_id=1).num_rows == before
