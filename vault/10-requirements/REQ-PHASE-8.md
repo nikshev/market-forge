@@ -8,12 +8,11 @@ phase: 8
 status: planned
 depends_on: ["REQ-PHASE-7A"]
 tags: []
-covers: [REQ-WP-035, REQ-WP-036]
+covers: [REQ-WP-035, REQ-WP-036, REQ-WP-037]
 not_delivered:
   - "Redpanda/Kafka optional transport: not built"
   - "S3 cold retention: MinIO is provisioned for the dev stack, with no retention tiering"
   - "monitoring dashboards: the exposition exists (REQ-WP-036) and nothing serves or draws it"
-  - "backup/restore: not built"
   - "deployment docs: the repository documents development, not deployment"
   - "load tests: not built"
 ---

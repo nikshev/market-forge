@@ -5,11 +5,21 @@
 **Decision**: walk snapshots, oldest first; within each, data files then its
 manifest.
 
-**Rationale**: listing every key under the table prefix and copying it is
-shorter and wrong. A sorted listing returns `<table>/metadata/v00000001.json`
-before `<table>/data/...`, so the naive implementation copies manifests first —
-precisely the ordering `table.py` calls corruption. The bug would be invisible
-in any test that lets the copy finish.
+**Rationale**: the ordering `table.py` established is the invariant — data
+before the manifest naming it — and the walk satisfies it by construction,
+reading each manifest and copying what it names first.
+
+**Corrected during implementation.** This section previously claimed the listing
+implementation was wrong because a sorted listing returns `<table>/metadata/...`
+before `<table>/data/...`. It does not: `data` sorts before `metadata`, so the
+listing happens to be safe here. The mutation sweep found the error by
+surviving — the "obvious wrong implementation" passed every test, because it is
+not wrong for this key layout.
+
+What survives the correction is the real reason, which is weaker than the one
+first written and is the true one: the listing is safe by coincidence of two
+directory names, and the walk is safe by construction. Rename either directory
+and the listing silently starts manufacturing corruption.
 
 Walking also yields the interruption property without extra work: stop at any
 point and the copy is a prefix of the history in which every manifest is fully

@@ -19,6 +19,17 @@ migrations/adapters and must not leak into signal/channel domain code" -- and is
 asserted by a test rather than left to care.
 """
 
+from channelflow.lakehouse.backup import (
+    BackupConflict,
+    BackupReport,
+    RestoreReport,
+    TargetNotEmpty,
+    VerifyReport,
+    WouldLandShort,
+    back_up,
+    restore,
+    verify,
+)
 from channelflow.lakehouse.research import (
     SnapshotEmpty,
     extract,
@@ -56,6 +67,15 @@ from channelflow.lakehouse.table import (
 )
 
 __all__ = [
+    "verify",
+    "restore",
+    "back_up",
+    "WouldLandShort",
+    "VerifyReport",
+    "TargetNotEmpty",
+    "RestoreReport",
+    "BackupReport",
+    "BackupConflict",
     "COMPRESSION",
     "COMPRESSION_LEVEL",
     "VERSION_DIGITS",

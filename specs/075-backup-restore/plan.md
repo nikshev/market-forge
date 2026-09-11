@@ -49,14 +49,19 @@ sequence.
 
 ## Why the copy walks snapshots rather than listing keys
 
-Listing every key under the table prefix and copying it is shorter, and it
-copies manifests and data in whatever order the listing returns — which is
-alphabetical, which puts `metadata/` before the data directory. That is exactly
-the corruption ordering.
+The invariant is `table.py`'s: data files before the manifest naming them, since
+orphan files are invisible to readers and a manifest over absent files is
+corruption. The walk satisfies it by construction.
 
-Walking snapshots oldest-first and copying each one's named files before its
-manifest also gives the interruption property for free: stop anywhere and the
-copy is a prefix of the history, every manifest in it fully backed by data.
+The shorter implementation — list the prefix, copy every key — is safe here too,
+and the first version of this plan wrongly said otherwise. `data/` sorts before
+`metadata/`, so a sorted listing copies data first, by coincidence of two
+directory names. The walk does not depend on the names: rename either directory
+and the listing silently begins producing the corruption.
+
+Walking oldest-first also gives the interruption property for free: stop
+anywhere and the copy is a prefix of the history, every manifest in it fully
+backed by data.
 
 ## The two failure kinds
 

@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "§45 Phase 8"
 prd_lines: "6912"
 phase: 8
-status: planned
+status: implemented
 depends_on: [REQ-STORE-001]
 tags: []
 ---
@@ -67,7 +67,38 @@ it landed on, and that landing short of the newest was asked for.
 ## Trace
 
 <!-- trace:begin -->
-_Not yet generated. Run `make graph`._
+- **Specs:** [[SPEC-075-backup-restore]]
+- **Tests:**
+    - `tests/integration/test_backup_on_minio.py::test_a_table_survives_a_round_trip_through_a_real_object_store`
+    - `tests/integration/test_backup_on_minio.py::test_re_running_a_backup_copies_nothing_and_raises_nothing`
+    - `tests/integration/test_backup_on_minio.py::test_restoring_over_a_live_table_is_refused_on_the_real_backend`
+    - `tests/integration/test_backup_on_minio.py::test_the_copy_verifies_against_the_source_s_identity`
+    - `tests/unit/lakehouse/test_backup.py::test_a_backed_up_table_restores_row_for_row`
+    - `tests/unit/lakehouse/test_backup.py::test_a_clean_copy_verifies`
+    - `tests/unit/lakehouse/test_backup.py::test_a_different_dataset_is_an_identity_failure`
+    - `tests/unit/lakehouse/test_backup.py::test_a_hole_deep_in_the_history_is_found_too`
+    - `tests/unit/lakehouse/test_backup.py::test_a_hole_in_the_history_is_found_even_when_the_latest_commit_is_whole`
+    - `tests/unit/lakehouse/test_backup.py::test_a_key_already_holding_something_else_is_refused_not_overwritten`
+    - `tests/unit/lakehouse/test_backup.py::test_a_missing_file_is_reported_as_missing`
+    - `tests/unit/lakehouse/test_backup.py::test_a_restore_says_which_snapshot_it_landed_on`
+    - `tests/unit/lakehouse/test_backup.py::test_a_schema_free_table_backs_up_too`
+    - `tests/unit/lakehouse/test_backup.py::test_a_table_nobody_ever_committed_to_restores_as_one`
+    - `tests/unit/lakehouse/test_backup.py::test_an_interrupted_backup_never_leaves_a_manifest_over_absent_data`
+    - `tests/unit/lakehouse/test_backup.py::test_an_interrupted_backup_restores_to_its_last_complete_snapshot`
+    - `tests/unit/lakehouse/test_backup.py::test_an_orphan_object_is_not_a_failure`
+    - `tests/unit/lakehouse/test_backup.py::test_asking_for_a_snapshot_the_backup_does_not_hold_is_refused`
+    - `tests/unit/lakehouse/test_backup.py::test_copying_an_object_that_is_already_there_writes_nothing`
+    - `tests/unit/lakehouse/test_backup.py::test_damage_in_transit_is_reported_as_corrupt_not_missing`
+    - `tests/unit/lakehouse/test_backup.py::test_landing_short_is_allowed_when_it_was_asked_for`
+    - `tests/unit/lakehouse/test_backup.py::test_landing_short_without_being_asked_is_refused`
+    - `tests/unit/lakehouse/test_backup.py::test_one_absent_file_is_one_finding_however_many_manifests_name_it`
+    - `tests/unit/lakehouse/test_backup.py::test_re_running_an_interrupted_backup_completes_it`
+    - `tests/unit/lakehouse/test_backup.py::test_restoring_into_a_non_empty_target_is_refused`
+    - `tests/unit/lakehouse/test_backup.py::test_the_restored_table_keeps_the_same_snapshot_identity`
+    - `tests/unit/lakehouse/test_backup.py::test_two_restores_into_fresh_targets_agree`
+- **Code:**
+    - `src/channelflow/lakehouse/backup.py`
+- **Outcomes:** [[OUT-2026-09-11-implement-backup-restore]], [[OUT-2026-09-11-plan-backup-restore]], [[OUT-2026-09-11-requirement-backup-restore]], [[OUT-2026-09-11-spec-backup-restore]]
 <!-- trace:end -->
 
 ## Notes
