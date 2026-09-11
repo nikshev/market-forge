@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "§0 item 13, §23.9"
 prd_lines: "27, 4137-4151"
 phase: 7
-status: draft
+status: planned
 depends_on: [REQ-WP-022, REQ-WP-039]
 tags: []
 ---
