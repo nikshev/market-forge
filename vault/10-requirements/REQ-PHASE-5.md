@@ -8,9 +8,9 @@ phase: 5
 status: planned
 depends_on: ["REQ-PHASE-4"]
 tags: []
-covers: [REQ-WP-016, REQ-ASSET-001, REQ-EXP-010, REQ-EXP-015]
+covers: [REQ-WP-016, REQ-ASSET-001, REQ-EXP-010, REQ-EXP-015, REQ-WP-043]
 not_delivered:
-  - "Bybit connector: only Binance is implemented"
+  - "Bybit connector: public market data lands ([[REQ-WP-043]]); the session layer and derivatives channels do not"
   - "OKX connector: only Binance is implemented"
   - "funding dispersion: no cross-venue funding series exists to disperse"
 ---
