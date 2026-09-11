@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "§45 Phase 8"
 prd_lines: "6912"
 phase: 8
-status: draft
+status: specified
 depends_on: [REQ-STORE-001]
 tags: []
 ---
