@@ -14,55 +14,55 @@ from .conftest import SECOND, trade
 
 
 @pytest.mark.trace("REQ-STORE-001")
-def test_a_point_in_time_read_returns_nothing_later_than_the_instant(trades: Table) -> None:
+def test_a_point_in_time_read_returns_nothing_later_than_the_instant(legacy_trades: Table) -> None:
     """Principle I at the boundary where data leaves storage. A read that
     returned a later row would hand a feature something that had not happened,
     and every leakage check upstream would already have passed."""
-    trades.append([trade(1), trade(2), trade(3), trade(4)])
+    legacy_trades.append([trade(1), trade(2), trade(3), trade(4)])
 
-    rows = trades.read(as_of_ns=2 * SECOND)
+    rows = legacy_trades.read(as_of_ns=2 * SECOND)
 
     assert rows.num_rows == 2
     assert max(rows["event_time_ns"].to_pylist()) <= 2 * SECOND
 
 
 @pytest.mark.trace("REQ-STORE-001")
-def test_the_instant_itself_is_included(trades: Table) -> None:
+def test_the_instant_itself_is_included(legacy_trades: Table) -> None:
     """§24.1's invariant is `<=`, not `<`. A row whose event time is exactly the
     as-of instant was available at that instant."""
-    trades.append([trade(1), trade(2)])
+    legacy_trades.append([trade(1), trade(2)])
 
-    assert trades.read(as_of_ns=2 * SECOND).num_rows == 2
-    assert trades.read(as_of_ns=2 * SECOND - 1).num_rows == 1
+    assert legacy_trades.read(as_of_ns=2 * SECOND).num_rows == 2
+    assert legacy_trades.read(as_of_ns=2 * SECOND - 1).num_rows == 1
 
 
 @pytest.mark.trace("REQ-STORE-001")
 def test_a_point_in_time_read_before_anything_happened_is_empty_rather_than_wrong(
-    trades: Table,
+    legacy_trades: Table,
 ) -> None:
-    trades.append([trade(5)])
+    legacy_trades.append([trade(5)])
 
-    assert trades.read(as_of_ns=1).num_rows == 0
+    assert legacy_trades.read(as_of_ns=1).num_rows == 0
 
 
 @pytest.mark.trace("REQ-STORE-001")
-def test_a_table_with_no_event_time_refuses_a_point_in_time_read(config: Table) -> None:
+def test_a_table_with_no_event_time_refuses_a_point_in_time_read(legacy_config: Table) -> None:
     """Returning everything would answer a different question in a way the
     caller could not detect: the rows would look like a correct as-of result and
     would include whatever arrived later."""
-    config.append([{"key": "tick", "value": "0.01"}])
+    legacy_config.append([{"key": "tick", "value": "0.01"}])
 
     with pytest.raises(NoEventTime, match="different question"):
-        config.read(as_of_ns=1)
+        legacy_config.read(as_of_ns=1)
 
 
 @pytest.mark.trace("REQ-STORE-001")
-def test_a_point_in_time_read_composes_with_a_snapshot(trades: Table) -> None:
+def test_a_point_in_time_read_composes_with_a_snapshot(legacy_trades: Table) -> None:
     """The two bounds are different questions and both have to hold at once:
     which commit, and which instant within it."""
-    trades.append([trade(1), trade(2)])
-    trades.append([trade(3), trade(4)])
+    legacy_trades.append([trade(1), trade(2)])
+    legacy_trades.append([trade(3), trade(4)])
 
-    assert trades.read(snapshot_id=1, as_of_ns=4 * SECOND).num_rows == 2
-    assert trades.read(snapshot_id=2, as_of_ns=4 * SECOND).num_rows == 4
-    assert trades.read(snapshot_id=2, as_of_ns=2 * SECOND).num_rows == 2
+    assert legacy_trades.read(snapshot_id=1, as_of_ns=4 * SECOND).num_rows == 2
+    assert legacy_trades.read(snapshot_id=2, as_of_ns=4 * SECOND).num_rows == 4
+    assert legacy_trades.read(snapshot_id=2, as_of_ns=2 * SECOND).num_rows == 2

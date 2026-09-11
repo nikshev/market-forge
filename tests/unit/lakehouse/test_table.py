@@ -21,7 +21,7 @@ from .conftest import config_schema, trade, trades_schema
 
 
 @pytest.mark.trace("REQ-STORE-001")
-def test_appending_leaves_every_earlier_snapshot_exactly_as_it_was(trades: Table) -> None:
+def test_appending_leaves_every_earlier_snapshot_exactly_as_it_was(legacy_trades: Table) -> None:
     """PRD §29.B's snapshots are immutable, and PRD §0 item 5 says the same thing
     one level up: "do not rewrite historical channel snapshots or signal
     snapshots after they are finalized".
@@ -30,35 +30,35 @@ def test_appending_leaves_every_earlier_snapshot_exactly_as_it_was(trades: Table
     is written under a key naming its own version and nothing rewrites it -- so
     this test is what proves the key space actually behaves that way.
     """
-    first = trades.append([trade(1), trade(2)])
+    first = legacy_trades.append([trade(1), trade(2)])
     recorded = (first.content_hash, first.files, first.record_count)
 
-    trades.append([trade(3)])
+    legacy_trades.append([trade(3)])
 
-    reread = trades.snapshot(first.snapshot_id)
+    reread = legacy_trades.snapshot(first.snapshot_id)
     assert (reread.content_hash, reread.files, reread.record_count) == recorded
 
 
 @pytest.mark.trace("REQ-STORE-001")
-def test_a_read_at_a_snapshot_ignores_everything_appended_since(trades: Table) -> None:
+def test_a_read_at_a_snapshot_ignores_everything_appended_since(legacy_trades: Table) -> None:
     """The storage-level form of "as seen then". A research run pinned to a
     snapshot has to keep seeing what it saw, or its result stops being about
     anything."""
-    trades.append([trade(1), trade(2)])
-    trades.append([trade(3), trade(4), trade(5)])
+    legacy_trades.append([trade(1), trade(2)])
+    legacy_trades.append([trade(3), trade(4), trade(5)])
 
-    assert trades.read(snapshot_id=1).num_rows == 2
-    assert trades.read().num_rows == 5
+    assert legacy_trades.read(snapshot_id=1).num_rows == 2
+    assert legacy_trades.read().num_rows == 5
 
 
 @pytest.mark.trace("REQ-STORE-001")
-def test_the_chain_records_its_own_order(trades: Table) -> None:
-    first = trades.append([trade(1)])
-    second = trades.append([trade(2)])
+def test_the_chain_records_its_own_order(legacy_trades: Table) -> None:
+    first = legacy_trades.append([trade(1)])
+    second = legacy_trades.append([trade(2)])
 
     assert first.parent_id is None
     assert second.parent_id == first.snapshot_id
-    assert trades.snapshot_ids() == (1, 2)
+    assert legacy_trades.snapshot_ids() == (1, 2)
 
 
 class RacingStore:
@@ -115,9 +115,9 @@ def test_a_commit_that_loses_the_race_leaves_the_table_where_it_was(
     already in the store and is unreferenced -- garbage, not corruption, because
     a reader only ever opens files a manifest names.
     """
-    trades = Table(name="cex_trades", schema=trades_schema(), store=store)
-    trades.append([trade(1)])
-    rival_objects = _rival_commit(store, trades)
+    legacy_trades = Table(name="cex_trades", schema=trades_schema(), store=store)
+    legacy_trades.append([trade(1)])
+    rival_objects = _rival_commit(store, legacy_trades)
 
     racing = Table(
         name="cex_trades",
@@ -127,39 +127,43 @@ def test_a_commit_that_loses_the_race_leaves_the_table_where_it_was(
     with pytest.raises(CommitRaceLost, match="another writer"):
         racing.append([trade(2)])
 
-    current = trades.current()
+    current = legacy_trades.current()
     assert current is not None and current.snapshot_id == 2
-    referenced = {file.key for sid in trades.snapshot_ids() for file in trades.snapshot(sid).files}
+    referenced = {
+        file.key
+        for sid in legacy_trades.snapshot_ids()
+        for file in legacy_trades.snapshot(sid).files
+    }
     orphans = {key for key in store.list("cex_trades/data/") if key not in referenced}
     assert len(orphans) == 1, "the losing writer left exactly its own data file behind"
-    assert trades.read().num_rows == 2, "and no query can see it"
-    assert trade(2)["event_time_ns"] not in trades.read()["event_time_ns"].to_pylist()
+    assert legacy_trades.read().num_rows == 2, "and no query can see it"
+    assert trade(2)["event_time_ns"] not in legacy_trades.read()["event_time_ns"].to_pylist()
 
 
 @pytest.mark.trace("REQ-STORE-001")
 def test_a_data_file_without_a_manifest_is_not_a_snapshot(
-    trades: Table, store: InMemoryObjectStore
+    legacy_trades: Table, store: InMemoryObjectStore
 ) -> None:
     """ "No partially written snapshot is readable", made true by construction: a
     snapshot exists exactly when its manifest does."""
-    trades.append([trade(1)])
+    legacy_trades.append([trade(1)])
     store.put("cex_trades/data/00000002/deadbeef.parquet", b"not even parquet")
 
-    assert trades.snapshot_ids() == (1,)
-    assert trades.read().num_rows == 1
+    assert legacy_trades.snapshot_ids() == (1,)
+    assert legacy_trades.read().num_rows == 1
 
 
 @pytest.mark.trace("REQ-STORE-001")
-def test_an_append_of_no_rows_is_refused(trades: Table) -> None:
+def test_an_append_of_no_rows_is_refused(legacy_trades: Table) -> None:
     """It would commit a snapshot identical to its parent under a new id, and
     everything keyed by snapshot would see a change that did not happen."""
     with pytest.raises(ValueError, match="did not happen"):
-        trades.append([])
+        legacy_trades.append([])
 
 
 @pytest.mark.trace("REQ-STORE-001")
 def test_an_append_under_a_different_schema_is_refused(
-    trades: Table, store: InMemoryObjectStore
+    legacy_trades: Table, store: InMemoryObjectStore
 ) -> None:
     """One snapshot chain, one shape.
 
@@ -167,8 +171,8 @@ def test_an_append_under_a_different_schema_is_refused(
     carrying two would make "read this snapshot" ambiguous at the file that
     changed.
     """
-    trades.append([trade(1)])
-    widened = Table(name=trades.name, schema=config_schema(), store=store)
+    legacy_trades.append([trade(1)])
+    widened = Table(name=legacy_trades.name, schema=config_schema(), store=store)
 
     with pytest.raises(SchemaMismatch):
         widened.append([{"key": "tick", "value": "0.01"}])
@@ -176,51 +180,51 @@ def test_an_append_under_a_different_schema_is_refused(
 
 @pytest.mark.trace("REQ-STORE-001")
 def test_an_earlier_snapshot_still_reads_under_the_schema_it_was_written_with(
-    trades: Table,
+    legacy_trades: Table,
 ) -> None:
     """A schema is versioned by its fingerprint, and every snapshot records the
     one it was committed with."""
-    first = trades.append([trade(1)])
+    first = legacy_trades.append([trade(1)])
 
     assert first.schema_fingerprint == trades_schema().fingerprint
-    assert trades.snapshot(1).schema_fingerprint == first.schema_fingerprint
+    assert legacy_trades.snapshot(1).schema_fingerprint == first.schema_fingerprint
 
 
 @pytest.mark.trace("REQ-STORE-001")
-def test_a_table_nothing_has_committed_to_has_no_snapshot(trades: Table) -> None:
+def test_a_table_nothing_has_committed_to_has_no_snapshot(legacy_trades: Table) -> None:
     """`None`, not an empty snapshot. A table that has never been written to and
     a table whose latest commit holds no rows are different facts, and only the
     second one has a content hash."""
-    assert trades.current() is None
-    assert trades.snapshot_ids() == ()
+    assert legacy_trades.current() is None
+    assert legacy_trades.snapshot_ids() == ()
 
-    empty = trades.read()
+    empty = legacy_trades.read()
     assert empty.num_rows == 0
-    assert empty.schema.names == list(trades.schema.names)
+    assert empty.schema.names == list(legacy_trades.schema.names)
 
 
 @pytest.mark.trace("REQ-STORE-001")
-def test_a_read_of_a_snapshot_that_was_never_committed_is_refused(trades: Table) -> None:
-    trades.append([trade(1)])
+def test_a_read_of_a_snapshot_that_was_never_committed_is_refused(legacy_trades: Table) -> None:
+    legacy_trades.append([trade(1)])
 
     with pytest.raises(NoSuchSnapshot, match="cex_trades"):
-        trades.snapshot(7)
+        legacy_trades.snapshot(7)
 
 
 @pytest.mark.trace("REQ-STORE-001")
-def test_the_recorded_event_time_is_the_batch_maximum(trades: Table) -> None:
+def test_the_recorded_event_time_is_the_batch_maximum(legacy_trades: Table) -> None:
     """Not a commit time -- nothing here reads a clock, so there is none to
     record."""
-    first = trades.append([trade(1), trade(5), trade(3)])
+    first = legacy_trades.append([trade(1), trade(5), trade(3)])
 
     assert first.event_time_max_ns == trade(5)["event_time_ns"]
 
 
 @pytest.mark.trace("REQ-STORE-001")
-def test_a_table_with_no_event_time_reports_none(config: Table) -> None:
+def test_a_table_with_no_event_time_reports_none(legacy_config: Table) -> None:
     """Zero, and stated as such: a table without an event-time column has no
     event time, and inventing one from a clock is what this package refuses."""
-    first = config.append([{"key": "tick", "value": "0.01"}])
+    first = legacy_config.append([{"key": "tick", "value": "0.01"}])
 
     assert first.event_time_max_ns == 0
 
@@ -244,20 +248,20 @@ def test_nothing_in_the_lakehouse_consults_a_clock() -> None:
 
 @pytest.mark.trace("REQ-STORE-001")
 def test_two_tables_over_one_store_are_the_same_table(
-    trades: Table, store: InMemoryObjectStore
+    legacy_trades: Table, store: InMemoryObjectStore
 ) -> None:
     """`Table` is frozen and stateless on purpose: everything about the table
     lives in the store, so no instance can hold a view that goes stale behind
     another."""
-    trades.append([trade(1)])
-    other = Table(name=trades.name, schema=trades.schema, store=store)
+    legacy_trades.append([trade(1)])
+    other = Table(name=legacy_trades.name, schema=legacy_trades.schema, store=store)
 
-    assert other.snapshot_ids() == trades.snapshot_ids()
-    assert other.read().num_rows == trades.read().num_rows
+    assert other.snapshot_ids() == legacy_trades.snapshot_ids()
+    assert other.read().num_rows == legacy_trades.read().num_rows
 
 
 @pytest.mark.trace("REQ-STORE-001")
-def test_the_tenth_commit_does_not_reorder_the_chain(trades: Table) -> None:
+def test_the_tenth_commit_does_not_reorder_the_chain(legacy_trades: Table) -> None:
     """Nine commits is not a chain; the boundary is where an ordering bug hides.
 
     `snapshot_ids` parses each version and sorts the integers, so this passes
@@ -268,12 +272,12 @@ def test_the_tenth_commit_does_not_reorder_the_chain(trades: Table) -> None:
     the parent links, and reading every file the newest manifest names.
     """
     for index in range(1, 12):
-        trades.append([trade(index)])
+        legacy_trades.append([trade(index)])
 
-    assert trades.snapshot_ids() == tuple(range(1, 12))
-    current = trades.current()
+    assert legacy_trades.snapshot_ids() == tuple(range(1, 12))
+    current = legacy_trades.current()
     assert current is not None and current.snapshot_id == 11
-    assert trades.read().num_rows == 11
+    assert legacy_trades.read().num_rows == 11
 
 
 @pytest.mark.trace("REQ-STORE-001")

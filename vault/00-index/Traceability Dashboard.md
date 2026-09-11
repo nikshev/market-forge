@@ -678,6 +678,7 @@ graph LR
   OUT_2026_09_11_implement_backup_restore["OUT-2026-09-11-implement-backup-restore"]
   OUT_2026_09_11_implement_iceberg["OUT-2026-09-11-implement-iceberg"]
   OUT_2026_09_11_implement_iceberg_callers["OUT-2026-09-11-implement-iceberg-callers"]
+  OUT_2026_09_11_implement_iceberg_research["OUT-2026-09-11-implement-iceberg-research"]
   OUT_2026_09_11_plan_backup_restore["OUT-2026-09-11-plan-backup-restore"]
   OUT_2026_09_11_plan_iceberg["OUT-2026-09-11-plan-iceberg"]
   OUT_2026_09_11_requirement_backup_restore["OUT-2026-09-11-requirement-backup-restore"]
@@ -1830,7 +1831,7 @@ graph LR
   tests_unit_lakehouse_test_research_py__test_a_query_at_an_older_snapshot_sees_that_snapshot["tests/unit/lakehouse/test_research.py::test_a_query_at_an_older_snapshot_sees_that_snapshot"]
   tests_unit_lakehouse_test_research_py__test_a_query_over_a_table_with_no_snapshot_is_refused["tests/unit/lakehouse/test_research.py::test_a_query_over_a_table_with_no_snapshot_is_refused"]
   tests_unit_lakehouse_test_research_py__test_a_query_reads_every_file_a_snapshot_names["tests/unit/lakehouse/test_research.py::test_a_query_reads_every_file_a_snapshot_names"]
-  tests_unit_lakehouse_test_research_py__test_a_query_sees_only_the_files_the_manifest_names["tests/unit/lakehouse/test_research.py::test_a_query_sees_only_the_files_the_manifest_names"]
+  tests_unit_lakehouse_test_research_py__test_a_query_sees_only_the_files_the_snapshot_names["tests/unit/lakehouse/test_research.py::test_a_query_sees_only_the_files_the_snapshot_names"]
   tests_unit_lakehouse_test_research_py__test_a_result_can_name_the_dataset_it_read["tests/unit/lakehouse/test_research.py::test_a_result_can_name_the_dataset_it_read"]
   tests_unit_lakehouse_test_research_py__test_a_snapshot_is_queryable_by_the_table_s_own_name["tests/unit/lakehouse/test_research.py::test_a_snapshot_is_queryable_by_the_table_s_own_name"]
   tests_unit_lakehouse_test_research_py__test_the_extract_does_not_outlive_the_query["tests/unit/lakehouse/test_research.py::test_the_extract_does_not_outlive_the_query"]
@@ -3502,6 +3503,7 @@ graph LR
   OUT_2026_09_11_implement_backup_restore -.->|RECORDS| REQ_WP_037
   OUT_2026_09_11_implement_iceberg -.->|RECORDS| REQ_WP_039
   OUT_2026_09_11_implement_iceberg_callers -.->|RECORDS| REQ_WP_039
+  OUT_2026_09_11_implement_iceberg_research -.->|RECORDS| REQ_WP_039
   OUT_2026_09_11_plan_backup_restore -.->|RECORDS| REQ_WP_037
   OUT_2026_09_11_plan_iceberg -.->|RECORDS| REQ_WP_039
   OUT_2026_09_11_requirement_backup_restore -.->|RECORDS| REQ_WP_037
@@ -4591,7 +4593,7 @@ graph LR
   tests_unit_lakehouse_test_research_py__test_a_query_at_an_older_snapshot_sees_that_snapshot -->|VERIFIES| REQ_STORE_001
   tests_unit_lakehouse_test_research_py__test_a_query_over_a_table_with_no_snapshot_is_refused -->|VERIFIES| REQ_STORE_001
   tests_unit_lakehouse_test_research_py__test_a_query_reads_every_file_a_snapshot_names -->|VERIFIES| REQ_STORE_001
-  tests_unit_lakehouse_test_research_py__test_a_query_sees_only_the_files_the_manifest_names -->|VERIFIES| REQ_STORE_001
+  tests_unit_lakehouse_test_research_py__test_a_query_sees_only_the_files_the_snapshot_names -->|VERIFIES| REQ_STORE_001
   tests_unit_lakehouse_test_research_py__test_a_result_can_name_the_dataset_it_read -->|VERIFIES| REQ_STORE_001
   tests_unit_lakehouse_test_research_py__test_a_snapshot_is_queryable_by_the_table_s_own_name -->|VERIFIES| REQ_STORE_001
   tests_unit_lakehouse_test_research_py__test_the_extract_does_not_outlive_the_query -->|VERIFIES| REQ_STORE_001
@@ -6628,6 +6630,7 @@ graph LR
   OUT_2026_09_11_implement_backup_restore["OUT-2026-09-11-implement-backup-restore"]
   OUT_2026_09_11_implement_iceberg["OUT-2026-09-11-implement-iceberg"]
   OUT_2026_09_11_implement_iceberg_callers["OUT-2026-09-11-implement-iceberg-callers"]
+  OUT_2026_09_11_implement_iceberg_research["OUT-2026-09-11-implement-iceberg-research"]
   OUT_2026_09_11_plan_backup_restore["OUT-2026-09-11-plan-backup-restore"]
   OUT_2026_09_11_plan_iceberg["OUT-2026-09-11-plan-iceberg"]
   OUT_2026_09_11_requirement_backup_restore["OUT-2026-09-11-requirement-backup-restore"]
@@ -6793,6 +6796,7 @@ graph LR
   OUT_2026_09_11_implement_backup_restore -.->|RECORDS| REQ_WP_037
   OUT_2026_09_11_implement_iceberg -.->|RECORDS| REQ_WP_039
   OUT_2026_09_11_implement_iceberg_callers -.->|RECORDS| REQ_WP_039
+  OUT_2026_09_11_implement_iceberg_research -.->|RECORDS| REQ_WP_039
   OUT_2026_09_11_plan_backup_restore -.->|RECORDS| REQ_WP_037
   OUT_2026_09_11_plan_iceberg -.->|RECORDS| REQ_WP_039
   OUT_2026_09_11_requirement_backup_restore -.->|RECORDS| REQ_WP_037

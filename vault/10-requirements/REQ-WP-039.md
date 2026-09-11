@@ -86,7 +86,7 @@ them.
     - `tests/unit/lakehouse/test_iceberg.py::test_two_writers_from_one_parent_both_land`
 - **Code:**
     - `src/channelflow/lakehouse/iceberg.py`
-- **Outcomes:** [[OUT-2026-09-11-implement-iceberg]], [[OUT-2026-09-11-implement-iceberg-callers]], [[OUT-2026-09-11-plan-iceberg]], [[OUT-2026-09-11-requirement-iceberg]], [[OUT-2026-09-11-spec-iceberg]]
+- **Outcomes:** [[OUT-2026-09-11-implement-iceberg]], [[OUT-2026-09-11-implement-iceberg-callers]], [[OUT-2026-09-11-implement-iceberg-research]], [[OUT-2026-09-11-plan-iceberg]], [[OUT-2026-09-11-requirement-iceberg]], [[OUT-2026-09-11-spec-iceberg]]
 <!-- trace:end -->
 
 ## Notes

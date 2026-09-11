@@ -152,7 +152,7 @@ point-in-time reads, and DuckDB access to a snapshot.
     - `tests/unit/lakehouse/test_research.py::test_a_query_at_an_older_snapshot_sees_that_snapshot`
     - `tests/unit/lakehouse/test_research.py::test_a_query_over_a_table_with_no_snapshot_is_refused`
     - `tests/unit/lakehouse/test_research.py::test_a_query_reads_every_file_a_snapshot_names`
-    - `tests/unit/lakehouse/test_research.py::test_a_query_sees_only_the_files_the_manifest_names`
+    - `tests/unit/lakehouse/test_research.py::test_a_query_sees_only_the_files_the_snapshot_names`
     - `tests/unit/lakehouse/test_research.py::test_a_result_can_name_the_dataset_it_read`
     - `tests/unit/lakehouse/test_research.py::test_a_snapshot_is_queryable_by_the_table_s_own_name`
     - `tests/unit/lakehouse/test_research.py::test_the_extract_does_not_outlive_the_query`
