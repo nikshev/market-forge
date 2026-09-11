@@ -64,6 +64,7 @@ symptom.
 ## Trace
 
 <!-- trace:begin -->
+- **Specs:** [[SPEC-081-bybit-connector]]
 - **Tests:**
     - `tests/unit/connectors/bybit/test_normalize.py::test_a_delta_names_one_update_and_its_predecessor`
     - `tests/unit/connectors/bybit/test_normalize.py::test_a_message_missing_a_field_is_refused`

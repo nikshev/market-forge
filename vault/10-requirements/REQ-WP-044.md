@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "§5.2, §45 Phase 5, §35.6"
 prd_lines: "315-319, 6826, 4897-4906"
 phase: 5
-status: draft
+status: implemented
 depends_on: [REQ-WP-043]
 tags: []
 ---
@@ -68,7 +68,27 @@ sentence somebody has to trust.
 ## Trace
 
 <!-- trace:begin -->
-_Not yet generated. Run `make graph`._
+- **Specs:** [[SPEC-082-okx-connector]]
+- **Tests:**
+    - `tests/unit/connectors/okx/test_normalize.py::test_a_buy_lifts_the_ask_and_a_sell_hits_the_bid`
+    - `tests/unit/connectors/okx/test_normalize.py::test_a_contract_worth_nothing_is_refused`
+    - `tests/unit/connectors/okx/test_normalize.py::test_a_snapshot_has_no_predecessor`
+    - `tests/unit/connectors/okx/test_normalize.py::test_a_trade_size_is_converted_from_contracts_to_base_units`
+    - `tests/unit/connectors/okx/test_normalize.py::test_an_instrument_nobody_described_is_refused`
+    - `tests/unit/connectors/okx/test_normalize.py::test_an_unknown_action_is_refused`
+    - `tests/unit/connectors/okx/test_normalize.py::test_an_unknown_side_is_refused`
+    - `tests/unit/connectors/okx/test_normalize.py::test_the_aggressor_is_the_taker_and_the_maker_follows`
+    - `tests/unit/connectors/okx/test_normalize.py::test_the_bids_are_the_bids`
+    - `tests/unit/connectors/okx/test_normalize.py::test_the_contract_value_comes_from_the_venue`
+    - `tests/unit/connectors/okx/test_normalize.py::test_the_event_time_is_the_venue_s_and_ingestion_is_ours`
+    - `tests/unit/connectors/okx/test_normalize.py::test_the_first_book_message_is_a_snapshot_and_the_rest_are_updates`
+    - `tests/unit/connectors/okx/test_normalize.py::test_the_notional_follows_the_converted_size`
+    - `tests/unit/connectors/okx/test_normalize.py::test_the_venue_states_what_came_before_each_update`
+- **Code:**
+    - `src/channelflow/connectors/okx/__init__.py`
+    - `src/channelflow/connectors/okx/normalize.py`
+    - `tools/record/okx_capture.py`
+- **Outcomes:** [[OUT-2026-09-11-implement-okx]], [[OUT-2026-09-11-requirement-okx]]
 <!-- trace:end -->
 
 ## Notes
