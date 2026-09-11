@@ -1,0 +1,80 @@
+---
+id: REQ-WP-039
+title: The canonical plane migrates to Apache Iceberg
+type: work-package
+prd_ref: "§6.4, §7"
+prd_lines: "440-450, 600-642, 786"
+phase: 8
+status: draft
+depends_on: [REQ-STORE-001, REQ-WP-037]
+tags: []
+---
+
+## Requirement
+
+PRD §7 names the format:
+
+    - Apache Iceberg: lakehouse table/catalog semantics for normalized, feature
+      and research-grade datasets
+
+and §6.4.4 says where it applies:
+
+    Iceberg tables are created for normalized, feature and research-grade
+    datasets where snapshot isolation, schema evolution, partition evolution and
+    reproducibility matter. Raw immutable payloads may remain plain compressed
+    objects/Parquet when Iceberg metadata adds no value.
+
+[[ADR-002]] adopted "Parquet on S3-compatible object storage with Iceberg table
+semantics" from the start. What exists is a hand-rolled layer implementing those
+semantics, and [[ADR-060]] records why the approximation is being replaced by the
+thing itself: its manifests are cumulative, so no data file is ever unreferenced,
+so retention frees nothing.
+
+**This requirement is the migration, and its acceptance is about not losing
+anything on the way.** Every property the hand-rolled plane guarantees today is a
+property somebody depends on, and the migration's failure mode is not a crash —
+it is arriving with a working Iceberg table that quietly stopped doing one of
+them.
+
+## Acceptance
+
+- Point-in-time reads hold: a read at an instant returns exactly the rows
+  knowable then, and appending later data does not change an earlier read.
+- Snapshot isolation holds: a reader holding a snapshot is unaffected by
+  concurrent commits.
+- A commit is atomic: two writers racing produce one winner and one refusal, not
+  a merged or partial state.
+- Dataset identity is preserved: the content hash of [[ADR-053]] is still
+  computed over rows, and identical data still produces an identical hash across
+  processes and library versions.
+- The domain tables — bars, channels, extrema, features, signals — read and
+  write unchanged from their callers' point of view.
+- Backup and restore ([[REQ-WP-037]]) work on the new format, with the same
+  guarantees, including that an interrupted copy leaves no metadata pointing at
+  absent data.
+- The fast gate still runs with no services (REQ-INFRA-002).
+- Expiring a snapshot frees the data files nothing references any more — the
+  property whose absence forced this migration, demonstrated rather than assumed.
+- Nothing in the repository still reads or writes the hand-rolled format when the
+  migration is complete.
+
+## Trace
+
+<!-- trace:begin -->
+_Not yet generated. Run `make graph`._
+<!-- trace:end -->
+
+## Notes
+
+Human territory. Never machine-rewritten.
+
+**Staged deliberately.** Forty-two files touch the lakehouse and twelve
+construct a table. The migration lands in steps, each green, and the requirement
+is not `implemented` until the last caller moves and the old format is gone —
+because a half-migrated plane with two formats is the second production path
+[[ADR-002]] refused.
+
+**What Iceberg does not give us** is [[ADR-053]]'s content-addressed identity:
+its snapshot ids are allocated, so two runs over identical data get different
+ids. PRD §0 item 13 and [[REQ-REPRO-001]] rest on a hash of the rows, and that
+stays ours to compute.
