@@ -1,6 +1,7 @@
 """What a fitted model is, as a value, and the record that describes it.
 
 # @trace: REQ-WP-022
+# @trace: REQ-WP-040
 
 PRD §0 item 13 wants four hashes behind every research result.
 [[REQ-REPRO-001]] built all four components and three of them have producers.
@@ -31,6 +32,7 @@ import json
 import struct
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
+from enum import StrEnum
 from typing import Literal, cast, get_args
 
 import numpy as np
@@ -152,6 +154,95 @@ def _part(digest: hashlib._Hash, tag: bytes, raw: bytes) -> None:
     digest.update(raw)
 
 
+class NoDataset(ValueError):
+    """A citation that does not name a dataset.
+
+    PRD §0 item 13 asks a result to be reproducible from "a versioned dataset +
+    config + code commit hash + model artifact hash". A citation of "some of it"
+    is not a citation.
+    """
+
+
+class Resolution(StrEnum):
+    """What became of a cited dataset.
+
+    Three, not two. A check that only asked whether the snapshot id still exists
+    would pass `CHANGED` -- a name that resolves over different rows -- which is
+    precisely the case a citation exists to catch. An id is a name and a hash is
+    a claim about what was under it ([[ADR-053]]).
+    """
+
+    RESOLVED = "resolved"
+    CHANGED = "changed"
+    GONE = "gone"
+
+
+@dataclass(frozen=True)
+class DatasetOrigin:
+    """Which table, which snapshot, and what was under it.
+
+    Built from the table so the hash is the one the plane computed, and
+    **supplied rather than inferred** everywhere after that: a layer that
+    re-derived it would ask the table what it holds *now*, which is the right
+    answer to a different question and wrong exactly when the table has moved
+    on -- the case the citation is for.
+    """
+
+    table: str
+    snapshot_id: int
+    content_hash: str
+
+    def __post_init__(self) -> None:
+        if not self.table.strip():
+            raise NoDataset("a citation with no table names nothing")
+        if not self.content_hash.strip():
+            raise NoDataset(
+                f"{self.table} snapshot {self.snapshot_id} is cited by name and not by "
+                "content; a name without a claim cannot be checked"
+            )
+
+    @classmethod
+    def of(cls, table: object, snapshot_id: int | None = None) -> DatasetOrigin:
+        snapshot = table.current() if snapshot_id is None else table.snapshot(snapshot_id)  # type: ignore[attr-defined]
+        if snapshot is None:
+            raise NoDataset(f"{table.name} has no snapshot to cite")  # type: ignore[attr-defined]
+        return cls(
+            table=table.name,  # type: ignore[attr-defined]
+            snapshot_id=snapshot.snapshot_id,
+            content_hash=snapshot.content_hash,
+        )
+
+
+def resolve(origin: DatasetOrigin, table: object) -> Resolution:
+    """Whether a citation still means what it meant.
+
+    `GONE` is not an error: a registration whose dataset has been expired still
+    records a run that happened, and refusing to read it would make every report
+    unreadable after a legitimate retention pass.
+    """
+    if origin.snapshot_id not in table.snapshot_ids():  # type: ignore[attr-defined]
+        return Resolution.GONE
+    found = table.snapshot(origin.snapshot_id)  # type: ignore[attr-defined]
+    return Resolution.RESOLVED if found.content_hash == origin.content_hash else Resolution.CHANGED
+
+
+def pins_for(registry: ModelRegistry, table: str) -> tuple[int, ...]:
+    """The snapshots this registry's registrations name for one table.
+
+    What [[REQ-WP-038]] left open. An empty tuple is an answer -- "no lineage to
+    protect" and "nobody looked" produce the same prune otherwise.
+    """
+    return tuple(
+        sorted(
+            {
+                entry.dataset.snapshot_id
+                for entry in registry.entries()
+                if entry.dataset.table == table
+            }
+        )
+    )
+
+
 @dataclass(frozen=True)
 class Registration:
     """PRD §23.9's eleven fields about one artifact."""
@@ -173,6 +264,10 @@ class Registration:
     #: say. No default, for [[ADR-015]]'s reason: a field with one is a field an
     #: author can forget to think about, and this one selects a rule.
     validation_regime: ValidationRegime
+    #: Which dataset this was trained on ([[REQ-WP-040]]). No default: PRD §0
+    #: item 13 needs it and [[ADR-015]] says a field with a default is a field
+    #: an author can forget to think about.
+    dataset: DatasetOrigin
 
     def __post_init__(self) -> None:
         for name in (
@@ -248,6 +343,12 @@ MODEL_REGISTRY_SCHEMA = Schema(
         Column(name="metrics", type="string"),
         Column(name="deployment_status", type="string"),
         Column(name="validation_regime", type="string"),
+        # PRD §0 item 13's "versioned dataset" ([[REQ-WP-040]]): which table,
+        # which snapshot, and what was under it. The hash is the claim; the id
+        # is only a name.
+        Column(name="dataset_table", type="string"),
+        Column(name="dataset_snapshot_id", type="int64"),
+        Column(name="dataset_content_hash", type="string"),
     ),
     event_time_column="event_time_ns",
 )
@@ -352,6 +453,9 @@ def _as_row(entry: Registration) -> dict[str, object]:
         "metrics": json.dumps(dict(entry.metrics), sort_keys=True),
         "deployment_status": entry.deployment_status,
         "validation_regime": entry.validation_regime,
+        "dataset_table": entry.dataset.table,
+        "dataset_snapshot_id": entry.dataset.snapshot_id,
+        "dataset_content_hash": entry.dataset.content_hash,
     }
 
 
@@ -377,4 +481,9 @@ def _from_row(row: dict[str, object]) -> Registration:
         artifact_hash=str(row["artifact_hash"]),
         deployment_status=str(row["deployment_status"]),
         validation_regime=cast(ValidationRegime, str(row["validation_regime"])),
+        dataset=DatasetOrigin(
+            table=str(row["dataset_table"]),
+            snapshot_id=int(str(row["dataset_snapshot_id"])),
+            content_hash=str(row["dataset_content_hash"]),
+        ),
     )

@@ -17,6 +17,7 @@ from channelflow.experiments import (
 from channelflow.lakehouse import Catalog
 from channelflow.lakehouse import catalog as open_catalog
 from channelflow.models import ModelRegistry, combined_artifact
+from channelflow.models.registry import DatasetOrigin
 from channelflow.pipeline import NothingScorable, StudyResult, run_study
 from tests.unit.conftest import HORIZON_NS
 
@@ -34,6 +35,11 @@ def study(
 ) -> StudyResult:
     return run_study(
         dataset,
+        # Every registration cites a dataset ([[REQ-WP-040]]). These runs are
+        # over rows a fixture built, so the citation names the table the study
+        # would have read and a hash of nothing else -- which is exactly what a
+        # test dataset is.
+        dataset_origin=DatasetOrigin(table="features", snapshot_id=1, content_hash="f" * 64),
         catalog=catalog,
         code=CodeVersion(commit=COMMIT, dirty=dirty),
         experiment="EXP-008",

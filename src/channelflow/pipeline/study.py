@@ -51,6 +51,7 @@ from channelflow.models import (
     combined_artifact,
     require_registered,
 )
+from channelflow.models.registry import DatasetOrigin
 from channelflow.turning.direct import DirectBaselineResult, Target, run_direct_baseline
 
 
@@ -89,6 +90,7 @@ def run_study(
     dataset: CertifiedDataset,
     *,
     catalog: Catalog,
+    dataset_origin: DatasetOrigin,
     code: CodeVersion,
     experiment: str,
     target: Target,
@@ -124,6 +126,7 @@ def run_study(
             rows=result.rows_scored,
             brier=_brier_of(result.folds, variant),
             spans=_spans(dataset),
+            dataset_origin=dataset_origin,
         )
         for variant, artifact in sorted(artifacts.items())
     )
@@ -281,6 +284,7 @@ def _registration(
     rows: int,
     brier: float | None,
     spans: _Spans,
+    dataset_origin: DatasetOrigin,
 ) -> Registration:
     """PRD §23.9's eleven fields for one variant of this run."""
     return Registration(
@@ -297,6 +301,7 @@ def _registration(
         metrics={"brier": brier if brier is not None else float("nan"), "rows": float(rows)},
         artifact_hash=artifact,
         deployment_status="shadow",
+        dataset=dataset_origin,
         # The folds this run used are walk-forward, and saying so is what lets
         # the spans above be true ([[ADR-058]]).
         validation_regime="walk_forward",

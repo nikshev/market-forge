@@ -5,6 +5,9 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
+from channelflow.lakehouse import Catalog
+from channelflow.models.registry import ModelRegistry
+
 
 def separable(rows: int = 200, *, seed: int = 11) -> tuple[np.ndarray, np.ndarray]:
     """A target that genuinely depends on an interaction of two inputs.
@@ -41,3 +44,9 @@ def structured() -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
 def unstructured() -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     x, y = noise(300)
     return x[:200], y[:200], x[200:], y[200:]
+
+
+@pytest.fixture
+def registry(catalog: Catalog) -> ModelRegistry:
+    """A registry on a plane of its own (REQ-WP-040)."""
+    return ModelRegistry(catalog=catalog)
