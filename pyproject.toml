@@ -42,6 +42,11 @@ dependencies = [
     # PRD section 7 names "SQLAlchemy or asyncpg for Postgres metadata", so both
     # belong. The binary wheel is chosen so no build toolchain is needed in CI.
     "psycopg[binary]>=3.2",
+    # The Kafka-protocol transport ([[ADR-063]], REQ-WP-042). `confluent-kafka`
+    # ships binary wheels, so CI needs no build toolchain, and it speaks the
+    # protocol the broker choice is reversible through: moving from Redpanda to
+    # Apache Kafka changes a compose file, not this dependency.
+    "confluent-kafka>=2.6",
 ]
 
 [project.optional-dependencies]

@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "§6.2, §6.3, §6.4.3, §45 Phase 8"
 prd_lines: "425-438, 548-598, 6908"
 phase: 8
-status: specified
+status: implemented
 depends_on: [REQ-WP-039]
 tags: []
 ---
@@ -68,7 +68,32 @@ reintroduces exactly that.
 ## Trace
 
 <!-- trace:begin -->
-_Not yet generated. Run `make graph`._
+- **Specs:** [[SPEC-080-event-backbone]]
+- **Tests:**
+    - `tests/integration/test_transport_on_redpanda.py::test_a_record_survives_the_round_trip`
+    - `tests/integration/test_transport_on_redpanda.py::test_an_empty_poll_is_an_answer`
+    - `tests/integration/test_transport_on_redpanda.py::test_records_come_back_in_order_within_a_key`
+    - `tests/unit/transport/test_transport.py::test_a_consumer_does_not_serve_the_same_record_twice`
+    - `tests/unit/transport/test_transport.py::test_a_consumer_sees_only_the_topics_it_asked_for`
+    - `tests/unit/transport/test_transport.py::test_a_maker_flag_names_the_passive_side_not_the_aggressor`
+    - `tests/unit/transport/test_transport.py::test_a_record_survives_the_round_trip`
+    - `tests/unit/transport/test_transport.py::test_a_record_that_does_not_say_who_produced_it_is_refused`
+    - `tests/unit/transport/test_transport.py::test_a_record_with_no_partition_key_is_refused`
+    - `tests/unit/transport/test_transport.py::test_a_topic_without_a_schema_version_is_refused`
+    - `tests/unit/transport/test_transport.py::test_an_absent_maker_flag_leaves_the_side_unknown`
+    - `tests/unit/transport/test_transport.py::test_an_empty_poll_is_an_answer`
+    - `tests/unit/transport/test_transport.py::test_an_ingestion_time_before_its_event_time_is_accepted`
+    - `tests/unit/transport/test_transport.py::test_consuming_a_topic_twice_writes_its_rows_once`
+    - `tests/unit/transport/test_transport.py::test_consuming_in_two_halves_equals_consuming_once`
+    - `tests/unit/transport/test_transport.py::test_event_time_and_ingestion_time_are_two_fields`
+    - `tests/unit/transport/test_transport.py::test_records_come_back_in_order_within_a_key`
+    - `tests/unit/transport/test_transport.py::test_the_bar_follows_the_event_time_and_not_the_ingestion_time`
+- **Code:**
+    - `src/channelflow/transport/__init__.py`
+    - `src/channelflow/transport/inprocess.py`
+    - `src/channelflow/transport/kafka.py`
+    - `src/channelflow/transport/materialise.py`
+- **Outcomes:** [[OUT-2026-09-11-implement-event-backbone]], [[OUT-2026-09-11-requirement-event-backbone]]
 <!-- trace:end -->
 
 ## Notes
