@@ -1,6 +1,7 @@
 """The canonical plane on Apache Iceberg.
 
 # @trace: REQ-WP-039
+# @trace: REQ-STORE-001
 
 [[ADR-002]] chose "Parquet on S3-compatible object storage with Iceberg table
 semantics"; `table.py` implements those semantics by hand and [[ADR-060]]
@@ -45,12 +46,23 @@ from pyiceberg.exceptions import NamespaceAlreadyExistsError, NoSuchTableError
 from pyiceberg.table import Table as _IcebergTable
 
 from channelflow.lakehouse.schema import Schema
-from channelflow.lakehouse.table import NoEventTime, NoSuchSnapshot, _for_arrow
 
 #: One namespace for the whole plane. Tables are named by the domain, and a
 #: second level of naming would be a place for two tables to disagree about
 #: which one is canonical.
 NAMESPACE = "channelflow"
+
+
+class NoEventTime(ValueError):
+    """A point-in-time read was asked of a table that has no event time.
+
+    Refused rather than answered with everything: returning every row would
+    answer a different question in a way the caller could not detect.
+    """
+
+
+class NoSuchSnapshot(LookupError):
+    """A snapshot the table does not have."""
 
 
 class EmptyAppend(ValueError):
@@ -114,6 +126,15 @@ class IcebergTable:
         self.catalog = catalog
 
     # --- reading -----------------------------------------------------------
+
+    def handle(self) -> _IcebergTable | None:
+        """The Iceberg table itself, for the one caller that needs its layout.
+
+        Backup has to walk manifests and metadata, which is knowledge about the
+        format rather than about the data. Exposing it here, once and named, is
+        better than a second module learning to load tables.
+        """
+        return self._table()
 
     def snapshot_ids(self) -> tuple[int, ...]:
         """Every committed snapshot, oldest first, numbered from one."""
@@ -368,6 +389,22 @@ class IcebergTable:
             for column in self.schema.columns
         }
         return pa.table(columns, schema=self.schema.arrow())
+
+
+def _for_arrow(column_type: str, value: object) -> object:
+    """One value in the shape Arrow wants for its column type.
+
+    Decimals become their exact text and maps become pair lists, here rather
+    than in the caller: a table that took the storage shapes would push the
+    conversion onto every producer, and one of them would store a float by
+    accident.
+    """
+    if column_type == "decimal":
+        return str(value)
+    if column_type == "float_map":
+        assert isinstance(value, Mapping)
+        return [(key, value[key]) for key in sorted(value)]
+    return value
 
 
 def _walk(location: str) -> list[str]:

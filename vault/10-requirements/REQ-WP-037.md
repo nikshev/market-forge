@@ -48,19 +48,24 @@ it landed on, and that landing short of the newest was asked for.
 
 - A backup can be restored, and the test performs the round trip rather than
   asserting that a copy exists.
-- A restore is verified by `content_sha256` — the logical dataset — not by byte
-  equality, which [[ADR-053]] already showed changes when a writer library is
-  upgraded and nothing about the data has.
-- Byte equality is asserted where it is genuinely expected, and a mismatch there
-  means something different from a content mismatch; the two failures are
-  reported apart.
-- Data files are copied before the manifests that name them, and a backup
-  interrupted partway leaves a restorable earlier state rather than a manifest
-  naming absent files.
+- **Narrowed by [[ADR-061]]**: a restore lands at the location the backup was
+  taken from. Iceberg's metadata holds absolute URIs, so a tree restored
+  elsewhere names a place that holds nothing. Losing a bucket's contents is
+  still recoverable; restoring under a *different* name is not, and that is a
+  reduction from what this requirement first delivered.
+- A restore is verified against the dataset, not against bytes, for the reason
+  [[ADR-053]] gives: a writer upgrade changes the bytes and not the data. On the
+  Iceberg layout this is the rows a restored table reads back.
+- Data files are copied before the manifests that name them, those before the
+  manifest list, and that before the metadata naming it — so a backup
+  interrupted partway leaves a restorable earlier state rather than metadata
+  over absent data.
+- The copy reads and writes through the same client the table commits through,
+  so a backup of the storage the system actually uses is possible. A backup that
+  only worked against a local warehouse would not be a backup.
 - A restore states which snapshot it landed on.
-- Landing short of the newest snapshot in the backup is refused unless the
-  caller asked for that snapshot by name.
-- Restoring into a non-empty target is refused rather than merged.
+- Restoring into a catalog that already holds the table is refused rather than
+  merged.
 - The round trip is verified against a real object store in CI, with the
   in-memory store carrying the logic tests ([[ADR-002]], CLAUDE.md's two gates).
 
@@ -69,36 +74,22 @@ it landed on, and that landing short of the newest was asked for.
 <!-- trace:begin -->
 - **Specs:** [[SPEC-075-backup-restore]]
 - **Tests:**
-    - `tests/integration/test_backup_on_minio.py::test_a_table_survives_a_round_trip_through_a_real_object_store`
-    - `tests/integration/test_backup_on_minio.py::test_re_running_a_backup_copies_nothing_and_raises_nothing`
-    - `tests/integration/test_backup_on_minio.py::test_restoring_over_a_live_table_is_refused_on_the_real_backend`
-    - `tests/integration/test_backup_on_minio.py::test_the_copy_verifies_against_the_source_s_identity`
+    - `tests/integration/test_backup_on_minio.py::test_a_table_in_the_bucket_backs_up_and_restores`
+    - `tests/integration/test_backup_on_minio.py::test_a_table_on_the_real_store_verifies_whole`
     - `tests/unit/lakehouse/test_backup.py::test_a_backed_up_table_restores_row_for_row`
-    - `tests/unit/lakehouse/test_backup.py::test_a_clean_copy_verifies`
-    - `tests/unit/lakehouse/test_backup.py::test_a_different_dataset_is_an_identity_failure`
-    - `tests/unit/lakehouse/test_backup.py::test_a_hole_deep_in_the_history_is_found_too`
-    - `tests/unit/lakehouse/test_backup.py::test_a_hole_in_the_history_is_found_even_when_the_latest_commit_is_whole`
-    - `tests/unit/lakehouse/test_backup.py::test_a_key_already_holding_something_else_is_refused_not_overwritten`
-    - `tests/unit/lakehouse/test_backup.py::test_a_missing_file_is_reported_as_missing`
-    - `tests/unit/lakehouse/test_backup.py::test_a_restore_says_which_snapshot_it_landed_on`
-    - `tests/unit/lakehouse/test_backup.py::test_a_schema_free_table_backs_up_too`
-    - `tests/unit/lakehouse/test_backup.py::test_a_table_nobody_ever_committed_to_restores_as_one`
-    - `tests/unit/lakehouse/test_backup.py::test_an_interrupted_backup_never_leaves_a_manifest_over_absent_data`
-    - `tests/unit/lakehouse/test_backup.py::test_an_interrupted_backup_restores_to_its_last_complete_snapshot`
-    - `tests/unit/lakehouse/test_backup.py::test_an_orphan_object_is_not_a_failure`
-    - `tests/unit/lakehouse/test_backup.py::test_asking_for_a_snapshot_the_backup_does_not_hold_is_refused`
-    - `tests/unit/lakehouse/test_backup.py::test_copying_an_object_that_is_already_there_writes_nothing`
-    - `tests/unit/lakehouse/test_backup.py::test_damage_in_transit_is_reported_as_corrupt_not_missing`
-    - `tests/unit/lakehouse/test_backup.py::test_landing_short_is_allowed_when_it_was_asked_for`
-    - `tests/unit/lakehouse/test_backup.py::test_landing_short_without_being_asked_is_refused`
-    - `tests/unit/lakehouse/test_backup.py::test_one_absent_file_is_one_finding_however_many_manifests_name_it`
-    - `tests/unit/lakehouse/test_backup.py::test_re_running_an_interrupted_backup_completes_it`
-    - `tests/unit/lakehouse/test_backup.py::test_restoring_into_a_non_empty_target_is_refused`
-    - `tests/unit/lakehouse/test_backup.py::test_the_restored_table_keeps_the_same_snapshot_identity`
-    - `tests/unit/lakehouse/test_backup.py::test_two_restores_into_fresh_targets_agree`
+    - `tests/unit/lakehouse/test_backup.py::test_a_missing_file_is_found_wherever_in_the_history_it_is`
+    - `tests/unit/lakehouse/test_backup.py::test_a_restore_says_where_it_landed`
+    - `tests/unit/lakehouse/test_backup.py::test_a_table_nobody_committed_to_backs_up_as_nothing`
+    - `tests/unit/lakehouse/test_backup.py::test_a_table_with_nothing_in_it_verifies`
+    - `tests/unit/lakehouse/test_backup.py::test_a_whole_table_verifies`
+    - `tests/unit/lakehouse/test_backup.py::test_an_interrupted_backup_never_leaves_metadata_over_absent_data`
+    - `tests/unit/lakehouse/test_backup.py::test_point_in_time_reads_survive_the_round_trip`
+    - `tests/unit/lakehouse/test_backup.py::test_re_running_a_backup_copies_nothing_and_raises_nothing`
+    - `tests/unit/lakehouse/test_backup.py::test_restoring_from_somewhere_holding_no_backup_is_refused`
+    - `tests/unit/lakehouse/test_backup.py::test_restoring_over_an_existing_table_is_refused`
 - **Code:**
     - `src/channelflow/lakehouse/backup.py`
-- **Outcomes:** [[OUT-2026-09-11-implement-backup-restore]], [[OUT-2026-09-11-plan-backup-restore]], [[OUT-2026-09-11-requirement-backup-restore]], [[OUT-2026-09-11-spec-backup-restore]]
+- **Outcomes:** [[OUT-2026-09-11-implement-backup-restore]], [[OUT-2026-09-11-implement-iceberg-complete]], [[OUT-2026-09-11-plan-backup-restore]], [[OUT-2026-09-11-requirement-backup-restore]], [[OUT-2026-09-11-spec-backup-restore]]
 <!-- trace:end -->
 
 ## Notes

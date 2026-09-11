@@ -30,9 +30,9 @@ from pathlib import Path
 
 import duckdb
 import pyarrow as pa
+import pyarrow.parquet as pq
 
-from channelflow.lakehouse.snapshot import Snapshot
-from channelflow.lakehouse.table import Table
+from channelflow.lakehouse.iceberg import IcebergTable, TableSnapshot
 
 
 class SnapshotEmpty(ValueError):
@@ -40,7 +40,7 @@ class SnapshotEmpty(ValueError):
 
 
 @contextmanager
-def extract(table: Table, *, snapshot_id: int | None = None) -> Iterator[list[Path]]:
+def extract(table: IcebergTable, *, snapshot_id: int | None = None) -> Iterator[list[Path]]:
     """Materialise one snapshot's files locally, and clean up after.
 
     A context manager because the extract is temporary by design. Leaving files
@@ -48,24 +48,25 @@ def extract(table: Table, *, snapshot_id: int | None = None) -> Iterator[list[Pa
     tracks, and the first stale read from it would look exactly like a correct
     one.
     """
-    snapshot = table.current() if snapshot_id is None else table.snapshot(snapshot_id)
-    if snapshot is None:
+    if table.current() is None:
         raise SnapshotEmpty(
             f"{table.name} has no snapshot to query; a query over nothing would "
             "return an empty result that reads like a finding"
         )
+    rows = table.read(snapshot_id=snapshot_id)
     with tempfile.TemporaryDirectory(prefix="channelflow-extract-") as directory:
-        root = Path(directory)
-        paths: list[Path] = []
-        for index, file in enumerate(snapshot.files):
-            path = root / f"{index:08d}.parquet"
-            path.write_bytes(table.store.get(file.key))
-            paths.append(path)
-        yield paths
+        # One file rather than a copy of each of the snapshot's, which is what
+        # this did against the layout it replaced. The rows are written in the
+        # order `read` guarantees -- oldest commit first -- so a query sees the
+        # series the way every other reader does, and DuckDB is handed a file
+        # rather than a list whose order it would decide for itself.
+        path = Path(directory) / "snapshot.parquet"
+        pq.write_table(rows, path)
+        yield [path]
 
 
 def query(
-    table: Table,
+    table: IcebergTable,
     sql: str,
     *,
     snapshot_id: int | None = None,
@@ -96,14 +97,14 @@ def query(
             connection.close()
 
 
-def snapshot_of(table: Table, snapshot_id: int | None = None) -> Snapshot:
+def snapshot_of(table: IcebergTable, snapshot_id: int | None = None) -> TableSnapshot:
     """The snapshot a query would run against, so a result can name its dataset.
 
     PRD section 0 item 13 wants a result reproducible from a versioned dataset;
     this is how a caller records which one it read, by content hash rather than
     by a path that may hold something else later.
     """
-    snapshot = table.current() if snapshot_id is None else table.snapshot(snapshot_id)
-    if snapshot is None:
+    current = table.current()
+    if current is None:
         raise SnapshotEmpty(f"{table.name} has no snapshot")
-    return snapshot
+    return current if snapshot_id is None else table.snapshot(snapshot_id)
