@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "§18.10, §18.24, §18.25, §45 Phase 4"
 prd_lines: "3038-3088, 3549-3600, 6811"
 phase: 4
-status: draft
+status: tested
 depends_on: [REQ-WP-015]
 tags: []
 ---
@@ -71,7 +71,28 @@ the head block, so there is nothing between this repository and the authority.
 ## Trace
 
 <!-- trace:begin -->
-_Not yet generated. Run `make graph`._
+- **Specs:** [[SPEC-083-aerodrome-v2]]
+- **Tests:**
+    - `tests/unit/dex/test_aerodrome.py::test_a_pool_with_an_empty_side_cannot_quote`
+    - `tests/unit/dex/test_aerodrome.py::test_a_swap_of_nothing_is_refused`
+    - `tests/unit/dex/test_aerodrome.py::test_a_volatile_pool_conserves_the_product`
+    - `tests/unit/dex/test_aerodrome.py::test_every_quote_matches_the_pool_s_own_answer_exactly[v2_stable]`
+    - `tests/unit/dex/test_aerodrome.py::test_every_quote_matches_the_pool_s_own_answer_exactly[v2_volatile]`
+    - `tests/unit/dex/test_aerodrome.py::test_the_fee_is_taken_before_the_invariant`
+    - `tests/unit/dex/test_aerodrome.py::test_the_fixture_is_pinned_to_one_block[v2_stable]`
+    - `tests/unit/dex/test_aerodrome.py::test_the_fixture_is_pinned_to_one_block[v2_volatile]`
+    - `tests/unit/dex/test_aerodrome.py::test_the_invariants_disagree_on_the_same_reserves`
+    - `tests/unit/dex/test_aerodrome.py::test_the_iteration_refuses_rather_than_approximating`
+    - `tests/unit/dex/test_aerodrome.py::test_the_iteration_terminates_on_the_integer_lattice[490871645057-740882240092-73778518209-18-6-33693336889]`
+    - `tests/unit/dex/test_aerodrome.py::test_the_iteration_terminates_on_the_integer_lattice[62632598597-557957931388-922121677-6-18-23865990001]`
+    - `tests/unit/dex/test_aerodrome.py::test_the_quotes_span_orders_of_magnitude[v2_stable]`
+    - `tests/unit/dex/test_aerodrome.py::test_the_quotes_span_orders_of_magnitude[v2_volatile]`
+    - `tests/unit/dex/test_aerodrome.py::test_the_two_directions_are_different_quotes[v2_stable]`
+    - `tests/unit/dex/test_aerodrome.py::test_the_two_directions_are_different_quotes[v2_volatile]`
+- **Code:**
+    - `src/channelflow/dex/aerodrome.py`
+    - `tools/record/aerodrome_capture.py`
+- **Outcomes:** [[OUT-2026-09-11-implement-aerodrome-v2]], [[OUT-2026-09-11-requirement-aerodrome]]
 <!-- trace:end -->
 
 ## Notes

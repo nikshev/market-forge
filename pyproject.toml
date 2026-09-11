@@ -47,6 +47,15 @@ dependencies = [
     # protocol the broker choice is reversible through: moving from Redpanda to
     # Apache Kafka changes a compose file, not this dependency.
     "confluent-kafka>=2.6",
+    # Keccak-256, for the one thing chain work cannot do without: a function
+    # selector or a log topic is the hash of a signature, and PRD section 18.6's
+    # ABI/decoder registry matches on exactly that. `hashlib.sha3_256` is SHA-3,
+    # which pads differently and is not the same function -- a distinction that
+    # produces plausible wrong hashes rather than an error.
+    #
+    # The pycryptodome backend rather than `safe-pysha3`: it ships binary
+    # wheels, so CI needs no build toolchain (REQ-WP-045).
+    "eth-hash[pycryptodome]>=0.7",
 ]
 
 [project.optional-dependencies]
