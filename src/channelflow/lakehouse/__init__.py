@@ -44,6 +44,11 @@ from channelflow.lakehouse.research import (
     query,
     snapshot_of,
 )
+from channelflow.lakehouse.retention import (
+    NoSuchPin,
+    RetentionPolicy,
+    RetentionReport,
+)
 from channelflow.lakehouse.schema import (
     Column,
     ColumnType,
@@ -52,6 +57,9 @@ from channelflow.lakehouse.schema import (
 )
 
 __all__ = [
+    "RetentionReport",
+    "RetentionPolicy",
+    "NoSuchPin",
     "NoEventTime",
     "NoSuchSnapshot",
     "Catalog",

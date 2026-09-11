@@ -137,16 +137,25 @@ class IcebergTable:
         return self._table()
 
     def snapshot_ids(self) -> tuple[int, ...]:
-        """Every committed snapshot, oldest first, numbered from one."""
+        """Every committed snapshot, oldest first, by sequence number.
+
+        **Not by position.** Expiring a snapshot renumbers positions, so a run
+        that recorded "snapshot 3" would resolve to a different dataset after a
+        retention pass and nothing would say so -- which would make PRD §0 item
+        13's reproducibility claim quietly untrue. Iceberg's sequence numbers
+        survive expiry: measured, a table whose first two snapshots are expired
+        keeps 3 and 4 as 3 and 4.
+
+        A fresh table still counts 1, 2, 3, because sequence numbers start at
+        one and rise by one per commit.
+        """
         table = self._table()
         if table is None:
             return ()
-        return tuple(range(1, len(table.metadata.snapshots) + 1))
+        return tuple(sorted(int(s.sequence_number or 0) for s in table.metadata.snapshots))
 
     def snapshot(self, snapshot_id: int) -> TableSnapshot:
-        table = self._require_table()
-        snapshots = table.metadata.snapshots
-        if not 1 <= snapshot_id <= len(snapshots):
+        if snapshot_id not in self.snapshot_ids():
             raise NoSuchSnapshot(
                 f"{self.name} has no snapshot {snapshot_id}; it has {self.snapshot_ids() or 'none'}"
             )
@@ -173,7 +182,13 @@ class IcebergTable:
         if table is None:
             return self.schema.arrow().empty_table()
 
-        wanted = len(table.metadata.snapshots) if snapshot_id is None else snapshot_id
+        ids = self.snapshot_ids()
+        if snapshot_id is None:
+            if not ids:
+                return self.schema.arrow().empty_table()
+            wanted = ids[-1]
+        else:
+            wanted = snapshot_id
         rows = self._in_commit_order(table, wanted)
 
         if as_of_ns is None:
@@ -191,27 +206,36 @@ class IcebergTable:
     def _in_commit_order(self, table: _IcebergTable, snapshot_id: int) -> pa.Table:
         """Rows oldest commit first, within a commit in the order written.
 
-        Iceberg's own scan returns the newest manifest first -- measured, and it
-        is the reverse of what the plane this replaces guaranteed. That
-        guarantee is load-bearing: every "latest row wins" reader in the API
-        folds rows in order and would silently start returning the *oldest*
-        value for each key. It is also the kind of change nothing announces,
-        because reversed rows are still rows.
+        Iceberg's own scan returns the newest manifest first -- measured, and
+        the reverse of what the plane this replaces guaranteed. That guarantee
+        is load-bearing: every "latest row wins" reader in the API folds rows in
+        order and would silently start returning the *oldest* value for each
+        key, and reversed rows are still rows.
 
-        So the order is reconstructed from the snapshot chain rather than taken
-        from the scan: walk the snapshots oldest first, and take each file the
-        first time a snapshot names it. Costs one plan per snapshot, which is a
-        price worth paying for an ordering readers already depend on.
+        The order comes from the sequence number Iceberg records against each
+        data file, not from walking the snapshot chain. An earlier version
+        walked the chain and took each file at its first appearance, which was
+        correct until retention expired a link: with the older snapshots gone
+        there was nothing left to say which file came first, and a pinned
+        snapshot read back in a different order than it was written. The
+        sequence numbers survive expiry, so they do not lose that.
         """
-        ordered: list[str] = []
+        target = self._allocated(table, snapshot_id)
+        snapshot = next(s for s in table.metadata.snapshots if int(s.snapshot_id) == target)
+        ordered: list[tuple[int, str]] = []
         seen: set[str] = set()
-        for index in range(1, snapshot_id + 1):
-            iceberg_id = int(table.metadata.snapshots[index - 1].snapshot_id)
-            for task in table.scan(snapshot_id=iceberg_id).plan_files():
-                path = task.file.file_path
+        for manifest in snapshot.manifests(table.io):
+            # Live entries only: a manifest keeps a record of files the table
+            # has dropped, and reading those would return rows a delete removed.
+            # An earlier version also intersected this with `plan_files`, which
+            # asks the same question a second way -- the mutation sweep found
+            # that second filter unreachable, so it is gone along with the extra
+            # scan it cost.
+            for entry in manifest.fetch_manifest_entry(table.io):
+                path = entry.data_file.file_path
                 if path not in seen:
                     seen.add(path)
-                    ordered.append(path)
+                    ordered.append((int(entry.sequence_number or 0), path))
         if not ordered:
             return self.schema.arrow().empty_table()
 
@@ -219,7 +243,7 @@ class IcebergTable:
 
         pieces = [
             pq.read_table(table.io.new_input(path).open()).cast(self.schema.arrow())
-            for path in ordered
+            for _, path in sorted(ordered)
         ]
         return pa.concat_tables(pieces)
 
@@ -242,7 +266,7 @@ class IcebergTable:
             f"{NAMESPACE}.{self.name}", schema=self.schema.arrow()
         )
         table.append(self._arrow(rows))
-        return self._describe(len(self._require_table().metadata.snapshots))
+        return self._describe(self.snapshot_ids()[-1])
 
     # --- what retention needs ----------------------------------------------
 
@@ -266,6 +290,26 @@ class IcebergTable:
             return
         table.delete(f"{column} < {event_time_ns}")
 
+    def expire_snapshots_except(self, keep: Sequence[int]) -> None:
+        """Forget every snapshot but these.
+
+        On its own this frees nothing -- measured, and the correction
+        [[ADR-060]] carries. It removes the references that survived a delete,
+        so that what the delete unreferenced is unreferenced by everything.
+        """
+        from pyiceberg.table.maintenance import MaintenanceTable
+
+        table = self._require_table()
+        kept = set(keep)
+        doomed = [
+            snapshot.snapshot_id
+            for snapshot in table.metadata.snapshots
+            if int(snapshot.sequence_number or 0) not in kept
+        ]
+        if not doomed:
+            return
+        MaintenanceTable(table).expire_snapshots().by_ids(doomed).commit()
+
     def expire_snapshots_before(self, snapshot_id: int) -> None:
         """Forget the history older than a snapshot.
 
@@ -278,8 +322,8 @@ class IcebergTable:
         table = self._require_table()
         older = [
             snapshot.snapshot_id
-            for index, snapshot in enumerate(table.metadata.snapshots, start=1)
-            if index < snapshot_id
+            for snapshot in table.metadata.snapshots
+            if int(snapshot.sequence_number or 0) < snapshot_id
         ]
         if not older:
             return
@@ -319,24 +363,27 @@ class IcebergTable:
             raise NoSuchSnapshot(f"{self.name} has no snapshots; nothing has been committed")
         return table
 
-    def _iceberg_id(self, snapshot_id: int) -> int:
-        table = self._require_table()
-        snapshots = table.metadata.snapshots
-        if not 1 <= snapshot_id <= len(snapshots):
-            raise NoSuchSnapshot(
-                f"{self.name} has no snapshot {snapshot_id}; it has {self.snapshot_ids() or 'none'}"
-            )
-        return int(snapshots[snapshot_id - 1].snapshot_id)
+    def _allocated(self, table: _IcebergTable, snapshot_id: int) -> int:
+        """Iceberg's own id for the snapshot this system calls `snapshot_id`."""
+        for snapshot in table.metadata.snapshots:
+            if int(snapshot.sequence_number or 0) == snapshot_id:
+                return int(snapshot.snapshot_id)
+        raise NoSuchSnapshot(
+            f"{self.name} has no snapshot {snapshot_id}; it has {self.snapshot_ids() or 'none'}"
+        )
 
     def _describe(self, snapshot_id: int) -> TableSnapshot:
         table = self._require_table()
-        iceberg = table.metadata.snapshots[snapshot_id - 1]
+        iceberg = next(
+            s for s in table.metadata.snapshots if int(s.sequence_number or 0) == snapshot_id
+        )
+        earlier = [i for i in self.snapshot_ids() if i < snapshot_id]
         rows = self.read(snapshot_id=snapshot_id)
         column = self.schema.event_time_column
         return TableSnapshot(
             snapshot_id=snapshot_id,
             iceberg_id=int(iceberg.snapshot_id),
-            parent_id=snapshot_id - 1 if snapshot_id > 1 else None,
+            parent_id=earlier[-1] if earlier else None,
             record_count=rows.num_rows,
             event_time_max_ns=(
                 int(pc.max(rows[column]).as_py() or 0) if column and rows.num_rows else 0

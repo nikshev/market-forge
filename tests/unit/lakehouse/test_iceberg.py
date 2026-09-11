@@ -323,3 +323,37 @@ def test_order_within_one_commit_is_the_order_written(trades: IcebergTable) -> N
     trades.append([row(3), row(1), row(2)])
 
     assert trades.read()["event_time_ns"].to_pylist() == [3 * SECOND, 1 * SECOND, 2 * SECOND]
+
+
+@pytest.mark.trace("REQ-WP-039")
+def test_a_read_does_not_return_rows_a_delete_removed(trades: IcebergTable) -> None:
+    """Found by a mutation sweep over retention, and it was the code that was
+    wrong.
+
+    The commit order is reconstructed by walking the snapshot chain, and the
+    first version took every file any snapshot named. A file a delete drops is
+    still named by every earlier snapshot, so the read went on returning rows
+    the table no longer held -- correct-looking, and answering a question nobody
+    asked. The chain decides the order; the target snapshot decides membership.
+    """
+    trades.append([row(1), row(2)])
+    trades.append([row(3), row(4)])
+
+    trades.delete_rows_before(3 * SECOND)
+
+    assert sorted(trades.read()["event_time_ns"].to_pylist()) == [3 * SECOND, 4 * SECOND]
+
+
+@pytest.mark.trace("REQ-WP-039")
+def test_an_earlier_snapshot_still_sees_what_the_delete_removed(
+    trades: IcebergTable,
+) -> None:
+    """Which is the whole reason the plane keeps a history: the delete is a
+    commit, and everything before it is still answerable until retention
+    expires it."""
+    first = trades.append([row(1), row(2)])
+    trades.append([row(3)])
+
+    trades.delete_rows_before(3 * SECOND)
+
+    assert trades.read(snapshot_id=first.snapshot_id).num_rows == 2

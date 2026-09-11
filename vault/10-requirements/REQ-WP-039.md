@@ -76,7 +76,9 @@ them.
     - `tests/unit/lakehouse/test_iceberg.py::test_a_read_at_an_instant_excludes_later_rows`
     - `tests/unit/lakehouse/test_iceberg.py::test_a_read_before_any_data_is_empty_rather_than_an_error`
     - `tests/unit/lakehouse/test_iceberg.py::test_a_read_by_snapshot_returns_that_commit_s_rows`
+    - `tests/unit/lakehouse/test_iceberg.py::test_a_read_does_not_return_rows_a_delete_removed`
     - `tests/unit/lakehouse/test_iceberg.py::test_a_table_nobody_has_written_to_reports_no_snapshots`
+    - `tests/unit/lakehouse/test_iceberg.py::test_an_earlier_snapshot_still_sees_what_the_delete_removed`
     - `tests/unit/lakehouse/test_iceberg.py::test_an_empty_append_is_refused`
     - `tests/unit/lakehouse/test_iceberg.py::test_appending_does_not_change_what_an_earlier_read_returned`
     - `tests/unit/lakehouse/test_iceberg.py::test_different_rows_hash_differently`

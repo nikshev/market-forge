@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "§6.4.9, §45 Phase 8"
 prd_lines: "733-743, 6909"
 phase: 8
-status: specified
+status: implemented
 depends_on: [REQ-STORE-001, REQ-WP-037]
 tags: []
 ---
@@ -68,7 +68,28 @@ cannot, rather than added to the port everything shares.
 
 <!-- trace:begin -->
 - **Specs:** [[SPEC-076-retention]]
-- **Outcomes:** [[OUT-2026-09-11-requirement-retention]], [[OUT-2026-09-11-spec-retention]]
+- **Tests:**
+    - `tests/unit/lakehouse/test_retention.py::test_a_pin_naming_a_snapshot_that_does_not_exist_is_refused`
+    - `tests/unit/lakehouse/test_retention.py::test_a_pinned_snapshot_survives_and_still_reads`
+    - `tests/unit/lakehouse/test_retention.py::test_a_pruned_table_still_reads_and_verifies`
+    - `tests/unit/lakehouse/test_retention.py::test_a_refused_pin_removes_nothing`
+    - `tests/unit/lakehouse/test_retention.py::test_a_surviving_snapshot_keeps_its_name`
+    - `tests/unit/lakehouse/test_retention.py::test_a_table_nobody_wrote_to_is_left_alone`
+    - `tests/unit/lakehouse/test_retention.py::test_a_table_that_can_never_be_pruned_says_so_before_it_says_anything_else`
+    - `tests/unit/lakehouse/test_retention.py::test_a_table_with_no_event_time_has_no_notion_of_old`
+    - `tests/unit/lakehouse/test_retention.py::test_only_retention_deletes`
+    - `tests/unit/lakehouse/test_retention.py::test_rows_older_than_the_policy_go_and_the_rest_stay`
+    - `tests/unit/lakehouse/test_retention.py::test_running_twice_removes_nothing_more`
+    - `tests/unit/lakehouse/test_retention.py::test_the_newest_snapshot_survives_any_policy`
+    - `tests/unit/lakehouse/test_retention.py::test_the_pass_actually_frees_bytes`
+    - `tests/unit/lakehouse/test_retention.py::test_the_policy_has_no_default_duration`
+    - `tests/unit/lakehouse/test_retention.py::test_the_report_names_the_cutoff_it_used`
+    - `tests/unit/lakehouse/test_retention.py::test_the_report_says_why_each_survivor_survived`
+    - `tests/unit/lakehouse/test_retention.py::test_the_rule_guards_the_irreversible_step_and_not_the_other_one`
+    - `tests/unit/lakehouse/test_retention.py::test_two_policies_over_one_table_keep_different_amounts`
+- **Code:**
+    - `src/channelflow/lakehouse/retention.py`
+- **Outcomes:** [[OUT-2026-09-11-implement-retention]], [[OUT-2026-09-11-plan-retention-resumed]], [[OUT-2026-09-11-requirement-retention]], [[OUT-2026-09-11-spec-retention]]
 <!-- trace:end -->
 
 ## Notes

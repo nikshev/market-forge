@@ -68,27 +68,50 @@ removes only files nothing names. There is no window in which a surviving
 manifest points at an absent file, which is what makes an interrupted pass safe
 rather than merely unlikely to be interrupted.
 
-## PLANNING STOPPED: this frees no bytes, and that is not a detail
+## The stop, and why it is over
 
-`Table.append` writes `files=(*parent.files, file)`. Manifests are strictly
-cumulative, so **the newest snapshot names every data file ever written to the
-table.** The newest snapshot always survives — a table with no current state is
-not retained, it is deleted with extra steps — therefore no data file is ever
-unreferenced, therefore snapshot expiry removes **manifests only**, which are
-small JSON documents.
+Planning stopped here on the hand-rolled plane: expiry freed nothing, because no
+operation that plane offered could make a data file unreferenced. [[ADR-060]]
+replaced it and [[REQ-WP-039]] landed the replacement, and Iceberg has the
+missing operation. `IcebergTable` already carries the three steps:
+`delete_rows_before`, `expire_snapshots_before`, `unreferenced_files`.
 
-A pass built to this plan would run, report, verify clean, and reclaim
-essentially nothing. It would be a retention feature in the sense that matters
-least: correct, tested, and not retention.
+The stop also flagged a second thing as a decision for whoever owns the trading
+system: retention makes point-in-time reads before the cutoff stop working. On
+reflection that is not an open decision, and saying why matters more than the
+conclusion.
 
-Delivering PRD §45's "S3 cold retention" needs a second operation this plan does
-not contain — **compaction**: commit a new snapshot naming only the files worth
-keeping, expire the older manifests, then remove what nothing references any
-more. That is a materially larger and more dangerous feature, because it is the
-first thing in this system that deletes market data, and it decides that
-point-in-time reads before the cutoff stop working. Whether that trade is
-acceptable is a decision about the trading system, not about the code.
+PRD §6.4.9 asks for retention tiers in as many words, so *that data ages out* is
+already decided by the document this repository implements. What §6.4.9 pointedly
+declines to decide is **how long** — "suggested semantics, not hard-coded
+durations" — and that is the part this feature must not decide either. Every
+duration is an argument, and the operator choosing one is choosing what their
+system forgets.
 
-Planning stops here and the requirement stays `specified`. [[ADR-059]] stands on
-its own either way: whichever shape retention takes, the ability to delete
-belongs to it and not to the commit path.
+So the mechanism is buildable now and the judgement stays with the caller, which
+is where the requirement put it.
+
+## What the pass does
+
+1. **Refuse a pin nobody can honour.** A pin naming an absent snapshot is more
+   likely a typo than a wish, and honouring it silently prunes something
+   somebody meant to keep — the one outcome here that cannot be undone.
+2. **Delete the rows that aged out**, by event time, against the cutoff the
+   caller's policy names.
+3. **Expire the snapshots that still point at the old files**, keeping every
+   pinned one and always the newest.
+4. **Remove what nothing references any more**, and only that.
+
+Steps 2 and 3 are Iceberg's. Step 4 is ours.
+
+## The capability, after the migration
+
+[[ADR-059]] gave deletion to a `PrunableObjectStore` the table layer could not
+be handed. That port is gone: the plane is Iceberg, and Iceberg's own `FileIO`
+carries `delete` alongside the reads every table does.
+
+The type-level guarantee does not survive, and pretending otherwise would be
+worse than losing it. What replaces it is an asserted one: a test reads the
+source and fails if any module other than `retention.py` calls `delete` on a
+`FileIO`. That is weaker than a signature and stronger than a convention, and it
+is the same shape as the import check `test_isolation.py` already runs.
