@@ -15,8 +15,29 @@ migrates from a hand-rolled table layer to Apache Iceberg.
 - **This is not a new architecture; it is the one [[ADR-002]] already chose.**
   That decision said "Parquet on S3-compatible object storage with Iceberg table
   semantics" and what got built implements those semantics rather than using
-  them. [[REQ-WP-038]] found the first divergence that matters: cumulative
-  manifests mean no data file is ever unreferenced, so retention frees nothing.
+  them. [[REQ-WP-038]] found the first divergence that matters: the layer can
+  only append, so nothing it offers can make a data file unreferenced, so
+  retention has nothing to free.
+
+## A diagnosis of mine that was wrong, corrected before it cost anything
+
+[[ADR-060]] first said Iceberg avoids this because its manifests are per-commit
+rather than cumulative, so expiring old snapshots unreferences their files.
+**That is false**, and measuring it took ten minutes: four appends, expire two
+snapshots, all four data files still referenced. Expiry alone frees nothing in
+Iceberg either — the current snapshot sees every live file whatever the history
+looks like.
+
+The true difference is narrower: our table can only append. Iceberg has
+`delete(row_filter)`, which rewrites the live file set and is measurably the
+operation that makes a file unreferenced. The ADR carries the correction and the
+measurement.
+
+Second time in two requirements that a confident causal story survived four
+artifacts and died on contact with a probe — the first was the backup's copy
+ordering. Both times the story was plausible, load-bearing, and untested,
+and both times ten minutes of measurement settled it. The lesson is not to
+write fewer stories; it is to measure them before they reach a document.
 - **Replace rather than keep both.** Two table implementations would be the
   second production path [[ADR-002]] refused when it rejected developing against
   a filesystem — one that diverges from production and is exercised by nobody

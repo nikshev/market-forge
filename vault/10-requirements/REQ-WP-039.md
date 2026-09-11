@@ -27,8 +27,11 @@ and §6.4.4 says where it applies:
 [[ADR-002]] adopted "Parquet on S3-compatible object storage with Iceberg table
 semantics" from the start. What exists is a hand-rolled layer implementing those
 semantics, and [[ADR-060]] records why the approximation is being replaced by the
-thing itself: its manifests are cumulative, so no data file is ever unreferenced,
-so retention frees nothing.
+thing itself: **the layer can only append**, so nothing it offers can make a data
+file unreferenced, so retention has nothing to free. Iceberg has the operation
+that is missing — a delete that rewrites the live file set — and retention is
+then three steps over it: delete what aged out, expire the snapshots still
+pointing at the old files, remove what nothing references.
 
 **This requirement is the migration, and its acceptance is about not losing
 anything on the way.** Every property the hand-rolled plane guarantees today is a
