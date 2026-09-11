@@ -167,7 +167,10 @@ def _in_dependency_order(table: IcebergTable) -> list[str]:
     for snapshot in handle.metadata.snapshots:
         manifests = snapshot.manifests(handle.io)
         for manifest in manifests:
-            for entry in manifest.fetch_manifest_entry(handle.io, discard_deleted=False):
+            # Live entries only. A manifest keeps a record of files removed
+            # from the table, and those files are gone on purpose: requiring
+            # them would make every retention pass look like corruption.
+            for entry in manifest.fetch_manifest_entry(handle.io):
                 _note(ordered, entry.data_file.file_path)
         for manifest in manifests:
             _note(ordered, manifest.manifest_path)
