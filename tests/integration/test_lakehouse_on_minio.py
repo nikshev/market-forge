@@ -21,6 +21,7 @@ from pathlib import Path
 import pytest
 
 from channelflow.lakehouse import Column, IcebergTable, Schema
+from channelflow.lakehouse import catalog as open_catalog
 
 SECOND = 1_000_000_000
 
@@ -56,25 +57,22 @@ def catalog(tmp_path: Path) -> object:
     write real objects and a reused one would read another run's snapshots and
     pass for the wrong reason.
     """
-    from pyiceberg.catalog.sql import SqlCatalog
-
     env = _env()
-    store = SqlCatalog(
-        "channelflow",
-        uri=f"sqlite:///{tmp_path}/catalog.db",
-        warehouse=f"s3://{env['MINIO_BUCKET']}/iceberg-test/{uuid.uuid4()}",
-        **{
-            "s3.endpoint": f"http://127.0.0.1:{env['MINIO_PORT']}",
-            "s3.access-key-id": env["MINIO_ROOT_USER"],
-            "s3.secret-access-key": env["MINIO_ROOT_PASSWORD"],
-        },
-    )
     try:
-        store.create_namespace("channelflow")
-    except Exception as exc:  # noqa: BLE001 -- the stack being down is the
-        # failure worth naming, and it arrives as whatever the client raises.
+        # The same factory the fast gate uses, with a different warehouse. A
+        # test that built its own catalog would prove the storage and not the
+        # claim ([[ADR-060]], [[REQ-WP-041]]).
+        return open_catalog(
+            uri=f"sqlite:///{tmp_path}/catalog.db",
+            warehouse=f"s3://{env['MINIO_BUCKET']}/iceberg-test/{uuid.uuid4()}",
+            **{
+                "s3.endpoint": f"http://127.0.0.1:{env['MINIO_PORT']}",
+                "s3.access-key-id": env["MINIO_ROOT_USER"],
+                "s3.secret-access-key": env["MINIO_ROOT_PASSWORD"],
+            },
+        )
+    except Exception as exc:  # noqa: BLE001
         pytest.fail(f"Object store is not answering: {exc}. Run `make up`.")
-    return store
 
 
 def _schema() -> Schema:

@@ -8,7 +8,7 @@ phase: 8
 status: planned
 depends_on: ["REQ-PHASE-7A"]
 tags: []
-covers: [REQ-WP-035, REQ-WP-036, REQ-WP-037, REQ-WP-038, REQ-WP-039]
+covers: [REQ-WP-035, REQ-WP-036, REQ-WP-037, REQ-WP-038, REQ-WP-039, REQ-WP-041]
 not_delivered:
   - "Redpanda/Kafka optional transport: not built"
   - "monitoring dashboards: the exposition exists (REQ-WP-036) and nothing serves or draws it"
