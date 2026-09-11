@@ -67,7 +67,8 @@ cannot, rather than added to the port everything shares.
 ## Trace
 
 <!-- trace:begin -->
-_Not yet generated. Run `make graph`._
+- **Specs:** [[SPEC-076-retention]]
+- **Outcomes:** [[OUT-2026-09-11-requirement-retention]], [[OUT-2026-09-11-spec-retention]]
 <!-- trace:end -->
 
 ## Notes

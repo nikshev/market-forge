@@ -40,6 +40,12 @@
   criterion that cannot be satisfied by a working Iceberg table which quietly
   dropped a guarantee. The other six each check one property; this one checks
   that none was forgotten.
+- **FR-004 was corrected against a measurement**, and the correction is a
+  relaxation that is also a strengthening. The old layer refuses a losing
+  writer; Iceberg retries and lands it. Refusing a valid append because another
+  writer was faster is a dropped write, and in a concurrent ingestion path that
+  is a defect wearing a guarantee's clothes. The spec now asks for what is
+  needed: serial commits, nothing half-applied, no rows lost.
 - **The open question about point-in-time reads is real and load-bearing.**
   Iceberg's snapshot lookup and a row filter over event time answer differently
   when a commit carries rows older than its predecessor, and this system's

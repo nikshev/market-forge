@@ -48,8 +48,8 @@ noticed, and each destroys a claim the PRD makes.
 
 **Acceptance Scenarios**:
 
-1. **Given** two writers committing from the same parent, **When** both commit, **Then** one wins and one is refused, and no state mixes the two.
-2. **Given** a refused commit, **When** the table is read, **Then** nothing of it is visible.
+1. **Given** two writers committing from the same parent, **When** both commit, **Then** the table holds both appends in a serial order and no state mixes the two.
+2. **Given** any concurrent pair, **When** the table is read, **Then** it never shows a commit half-applied.
 
 ---
 
@@ -93,7 +93,7 @@ noticed, and each destroys a claim the PRD makes.
 - **FR-001**: A read at an instant MUST exclude rows whose event time is later.
 - **FR-002**: Appending MUST NOT change what an earlier read returns.
 - **FR-003**: A read by snapshot MUST return exactly that commit's visible rows.
-- **FR-004**: A losing commit in a race MUST be refused, with nothing of it visible.
+- **FR-004**: Concurrent commits MUST serialise: each is applied whole or not at all, and no read ever observes a half-applied one. A writer whose parent moved MUST NOT lose its rows.
 - **FR-005**: Dataset identity MUST be a hash of rows, stable across processes and library versions ([[ADR-053]]).
 - **FR-006**: A point-in-time read on a table with no event time MUST be refused.
 - **FR-007**: An empty append MUST be refused.
@@ -112,7 +112,7 @@ noticed, and each destroys a claim the PRD makes.
 ### Measurable Outcomes
 
 - **SC-001**: A read at an instant, repeated after later appends, returns the same rows.
-- **SC-002**: Two commits from one parent produce one winner and one refusal.
+- **SC-002**: Two commits from one parent both land, in a serial order, with no partial state.
 - **SC-003**: The same rows written in two processes produce one hash.
 - **SC-004**: A point-in-time read without an event-time column is refused.
 - **SC-005**: After a delete and an expiry, the unreferenced files are listed, and removing them leaves the table readable.
@@ -131,6 +131,21 @@ noticed, and each destroys a claim the PRD makes.
 - **Identity stays ours.** Iceberg allocates snapshot ids, so two runs over
   identical data get different ones. PRD §0 item 13 rests on a hash of the rows,
   and that continues to be computed here.
+
+## Corrections made during specification
+
+**FR-004 first said a losing commit must be refused.** That is what the
+hand-rolled layer does — `put_if_absent` on a version-named key, and the loser
+raises. Measured against Iceberg, a writer whose parent moved retries and lands:
+two appends from one parent produce a table holding both.
+
+Nothing outside the old layer's own test depends on the refusal. And a system
+that ingests market data concurrently and *drops* a valid append on contention
+has a defect, not a guarantee: the old behaviour was weaker than it sounded.
+
+The requirement is therefore stated as what is actually needed — commits
+serialise, nothing is ever half-applied, and no writer loses rows because
+another one was faster.
 
 ## Open Questions
 

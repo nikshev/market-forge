@@ -64,7 +64,27 @@ them.
 ## Trace
 
 <!-- trace:begin -->
-_Not yet generated. Run `make graph`._
+- **Specs:** [[SPEC-077-iceberg]]
+- **Tests:**
+    - `tests/unit/lakehouse/test_iceberg.py::test_a_backfill_is_not_visible_to_an_earlier_read`
+    - `tests/unit/lakehouse/test_iceberg.py::test_a_delete_alone_frees_nothing_because_the_history_still_points_at_it`
+    - `tests/unit/lakehouse/test_iceberg.py::test_a_delete_leaves_files_nothing_references`
+    - `tests/unit/lakehouse/test_iceberg.py::test_a_point_in_time_read_without_an_event_time_is_refused`
+    - `tests/unit/lakehouse/test_iceberg.py::test_a_read_at_an_instant_excludes_later_rows`
+    - `tests/unit/lakehouse/test_iceberg.py::test_a_read_before_any_data_is_empty_rather_than_an_error`
+    - `tests/unit/lakehouse/test_iceberg.py::test_a_read_by_snapshot_returns_that_commit_s_rows`
+    - `tests/unit/lakehouse/test_iceberg.py::test_a_table_nobody_has_written_to_reports_no_snapshots`
+    - `tests/unit/lakehouse/test_iceberg.py::test_an_empty_append_is_refused`
+    - `tests/unit/lakehouse/test_iceberg.py::test_appending_does_not_change_what_an_earlier_read_returned`
+    - `tests/unit/lakehouse/test_iceberg.py::test_different_rows_hash_differently`
+    - `tests/unit/lakehouse/test_iceberg.py::test_nothing_is_unreferenced_in_an_append_only_table`
+    - `tests/unit/lakehouse/test_iceberg.py::test_the_hash_does_not_depend_on_how_the_rows_were_committed`
+    - `tests/unit/lakehouse/test_iceberg.py::test_the_same_rows_hash_the_same_in_two_tables`
+    - `tests/unit/lakehouse/test_iceberg.py::test_the_snapshot_records_what_it_holds`
+    - `tests/unit/lakehouse/test_iceberg.py::test_two_writers_from_one_parent_both_land`
+- **Code:**
+    - `src/channelflow/lakehouse/iceberg.py`
+- **Outcomes:** [[OUT-2026-09-11-implement-iceberg]], [[OUT-2026-09-11-plan-iceberg]], [[OUT-2026-09-11-requirement-iceberg]], [[OUT-2026-09-11-spec-iceberg]]
 <!-- trace:end -->
 
 ## Notes
