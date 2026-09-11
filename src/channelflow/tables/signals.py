@@ -23,7 +23,7 @@ from __future__ import annotations
 import uuid
 
 from channelflow.alerting import signal_id_for
-from channelflow.lakehouse import Column, ObjectStore, Schema, Table
+from channelflow.lakehouse import Catalog, Column, IcebergTable, Schema
 from channelflow.signals import Candidate, CandidateState, Transition
 from channelflow.tables.rows import as_int, as_str
 
@@ -124,15 +124,17 @@ def from_rows(core: dict[str, object], transitions: list[dict[str, object]]) -> 
     )
 
 
-def table_for(store: ObjectStore) -> Table:
-    return Table(name=TABLE_NAME, schema=SCHEMA, store=store)
+def table_for(catalog: Catalog) -> IcebergTable:
+    return IcebergTable(name=TABLE_NAME, schema=SCHEMA, catalog=catalog)
 
 
-def transitions_table_for(store: ObjectStore) -> Table:
-    return Table(name=TRANSITIONS_TABLE_NAME, schema=TRANSITIONS_SCHEMA, store=store)
+def transitions_table_for(catalog: Catalog) -> IcebergTable:
+    return IcebergTable(name=TRANSITIONS_TABLE_NAME, schema=TRANSITIONS_SCHEMA, catalog=catalog)
 
 
-def write_signals(core_table: Table, transitions_table: Table, candidates: list[Candidate]) -> None:
+def write_signals(
+    core_table: IcebergTable, transitions_table: IcebergTable, candidates: list[Candidate]
+) -> None:
     """Write candidates and their transitions.
 
     Two commits, and they are not atomic together: the plane's atomicity is per
@@ -155,8 +157,8 @@ def write_signals(core_table: Table, transitions_table: Table, candidates: list[
 
 
 def read_signals(
-    core_table: Table,
-    transitions_table: Table,
+    core_table: IcebergTable,
+    transitions_table: IcebergTable,
     *,
     symbol: str | None = None,
     timeframe_ns: int | None = None,
@@ -184,7 +186,7 @@ def read_signals(
 
 
 def read_signal(
-    core_table: Table, transitions_table: Table, signal_id: uuid.UUID
+    core_table: IcebergTable, transitions_table: IcebergTable, signal_id: uuid.UUID
 ) -> Candidate | None:
     wanted = str(signal_id)
     for core in core_table.read().to_pylist():

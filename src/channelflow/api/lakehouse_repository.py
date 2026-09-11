@@ -35,7 +35,7 @@ from channelflow.bars import Bar
 from channelflow.channels import ChannelSnapshot
 from channelflow.domain import Instrument
 from channelflow.extrema.models import ConfirmedExtremum, ExtremumCandidate
-from channelflow.lakehouse import ObjectStore, Table
+from channelflow.lakehouse import Catalog, IcebergTable
 from channelflow.scoring import SignalScore
 from channelflow.signals import Candidate
 from channelflow.tables import bars as bars_table
@@ -50,35 +50,35 @@ from channelflow.tables.rows import as_float, as_int, as_str
 class LakehouseRepository:
     """Everything the API reads, from PRD §29's canonical tables.
 
-    The tables are built once from the store rather than per call: a `Table` is
+    The tables are built once from the store rather than per call: a `IcebergTable` is
     frozen and stateless, so holding one caches nothing -- it is a name, a schema
     and a store, and every read goes to the store.
     """
 
-    store: ObjectStore
+    catalog: Catalog
 
-    _bars: Table = field(init=False)
-    _channels: Table = field(init=False)
-    _features: Table = field(init=False)
-    _markets: Table = field(init=False)
-    _scores: Table = field(init=False)
-    _contributions: Table = field(init=False)
-    _signals: Table = field(init=False)
-    _confirmed: Table = field(init=False)
-    _candidates: Table = field(init=False)
-    _transitions: Table = field(init=False)
+    _bars: IcebergTable = field(init=False)
+    _channels: IcebergTable = field(init=False)
+    _features: IcebergTable = field(init=False)
+    _markets: IcebergTable = field(init=False)
+    _scores: IcebergTable = field(init=False)
+    _contributions: IcebergTable = field(init=False)
+    _signals: IcebergTable = field(init=False)
+    _confirmed: IcebergTable = field(init=False)
+    _candidates: IcebergTable = field(init=False)
+    _transitions: IcebergTable = field(init=False)
 
     def __post_init__(self) -> None:
-        self._bars = bars_table.table_for(self.store)
-        self._channels = channels_table.table_for(self.store)
-        self._features = features_table.features_table_for(self.store)
-        self._markets = features_table.markets_table_for(self.store)
-        self._scores = features_table.scores_table_for(self.store)
-        self._contributions = features_table.contributions_table_for(self.store)
-        self._signals = signals_table.table_for(self.store)
-        self._confirmed = extrema_table.confirmed_table_for(self.store)
-        self._candidates = extrema_table.candidates_table_for(self.store)
-        self._transitions = signals_table.transitions_table_for(self.store)
+        self._bars = bars_table.table_for(self.catalog)
+        self._channels = channels_table.table_for(self.catalog)
+        self._features = features_table.features_table_for(self.catalog)
+        self._markets = features_table.markets_table_for(self.catalog)
+        self._scores = features_table.scores_table_for(self.catalog)
+        self._contributions = features_table.contributions_table_for(self.catalog)
+        self._signals = signals_table.table_for(self.catalog)
+        self._confirmed = extrema_table.confirmed_table_for(self.catalog)
+        self._candidates = extrema_table.candidates_table_for(self.catalog)
+        self._transitions = signals_table.transitions_table_for(self.catalog)
 
     # --- writing, for the pipeline and the tests ---------------------------
     #

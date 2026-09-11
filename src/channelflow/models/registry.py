@@ -36,7 +36,7 @@ from typing import Literal, cast, get_args
 import numpy as np
 
 from channelflow.experiments import ModelAbsence, NotReproducible, RunIdentity
-from channelflow.lakehouse import Column, ObjectStore, Schema, Table
+from channelflow.lakehouse import Catalog, Column, IcebergTable, Schema
 
 _TAG_NONE = b"n"
 _TAG_BOOL = b"b"
@@ -257,11 +257,13 @@ MODEL_REGISTRY_SCHEMA = Schema(
 class ModelRegistry:
     """PRD §23.9's registrations, on the canonical plane."""
 
-    store: ObjectStore
+    catalog: Catalog
 
     @property
-    def table(self) -> Table:
-        return Table(name=MODEL_REGISTRY_TABLE, schema=MODEL_REGISTRY_SCHEMA, store=self.store)
+    def table(self) -> IcebergTable:
+        return IcebergTable(
+            name=MODEL_REGISTRY_TABLE, schema=MODEL_REGISTRY_SCHEMA, catalog=self.catalog
+        )
 
     def record(self, entries: Sequence[Registration]) -> None:
         """Store registrations the registry does not already hold.

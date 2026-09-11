@@ -7,7 +7,7 @@ from decimal import Decimal
 import pytest
 
 from channelflow.bars import Bar, BarBuilder
-from channelflow.lakehouse import InMemoryObjectStore, Table
+from channelflow.lakehouse import Catalog, IcebergTable
 from channelflow.tables import (
     ORDER,
     SCHEMA,
@@ -53,12 +53,12 @@ def bar(
 
 
 @pytest.fixture
-def table() -> Table:
-    return table_for(InMemoryObjectStore())
+def table(catalog: Catalog) -> IcebergTable:
+    return table_for(catalog)
 
 
 @pytest.mark.trace("REQ-TBL-001")
-def test_a_bar_survives_the_round_trip_exactly(table: Table) -> None:
+def test_a_bar_survives_the_round_trip_exactly(table: IcebergTable) -> None:
     """Every field, and the decimals as decimals.
 
     A canonical table that rounded a price on the way in would make every
@@ -71,7 +71,7 @@ def test_a_bar_survives_the_round_trip_exactly(table: Table) -> None:
 
 
 @pytest.mark.trace("REQ-TBL-001")
-def test_a_price_that_float64_cannot_hold_comes_back_unchanged(table: Table) -> None:
+def test_a_price_that_float64_cannot_hold_comes_back_unchanged(table: IcebergTable) -> None:
     """`0.1` is the standard example and it is not academic here: a bar is money,
     and a table storing it as a float would return a different number."""
     exact = bar(1, price="0.1")
@@ -83,7 +83,7 @@ def test_a_price_that_float64_cannot_hold_comes_back_unchanged(table: Table) -> 
 
 
 @pytest.mark.trace("REQ-TBL-001")
-def test_an_unfinalized_bar_is_refused(table: Table) -> None:
+def test_an_unfinalized_bar_is_refused(table: IcebergTable) -> None:
     """A canonical table holding a bar that may still change holds a row that
     will be rewritten, which is the repainting PRD §0.5 forbids."""
     with pytest.raises(UnfinalizedBar, match="not final"):
@@ -91,7 +91,7 @@ def test_an_unfinalized_bar_is_refused(table: Table) -> None:
 
 
 @pytest.mark.trace("REQ-TBL-001")
-def test_every_stored_bar_reads_back_final(table: Table) -> None:
+def test_every_stored_bar_reads_back_final(table: IcebergTable) -> None:
     """`is_final` is not a column: every row here is final, so a column holding
     `true` on every row would be a field nobody reads and a door left open."""
     write_bars(table, [bar(1)])
@@ -101,7 +101,7 @@ def test_every_stored_bar_reads_back_final(table: Table) -> None:
 
 
 @pytest.mark.trace("REQ-TBL-001")
-def test_rows_come_back_in_the_order_the_prd_names(table: Table) -> None:
+def test_rows_come_back_in_the_order_the_prd_names(table: IcebergTable) -> None:
     """PRD §29.4: `(venue, symbol, timeframe, open_time)`. Two readers of one
     snapshot see the same series in the same order."""
     assert ORDER == ("venue", "symbol", "timeframe_ns", "open_time_ns")
@@ -117,7 +117,7 @@ def test_rows_come_back_in_the_order_the_prd_names(table: Table) -> None:
 
 
 @pytest.mark.trace("REQ-TBL-001")
-def test_a_point_in_time_read_uses_the_close_and_not_the_open(table: Table) -> None:
+def test_a_point_in_time_read_uses_the_close_and_not_the_open(table: IcebergTable) -> None:
     """A bar becomes knowable when it closes.
 
     Filtering on `open_time_ns` would return a window that had opened and not
@@ -132,7 +132,7 @@ def test_a_point_in_time_read_uses_the_close_and_not_the_open(table: Table) -> N
 
 
 @pytest.mark.trace("REQ-TBL-001")
-def test_a_read_can_be_narrowed_to_one_series(table: Table) -> None:
+def test_a_read_can_be_narrowed_to_one_series(table: IcebergTable) -> None:
     write_bars(table, [bar(1), bar(2, symbol="ETHUSDT")])
 
     assert [b.symbol for b in read_bars(table, symbol="BTCUSDT")] == ["BTCUSDT"]
@@ -141,7 +141,7 @@ def test_a_read_can_be_narrowed_to_one_series(table: Table) -> None:
 
 
 @pytest.mark.trace("REQ-TBL-001")
-def test_the_sink_buffers_and_commits_once(table: Table) -> None:
+def test_the_sink_buffers_and_commits_once(table: IcebergTable) -> None:
     """A commit per bar would make the snapshot chain as long as the series, and
     a table with a manifest per row has metadata larger than its data."""
     sink = BarSink(table=table)
@@ -159,7 +159,7 @@ def test_the_sink_buffers_and_commits_once(table: Table) -> None:
 
 
 @pytest.mark.trace("REQ-TBL-001")
-def test_flushing_nothing_commits_nothing(table: Table) -> None:
+def test_flushing_nothing_commits_nothing(table: IcebergTable) -> None:
     """A snapshot identical to its parent under a new id would make every
     consumer keyed by snapshot see a change that did not happen."""
     sink = BarSink(table=table)
@@ -169,12 +169,11 @@ def test_flushing_nothing_commits_nothing(table: Table) -> None:
 
 
 @pytest.mark.trace("REQ-TBL-001")
-def test_the_sink_is_the_builder_s_own_hook() -> None:
+def test_the_sink_is_the_builder_s_own_hook(catalog: Catalog) -> None:
     """`BarBuilder.on_final` fires when a window closes and never again for that
     window ([[ADR-005]]), which is exactly the moment a canonical table may have
     the row."""
-    store = InMemoryObjectStore()
-    table = table_for(store)
+    table = table_for(catalog)
     sink = BarSink(table=table)
     builder = BarBuilder(timeframe_ns=MINUTE_NS, on_final=sink)
 
@@ -187,7 +186,7 @@ def test_the_sink_is_the_builder_s_own_hook() -> None:
 
 
 @pytest.mark.trace("REQ-TBL-001")
-def test_the_table_keeps_the_plane_s_own_guarantees(table: Table) -> None:
+def test_the_table_keeps_the_plane_s_own_guarantees(table: IcebergTable) -> None:
     """It is a lakehouse table, so its history is immutable and every snapshot
     has an identity -- which is what makes a backfill re-runnable and a research
     read pinnable."""

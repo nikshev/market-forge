@@ -21,6 +21,7 @@ import pytest
 
 import channelflow.research
 from channelflow.experiments import Field
+from channelflow.lakehouse import Catalog
 
 
 @dataclass(frozen=True)
@@ -111,7 +112,7 @@ def test_a_field_type_is_what_the_seam_expects() -> None:
 
 
 @pytest.mark.trace("REQ-BIAS-011")
-def test_a_real_comparison_reaches_the_registry() -> None:
+def test_a_real_comparison_reaches_the_registry(catalog: Catalog) -> None:
     """The whole chain on one real experiment, end to end.
 
     The checks above are structural: they prove a comparison *can* be asked what
@@ -121,12 +122,11 @@ def test_a_real_comparison_reaches_the_registry() -> None:
     moment anyone used it.
     """
     from channelflow.experiments import CodeVersion, Outcome, Registry, report_comparison
-    from channelflow.lakehouse import InMemoryObjectStore
     from channelflow.research import MODELS, compare_channel_models
     from tests.unit.research.test_channel_comparison import COSTS, series
 
     comparison = compare_channel_models(series(), costs=COSTS)
-    registry = Registry(store=InMemoryObjectStore())
+    registry = Registry(catalog=catalog)
 
     result = report_comparison(
         comparison,

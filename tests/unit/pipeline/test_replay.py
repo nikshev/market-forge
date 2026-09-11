@@ -15,7 +15,7 @@ from channelflow.bus import EventBus
 from channelflow.domain import EventMeta, TradeEvent
 from channelflow.events import BarFinalized, CandidateUpdated, ChannelFitted
 from channelflow.experiments import dataset_reference
-from channelflow.lakehouse import InMemoryObjectStore
+from channelflow.lakehouse import Catalog
 from channelflow.pipeline import (
     MixedSeries,
     Recording,
@@ -92,46 +92,41 @@ def rising_with_rejections(n: int = 120) -> list[Bar]:
     return [bar(index, 100.0 + 0.05 * index + 1.2 * math.sin(index / 5.0)) for index in range(n)]
 
 
-@pytest.fixture
-def store() -> InMemoryObjectStore:
-    return InMemoryObjectStore()
-
-
 @pytest.mark.trace("REQ-PIPE-001")
-def test_trades_become_bars_in_the_table(store: InMemoryObjectStore) -> None:
+def test_trades_become_bars_in_the_table(catalog: Catalog) -> None:
     """The builder's own hook is the sink, so a recorded stream fills the table
     by the same path a live one would."""
     trades = [trade(index) for index in range(180)]
 
-    recording = record_bars(trades, store=store, timeframe_ns=MINUTE_NS)
+    recording = record_bars(trades, catalog=catalog, timeframe_ns=MINUTE_NS)
 
     assert recording.bars > 0
-    stored = bars_table.read_bars(bars_table.table_for(store))
+    stored = bars_table.read_bars(bars_table.table_for(catalog))
     assert len(stored) == recording.bars
     assert all(b.is_final for b in stored)
 
 
 @pytest.mark.trace("REQ-PIPE-001")
-def test_a_window_still_open_at_the_end_is_not_written(store: InMemoryObjectStore) -> None:
+def test_a_window_still_open_at_the_end_is_not_written(catalog: Catalog) -> None:
     """It is not a bar yet, and a table holding it would hold a row that is
     going to change."""
     trades = [trade(index) for index in range(180)]
 
-    record_bars(trades, store=store, timeframe_ns=MINUTE_NS)
+    record_bars(trades, catalog=catalog, timeframe_ns=MINUTE_NS)
 
-    stored = bars_table.read_bars(bars_table.table_for(store))
+    stored = bars_table.read_bars(bars_table.table_for(catalog))
     last_trade_ns = trades[-1].meta.event_time_ns
     assert all(b.close_time_ns <= last_trade_ns for b in stored)
 
 
 @pytest.mark.trace("REQ-PIPE-001")
-def test_a_replay_writes_the_snapshots_it_fitted(store: InMemoryObjectStore) -> None:
+def test_a_replay_writes_the_snapshots_it_fitted(catalog: Catalog) -> None:
     """The report is a summary; the snapshots themselves are what a later reader
     needs, and recomputing them outside the loop would be a second fitting path
     that could disagree with it."""
     recording, report = record_replay(
         rising_with_rejections(),
-        store=store,
+        catalog=catalog,
         venue="binance",
         symbol="BTCUSDT",
         timeframe_ns=MINUTE_NS,
@@ -139,12 +134,12 @@ def test_a_replay_writes_the_snapshots_it_fitted(store: InMemoryObjectStore) -> 
 
     assert recording.channel_snapshots > 0
     assert recording.channel_snapshots == report.bars_replayed - report.bars_skipped_no_channel
-    stored = channels_table.table_for(store).read().num_rows
+    stored = channels_table.table_for(catalog).read().num_rows
     assert stored == recording.channel_snapshots
 
 
 @pytest.mark.trace("REQ-PIPE-001")
-def test_a_signal_is_written_once_in_its_final_state(store: InMemoryObjectStore) -> None:
+def test_a_signal_is_written_once_in_its_final_state(catalog: Catalog) -> None:
     """`on_bar` returns the live candidate on every bar it is alive for, each a
     more complete version of the same signal.
 
@@ -153,7 +148,7 @@ def test_a_signal_is_written_once_in_its_final_state(store: InMemoryObjectStore)
     """
     recording, report = record_replay(
         rising_with_rejections(),
-        store=store,
+        catalog=catalog,
         venue="binance",
         symbol="BTCUSDT",
         timeframe_ns=MINUTE_NS,
@@ -162,13 +157,13 @@ def test_a_signal_is_written_once_in_its_final_state(store: InMemoryObjectStore)
     assert recording.signals == report.candidates_opened
     assert recording.signals > 0
 
-    cores = signals_table.table_for(store)
-    transitions = signals_table.transitions_table_for(store)
+    cores = signals_table.table_for(catalog)
+    transitions = signals_table.transitions_table_for(catalog)
     stored = signals_table.read_signals(cores, transitions)
     assert len(stored) == recording.signals
     # Each signal's *whole* history, not a prefix of it. The report counts every
     # transition the run made, so the stored histories have to add up to it --
-    # keeping the first state of each candidate instead of the last would store
+    # keeping the first state of each candidate instead of the last would catalog
     # one transition per signal and still look like a working recorder.
     assert sum(len(c.history) for c in stored) == len(report.transitions)
     assert max(len(c.history) for c in stored) > 1
@@ -177,7 +172,7 @@ def test_a_signal_is_written_once_in_its_final_state(store: InMemoryObjectStore)
 
 @pytest.mark.trace("REQ-PIPE-001")
 def test_the_observers_do_not_change_what_the_run_reports(
-    store: InMemoryObjectStore,
+    catalog: Catalog,
 ) -> None:
     """They observe and cannot steer. A recorder that changed the report would
     make a recorded run a different run from an unrecorded one."""
@@ -185,21 +180,21 @@ def test_the_observers_do_not_change_what_the_run_reports(
 
     plain = BacktestRunner().run(bars)
     _, recorded = record_replay(
-        bars, store=store, venue="binance", symbol="BTCUSDT", timeframe_ns=MINUTE_NS
+        bars, catalog=catalog, venue="binance", symbol="BTCUSDT", timeframe_ns=MINUTE_NS
     )
 
     assert recorded == plain
 
 
 @pytest.mark.trace("REQ-PIPE-001")
-def test_the_caller_s_runner_comes_back_without_sinks(store: InMemoryObjectStore) -> None:
+def test_the_caller_s_runner_comes_back_without_sinks(catalog: Catalog) -> None:
     """A runner that came back carrying recorders would write again on its next
-    use, into whatever store the first run happened to use."""
+    use, into whatever catalog the first run happened to use."""
     runner = BacktestRunner()
 
     record_replay(
         rising_with_rejections()[:30],
-        store=store,
+        catalog=catalog,
         venue="binance",
         symbol="BTCUSDT",
         timeframe_ns=MINUTE_NS,
@@ -211,26 +206,26 @@ def test_the_caller_s_runner_comes_back_without_sinks(store: InMemoryObjectStore
 
 
 @pytest.mark.trace("REQ-PIPE-001")
-def test_a_replay_does_not_rewrite_its_own_input(store: InMemoryObjectStore) -> None:
+def test_a_replay_does_not_rewrite_its_own_input(catalog: Catalog) -> None:
     """Bars are the input. Writing them here would duplicate them for a replay
     over a table's own contents."""
     record_replay(
         rising_with_rejections()[:30],
-        store=store,
+        catalog=catalog,
         venue="binance",
         symbol="BTCUSDT",
         timeframe_ns=MINUTE_NS,
     )
 
-    assert bars_table.table_for(store).current() is None
+    assert bars_table.table_for(catalog).current() is None
 
 
 @pytest.mark.trace("REQ-PIPE-001")
-def test_the_recording_names_only_the_tables_it_wrote(store: InMemoryObjectStore) -> None:
+def test_the_recording_names_only_the_tables_it_wrote(catalog: Catalog) -> None:
     """A dataset naming a table nobody wrote to would claim the run read it."""
     recording, _ = record_replay(
         rising_with_rejections(),
-        store=store,
+        catalog=catalog,
         venue="binance",
         symbol="BTCUSDT",
         timeframe_ns=MINUTE_NS,
@@ -242,11 +237,11 @@ def test_the_recording_names_only_the_tables_it_wrote(store: InMemoryObjectStore
 
 
 @pytest.mark.trace("REQ-PIPE-001")
-def test_a_replay_that_produced_nothing_names_nothing(store: InMemoryObjectStore) -> None:
+def test_a_replay_that_produced_nothing_names_nothing(catalog: Catalog) -> None:
     """An empty input is not a dataset, and a reference over one would say a run
     could be reproduced from nothing."""
     recording, _ = record_replay(
-        [], store=store, venue="binance", symbol="BTCUSDT", timeframe_ns=MINUTE_NS
+        [], catalog=catalog, venue="binance", symbol="BTCUSDT", timeframe_ns=MINUTE_NS
     )
 
     assert recording.channel_snapshots == 0
@@ -257,21 +252,21 @@ def test_a_replay_that_produced_nothing_names_nothing(store: InMemoryObjectStore
 
 
 @pytest.mark.trace("REQ-PIPE-001")
-def test_two_replays_of_one_series_write_the_same_dataset() -> None:
+def test_two_replays_of_one_series_write_the_same_dataset(catalog: Catalog) -> None:
     """Principle XI at the end of the pipeline. Two runs over the same bars
     produce the same rows, so they produce the same dataset identity -- which is
     what makes the identity worth citing."""
     bars = rising_with_rejections()
     first, _ = record_replay(
         bars,
-        store=InMemoryObjectStore(),
+        catalog=catalog,
         venue="binance",
         symbol="BTCUSDT",
         timeframe_ns=MINUTE_NS,
     )
     second, _ = record_replay(
         bars,
-        store=InMemoryObjectStore(),
+        catalog=catalog,
         venue="binance",
         symbol="BTCUSDT",
         timeframe_ns=MINUTE_NS,
@@ -281,23 +276,23 @@ def test_two_replays_of_one_series_write_the_same_dataset() -> None:
 
 
 @pytest.mark.trace("REQ-PIPE-001")
-def test_the_api_serves_what_a_replay_recorded(store: InMemoryObjectStore) -> None:
+def test_the_api_serves_what_a_replay_recorded(catalog: Catalog) -> None:
     """The loop the storage requirements left open at both ends.
 
     Trades in, a replay over the bars they made, and the durable repository
     answering from what it wrote -- with nothing in memory between them.
     """
-    record_bars([trade(index) for index in range(600)], store=store, timeframe_ns=MINUTE_NS)
-    written = bars_table.read_bars(bars_table.table_for(store))
+    record_bars([trade(index) for index in range(600)], catalog=catalog, timeframe_ns=MINUTE_NS)
+    written = bars_table.read_bars(bars_table.table_for(catalog))
     record_replay(
         rising_with_rejections(),
-        store=store,
+        catalog=catalog,
         venue="binance",
         symbol="BTCUSDT",
         timeframe_ns=MINUTE_NS,
     )
 
-    repo = LakehouseRepository(store=store)
+    repo = LakehouseRepository(catalog=catalog)
 
     assert repo.bars(venue="binance", symbol="BTCUSDT", timeframe_ns=MINUTE_NS) == written
     assert (
@@ -331,21 +326,21 @@ def test_a_recording_is_a_value_and_carries_its_counts() -> None:
 
 
 @pytest.mark.trace("REQ-PIPE-001")
-def test_a_second_pass_over_the_same_trades_writes_no_bars(store: InMemoryObjectStore) -> None:
+def test_a_second_pass_over_the_same_trades_writes_no_bars(catalog: Catalog) -> None:
     """Append-only means nothing rejects the duplicate; the writer has to."""
     trades = [trade(index) for index in range(600)]
 
-    first = record_bars(trades, store=store, timeframe_ns=MINUTE_NS)
-    second = record_bars(trades, store=store, timeframe_ns=MINUTE_NS)
+    first = record_bars(trades, catalog=catalog, timeframe_ns=MINUTE_NS)
+    second = record_bars(trades, catalog=catalog, timeframe_ns=MINUTE_NS)
 
     assert first.bars > 0
     assert second.bars == 0
     assert second.skipped == first.bars
-    assert bars_table.table_for(store).read().num_rows == first.bars
+    assert bars_table.table_for(catalog).read().num_rows == first.bars
 
 
 @pytest.mark.trace("REQ-PIPE-001")
-def test_a_second_replay_over_the_same_bars_writes_nothing(store: InMemoryObjectStore) -> None:
+def test_a_second_replay_over_the_same_bars_writes_nothing(catalog: Catalog) -> None:
     """Including the transitions.
 
     A duplicated signal is worse than a duplicated bar: its rows land in the
@@ -354,19 +349,19 @@ def test_a_second_replay_over_the_same_bars_writes_nothing(store: InMemoryObject
     an obvious double.
     """
     bars = rising_with_rejections()
-    cores = signals_table.table_for(store)
-    transitions = signals_table.transitions_table_for(store)
+    cores = signals_table.table_for(catalog)
+    transitions = signals_table.transitions_table_for(catalog)
 
     first, _ = record_replay(
-        bars, store=store, venue="binance", symbol="BTCUSDT", timeframe_ns=MINUTE_NS
+        bars, catalog=catalog, venue="binance", symbol="BTCUSDT", timeframe_ns=MINUTE_NS
     )
     after_first = (
-        channels_table.table_for(store).read().num_rows,
+        channels_table.table_for(catalog).read().num_rows,
         cores.read().num_rows,
         transitions.read().num_rows,
     )
     second, _ = record_replay(
-        bars, store=store, venue="binance", symbol="BTCUSDT", timeframe_ns=MINUTE_NS
+        bars, catalog=catalog, venue="binance", symbol="BTCUSDT", timeframe_ns=MINUTE_NS
     )
 
     assert second.channel_snapshots == 0
@@ -381,7 +376,7 @@ def test_a_second_replay_over_the_same_bars_writes_nothing(store: InMemoryObject
         + first.extremum_candidates
     )
     assert (
-        channels_table.table_for(store).read().num_rows,
+        channels_table.table_for(catalog).read().num_rows,
         cores.read().num_rows,
         transitions.read().num_rows,
     ) == after_first
@@ -391,7 +386,7 @@ def test_a_second_replay_over_the_same_bars_writes_nothing(store: InMemoryObject
 
 @pytest.mark.trace("REQ-PIPE-001")
 def test_a_run_that_skipped_everything_still_names_its_dataset(
-    store: InMemoryObjectStore,
+    catalog: Catalog,
 ) -> None:
     """What it would have written is already there, so those snapshots are
     exactly the dataset its input corresponds to -- and recovering a lost
@@ -399,10 +394,10 @@ def test_a_run_that_skipped_everything_still_names_its_dataset(
     bars = rising_with_rejections()
 
     first, _ = record_replay(
-        bars, store=store, venue="binance", symbol="BTCUSDT", timeframe_ns=MINUTE_NS
+        bars, catalog=catalog, venue="binance", symbol="BTCUSDT", timeframe_ns=MINUTE_NS
     )
     second, _ = record_replay(
-        bars, store=store, venue="binance", symbol="BTCUSDT", timeframe_ns=MINUTE_NS
+        bars, catalog=catalog, venue="binance", symbol="BTCUSDT", timeframe_ns=MINUTE_NS
     )
 
     assert second.has_dataset
@@ -410,91 +405,91 @@ def test_a_run_that_skipped_everything_still_names_its_dataset(
 
 
 @pytest.mark.trace("REQ-PIPE-001")
-def test_a_continued_series_writes_only_what_is_new(store: InMemoryObjectStore) -> None:
+def test_a_continued_series_writes_only_what_is_new(catalog: Catalog) -> None:
     """A feed resumed from an overlapping window is the ordinary case, and
     refusing the whole batch would lose the tail that is genuinely new."""
     trades = [trade(index) for index in range(600)]
 
-    record_bars(trades[:300], store=store, timeframe_ns=MINUTE_NS)
-    second = record_bars(trades, store=store, timeframe_ns=MINUTE_NS)
+    record_bars(trades[:300], catalog=catalog, timeframe_ns=MINUTE_NS)
+    second = record_bars(trades, catalog=catalog, timeframe_ns=MINUTE_NS)
 
-    whole = InMemoryObjectStore()
-    record_bars(trades, store=whole, timeframe_ns=MINUTE_NS)
+    whole = catalog
+    record_bars(trades, catalog=whole, timeframe_ns=MINUTE_NS)
 
     assert second.bars > 0
     assert second.skipped > 0
-    assert bars_table.read_bars(bars_table.table_for(store)) == bars_table.read_bars(
+    assert bars_table.read_bars(bars_table.table_for(catalog)) == bars_table.read_bars(
         bars_table.table_for(whole)
     )
 
 
 @pytest.mark.trace("REQ-PIPE-001")
-def test_one_symbol_s_history_does_not_hold_back_another(store: InMemoryObjectStore) -> None:
+def test_one_symbol_s_history_does_not_hold_back_another(catalog: Catalog) -> None:
     """The watermark is per series. An unscoped one would refuse a symbol's
     first bar on the strength of another symbol's hundredth -- and the second
     symbol would simply never appear, with nothing raised."""
-    record_bars([trade(index) for index in range(600)], store=store, timeframe_ns=MINUTE_NS)
+    record_bars([trade(index) for index in range(600)], catalog=catalog, timeframe_ns=MINUTE_NS)
 
     other = record_bars(
         [trade(index, symbol="ETHUSDT") for index in range(600)],
-        store=store,
+        catalog=catalog,
         timeframe_ns=MINUTE_NS,
     )
 
     assert other.bars > 0
     assert other.skipped == 0
-    stored = bars_table.read_bars(bars_table.table_for(store), venue="binance", symbol="ETHUSDT")
+    stored = bars_table.read_bars(bars_table.table_for(catalog), venue="binance", symbol="ETHUSDT")
     assert len(stored) == other.bars
 
 
 @pytest.mark.trace("REQ-PIPE-001")
-def test_trades_from_two_series_are_refused(store: InMemoryObjectStore) -> None:
+def test_trades_from_two_series_are_refused(catalog: Catalog) -> None:
     """One builder aggregates one series. Mixing two produces bars that belong
     to neither, and a watermark over the mixture is a watermark over nothing."""
     mixed = [trade(0), trade(1, symbol="ETHUSDT")]
 
     with pytest.raises(MixedSeries):
-        record_bars(mixed, store=store, timeframe_ns=MINUTE_NS)
+        record_bars(mixed, catalog=catalog, timeframe_ns=MINUTE_NS)
 
 
 @pytest.mark.trace("REQ-PIPE-001")
 def test_a_recording_does_not_name_a_table_another_series_filled(
-    store: InMemoryObjectStore,
+    catalog: Catalog,
 ) -> None:
     """ "The table holds something" and "this run put something there" are the
-    same question only on a fresh store.
+    same question only on a fresh catalog.
 
-    One store holds every series, so the channels table is full of BTCUSDT the
+    One catalog holds every series, so the channels table is full of BTCUSDT the
     moment BTCUSDT has been replayed -- and a recording for ETHUSDT that named
     it would hand a research run a dataset of somebody else's rows, carrying
     the hash of a real snapshot to make it look checked.
     """
-    record_bars([trade(index) for index in range(600)], store=store, timeframe_ns=MINUTE_NS)
+    record_bars([trade(index) for index in range(600)], catalog=catalog, timeframe_ns=MINUTE_NS)
     record_replay(
         rising_with_rejections(),
-        store=store,
+        catalog=catalog,
         venue="binance",
         symbol="BTCUSDT",
         timeframe_ns=MINUTE_NS,
     )
 
     recording, _ = record_replay(
-        [], store=store, venue="binance", symbol="ETHUSDT", timeframe_ns=MINUTE_NS
+        [], catalog=catalog, venue="binance", symbol="ETHUSDT", timeframe_ns=MINUTE_NS
     )
 
-    assert bars_table.table_for(store).current() is not None
-    assert channels_table.table_for(store).current() is not None
+    assert bars_table.table_for(catalog).current() is not None
+    assert channels_table.table_for(catalog).current() is not None
     assert not recording.has_dataset
 
 
 @pytest.mark.trace("REQ-PIPE-001")
-def test_a_watermark_for_an_unseen_series_is_absent_not_zero(store: InMemoryObjectStore) -> None:
+def test_a_watermark_for_an_unseen_series_is_absent_not_zero(catalog: Catalog) -> None:
     """Zero is a real instant. A table reporting it for a series it has never
     seen would refuse every event at or before the epoch."""
-    table = bars_table.table_for(store)
+    table = bars_table.table_for(catalog)
     assert watermark(table, "close_time_ns", venue="binance", symbol="BTCUSDT") is None
 
-    record_bars([trade(index) for index in range(600)], store=store, timeframe_ns=MINUTE_NS)
+    record_bars([trade(index) for index in range(600)], catalog=catalog, timeframe_ns=MINUTE_NS)
 
     assert watermark(table, "close_time_ns", venue="binance", symbol="ETHUSDT") is None
     seen = watermark(table, "close_time_ns", venue="binance", symbol="BTCUSDT")
@@ -507,7 +502,7 @@ def test_a_watermark_for_an_unseen_series_is_absent_not_zero(store: InMemoryObje
 
 @pytest.mark.trace("REQ-INFRA-003")
 def test_a_caller_can_observe_a_replay_without_editing_it(
-    store: InMemoryObjectStore,
+    catalog: Catalog,
 ) -> None:
     """The claim the abstraction is worth anything for.
 
@@ -523,7 +518,7 @@ def test_a_caller_can_observe_a_replay_without_editing_it(
 
     recording, report = record_replay(
         rising_with_rejections(),
-        store=store,
+        catalog=catalog,
         venue="binance",
         symbol="BTCUSDT",
         timeframe_ns=MINUTE_NS,
@@ -531,7 +526,7 @@ def test_a_caller_can_observe_a_replay_without_editing_it(
     )
 
     stored = signals_table.read_signals(
-        signals_table.table_for(store), signals_table.transitions_table_for(store)
+        signals_table.table_for(catalog), signals_table.transitions_table_for(catalog)
     )
 
     assert len(seen) == recording.channel_snapshots
@@ -548,14 +543,14 @@ def test_a_caller_can_observe_a_replay_without_editing_it(
 
 @pytest.mark.trace("REQ-INFRA-003")
 def test_an_observer_does_not_change_what_is_recorded(
-    store: InMemoryObjectStore,
+    catalog: Catalog,
 ) -> None:
     """A subscriber is an observer. If adding one changed the recording, the bus
     would have turned a read into a write."""
     bars = rising_with_rejections()
     plain, _ = record_replay(
         bars,
-        store=InMemoryObjectStore(),
+        catalog=catalog,
         venue="binance",
         symbol="BTCUSDT",
         timeframe_ns=MINUTE_NS,
@@ -565,7 +560,7 @@ def test_an_observer_does_not_change_what_is_recorded(
     bus.subscribe(ChannelFitted, lambda _: None)
     observed, _ = record_replay(
         bars,
-        store=store,
+        catalog=catalog,
         venue="binance",
         symbol="BTCUSDT",
         timeframe_ns=MINUTE_NS,
@@ -576,7 +571,7 @@ def test_an_observer_does_not_change_what_is_recorded(
 
 
 @pytest.mark.trace("REQ-INFRA-003")
-def test_a_caller_can_observe_finalized_bars(store: InMemoryObjectStore) -> None:
+def test_a_caller_can_observe_finalized_bars(catalog: Catalog) -> None:
     """The same claim on the other producer."""
     seen: list[BarFinalized] = []
     bus = EventBus()
@@ -584,7 +579,7 @@ def test_a_caller_can_observe_finalized_bars(store: InMemoryObjectStore) -> None
 
     recording = record_bars(
         [trade(index) for index in range(600)],
-        store=store,
+        catalog=catalog,
         timeframe_ns=MINUTE_NS,
         bus=bus,
     )

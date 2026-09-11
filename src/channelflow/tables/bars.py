@@ -28,7 +28,7 @@ from dataclasses import dataclass, field
 from decimal import Decimal
 
 from channelflow.bars import Bar
-from channelflow.lakehouse import Column, ObjectStore, Schema, Table
+from channelflow.lakehouse import Catalog, Column, IcebergTable, Schema
 
 #: PRD §29.B's name for it.
 TABLE_NAME = "bars"
@@ -145,7 +145,7 @@ class BarSink:
     `pending` reaches whatever size it has decided on.
     """
 
-    table: Table
+    table: IcebergTable
     _buffer: list[dict[str, object]] = field(default_factory=list)
 
     def __call__(self, bar: Bar) -> None:
@@ -169,12 +169,12 @@ class BarSink:
         return snapshot.content_hash
 
 
-def table_for(store: ObjectStore) -> Table:
-    return Table(name=TABLE_NAME, schema=SCHEMA, store=store)
+def table_for(catalog: Catalog) -> IcebergTable:
+    return IcebergTable(name=TABLE_NAME, schema=SCHEMA, catalog=catalog)
 
 
 def read_bars(
-    table: Table,
+    table: IcebergTable,
     *,
     venue: str | None = None,
     symbol: str | None = None,
@@ -201,7 +201,7 @@ def read_bars(
     return [from_row(row) for row in matched]
 
 
-def write_bars(table: Table, bars: Sequence[Bar]) -> str | None:
+def write_bars(table: IcebergTable, bars: Sequence[Bar]) -> str | None:
     """Write a batch directly, for a backfill that already has its bars."""
     sink = BarSink(table=table)
     for bar in bars:

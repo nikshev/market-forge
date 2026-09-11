@@ -25,7 +25,7 @@ from channelflow.bars import Bar
 from channelflow.channels import ChannelQuality, ChannelSnapshot
 from channelflow.domain import Instrument
 from channelflow.extrema.models import ConfirmedExtremum, ExtremumCandidate
-from channelflow.lakehouse import InMemoryObjectStore
+from channelflow.lakehouse import Catalog
 from channelflow.scoring import Group, GroupContribution, SignalScore
 from channelflow.signals import Candidate, CandidateState, Transition
 
@@ -35,23 +35,25 @@ BASE_NS = 1_788_838_800_000_000_000
 Repo = InMemoryRepository | LakehouseRepository
 
 
-def _in_memory() -> Repo:
+def _in_memory(catalog: Catalog) -> Repo:
+    # Takes the catalog it does not use, so both factories have one shape and
+    # the fixture below needs no special case for either.
     return InMemoryRepository()
 
 
-def _lakehouse() -> Repo:
-    return LakehouseRepository(store=InMemoryObjectStore())
+def _lakehouse(catalog: Catalog) -> Repo:
+    return LakehouseRepository(catalog=catalog)
 
 
 #: Both implementations, named so a failure says which one broke.
-IMPLEMENTATIONS: list[Callable[[], Repo]] = [_in_memory, _lakehouse]
+IMPLEMENTATIONS: list[Callable[[Catalog], Repo]] = [_in_memory, _lakehouse]
 IDS = ["in_memory", "lakehouse"]
 
 
 @pytest.fixture(params=IMPLEMENTATIONS, ids=IDS)
-def repo(request: pytest.FixtureRequest) -> Repo:
-    factory: Callable[[], Repo] = request.param
-    return factory()
+def repo(request: pytest.FixtureRequest, catalog: Catalog) -> Repo:
+    factory: Callable[[Catalog], Repo] = request.param
+    return factory(catalog)
 
 
 def bar(index: int, *, price: str = "112000.10", symbol: str = "BTCUSDT") -> Bar:
