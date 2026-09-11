@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "§18.10, §18.24, §18.25, §45 Phase 4"
 prd_lines: "3038-3088, 3549-3600, 6811"
 phase: 4
-status: tested
+status: implemented
 depends_on: [REQ-WP-015]
 tags: []
 ---
@@ -71,7 +71,7 @@ the head block, so there is nothing between this repository and the authority.
 ## Trace
 
 <!-- trace:begin -->
-- **Specs:** [[SPEC-083-aerodrome-v2]]
+- **Specs:** [[SPEC-083-aerodrome-v2]], [[SPEC-084-slipstream-fees]]
 - **Tests:**
     - `tests/unit/dex/test_aerodrome.py::test_a_pool_with_an_empty_side_cannot_quote`
     - `tests/unit/dex/test_aerodrome.py::test_a_swap_of_nothing_is_refused`
@@ -89,10 +89,51 @@ the head block, so there is nothing between this repository and the authority.
     - `tests/unit/dex/test_aerodrome.py::test_the_quotes_span_orders_of_magnitude[v2_volatile]`
     - `tests/unit/dex/test_aerodrome.py::test_the_two_directions_are_different_quotes[v2_stable]`
     - `tests/unit/dex/test_aerodrome.py::test_the_two_directions_are_different_quotes[v2_volatile]`
+    - `tests/unit/dex/test_slipstream.py::test_a_deliberate_zero_fee_is_not_an_unconfigured_one`
+    - `tests/unit/dex/test_slipstream.py::test_a_negative_average_tick_still_contributes_its_distance`
+    - `tests/unit/dex/test_slipstream.py::test_a_pool_state_refuses_to_be_built_without_an_observed_fee`
+    - `tests/unit/dex/test_slipstream.py::test_a_reverting_observe_charges_no_dynamic_term`
+    - `tests/unit/dex/test_slipstream.py::test_all_three_slipstream_factories_are_recognised`
+    - `tests/unit/dex/test_slipstream.py::test_an_average_tick_beyond_int24_wraps_as_the_contract_casts_it`
+    - `tests/unit/dex/test_slipstream.py::test_an_oracle_too_short_to_answer_charges_no_dynamic_term`
+    - `tests/unit/dex/test_slipstream.py::test_every_captured_pool_classifies_as_slipstream`
+    - `tests/unit/dex/test_slipstream.py::test_scaling_and_cap_are_substituted_together_or_not_at_all`
+    - `tests/unit/dex/test_slipstream.py::test_some_pools_carry_a_live_dynamic_term`
+    - `tests/unit/dex/test_slipstream.py::test_the_average_tick_truncates_toward_zero_as_solidity_does`
+    - `tests/unit/dex/test_slipstream.py::test_the_cap_binds_after_the_dynamic_term_and_not_before`
+    - `tests/unit/dex/test_slipstream.py::test_the_computed_fee_is_the_fee_the_chain_charges[0x47ca96ea]`
+    - `tests/unit/dex/test_slipstream.py::test_the_computed_fee_is_the_fee_the_chain_charges[0x4e829f8a]`
+    - `tests/unit/dex/test_slipstream.py::test_the_computed_fee_is_the_fee_the_chain_charges[0x861a2922]`
+    - `tests/unit/dex/test_slipstream.py::test_the_computed_fee_is_the_fee_the_chain_charges[0x98c7a233]`
+    - `tests/unit/dex/test_slipstream.py::test_the_computed_fee_is_the_fee_the_chain_charges[0xafb62448]`
+    - `tests/unit/dex/test_slipstream.py::test_the_computed_fee_is_the_fee_the_chain_charges[0xb2cc224c]`
+    - `tests/unit/dex/test_slipstream.py::test_the_computed_fee_is_the_fee_the_chain_charges[0xdc7ead70]`
+    - `tests/unit/dex/test_slipstream.py::test_the_computed_fee_is_the_fee_the_chain_charges[0xf8d5df4d]`
+    - `tests/unit/dex/test_slipstream.py::test_the_curve_comes_from_the_factory_and_never_from_a_guess`
+    - `tests/unit/dex/test_slipstream.py::test_the_default_table_refuses_a_spacing_the_factory_does_not_enable`
+    - `tests/unit/dex/test_slipstream.py::test_the_discount_rounds_in_the_payer_s_favour`
+    - `tests/unit/dex/test_slipstream.py::test_the_first_swap_of_a_block_can_be_charged_differently`
+    - `tests/unit/dex/test_slipstream.py::test_the_fixture_is_one_block`
+    - `tests/unit/dex/test_slipstream.py::test_the_initial_fee_has_its_own_three_way_sentinel[0-500]`
+    - `tests/unit/dex/test_slipstream.py::test_the_initial_fee_has_its_own_three_way_sentinel[100-100]`
+    - `tests/unit/dex/test_slipstream.py::test_the_initial_fee_has_its_own_three_way_sentinel[420-0]`
+    - `tests/unit/dex/test_slipstream.py::test_the_pool_and_the_factory_agree_about_the_fee[0x47ca96ea]`
+    - `tests/unit/dex/test_slipstream.py::test_the_pool_and_the_factory_agree_about_the_fee[0x4e829f8a]`
+    - `tests/unit/dex/test_slipstream.py::test_the_pool_and_the_factory_agree_about_the_fee[0x861a2922]`
+    - `tests/unit/dex/test_slipstream.py::test_the_pool_and_the_factory_agree_about_the_fee[0x98c7a233]`
+    - `tests/unit/dex/test_slipstream.py::test_the_pool_and_the_factory_agree_about_the_fee[0xafb62448]`
+    - `tests/unit/dex/test_slipstream.py::test_the_pool_and_the_factory_agree_about_the_fee[0xb2cc224c]`
+    - `tests/unit/dex/test_slipstream.py::test_the_pool_and_the_factory_agree_about_the_fee[0xdc7ead70]`
+    - `tests/unit/dex/test_slipstream.py::test_the_pool_and_the_factory_agree_about_the_fee[0xf8d5df4d]`
+    - `tests/unit/dex/test_slipstream.py::test_the_pool_key_is_the_spacing_not_the_fee`
+    - `tests/unit/dex/test_slipstream.py::test_the_spacing_default_is_not_what_pools_charge`
+    - `tests/unit/dex/test_slipstream.py::test_the_spacing_table_maps_several_spacings_to_one_fee`
 - **Code:**
     - `src/channelflow/dex/aerodrome.py`
+    - `src/channelflow/dex/slipstream.py`
     - `tools/record/aerodrome_capture.py`
-- **Outcomes:** [[OUT-2026-09-11-implement-aerodrome-v2]], [[OUT-2026-09-11-requirement-aerodrome]]
+    - `tools/record/slipstream_capture.py`
+- **Outcomes:** [[OUT-2026-09-11-implement-aerodrome-v2]], [[OUT-2026-09-11-implement-slipstream]], [[OUT-2026-09-11-requirement-aerodrome]]
 <!-- trace:end -->
 
 ## Notes

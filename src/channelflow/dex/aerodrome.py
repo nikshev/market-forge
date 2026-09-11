@@ -32,6 +32,7 @@ produces a different number.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from enum import StrEnum
 
 #: The contract's normalisation base. Every stable-pool intermediate is scaled
 #: to this before the invariant touches it.
@@ -40,10 +41,69 @@ WAD = 10**18
 #: `getAmountOut` takes the fee in basis points out of the input first.
 BPS = 10_000
 
+#: Aerodrome's v2 `PoolFactory` on Base, labelled there as "Aerodrome: Pool
+#: Factory" and confirmed live by reading `allPoolsLength()` from it.
+V2_FACTORY = "0x420dd381b31aef6683db6b902084cb0ffece40da"
+
+#: Every Slipstream `CLFactory` deployed on Base, from the project's own
+#: `script/constants/output/DeployCL-Base*.json`. Three, not one: the original
+#: plus the gauge-caps and min-unstake deployments, all live and all holding
+#: pools. Recognising only the first would misclassify a third of the venue.
+CL_FACTORIES = frozenset(
+    {
+        "0x5e7bb104d84c7cb9b682aac2f3d509f5f406809a",
+        "0xade65c38cd4849adba595a4323a8c7ddfe89716a",
+        "0xf8f2eb4940cfe7d13603dddd87f123820fc061ef",
+    }
+)
+
 #: `_get_y`'s iteration budget. The contract reverts past it rather than
 #: returning an approximation, and so does this: a quote that did not converge
 #: is not a quote.
 MAX_ITERATIONS = 255
+
+
+class PoolFamily(StrEnum):
+    """PRD section 18.10's enumeration, as far as it is built.
+
+    The section names a fourth, `FUTURE_AERO/METADEX_ADAPTER`, which is not a
+    shape but a placeholder for the next one. `classify` refuses rather than
+    filling it in, because a pool of an unrecognised shape priced as any of
+    these three gives a plausible number and no symptom.
+    """
+
+    V2_VOLATILE = "AERODROME_V2_VOLATILE"
+    V2_STABLE = "AERODROME_V2_STABLE"
+    SLIPSTREAM_CL = "SLIPSTREAM_CL"
+
+
+class UnknownFamily(ValueError):
+    """A pool came from a factory this code does not recognise.
+
+    Section 18.10 exists because Aerodrome exposes more than one AMM shape, and
+    the venue keeps adding them. Defaulting an unrecognised one to the most
+    common shape would be the exact error the section warns about, arrived at
+    by a different route.
+    """
+
+
+def classify(*, factory: str, stable: bool | None) -> PoolFamily:
+    """Which shape a pool is, from what deployed it and what it answers.
+
+    The discriminator is the factory, not the tokens and not the name: a
+    USDC/USDT pair exists on all three, and only the chain knows which is which.
+    A v2 pool then answers `stable()`; a CL pool has no such function, so
+    `stable` is None for one and a bool for the other, and a v2 pool arriving
+    with no answer is refused rather than assumed volatile.
+    """
+    address = factory.lower()
+    if address in CL_FACTORIES:
+        return PoolFamily.SLIPSTREAM_CL
+    if address != V2_FACTORY:
+        raise UnknownFamily(factory)
+    if stable is None:
+        raise UnknownFamily(f"{factory}: a v2 pool must answer stable()")
+    return PoolFamily.V2_STABLE if stable else PoolFamily.V2_VOLATILE
 
 
 class DidNotConverge(RuntimeError):
