@@ -1,0 +1,43 @@
+# Reproduces the mutation sweep recorded for Bybit's derivatives ticker.
+#
+# Patterns are TOML *literal* strings on purpose: the basic form treats a
+# trailing backslash as a line continuation and eats the next line's indentation.
+source = "src/channelflow/connectors/bybit/normalize.py"
+tests = "tests/unit/connectors/test_derivatives_state.py"
+
+[[mutation]]
+name = "empty funding becomes zero"
+find = '''        funding_rate=None if funding in (None, "") else float(funding),'''
+replace = '''        funding_rate=float(funding or 0),'''
+
+[[mutation]]
+name = "empty settlement becomes zero"
+find = '''        next_funding_time_ns=None if settlement in (None, "") else int(settlement) * MS_TO_NS,'''
+replace = '''        next_funding_time_ns=int(settlement or 0) * MS_TO_NS,'''
+
+[[mutation]]
+name = "milliseconds not converted"
+find = '''        next_funding_time_ns=None if settlement in (None, "") else int(settlement) * MS_TO_NS,'''
+replace = '''        next_funding_time_ns=None if settlement in (None, "") else int(settlement),'''
+
+[[mutation]]
+name = "basis inverted"
+find = '''        basis_bps = float((mark / index - 1) * 10_000)'''
+replace = '''        basis_bps = float((index / mark - 1) * 10_000)'''
+
+[[mutation]]
+name = "basis computed without an index"
+find = '''    if mark is not None and index is not None and index != 0:'''
+replace = '''    if mark is not None:'''
+
+[[mutation]]
+name = "open interest value read as base"
+find = '''        open_interest_base=None if open_interest is None else float(open_interest),'''
+replace = '''        open_interest_base=None if open_interest_value is None else float(open_interest_value),'''
+
+[[mutation]]
+name = "mark and index swapped"
+find = '''    mark = maybe("markPrice")
+    index = maybe("indexPrice")'''
+replace = '''    mark = maybe("indexPrice")
+    index = maybe("markPrice")'''

@@ -33,6 +33,7 @@ from typing import Any, Literal
 from channelflow.domain import (
     BookDelta,
     BookSnapshot,
+    DerivativesState,
     EventMeta,
     PriceLevel,
     TradeEvent,
@@ -200,4 +201,65 @@ def rest_order_book(
         update_id=int(_require(result, "u", context)),
         bids=_levels(_require(result, "b", context), context),
         asks=_levels(_require(result, "a", context), context),
+    )
+
+
+def derivatives_state(
+    ticker: dict[str, Any], *, venue: str, market_type: str, ingest_time_ns: int
+) -> DerivativesState:
+    """Funding, open interest, mark and index, from one `/v5/market/tickers` row.
+
+    One call where OKX needs four, which is worth stating because it is the
+    reason a Bybit state has a single timestamp and an OKX state has a spread
+    ([[REQ-WP-049]]).
+
+    **Open interest is already in base units here.** OKX reports contracts for
+    the same market, and reading its figure the way this one reads correctly
+    makes OKX appear to hold fifty times Bybit's position. The comment is here
+    rather than only there because this is the side that looks like it needs no
+    conversion, and that is exactly why somebody would copy it.
+
+    **`nextFundingTime` is the settlement this rate pays at.** OKX calls the
+    same instant `fundingTime` and uses `nextFundingTime` for the one after, so
+    the like-named fields are eight hours apart. Mapping by name would put one
+    venue a settlement period out.
+    """
+    context = "tickers"
+
+    def maybe(key: str) -> Decimal | None:
+        value = ticker.get(key)
+        return None if value in (None, "") else _decimal(ticker, key, context)
+
+    mark = maybe("markPrice")
+    index = maybe("indexPrice")
+    basis_bps = None
+    if mark is not None and index is not None and index != 0:
+        basis_bps = float((mark / index - 1) * 10_000)
+
+    funding = ticker.get("fundingRate")
+    open_interest = maybe("openInterest")
+    open_interest_value = maybe("openInterestValue")
+    settlement = ticker.get("nextFundingTime")
+
+    return DerivativesState(
+        meta=EventMeta(
+            source=f"{venue}-rest",
+            venue=venue,
+            market_type=market_type,
+            symbol=str(_require(ticker, "symbol", context)),
+            event_time_ns=ingest_time_ns,
+            ingest_time_ns=ingest_time_ns,
+            sequence=None,
+            source_event_id=None,
+        ),
+        mark_price=mark,
+        index_price=index,
+        # An empty string is what this venue sends for "not applicable", and it
+        # is not a rate of zero: a market in balance and a market with no
+        # funding mechanism are different facts ([[REQ-WP-031]]).
+        funding_rate=None if funding in (None, "") else float(funding),
+        next_funding_time_ns=None if settlement in (None, "") else int(settlement) * MS_TO_NS,
+        open_interest_base=None if open_interest is None else float(open_interest),
+        open_interest_usd=None if open_interest_value is None else float(open_interest_value),
+        basis_bps=basis_bps,
     )

@@ -1,0 +1,61 @@
+# Reproduces the mutation sweep recorded for OKX's derivatives assembly.
+#
+# Patterns are TOML *literal* strings on purpose: the basic form treats a
+# trailing backslash as a line continuation and eats the next line's indentation.
+source = "src/channelflow/connectors/okx/normalize.py"
+tests = "tests/unit/connectors/test_derivatives_state.py"
+
+[[mutation]]
+name = "settlement read from nextFundingTime"
+find = '''    settlement = funding.get("fundingTime")'''
+replace = '''    settlement = funding.get("nextFundingTime")'''
+
+[[mutation]]
+name = "open interest left in contracts"
+find = '''    return published'''
+replace = '''    return contracts'''
+
+[[mutation]]
+name = "contract value cross-check dropped"
+find = '''    if published != 0 and abs(converted - published) / published > Decimal("0.0001"):'''
+replace = '''    if False and published != 0 and abs(converted - published) / published > Decimal("0.0001"):'''
+
+[[mutation]]
+name = "spread bound not enforced"
+find = '''    if spread_ns > max_spread_ns:'''
+replace = '''    if False and spread_ns > max_spread_ns:'''
+
+[[mutation]]
+name = "spread bound not required"
+find = '''    if max_spread_ns <= 0:'''
+replace = '''    if False and max_spread_ns <= 0:'''
+
+[[mutation]]
+name = "state stamped with the newest reading"
+find = '''            event_time_ns=oldest_ms * MS_TO_NS,'''
+replace = '''            event_time_ns=newest_ms * MS_TO_NS,'''
+
+[[mutation]]
+name = "instrument agreement unchecked"
+find = '''        if other.get("instId") != inst_id:'''
+replace = '''        if False and other.get("instId") != inst_id:'''
+
+[[mutation]]
+name = "basis uses the venue premium"
+find = '''else float((mark_price / index_price - 1) * 10_000)),'''
+replace = '''else float(funding["premium"]) * 10_000),'''
+
+[[mutation]]
+name = "basis inverted"
+find = '''else float((mark_price / index_price - 1) * 10_000)),'''
+replace = '''else float((index_price / mark_price - 1) * 10_000)),'''
+
+[[mutation]]
+name = "milliseconds not converted"
+find = '''        next_funding_time_ns=None if settlement in (None, "") else int(settlement) * MS_TO_NS,'''
+replace = '''        next_funding_time_ns=None if settlement in (None, "") else int(settlement),'''
+
+[[mutation]]
+name = "absent funding becomes zero"
+find = '''        funding_rate=None if rate in (None, "") else float(rate),'''
+replace = '''        funding_rate=float(rate or 0),'''
