@@ -1,0 +1,107 @@
+# Reproduces the mutation sweep recorded for the shared connector session.
+#
+# Patterns are TOML *literal* strings on purpose: the basic form treats a
+# trailing backslash as a line continuation and eats the next line's indentation.
+source = "src/channelflow/connectors/session.py"
+tests = "tests/unit/connectors"
+
+[[mutation]]
+name = "bybit and okx payloads swapped"
+find = '''    ping_payload='{"op":"ping"}','''
+replace = '''    ping_payload="ping",'''
+
+[[mutation]]
+name = "okx idle timeout is bybit's"
+find = '''    idle_timeout_ns=30 * SECOND_NS,
+    client_ping_interval_ns=15 * SECOND_NS,'''
+replace = '''    idle_timeout_ns=60 * SECOND_NS,
+    client_ping_interval_ns=15 * SECOND_NS,'''
+
+[[mutation]]
+name = "bybit announces its closes"
+find = '''    announces_close=False,'''
+replace = '''    announces_close=True,'''
+
+[[mutation]]
+name = "silent drops not inferred"
+find = '''            and now - self._last_inbound_ns > idle'''
+replace = '''            and False'''
+
+[[mutation]]
+name = "silent drops inferred everywhere"
+find = '''            and not self.policy.announces_close'''
+replace = '''            and True'''
+
+[[mutation]]
+name = "silent drops not counted"
+find = '''            if self._reconnect():
+                self.metrics.silent_drops += 1'''
+replace = '''            self._reconnect()'''
+
+[[mutation]]
+name = "connect throttle ignored"
+find = '''        if since < self.policy.min_connect_interval_ns:'''
+replace = '''        if False and since < self.policy.min_connect_interval_ns:'''
+
+[[mutation]]
+name = "throttled reconnects not counted"
+find = '''            self.metrics.throttled_reconnects += 1
+            return False'''
+replace = '''            return False'''
+
+[[mutation]]
+name = "every venue is pinged by the client"
+find = '''            self.policy.keepalive is Keepalive.CLIENT_INITIATED'''
+replace = '''            True'''
+
+[[mutation]]
+name = "ping schedule off by an interval"
+find = '''            and now - self._last_ping_ns >= interval'''
+replace = '''            and now - self._last_ping_ns >= interval * 2'''
+
+[[mutation]]
+name = "ping clock never advances"
+find = '''            self._last_ping_ns = now'''
+replace = '''            pass'''
+
+[[mutation]]
+name = "inbound data does not reset the idle clock"
+find = '''        self._last_inbound_ns = self.clock.now_ns()'''
+replace = '''        pass'''
+
+[[mutation]]
+name = "a server ping is not answered"
+find = '''        self.transport.pong()
+        self.on_frame()'''
+replace = '''        self.on_frame()'''
+
+[[mutation]]
+name = "a reconnect does not need a snapshot"
+find = '''        self._needs_snapshot = True
+
+    def _reconnect'''
+replace = '''        self._needs_snapshot = False
+
+    def _reconnect'''
+
+[[mutation]]
+name = "connection failures not counted"
+find = '''            self.metrics.connection_failures += 1'''
+replace = '''            pass'''
+
+[[mutation]]
+name = "lifetime reconnect never fires"
+find = '''        if lifetime is not None and now - self._connected_at_ns >= lifetime:'''
+replace = '''        if False and lifetime is not None and now - self._connected_at_ns >= lifetime:'''
+
+[[mutation]]
+name = "a slow ping policy is accepted"
+find = '''            if self.idle_timeout_ns is not None and (
+                self.client_ping_interval_ns >= self.idle_timeout_ns
+            ):'''
+replace = '''            if False:'''
+
+[[mutation]]
+name = "a payloadless ping policy is accepted"
+find = '''            if self.ping_payload is None or self.client_ping_interval_ns is None:'''
+replace = '''            if False:'''

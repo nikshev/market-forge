@@ -62,7 +62,6 @@ Requirements:
     - `src/channelflow/connectors/binance/__init__.py`
     - `src/channelflow/connectors/binance/instruments.py`
     - `src/channelflow/connectors/binance/normalize.py`
-    - `src/channelflow/connectors/binance/session.py`
     - `tools/record/binance_capture.py`
 - **Outcomes:** [[OUT-2026-09-08-implement-binance-connector]], [[OUT-2026-09-08-plan-binance-connector]], [[OUT-2026-09-08-spec-binance-connector]], [[OUT-2026-09-08-tasks-binance-connector]]
 <!-- trace:end -->
