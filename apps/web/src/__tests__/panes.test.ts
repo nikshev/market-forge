@@ -21,9 +21,8 @@ function point(index: number, values: Record<string, number>): FeaturePointOut {
 
 describe("the pane list", () => {
   it("offers the panes whose phases have finished their data", () => {
-    // Order flow from [[REQ-WP-027]], derivatives from [[REQ-WP-030]]. The DEX
-    // pair is absent because Phase 4's data is, and offering an empty pane
-    // would put unfinished work in front of a reader as though it were done.
+    // Order flow from [[REQ-WP-027]], derivatives from [[REQ-WP-030]], the DEX
+    // swap imbalance from [[REQ-WP-059]] once a feature existed to draw.
     expect(PANES.map((p) => p.feature)).toEqual([
       "cvd",
       "ofi_1m",
@@ -32,7 +31,17 @@ describe("the pane list", () => {
       "funding_z",
       "basis_bps",
       "liquidation_imbalance_5m",
+      "dex_swap_imbalance",
     ]);
+  });
+
+  it("offers no active-liquidity pane while nothing reconstructs pool state", () => {
+    // §18.12.2's `active_liquidity` lives on a `LiquidityState` nothing builds,
+    // which on HyperEVM needs an archive node no public endpoint provides
+    // (ADR-067). The pane would render "no readings of this feature" forever --
+    // the message this app produces for a genuine absence -- so a reader could
+    // not tell an unbuilt pane from a quiet pool.
+    expect(PANES.map((p) => p.feature).filter((f) => f.includes("liquidity"))).toEqual([]);
   });
 
   it("gives every pane a label a reader can choose by", () => {

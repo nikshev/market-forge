@@ -36,7 +36,7 @@ For ETH:
 - **Specs:** [[SPEC-040-dex-incremental]]
 - **Tests:**
     - `tests/unit/research/test_dex_incremental.py::test_an_arm_naming_a_family_outside_this_taxonomy_is_refused`
-    - `tests/unit/research/test_dex_incremental.py::test_every_dex_family_is_empty_in_the_registry_today`
+    - `tests/unit/research/test_dex_incremental.py::test_one_dex_family_now_resolves_and_three_do_not`
     - `tests/unit/research/test_dex_incremental.py::test_supplied_features_make_the_arms_run`
     - `tests/unit/research/test_dex_incremental.py::test_the_divergence_family_shows_its_increment`
     - `tests/unit/research/test_dex_incremental.py::test_the_five_arms_are_the_prds_and_are_cumulative`

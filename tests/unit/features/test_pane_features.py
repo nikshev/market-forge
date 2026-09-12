@@ -81,14 +81,27 @@ def test_the_order_flow_panes_are_still_offered() -> None:
     assert {"cvd", "ofi_1m", "depth_imbalance_10"} <= offered
 
 
-@pytest.mark.trace("REQ-WP-030")
-def test_the_dex_panes_are_not_offered_yet() -> None:
-    """Phase 4's data is unfinished, and the reason REQ-WP-027 gave for deferring
-    the derivatives panes applies unchanged to these."""
+@pytest.mark.trace("REQ-WP-059")
+def test_the_dex_swap_imbalance_pane_is_offered() -> None:
+    """Phase 4's half that has data. [[REQ-WP-059]] built the feature; before it
+    this assertion read the other way, and the change is the deliverable."""
+    assert "dex_swap_imbalance" in set(offered_features())
+
+
+@pytest.mark.trace("REQ-WP-059")
+def test_no_active_liquidity_pane_is_offered() -> None:
+    """The other half, still unfinished, and the reason REQ-WP-027 gave for
+    deferring the derivatives panes applies unchanged to it.
+
+    §18.12.2's `active_liquidity` lives on a `LiquidityState` nothing
+    reconstructs, which on HyperEVM needs an archive node no public endpoint
+    provides (ADR-067). A pane of it would render "no readings of this feature"
+    forever -- the message the application produces for a genuine absence -- so
+    a reader could not tell an unbuilt pane from a quiet pool."""
     offered = " ".join(offered_features())
 
-    assert "swap_imbalance" not in offered
-    assert "dex_" not in offered
+    assert "active_liquidity" not in offered
+    assert "liquidity" not in offered, "no liquidity-state pane while none is reconstructed"
 
 
 @pytest.mark.trace("REQ-WP-030")

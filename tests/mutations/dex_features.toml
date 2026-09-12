@@ -1,0 +1,85 @@
+# Reproduces the mutation sweep recorded for this module.
+#
+# Patterns are TOML *literal* strings on purpose: the basic form treats a
+# trailing backslash as a line continuation and eats the next line's indentation.
+source = "src/channelflow/features/dex.py"
+tests = ["tests/unit/features/test_dex.py", "tests/unit/features/test_pane_features.py"]
+
+[[mutation]]
+name = "an empty window reads as balanced"
+find = '''        if self.gross == 0:
+            return None'''
+replace = '''        if self.gross == 0:
+            return Decimal(0)'''
+
+[[mutation]]
+name = "the denominator keeps its signs"
+find = '''        gross=sum((abs(swap.amount0) for swap in directional), Decimal(0)),'''
+replace = '''        gross=sum((swap.amount0 for swap in directional), Decimal(0)),'''
+
+[[mutation]]
+name = "the imbalance is inverted"
+find = '''        return self.signed / self.gross'''
+replace = '''        return self.gross / self.signed'''
+
+[[mutation]]
+name = "the numerator is the other token"
+find = '''        signed=sum((swap.amount0 for swap in directional), Decimal(0)),'''
+replace = '''        signed=sum((swap.amount1 for swap in directional), Decimal(0)),'''
+
+[[mutation]]
+name = "the window includes its floor"
+find = '''    inside = [swap for swap in swaps if floor < swap.meta.event_time_ns <= as_of_ns]'''
+replace = '''    inside = [swap for swap in swaps if floor <= swap.meta.event_time_ns <= as_of_ns]'''
+
+[[mutation]]
+name = "the window sees past the cursor"
+find = '''    inside = [swap for swap in swaps if floor < swap.meta.event_time_ns <= as_of_ns]'''
+replace = '''    inside = [swap for swap in swaps if floor < swap.meta.event_time_ns]'''
+
+[[mutation]]
+name = "the window excludes the cursor's own instant"
+find = '''    inside = [swap for swap in swaps if floor < swap.meta.event_time_ns <= as_of_ns]'''
+replace = '''    inside = [swap for swap in swaps if floor < swap.meta.event_time_ns < as_of_ns]'''
+
+[[mutation]]
+name = "a zero swap counts as a direction"
+find = '''    directional = [swap for swap in inside if swap.amount0 != 0]'''
+replace = '''    directional = list(inside)'''
+
+[[mutation]]
+name = "every swap counts as a direction and the counts merge"
+find = '''        directional_swaps=len(directional),
+        swaps=len(inside),'''
+replace = '''        directional_swaps=len(inside),
+        swaps=len(inside),'''
+
+[[mutation]]
+name = "a window spanning nothing is accepted"
+find = '''    if window_ns <= 0:
+        raise ValueError(f"a window of {window_ns}ns spans nothing")'''
+replace = '''    if window_ns < 0:
+        raise ValueError(f"a window of {window_ns}ns spans nothing")'''
+
+[[mutation]]
+name = "the feature is not registered"
+find = '''    )
+
+
+_register_all()'''
+replace = '''    )
+
+
+if False:
+    _register_all()'''
+
+[[mutation]]
+name = "the null policy stops saying what zero means"
+find = '''                "absent when no swap in the window moved token0; zero is the "
+                "reading for a balanced window, not for an empty one"'''
+replace = '''                "absent when there is nothing to report"'''
+
+[[mutation]]
+name = "the feature claims a different source event"
+find = '''            source_events=("dex_swap",),'''
+replace = '''            source_events=("trade",),'''

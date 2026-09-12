@@ -8,13 +8,15 @@
 
 import { useCallback, useEffect, useState } from "react";
 
-import { fetchBars, fetchChannel, fetchExtrema, fetchFeatureSeries } from "./api";
+import { fetchBars, fetchChannel, fetchDexDepth, fetchExtrema, fetchFeatureSeries } from "./api";
 import { Chart } from "./Chart";
+import { DexBands } from "./DexBands";
 import { ChannelModeControl } from "./ChannelMode";
 import { FlowPane } from "./FlowPane";
 import { LoadState, type LoadStateKind } from "./LoadState";
 import { PANES } from "./panes";
 import { parseDeepLink } from "./deepLink";
+import { depthOverlay, type DepthOverlay } from "./dexDepth";
 import { RESTORATION_NOTICE } from "./overlays";
 import {
   AS_SEEN_THEN,
@@ -26,6 +28,13 @@ import {
 } from "./types";
 
 const MINUTE_NS = 60 * 1_000_000_000;
+
+// The instant the chart is showing: the link's, or the last bar's close when the
+// link named none. Zero when there is neither, which ages every curve as
+// `ahead` and says so rather than silently calling it fresh.
+function atNsForDepth(linkAtNs: number | null, bars: readonly BarOut[]): number {
+  return linkAtNs ?? bars.at(-1)?.close_time_ns ?? 0;
+}
 
 export function App(): JSX.Element {
   const link =
@@ -44,6 +53,7 @@ export function App(): JSX.Element {
   // the features do not, and one message for both would blame the wrong thing.
   const [paneFailure, setPaneFailure] = useState<string | null>(null);
   const [extrema, setExtrema] = useState<ExtremaResponse>({ confirmed: [], candidates: [] });
+  const [depth, setDepth] = useState<DepthOverlay | null>(null);
 
   const load = useCallback(async () => {
     if (link === null) {
@@ -102,6 +112,21 @@ export function App(): JSX.Element {
     // An absent list is not a failure of the page, the way an absent channel is
     // not: the chart draws what it has.
     setExtrema(extremaResult.ok ? extremaResult.value : { confirmed: [], candidates: [] });
+
+    // Only when the link named a pool. Without one there is nothing to ask for,
+    // and a failed request would produce "depth could not be loaded" on every
+    // chart of every CEX symbol -- a notice about a layer nobody could have.
+    if (link.chainId !== null && link.pool !== null) {
+      const depthResult = await fetchDexDepth({
+        chainId: link.chainId,
+        pool: link.pool,
+        atNs,
+      });
+      // The failure is kept, not discarded: `depthOverlay` turns it into the
+      // FAILED state, which the layer states rather than drawing as an empty
+      // curve (FR-016).
+      setDepth(depthOverlay(depthResult));
+    }
   }, [link, mode]);
 
   useEffect(() => {
@@ -146,6 +171,17 @@ export function App(): JSX.Element {
         extrema={extrema}
         mode={mode}
       />
+      {depth === null ? null : (
+        <DexBands
+          overlay={depth}
+          // The cursor's instant is a `number` and is therefore already
+          // quantised to the nearest 256ns -- REQ-WP-054's open question,
+          // untouched here. The curve's own time is exact, so the comparison is
+          // accurate to 256ns against a threshold of a minute.
+          atNs={BigInt(atNsForDepth(link.atNs, bars))}
+          visible={link.overlays.overlays.includes("dex_liquidity_bands")}
+        />
+      )}
       <FlowPane points={points} feature={pane} onSelect={setPane} failure={paneFailure} />
     </main>
   );

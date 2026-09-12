@@ -141,3 +141,89 @@ export function furthestReachedBps(overlay: DepthOverlay, side: string): number 
   }
   return Math.max(...reached.map((band) => band.targetBps));
 }
+
+// How stale is too stale.
+//
+// `depthAgeNs` computes the gap and deliberately leaves the judgement to a
+// caller. Nothing was making that judgement, so an hour-old curve was drawn
+// with exactly the confidence of a current one. This is where it is made, and
+// the threshold is an argument rather than a literal so the boundary itself can
+// be tested.
+export const FRESH = "fresh";
+export const STALE = "stale";
+export const UNKNOWN = "unknown";
+// The curve is *later* than the instant it is drawn at. A chart showing that is
+// showing a reader something the moment it depicts could not have known --
+// Constitution Principle I, on screen rather than in a feature. It is called
+// out rather than folded into "fresh", which is what a plain magnitude
+// comparison would have done.
+export const AHEAD = "ahead";
+export type Freshness = typeof FRESH | typeof STALE | typeof UNKNOWN | typeof AHEAD;
+
+export interface DepthFreshness {
+  state: Freshness;
+  // Null whenever the state is `unknown`, and signed otherwise: negative is the
+  // `ahead` case, and hiding the sign would hide the problem.
+  ageNs: bigint | null;
+}
+
+// One minute.
+//
+// A depth curve is recomputed when the pool's state changes, so the tolerable
+// age is a property of the chain rather than of the chart. HyperEVM produces a
+// block a second and Ethereum one every twelve ([[REQ-WP-052]] measured both),
+// so a minute is five Ethereum blocks and sixty HyperEVM ones -- long enough
+// that a quiet pool is not flagged for having nothing happen, short enough that
+// a curve nobody refreshed is not read as current.
+export const STALE_AFTER_NS = 60_000_000_000n;
+
+export function depthFreshness(
+  overlay: DepthOverlay,
+  atNs: bigint,
+  staleAfterNs: bigint,
+): DepthFreshness {
+  const ageNs = depthAgeNs(overlay, atNs);
+  if (ageNs === null) {
+    return { state: UNKNOWN, ageNs: null };
+  }
+  if (ageNs < 0n) {
+    return { state: AHEAD, ageNs };
+  }
+  return { state: ageNs > staleAfterNs ? STALE : FRESH, ageNs };
+}
+
+// What to tell a reader about the curve's age, or nothing when there is nothing
+// to say. A fresh curve says nothing: a notice on every chart is a notice
+// nobody reads.
+export function freshnessNotice(freshness: DepthFreshness): string | null {
+  switch (freshness.state) {
+    case FRESH:
+      return null;
+    case UNKNOWN:
+      return "this curve carries no time, so how current it is cannot be shown";
+    case AHEAD:
+      return `this curve is ${describeAge(-freshness.ageNs!)} later than the instant shown`;
+    case STALE:
+      return `this curve is ${describeAge(freshness.ageNs!)} old`;
+  }
+}
+
+const NS_PER_SECOND = 1_000_000_000n;
+const SECONDS_PER_MINUTE = 60n;
+const MINUTES_PER_HOUR = 60n;
+
+// Whole units, largest that fits. Arithmetic stays in `bigint` throughout: a
+// nanosecond age converted to a number to be divided is the same quantisation
+// this module exists to avoid, and an age is exactly the quantity somebody
+// would be tempted to convert.
+function describeAge(ageNs: bigint): string {
+  const seconds = ageNs / NS_PER_SECOND;
+  if (seconds < SECONDS_PER_MINUTE) {
+    return `${seconds}s`;
+  }
+  const minutes = seconds / SECONDS_PER_MINUTE;
+  if (minutes < MINUTES_PER_HOUR) {
+    return `${minutes}m`;
+  }
+  return `${minutes / MINUTES_PER_HOUR}h`;
+}
