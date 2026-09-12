@@ -9,6 +9,10 @@
 # requires a checkout to resolve to the same stack later. See
 # specs/002-project-bootstrap/research.md for why tags rather than digests.
 #
+# MinIO comes from quay.io, not Docker Hub. Docker Hub stopped serving
+# `minio/minio` entirely -- the repository is gone, not the tag -- and ADR-064
+# records why that is a registry problem rather than a pinning one.
+#
 # Ports and credentials come from .env (copy .env.example). Nothing here is
 # hardcoded, so a port clash is fixed by editing one file.
 
@@ -36,7 +40,7 @@ services:
       start_period: 3s
 
   minio:
-    image: minio/minio:RELEASE.2025-09-07T16-13-09Z
+    image: quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER}
@@ -56,7 +60,7 @@ services:
   # One-shot: creates the development bucket, then exits. `make up` waits for
   # it to complete, so a healthy stack always has the bucket the tests expect.
   minio_init:
-    image: minio/mc:RELEASE.2025-08-13T08-35-41Z
+    image: quay.io/minio/mc:RELEASE.2025-08-13T08-35-41Z
     depends_on:
       minio:
         condition: service_healthy

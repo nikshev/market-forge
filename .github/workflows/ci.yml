@@ -75,7 +75,7 @@ jobs:
             -p 9000:9000 \
             -e MINIO_ROOT_USER=channelflow \
             -e MINIO_ROOT_PASSWORD=channelflow_dev_only \
-            minio/minio:RELEASE.2025-09-07T16-13-09Z server /data
+            quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z server /data
           # Wait for it to answer, rather than sleeping a guessed interval --
           # the same reasoning as the healthcheck in docker-compose.yml.
           for i in $(seq 1 30); do
