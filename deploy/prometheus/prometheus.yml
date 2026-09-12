@@ -1,0 +1,16 @@
+# Scrapes the ChannelFlow read API's exposition (REQ-WP-056).
+#
+# The path is `/metrics` and not `/api/v1/metrics`: the exposition is
+# operational rather than part of PRD section 28's read API, and a test asserts
+# this file's path against the route's so the two cannot drift.
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: channelflow-api
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["host.docker.internal:8000"]
+        labels:
+          service: api

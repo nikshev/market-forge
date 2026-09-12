@@ -110,7 +110,55 @@ services:
       retries: 20
       start_period: 5s
 
+  # Scrapes the API's exposition (REQ-WP-055). Development-only: it reaches the
+  # API on the host rather than in the network, because the API runs from the
+  # host in development and containerising it is a separate decision.
+  prometheus:
+    image: prom/prometheus:v3.6.0
+    ports:
+      - "${PROMETHEUS_PORT}:9090"
+    volumes:
+      - ./deploy/prometheus:/etc/prometheus:ro
+      - prometheus_data:/prometheus
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:9090/-/healthy || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
+
+  # Renders the dashboard generated from `channelflow.observability`. The file
+  # is generated, never edited -- a hand-written copy would go stale the day a
+  # metric gains a producer.
+  grafana:
+    image: grafana/grafana:12.2.0
+    depends_on:
+      prometheus:
+        condition: service_healthy
+    ports:
+      - "${GRAFANA_PORT}:3000"
+    environment:
+      # Development only, and anonymous rather than a password nobody rotates:
+      # this stack holds no secrets and is not reachable from anywhere.
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
+      GF_AUTH_DISABLE_LOGIN_FORM: "true"
+    volumes:
+      - ./deploy/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./deploy/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/api/health || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+
 volumes:
   postgres_data:
   minio_data:
   redpanda_data:
+  prometheus_data:
+  grafana_data:

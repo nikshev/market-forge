@@ -1,0 +1,36 @@
+# Reproduces the mutation sweep recorded for the generated Grafana dashboard.
+#
+# Patterns are TOML *literal* strings on purpose: the basic form treats a
+# trailing backslash as a line continuation and eats the next line's indentation.
+source = "src/channelflow/observability/grafana.py"
+tests = ["tests/unit/docs", "tests/unit/observability"]
+
+[[mutation]]
+name = "absences become graphs"
+find = '''                "type": "text",'''
+replace = '''                "type": "timeseries",'''
+
+[[mutation]]
+name = "absences are not rendered"
+find = '''    for absence in dashboard.absences:'''
+replace = '''    for absence in ():'''
+
+[[mutation]]
+name = "an absence loses its reason"
+find = '''                    "content": f"**Nothing produces this metric.** {absence.reason}",'''
+replace = '''                    "content": "**Nothing produces this metric.**",'''
+
+[[mutation]]
+name = "panels query nothing"
+find = '''                "targets": [{"expr": panel.metric, "refId": "A"}],'''
+replace = '''                "targets": [],'''
+
+[[mutation]]
+name = "the schema version is dropped"
+find = '''        "schemaVersion": SCHEMA_VERSION,'''
+replace = '''        "schemaVersion": 0,'''
+
+[[mutation]]
+name = "the rendering is unsorted"
+find = '''    return json.dumps(to_grafana(dashboard), indent=2, sort_keys=True) + "\n"'''
+replace = '''    return json.dumps(to_grafana(dashboard), indent=2) + "\n"'''

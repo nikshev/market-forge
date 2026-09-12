@@ -1,0 +1,14 @@
+# Loads whatever is in the dashboards directory (REQ-WP-056).
+#
+# The file there is generated from the definition in
+# `channelflow.observability`, never edited: a hand-written copy would go stale
+# the day a metric gains a producer.
+apiVersion: 1
+
+providers:
+  - name: channelflow
+    folder: ChannelFlow
+    type: file
+    disableDeletion: false
+    options:
+      path: /var/lib/grafana/dashboards
