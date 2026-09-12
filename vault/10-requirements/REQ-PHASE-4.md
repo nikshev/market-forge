@@ -13,7 +13,7 @@ not_delivered:
   - "Curve twocrypto quoting: [[REQ-WP-046]] classifies it and quotes Stableswap-NG and tricrypto; the deployed twocrypto version has no matching published source"
   - "Uniswap v4 executable quoting for CUSTOM_ACCOUNTING pools: [[REQ-WP-047]] routes, classifies and refuses them; nothing quotes them"
   - "HyperEVM protocol decoders and cross-layer transfers: [[REQ-WP-052]] profiles the chain and recovers the socket; no DEX on that chain is registered and no transfer events are tracked"
-  - "Iceberg canonical DeFi tables: the plane is Iceberg since [[REQ-WP-039]], and no DeFi table is defined on it"
+  - "Iceberg `LiquidityState` table: [[REQ-WP-053]] defines swaps, liquidity changes and depth curves; §18.12.2 waits for something that reconstructs a pool state"
   - "Pinot HOT DeFi datasets: deferred by ADR-002 until a HOT serving requirement exists, not missing by oversight"
   - "UI liquidity/depth overlay: the web app has no DEX overlay"
 ---

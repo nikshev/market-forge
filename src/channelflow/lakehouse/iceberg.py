@@ -457,6 +457,12 @@ def _for_arrow(column_type: str, value: object) -> object:
     conversion onto every producer, and one of them would store a float by
     accident.
     """
+    if value is None:
+        # Arrow stores a real null. Stringifying it first put the literal text
+        # "None" in a decimal column, which read back as a `Decimal("None")` --
+        # and which anything reading the Parquet directly, as PRD section 6.4
+        # plans for with Trino and DuckDB, would have seen as that text.
+        return None
     if column_type == "decimal":
         return str(value)
     if column_type == "float_map":

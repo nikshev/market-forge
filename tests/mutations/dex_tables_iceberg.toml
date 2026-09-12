@@ -1,0 +1,14 @@
+# The storage side of the same fix.
+source = "src/channelflow/lakehouse/iceberg.py"
+tests = ["tests/unit/lakehouse", "tests/unit/tables"]
+
+[[mutation]]
+name = "a null decimal is stringified"
+find = '''    if value is None:
+        # Arrow stores a real null. Stringifying it first put the literal text
+        # "None" in a decimal column, which read back as a `Decimal("None")` --
+        # and which anything reading the Parquet directly, as PRD section 6.4
+        # plans for with Trino and DuckDB, would have seen as that text.
+        return None
+'''
+replace = ''''''

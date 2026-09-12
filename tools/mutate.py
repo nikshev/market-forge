@@ -102,7 +102,9 @@ class Mutation:
 class Spec:
     path: Path
     source: Path
-    tests: Path
+    #: One or more test paths. A list, because a mutation to a shared module is
+    #: only honestly measured against every suite that exercises it.
+    tests: tuple[Path, ...]
     mutations: tuple[Mutation, ...]
 
     @classmethod
@@ -120,15 +122,16 @@ class Spec:
         names = [mutation.name for mutation in mutations]
         if len(set(names)) != len(names):
             raise SpecError(f"{path}: duplicate mutation names")
-        return cls(
-            path=path,
-            source=ROOT / raw["source"],
-            tests=ROOT / raw["tests"],
-            mutations=mutations,
+        declared = raw["tests"]
+        tests = tuple(
+            ROOT / entry for entry in ([declared] if isinstance(declared, str) else declared)
         )
+        if not tests:
+            raise SpecError(f"{path}: a specification needs at least one test path")
+        return cls(path=path, source=ROOT / raw["source"], tests=tests, mutations=mutations)
 
 
-def _run(tests: Path) -> int:
+def _run(tests: tuple[Path, ...]) -> int:
     """The suite, in a fresh interpreter that writes no bytecode."""
     try:
         completed = subprocess.run(  # noqa: S603
@@ -136,7 +139,7 @@ def _run(tests: Path) -> int:
                 sys.executable,
                 "-m",
                 "pytest",
-                str(tests),
+                *(str(path) for path in tests),
                 "-q",
                 "-x",
                 "--no-header",
@@ -182,7 +185,8 @@ def sweep(spec: Spec, *, verbose: bool = True) -> tuple[list[tuple[Mutation, str
     baseline = _run(spec.tests)
     if baseline != 0:
         raise SpecError(
-            f"{spec.tests} does not pass unmutated (exit {baseline}). "
+            f"{' '.join(str(path) for path in spec.tests)} does not pass unmutated "
+            f"(exit {baseline}). "
             "Every mutant would be reported as caught."
         )
 

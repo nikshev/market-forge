@@ -12,11 +12,12 @@ PostgreSQL with a different URL ([[ADR-060]]).
 from __future__ import annotations
 
 from collections.abc import Iterator
+from decimal import Decimal
 from pathlib import Path
 
 import pytest
 
-from channelflow.lakehouse import Column, NoEventTime, Schema
+from channelflow.lakehouse import Catalog, Column, NoEventTime, Schema
 from channelflow.lakehouse.iceberg import EmptyAppend, IcebergTable, catalog
 
 SECOND = 1_000_000_000
@@ -357,3 +358,44 @@ def test_an_earlier_snapshot_still_sees_what_the_delete_removed(
     trades.delete_rows_before(3 * SECOND)
 
     assert trades.read(snapshot_id=first.snapshot_id).num_rows == 2
+
+
+@pytest.mark.trace("REQ-WP-053")
+def test_a_null_is_stored_as_a_null_and_not_as_the_text_none(catalog: Catalog) -> None:
+    """Stringifying first put the literal text "None" in a decimal column.
+
+    It read back as `Decimal("None")` and raised, which is the good direction --
+    but the file was already wrong, and anything reading the Parquet directly, as
+    PRD §6.4 plans for with Trino and DuckDB, would have seen that text where it
+    expected a number or a null.
+    """
+    schema = Schema(
+        columns=(
+            Column(name="t", type="timestamp_ns"),
+            Column(name="price", type="decimal"),
+            Column(name="note", type="string"),
+        ),
+        event_time_column="t",
+    )
+    table = IcebergTable(name="nullable", schema=schema, catalog=catalog)
+    table.append([{"t": 1, "price": None, "note": None}])
+
+    row = table.read().to_pylist()[0]
+    assert row["price"] is None
+    assert row["note"] is None
+    assert row["price"] != "None"
+
+
+@pytest.mark.trace("REQ-WP-053")
+def test_a_null_and_a_value_are_different_datasets(catalog: Catalog) -> None:
+    """A price nobody recorded and a price of zero must not share an identity."""
+    schema = Schema(
+        columns=(Column(name="t", type="timestamp_ns"), Column(name="price", type="decimal")),
+        event_time_column="t",
+    )
+    absent = IcebergTable(name="absent", schema=schema, catalog=catalog)
+    zero = IcebergTable(name="zero", schema=schema, catalog=catalog)
+
+    absent_snapshot = absent.append([{"t": 1, "price": None}])
+    zero_snapshot = zero.append([{"t": 1, "price": Decimal("0")}])
+    assert absent_snapshot.content_hash != zero_snapshot.content_hash

@@ -59,7 +59,10 @@ def workspace(tmp_path: Path) -> tuple[Path, Path]:
 
 def _spec(source: Path, tests: Path, *mutations: Mutation) -> Spec:
     return Spec(
-        path=source.parent / "spec.toml", source=source, tests=tests, mutations=tuple(mutations)
+        path=source.parent / "spec.toml",
+        source=source,
+        tests=(tests,),
+        mutations=tuple(mutations),
     )
 
 
@@ -168,7 +171,7 @@ def test_the_source_is_restored_even_when_a_mutant_hangs(
     source, tests = workspace
     calls = {"n": 0}
 
-    def fake_run(_: Path) -> int:
+    def fake_run(_: tuple[Path, ...]) -> int:
         calls["n"] += 1
         return 0 if calls["n"] == 1 else 124  # green baseline, then a hang
 

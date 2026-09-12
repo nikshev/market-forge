@@ -234,3 +234,93 @@ def test_a_schema_names_the_map_columns_a_reader_has_to_convert() -> None:
     )
 
     assert schema.map_columns == ("submetrics",)
+
+
+# --- nulls (REQ-WP-053) ---------------------------------------------------------
+
+
+def _nullable_schema() -> Schema:
+    return Schema(
+        columns=(
+            Column(name="t", type="timestamp_ns"),
+            Column(name="price", type="decimal"),
+            Column(name="note", type="string"),
+        ),
+        event_time_column="t",
+    )
+
+
+@pytest.mark.trace("REQ-WP-053")
+def test_a_null_encodes_as_itself_rather_than_refusing() -> None:
+    """Every column in this project's schemas is nullable in Arrow, and until a
+    table needed one nothing had ever written a null -- so the encoder refused
+    every type's None and the refusal surfaced as a type error from three layers
+    down.
+    """
+    schema = _nullable_schema()
+    encoded = schema.encode_row({"t": 1, "price": None, "note": None})
+    assert isinstance(encoded, bytes)
+
+
+@pytest.mark.trace("REQ-WP-053")
+def test_a_null_is_not_any_value() -> None:
+    """A price nobody recorded and a price of zero are different facts, and a
+    content hash that agreed with both would be the identity saying they are the
+    same dataset."""
+    schema = _nullable_schema()
+    absent = schema.encode_row({"t": 1, "price": None, "note": "x"})
+    zero = schema.encode_row({"t": 1, "price": Decimal("0"), "note": "x"})
+    empty = schema.encode_row({"t": 1, "price": Decimal("0.0"), "note": "x"})
+    assert absent != zero
+    assert absent != empty
+    assert zero != empty
+
+
+@pytest.mark.trace("REQ-WP-053")
+def test_a_null_string_is_not_an_empty_string() -> None:
+    """The collision an empty payload would have caused.
+
+    `_encode` returns no bytes for an empty string and for an empty list, so a
+    null marked by an empty payload would hash identically to both -- and "this
+    field is empty" and "nobody recorded this field" would become one dataset.
+    The null marker is a length no payload can have, for exactly that reason.
+    """
+    schema = _nullable_schema()
+    absent = schema.encode_row({"t": 1, "price": Decimal("1"), "note": None})
+    empty = schema.encode_row({"t": 1, "price": Decimal("1"), "note": ""})
+    assert absent != empty
+
+
+@pytest.mark.trace("REQ-WP-053")
+def test_a_null_keeps_the_type_of_the_column_it_is_in() -> None:
+    """Two schemas differing only in a column's type must not agree about a row
+    that is null there: the value is absent, the column's meaning is not."""
+    as_decimal = Schema(
+        columns=(Column(name="t", type="timestamp_ns"), Column(name="v", type="decimal")),
+        event_time_column="t",
+    )
+    as_string = Schema(
+        columns=(Column(name="t", type="timestamp_ns"), Column(name="v", type="string")),
+        event_time_column="t",
+    )
+    row = {"t": 1, "v": None}
+    assert as_decimal.encode_row(row) != as_string.encode_row(row)
+
+
+@pytest.mark.trace("REQ-WP-053")
+def test_a_null_in_one_column_is_not_a_null_in_another() -> None:
+    """The type tag stays, so two nulls in different columns remain different
+    rows rather than collapsing into one encoding."""
+    schema = _nullable_schema()
+    no_price = schema.encode_row({"t": 1, "price": None, "note": "x"})
+    no_note = schema.encode_row({"t": 1, "price": Decimal("1"), "note": None})
+    assert no_price != no_note
+
+
+@pytest.mark.trace("REQ-WP-053")
+def test_a_missing_column_is_still_not_a_null() -> None:
+    """A row that omits a column is a producer bug; a row that says `None` is a
+    producer saying it does not know. The first stays refused."""
+    schema = _nullable_schema()
+    with pytest.raises(UnknownColumn, match="missing"):
+        schema.encode_row({"t": 1, "price": None})
