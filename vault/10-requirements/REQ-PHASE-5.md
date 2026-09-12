@@ -8,10 +8,9 @@ phase: 5
 status: planned
 depends_on: ["REQ-PHASE-4"]
 tags: []
-covers: [REQ-WP-016, REQ-ASSET-001, REQ-EXP-010, REQ-EXP-015, REQ-WP-043, REQ-WP-044, REQ-WP-049]
+covers: [REQ-WP-016, REQ-ASSET-001, REQ-EXP-010, REQ-EXP-015, REQ-WP-043, REQ-WP-044, REQ-WP-049, REQ-WP-050]
 not_delivered:
   - "Bybit and OKX session layer: public market data ([[REQ-WP-043]], [[REQ-WP-044]]) and derivatives state ([[REQ-WP-049]]) land; reconnect, keepalive and rate limits do not, and only Binance has a session"
-  - "funding dispersion: four venues now publish funding ([[REQ-WP-049]]); nothing disperses it"
 ---
 
 ## Requirement
