@@ -116,11 +116,18 @@ jobs:
 
       - name: Create the object store bucket
         run: |
-          # What `make up` does locally via the minio_init one-shot container.
-          curl -fsSL https://dl.min.io/client/mc/release/linux-amd64/mc -o /tmp/mc
-          chmod +x /tmp/mc
-          /tmp/mc alias set local http://127.0.0.1:9000 channelflow channelflow_dev_only
-          /tmp/mc mb --ignore-existing local/channelflow-dev
+          # The same one-shot container `make up` runs locally, at the same
+          # pinned release -- not a separately fetched binary. That divergence
+          # cost a CI round when MinIO withdrew its direct downloads (410) in
+          # the same move that removed its Docker Hub images (ADR-064): two
+          # ways of getting `mc` meant two ways to break, and only one of them
+          # was visible from a local `make up`.
+          # `--entrypoint /bin/sh` because the image's own entrypoint is `mc`,
+          # which is also why docker-compose.yml overrides it the same way.
+          docker run --rm --network host --entrypoint /bin/sh \
+            quay.io/minio/mc:RELEASE.2025-08-13T08-35-41Z -c "
+              mc alias set local http://127.0.0.1:9000 channelflow channelflow_dev_only &&
+              mc mb --ignore-existing local/channelflow-dev"
 
       # Four separately named steps, so a failure says which check failed
       # without anyone reading the raw log end to end (FR-004).
