@@ -8,9 +8,9 @@ phase: 8
 status: planned
 depends_on: ["REQ-PHASE-7A"]
 tags: []
-covers: [REQ-WP-035, REQ-WP-036, REQ-WP-037, REQ-WP-038, REQ-WP-039, REQ-WP-041, REQ-WP-042]
+covers: [REQ-WP-035, REQ-WP-036, REQ-WP-037, REQ-WP-038, REQ-WP-039, REQ-WP-041, REQ-WP-042, REQ-WP-055]
 not_delivered:
-  - "monitoring dashboards: the exposition exists (REQ-WP-036) and nothing serves or draws it"
+  - "Prometheus and Grafana in the stack: [[REQ-WP-055]] serves the exposition and defines the dashboard; nothing scrapes or renders it"
   - "deployment docs: the repository documents development, not deployment"
   - "load tests: not built"
 ---
