@@ -8,5 +8,10 @@ __pycache__/
 .DS_Store
 *.egg-info/
 .env
+# Every variant, not only the exact name. A `.env.bak` is the same file under
+# another name, and one was committed on 2026-09-12 before this line existed --
+# it carried only development defaults, and the next one might not.
+.env.*
+!.env.example
 apps/web/node_modules/
 apps/web/dist/

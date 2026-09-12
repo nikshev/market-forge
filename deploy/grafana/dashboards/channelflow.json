@@ -1,0 +1,178 @@
+{
+  "editable": false,
+  "panels": [
+    {
+      "description": "a rising count means alerts are being written and not arriving",
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "targets": [
+        {
+          "expr": "channelflow_telegram_delivery_failures_total",
+          "refId": "A"
+        }
+      ],
+      "title": "Telegram delivery failures",
+      "type": "timeseries"
+    },
+    {
+      "description": "how many feeds stopped updating. Zero here is a reading; an empty panel is not",
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 8
+      },
+      "id": 2,
+      "targets": [
+        {
+          "expr": "channelflow_stale_feeds",
+          "refId": "A"
+        }
+      ],
+      "title": "Stale feeds",
+      "type": "timeseries"
+    },
+    {
+      "gridPos": {
+        "h": 3,
+        "w": 24,
+        "x": 0,
+        "y": 16
+      },
+      "id": 3,
+      "options": {
+        "content": "**Nothing produces this metric.** writes go through the lakehouse plane, which nothing times",
+        "mode": "markdown"
+      },
+      "title": "DB insert latency \u2014 not measured",
+      "type": "text"
+    },
+    {
+      "gridPos": {
+        "h": 3,
+        "w": 24,
+        "x": 0,
+        "y": 19
+      },
+      "id": 4,
+      "options": {
+        "content": "**Nothing produces this metric.** the book is reconstructed in tests only",
+        "mode": "markdown"
+      },
+      "title": "book resets \u2014 not measured",
+      "type": "text"
+    },
+    {
+      "gridPos": {
+        "h": 3,
+        "w": 24,
+        "x": 0,
+        "y": 22
+      },
+      "id": 5,
+      "options": {
+        "content": "**Nothing produces this metric.** the same",
+        "mode": "markdown"
+      },
+      "title": "channel compute latency \u2014 not measured",
+      "type": "text"
+    },
+    {
+      "gridPos": {
+        "h": 3,
+        "w": 24,
+        "x": 0,
+        "y": 25
+      },
+      "id": 6,
+      "options": {
+        "content": "**Nothing produces this metric.** no connector runs; nothing counts an event",
+        "mode": "markdown"
+      },
+      "title": "events/sec by connector \u2014 not measured",
+      "type": "text"
+    },
+    {
+      "gridPos": {
+        "h": 3,
+        "w": 24,
+        "x": 0,
+        "y": 28
+      },
+      "id": 7,
+      "options": {
+        "content": "**Nothing produces this metric.** features are computed on demand, not on a pipeline",
+        "mode": "markdown"
+      },
+      "title": "feature compute latency \u2014 not measured",
+      "type": "text"
+    },
+    {
+      "gridPos": {
+        "h": 3,
+        "w": 24,
+        "x": 0,
+        "y": 31
+      },
+      "id": 8,
+      "options": {
+        "content": "**Nothing produces this metric.** there is no ingestion path to time",
+        "mode": "markdown"
+      },
+      "title": "ingest latency \u2014 not measured",
+      "type": "text"
+    },
+    {
+      "gridPos": {
+        "h": 3,
+        "w": 24,
+        "x": 0,
+        "y": 34
+      },
+      "id": 9,
+      "options": {
+        "content": "**Nothing produces this metric.** there is no queue; ADR-018 made delivery synchronous",
+        "mode": "markdown"
+      },
+      "title": "queue depth \u2014 not measured",
+      "type": "text"
+    },
+    {
+      "gridPos": {
+        "h": 3,
+        "w": 24,
+        "x": 0,
+        "y": 37
+      },
+      "id": 10,
+      "options": {
+        "content": "**Nothing produces this metric.** a health reading carries it, but no session reports one yet",
+        "mode": "markdown"
+      },
+      "title": "reconnects \u2014 not measured",
+      "type": "text"
+    },
+    {
+      "gridPos": {
+        "h": 3,
+        "w": 24,
+        "x": 0,
+        "y": 40
+      },
+      "id": 11,
+      "options": {
+        "content": "**Nothing produces this metric.** the signal machine has no runner",
+        "mode": "markdown"
+      },
+      "title": "signal count \u2014 not measured",
+      "type": "text"
+    }
+  ],
+  "schemaVersion": 39,
+  "title": "ChannelFlow \u2014 PRD \u00a733"
+}
