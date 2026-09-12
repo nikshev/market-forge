@@ -5,12 +5,11 @@ type: phase
 prd_ref: "Phase 5 — Cross-venue"
 prd_lines: "6821-6832"
 phase: 5
-status: planned
+status: implemented
 depends_on: ["REQ-PHASE-4"]
 tags: []
-covers: [REQ-WP-016, REQ-ASSET-001, REQ-EXP-010, REQ-EXP-015, REQ-WP-043, REQ-WP-044, REQ-WP-049, REQ-WP-050]
-not_delivered:
-  - "Bybit and OKX session layer: public market data ([[REQ-WP-043]], [[REQ-WP-044]]) and derivatives state ([[REQ-WP-049]]) land; reconnect, keepalive and rate limits do not, and only Binance has a session"
+covers: [REQ-WP-016, REQ-ASSET-001, REQ-EXP-010, REQ-EXP-015, REQ-WP-043, REQ-WP-044, REQ-WP-049, REQ-WP-050, REQ-WP-051]
+not_delivered: []
 ---
 
 ## Requirement
