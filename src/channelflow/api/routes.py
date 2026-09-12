@@ -31,6 +31,8 @@ from channelflow.api.schemas import (
     ChannelComparisonOut,
     ChannelOut,
     ConfirmedExtremumOut,
+    DexDepthBandOut,
+    DexDepthResponse,
     ExplanationOut,
     ExtremaResponse,
     ExtremumCandidateOut,
@@ -298,4 +300,31 @@ def get_signal(request: Request, signal_id: uuid.UUID) -> SignalDetailOut:
         # known at signal time, and retrofitting that separation is how it gets
         # lost.
         outcome=None,
+    )
+
+
+@router.get("/dex/depth", response_model=DexDepthResponse)
+def get_dex_depth(
+    request: Request,
+    chain_id: int,
+    pool: str,
+    at_ns: int,
+) -> DexDepthResponse:
+    """PRD §27.2's "DEX liquidity bands", as of an instant.
+
+    `at_ns` is required and has no default. Defaulting it to now would make a
+    historical chart quietly show the present, which is the look-ahead
+    Principle I forbids arriving through the one door nobody guards -- and the
+    caller who wants "now" can say so in a way the reader of the request can see.
+    """
+    bands = _repository(request).dex_depth_at(chain_id=chain_id, pool=pool, at_ns=at_ns)
+    return DexDepthResponse(
+        chain_id=chain_id,
+        pool=pool,
+        requested_at_ns=str(at_ns),
+        # The curve's own time, not the requested one. They differ whenever the
+        # most recent curve predates the cursor, and a reader who could not tell
+        # would have no way to know how stale the overlay is.
+        state_time_ns=str(bands[0].state_time_ns) if bands else None,
+        bands=tuple(DexDepthBandOut.of(band) for band in bands),
     )

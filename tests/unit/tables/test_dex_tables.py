@@ -346,3 +346,83 @@ def test_a_point_in_time_read_excludes_what_had_not_happened(catalog: Catalog) -
     as_of = table.read(as_of_ns=early).to_pylist()
     assert len(as_of) == 1
     assert dex_swaps.from_row(as_of[0])["event_time_ns"] == early
+
+
+# --- reading a curve back, as of an instant (REQ-WP-054) ------------------------
+
+
+def _write_curves(catalog: Catalog, *, times: tuple[int, ...]) -> object:
+    table = dex_depth.table_for(catalog)
+    sink = dex_depth.DexDepthSink(table=table)
+    for state_time_ns in times:
+        sink(_curve(), chain_id=1, pool="0xpool", state_time_ns=state_time_ns)
+    sink(_curve(), chain_id=1, pool="0xother", state_time_ns=times[0])
+    sink.flush()
+    return table
+
+
+@pytest.mark.trace("REQ-WP-054")
+def test_reading_a_curve_filters_by_pool(catalog: Catalog) -> None:
+    """Two pools in one table is the normal case, and a depth overlay handed
+    another pool's bands would be drawing a different market's liquidity in this
+    market's ink."""
+    table = _write_curves(catalog, times=(1_000,))
+    ours = dex_depth.read_bands(table, chain_id=1, pool="0xpool")
+    assert ours
+    assert {band.pool for band in ours} == {"0xpool"}
+
+    everything = dex_depth.read_bands(table, chain_id=1)
+    assert {band.pool for band in everything} == {"0xpool", "0xother"}
+
+
+@pytest.mark.trace("REQ-WP-054")
+def test_reading_a_curve_excludes_what_had_not_been_computed(catalog: Catalog) -> None:
+    """Principle I at the read the overlay goes through."""
+    table = _write_curves(catalog, times=(1_000, 2_000))
+    assert dex_depth.read_bands(table, chain_id=1, pool="0xpool", as_of_ns=1_500)
+    assert all(
+        band.state_time_ns <= 1_500
+        for band in dex_depth.read_bands(table, chain_id=1, pool="0xpool", as_of_ns=1_500)
+    )
+    assert dex_depth.read_bands(table, chain_id=1, pool="0xpool", as_of_ns=999) == []
+
+
+@pytest.mark.trace("REQ-WP-054")
+def test_the_latest_curve_is_one_curve_and_the_newest(catalog: Catalog) -> None:
+    """One curve, not every curve: handing the caller the history is where a
+    caller picks the newest and reintroduces the look-ahead this read exists to
+    prevent."""
+    table = _write_curves(catalog, times=(1_000, 2_000))
+    at_first = dex_depth.latest_curve_at(table, chain_id=1, pool="0xpool", at_ns=1_500)
+    assert {band.state_time_ns for band in at_first} == {1_000}
+    assert len(at_first) == 4
+
+    at_second = dex_depth.latest_curve_at(table, chain_id=1, pool="0xpool", at_ns=5_000)
+    assert {band.state_time_ns for band in at_second} == {2_000}
+    assert len(at_second) == 4
+
+    assert dex_depth.latest_curve_at(table, chain_id=1, pool="0xpool", at_ns=999) == []
+
+
+@pytest.mark.trace("REQ-WP-054")
+def test_the_two_repositories_agree_about_as_of(catalog: Catalog) -> None:
+    """Two implementations of one protocol that disagreed would make the API's
+    answer depend on how it was wired -- the kind of difference nobody finds
+    until a backtest and a live chart disagree."""
+    from channelflow.api.lakehouse_repository import LakehouseRepository
+    from channelflow.api.repositories import InMemoryRepository
+
+    table = _write_curves(catalog, times=(1_000, 2_000))
+    lakehouse = LakehouseRepository(catalog=catalog)
+
+    memory = InMemoryRepository()
+    for band in dex_depth.read_bands(table, chain_id=1):
+        memory.add_depth_band(band)
+
+    for at_ns in (999, 1_000, 1_500, 2_000, 5_000):
+        from_lakehouse = lakehouse.dex_depth_at(chain_id=1, pool="0xpool", at_ns=at_ns)
+        from_memory = memory.dex_depth_at(chain_id=1, pool="0xpool", at_ns=at_ns)
+        assert {band.state_time_ns for band in from_lakehouse} == {
+            band.state_time_ns for band in from_memory
+        }, at_ns
+        assert len(from_lakehouse) == len(from_memory), at_ns

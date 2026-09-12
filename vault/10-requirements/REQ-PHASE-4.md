@@ -15,7 +15,7 @@ not_delivered:
   - "HyperEVM protocol decoders and cross-layer transfers: [[REQ-WP-052]] profiles the chain and recovers the socket; no DEX on that chain is registered and no transfer events are tracked"
   - "Iceberg `LiquidityState` table: [[REQ-WP-053]] defines swaps, liquidity changes and depth curves; §18.12.2 waits for something that reconstructs a pool state"
   - "Pinot HOT DeFi datasets: deferred by ADR-002 until a HOT serving requirement exists, not missing by oversight"
-  - "UI liquidity/depth overlay: the web app has no DEX overlay"
+  - "UI liquidity/depth rendering: [[REQ-WP-054]] serves the bands and decides what to draw; nothing draws them, and §27.3's DEX panes are not built"
 ---
 
 ## Requirement

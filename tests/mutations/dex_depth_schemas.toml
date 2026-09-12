@@ -1,0 +1,23 @@
+# What the response promises.
+source = "src/channelflow/api/schemas.py"
+tests = "tests/unit/api/test_dex_depth_route.py"
+
+[[mutation]]
+name = "reachable is always true"
+find = '''            reachable=band.reachable,'''
+replace = '''            reachable=True,'''
+
+[[mutation]]
+name = "reached bps is the target"
+find = '''            reached_bps=str(band.reached_bps),'''
+replace = '''            reached_bps=str(band.target_bps),'''
+
+[[mutation]]
+name = "the reason is dropped"
+find = '''            reason=band.reason,'''
+replace = '''            reason="",'''
+
+[[mutation]]
+name = "prices cross the wire as floats"
+find = '''            reference_price=str(band.reference_price),'''
+replace = '''            reference_price=str(float(band.reference_price)),'''

@@ -198,3 +198,44 @@ export interface ExcursionOut {
   mfe_r: number | null;
   mae_r: number | null;
 }
+
+// One band of PRD section 18.12.3's depth curve.
+//
+// Amounts and prices arrive as strings, as bars' do: they are money, and JSON's
+// number is a float64 that cannot hold 0.1.
+export interface DexDepthBandOut {
+  side: string;
+  target_bps: string;
+  // The field to read first. When false the amounts describe exhausting the
+  // known liquidity rather than reaching the target (ADR-036), and a reader who
+  // saw only a band and a notional would take a pool too thin to move 100 bps
+  // for a pool where 100 bps is cheap.
+  reachable: boolean;
+  // How far the book actually went. Equal to the target when reached, and the
+  // reason an unreached band is worth drawing at all.
+  reached_bps: string;
+  amount0: string;
+  amount1: string;
+  reference_price: string;
+  ticks_crossed: number;
+  reason: string;
+}
+
+export interface DexDepthResponse {
+  chain_id: number;
+  pool: string;
+  // Times arrive as strings, for the same reason prices do: JSON's number is a
+  // float64. A nanosecond epoch timestamp is around 1.7e18 and
+  // `Number.MAX_SAFE_INTEGER` is 9.0e15, so reading one as a number quantises
+  // it to the nearest 256 nanoseconds -- measured: `(t + 5000) - t` gives 5120.
+  //
+  // Every other `_ns` field in this file is a `number` and has the same
+  // problem. Fixing them is a change across this whole app and is REQ-WP-054's
+  // open question; this field is exact because it is new.
+  requested_at_ns: string;
+  // The curve's own time, which is not the requested one whenever the most
+  // recent curve predates the cursor. Null when the pool has no curve at or
+  // before the instant.
+  state_time_ns: string | null;
+  bands: DexDepthBandOut[];
+}
