@@ -10,7 +10,7 @@ depends_on: ["REQ-PHASE-3"]
 tags: []
 covers: [REQ-WP-014, REQ-WP-015, REQ-WP-045, REQ-ASSET-001, REQ-BIAS-006, REQ-EXP-007]
 not_delivered:
-  - "Curve Stableswap-NG/Cryptoswap adapter: not built"
+  - "Curve Stableswap-NG/Cryptoswap adapter: [[REQ-WP-046]] is extracted and not yet built"
   - "Uniswap v4 PoolManager adapter and hook safety classification: not built"
   - "HyperCore CLOB adapter and HyperEVM ingestion profile: not built"
   - "Iceberg canonical DeFi tables: the plane is Iceberg since [[REQ-WP-039]], and no DeFi table is defined on it"
