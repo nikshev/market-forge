@@ -8,10 +8,10 @@ phase: 8
 status: planned
 depends_on: ["REQ-PHASE-7A"]
 tags: []
-covers: [REQ-WP-035, REQ-WP-036, REQ-WP-037, REQ-WP-038, REQ-WP-039, REQ-WP-041, REQ-WP-042, REQ-WP-055, REQ-WP-056]
+covers: [REQ-WP-035, REQ-WP-036, REQ-WP-037, REQ-WP-038, REQ-WP-039, REQ-WP-041, REQ-WP-042, REQ-WP-055, REQ-WP-056, REQ-WP-057]
 not_delivered:
   - "production images: [[REQ-WP-056]] documents and runs the stateful stack; the API, worker and web app run from the host and nothing is containerised for deployment"
-  - "load tests: not built"
+  - "load generation against a deployment: [[REQ-WP-057]] measures §36's targets and guards the scaling that would break them; nothing drives concurrent traffic, because nothing is deployed"
 ---
 
 ## Requirement
