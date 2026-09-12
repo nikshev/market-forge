@@ -33,12 +33,14 @@ venue changes and a sentence in a docstring does not.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 from typing import Any, Literal
 
 from channelflow.domain import (
     BookDelta,
     BookSnapshot,
+    DerivativesState,
     EventMeta,
     PriceLevel,
     TradeEvent,
@@ -203,3 +205,147 @@ def order_book_message(
             asks=asks,
         )
     raise NormalizationError(f"{context}: unknown action {action!r}")
+
+
+class StaleAssembly(NormalizationError):
+    """The readings this state was assembled from are too far apart.
+
+    OKX publishes funding, open interest, mark and index from four endpoints
+    with four timestamps, so a state is never a snapshot -- it is four readings
+    stitched together. Across a fast move, a mark from one second and an index
+    from the next produce a basis that neither moment had.
+    """
+
+
+@dataclass(frozen=True)
+class AssembledDerivatives:
+    """A state, and how far apart the readings behind it were taken.
+
+    The spread is carried rather than discarded because it is the only thing
+    that distinguishes a state assembled in fifty milliseconds from one
+    assembled across a rate-limit pause. Bybit needs none of this: one call,
+    one timestamp.
+    """
+
+    state: DerivativesState
+    oldest_ns: int
+    newest_ns: int
+
+    @property
+    def spread_ns(self) -> int:
+        return self.newest_ns - self.oldest_ns
+
+
+def open_interest_base(open_interest: dict[str, Any], *, contract_value: Decimal) -> Decimal:
+    """Open interest in base units, from a figure the venue quotes in contracts.
+
+    **`oi` is contracts.** `BTC-USDT-SWAP` carries `ctVal = 0.01 BTC`, so
+    reading `oi` as a base quantity overstates it a hundredfold -- and measured
+    against Bybit on 2026-09-12, that makes OKX appear to hold 51.5 times
+    Bybit's open interest where it actually holds 0.52 times. Positive, ordered,
+    believable, and a finding somebody would report.
+
+    The venue also publishes `oiCcy`, already in base units, and the two are
+    checked against each other. A disagreement means the contract value used
+    here is not the one the venue applied, which is worth refusing over rather
+    than picking a side.
+    """
+    context = "open-interest"
+    contracts = _decimal(open_interest, "oi", context)
+    converted = contracts * contract_value
+    published = _decimal(open_interest, "oiCcy", context)
+    if published != 0 and abs(converted - published) / published > Decimal("0.0001"):
+        raise UnknownContractValue(
+            f"{context}: oi * ctVal is {converted} but the venue publishes {published}; "
+            "the contract value in hand is not the one it applied"
+        )
+    return published
+
+
+def derivatives_state(
+    *,
+    funding: dict[str, Any],
+    open_interest: dict[str, Any],
+    mark: dict[str, Any],
+    index: dict[str, Any],
+    contract_value: Decimal,
+    venue: str,
+    market_type: str,
+    ingest_time_ns: int,
+    max_spread_ns: int,
+) -> AssembledDerivatives:
+    """Four public responses into the state the other venues produce in one.
+
+    **`fundingTime` is the settlement this rate pays at**, and `nextFundingTime`
+    is the one after. Bybit calls the first of those `nextFundingTime`, so the
+    like-named fields on the two venues are eight hours apart -- measured, on
+    2026-09-12, where OKX's `fundingTime` and Bybit's `nextFundingTime` were the
+    same millisecond. Mapping by name puts one venue a settlement period out,
+    and a dispersion computed across that boundary compares a settled rate
+    against a forthcoming one.
+
+    **The venue's `premium` is not this basis.** It looks like one and is
+    averaged over a funding window; measured, the two are 0.14 basis points
+    apart. Using it would compare OKX's window against Bybit's instant under one
+    name, so the basis here is computed from mark and index exactly as Bybit's
+    is.
+
+    `max_spread_ns` has no default. How stale is too stale is a property of what
+    the state is for -- a funding dispersion tolerates more than a basis -- and
+    a default would be this module quietly deciding that for every caller.
+    """
+    context = "derivatives"
+    if max_spread_ns <= 0:
+        raise ValueError("a state assembled from four readings needs a bound on their spread")
+
+    inst_id = str(_require(funding, "instId", context))
+    for other, name in ((open_interest, "open-interest"), (mark, "mark-price")):
+        if other.get("instId") != inst_id:
+            raise NormalizationError(
+                f"{context}: {name} is for {other.get('instId')!r}, not {inst_id!r}"
+            )
+
+    stamps = [
+        int(_require(open_interest, "ts", context)),
+        int(_require(mark, "ts", context)),
+        int(_require(index, "ts", context)),
+    ]
+    oldest_ms, newest_ms = min(stamps), max(stamps)
+    spread_ns = (newest_ms - oldest_ms) * MS_TO_NS
+    if spread_ns > max_spread_ns:
+        raise StaleAssembly(
+            f"{context}: readings span {spread_ns}ns, more than the {max_spread_ns}ns allowed"
+        )
+
+    mark_price = _decimal(mark, "markPx", context)
+    index_price = _decimal(index, "idxPx", context)
+    rate = funding.get("fundingRate")
+    settlement = funding.get("fundingTime")
+
+    state = DerivativesState(
+        meta=EventMeta(
+            source=f"{venue}-rest",
+            venue=venue,
+            market_type=market_type,
+            symbol=inst_id,
+            # The oldest of the four. A state is no fresher than its stalest
+            # part, and stamping it with the newest would claim a freshness
+            # none of it has.
+            event_time_ns=oldest_ms * MS_TO_NS,
+            ingest_time_ns=ingest_time_ns,
+            sequence=None,
+            source_event_id=None,
+        ),
+        mark_price=mark_price,
+        index_price=index_price,
+        funding_rate=None if rate in (None, "") else float(rate),
+        next_funding_time_ns=None if settlement in (None, "") else int(settlement) * MS_TO_NS,
+        open_interest_base=float(open_interest_base(open_interest, contract_value=contract_value)),
+        open_interest_usd=(
+            None if open_interest.get("oiUsd") in (None, "") else float(open_interest["oiUsd"])
+        ),
+        basis_bps=(None if index_price == 0 else float((mark_price / index_price - 1) * 10_000)),
+    )
+    return AssembledDerivatives(
+        state=state, oldest_ns=oldest_ms * MS_TO_NS, newest_ns=newest_ms * MS_TO_NS
+    )
