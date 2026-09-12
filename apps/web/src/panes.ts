@@ -22,11 +22,17 @@ export interface Pane {
   label: string;
 }
 
-// PRD section 27.3 lists nine panes. Seven are here: the order-flow three from
-// [[REQ-WP-027]] and Phase 3's four, added by [[REQ-WP-030]] once that phase's
-// data was finished. The DEX pair is still absent because Phase 4's is not --
-// offering an empty pane and calling it a feature would put a phase's unfinished
-// work in front of a reader as though it were finished.
+// PRD section 27.3 lists nine panes. Eight are here: the order-flow three from
+// [[REQ-WP-027]], Phase 3's four added by [[REQ-WP-030]], and Phase 4's swap
+// imbalance added by [[REQ-WP-059]] once `dex_swap_imbalance` existed to draw.
+//
+// **`DEX active liquidity` is still absent, and deliberately.** §18.12.2's
+// `active_liquidity` lives on a `LiquidityState` nothing reconstructs, which on
+// HyperEVM needs an archive node no public endpoint provides ([[ADR-067]]).
+// Offering the pane would put a phase's unfinished work in front of a reader as
+// though it were finished: the pane would render "no readings of this feature"
+// forever, and that message is one the application produces honestly for a real
+// absence, so a reader could not tell the two apart.
 //
 // Every entry's `feature` must be a name the registry knows. That is checked
 // from the Python suite (`tests/unit/features/test_pane_features.py`), because
@@ -41,6 +47,7 @@ export const PANES: readonly Pane[] = [
   { feature: "funding_z", label: "Funding (z)" },
   { feature: "basis_bps", label: "Basis (bps)" },
   { feature: "liquidation_imbalance_5m", label: "Liquidations (5m)" },
+  { feature: "dex_swap_imbalance", label: "DEX swap imbalance" },
 ];
 
 export interface PanePoint {

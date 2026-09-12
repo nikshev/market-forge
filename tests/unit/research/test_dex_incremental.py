@@ -89,18 +89,21 @@ def test_the_instrument_is_required() -> None:
 
 
 @pytest.mark.trace("REQ-EXP-007")
-def test_every_dex_family_is_empty_in_the_registry_today() -> None:
+def test_one_dex_family_now_resolves_and_three_do_not() -> None:
     """The honest state of the pipeline, asserted rather than assumed.
 
-    REQ-WP-015's adapter and REQ-WP-016's engine compute divergence, depth
-    asymmetry and swap imbalance; none of it is registered as a feature. When
-    that changes this test fails, which is the right way to find out -- the arms
-    start running and the report stops saying "not run".
+    This test previously read "every DEX family is empty" and said that when it
+    failed, that was the right way to find out. [[REQ-WP-059]] registered
+    `dex_swap_imbalance` and it failed, which is what it was for.
+
+    The other three are still empty: REQ-WP-015's adapter and REQ-WP-016's
+    engine compute divergence and depth asymmetry, and nothing registers either.
     """
     found = available_from_registry()
 
     assert found["cex"], "the CEX arm must have features, or the baseline is empty too"
-    for family in ("dex_price_divergence", "dex_depth_asymmetry", "swap_imbalance", "lp_liquidity"):
+    assert found["swap_imbalance"] == ("dex_swap_imbalance",)
+    for family in ("dex_price_divergence", "dex_depth_asymmetry", "lp_liquidity"):
         assert found[family] == (), f"{family} now resolves; update EXP-007's expectations"
 
 
@@ -130,6 +133,16 @@ def test_with_the_registry_as_it_is_every_dex_arm_reports_not_run() -> None:
     ):
         assert entries[name].result is None
         assert entries[name].reason
+
+    # **Which absence stopped each arm**, not merely that one did. The arms are
+    # cumulative, so once [[REQ-WP-059]] registered `dex_swap_imbalance` the
+    # swap-imbalance arm went on reporting "not run" for a different reason --
+    # the two empty families before it. Asserting only that a reason exists let
+    # that change pass unnoticed, which is how a test stops checking what it was
+    # written for.
+    assert "swap_imbalance" not in entries["plus_swap_imbalance"].reason
+    assert "dex_price_divergence" in entries["plus_swap_imbalance"].reason
+    assert "lp_liquidity" in entries["plus_lp_liquidity"].reason
 
 
 @pytest.mark.trace("REQ-EXP-007")

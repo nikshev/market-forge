@@ -50,7 +50,6 @@ that road carries a second load without changing.
     - `tests/unit/features/test_pane_features.py::test_a_pane_list_it_cannot_read_is_a_failure_not_an_empty_answer`
     - `tests/unit/features/test_pane_features.py::test_every_offered_pane_names_a_registered_feature`
     - `tests/unit/features/test_pane_features.py::test_the_derivatives_panes_are_offered`
-    - `tests/unit/features/test_pane_features.py::test_the_dex_panes_are_not_offered_yet`
     - `tests/unit/features/test_pane_features.py::test_the_order_flow_panes_are_still_offered`
 - **Code:**
     - `apps/web/src/panes.ts`

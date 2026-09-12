@@ -29,9 +29,10 @@ HORIZON_NS = 10 * SECOND
 INSTRUMENTS = ("BTCUSDT", "ETHUSDT")
 
 #: The features each family owns in these fixtures, supplied explicitly rather
-#: than resolved from the registry: none of EXP-015's DEX families has a
-#: registered producer yet, and a test that read the registry would be measuring
-#: that absence instead of the ablation.
+#: than resolved from the registry: three of EXP-015's four DEX families still
+#: have no registered producer (`swap_imbalance` gained one in [[REQ-WP-059]]),
+#: and a test that read the registry would be measuring that absence instead of
+#: the ablation.
 AVAILABLE: dict[str, tuple[str, ...]] = {
     "channel": ("channel_position",),
     "oi_funding_liquidations": ("oi_z",),

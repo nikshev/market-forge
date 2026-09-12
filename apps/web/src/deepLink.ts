@@ -24,6 +24,23 @@ export interface DeepLink {
   // REQ-US-002: which of PRD section 27.2's layers were on when the alert
   // fired, and whether that could be read at all.
   overlays: OverlaySelection;
+  // Which pool the `dex_liquidity_bands` layer draws (REQ-WP-059). Section 27.1
+  // does not list these, and there is no other way to know: a CEX venue and
+  // symbol do not name an AMM pool, and inferring one would be section 17's
+  // cross-venue mapping done by guess. Both are null unless both are readable.
+  chainId: number | null;
+  pool: string | null;
+}
+
+// A chain id, or nothing. Nothing on anything that is not a positive integer:
+// `Number("12abc")` is NaN and `parseInt` would return 12, which would request
+// depth from a chain nobody named.
+export function chainFromQuery(params: URLSearchParams): number | null {
+  const raw = params.get("chain");
+  if (raw === null || !/^[1-9][0-9]*$/.test(raw)) {
+    return null;
+  }
+  return Number(raw);
 }
 
 export function modeFromQuery(params: URLSearchParams): ChannelMode {
@@ -47,5 +64,10 @@ export function parseDeepLink(pathname: string, search: string): DeepLink | null
     signalId: params.get("signal"),
     mode: modeFromQuery(params),
     overlays: overlaysFromQuery(params),
+    // Together or not at all. A pool with no chain is not addressable and a
+    // chain with no pool asks for nothing, and either alone would produce a
+    // request that could only fail.
+    chainId: params.get("pool") === null ? null : chainFromQuery(params),
+    pool: chainFromQuery(params) === null ? null : params.get("pool"),
   };
 }
