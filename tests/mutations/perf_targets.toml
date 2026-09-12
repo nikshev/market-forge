@@ -1,0 +1,65 @@
+# Reproduces the mutation sweep recorded for the performance measurements.
+#
+# Patterns are TOML *literal* strings on purpose: the basic form treats a
+# trailing backslash as a line continuation and eats the next line's indentation.
+source = "src/channelflow/perf/targets.py"
+tests = ["tests/perf", "tests/unit/perf"]
+
+[[mutation]]
+name = "the percentile is a mean"
+find = '''        ordered = sorted(self.samples_ns)
+        rank = max(1, -(-len(ordered) * fraction // 1))
+        return ordered[int(rank) - 1]'''
+replace = '''        return int(sum(self.samples_ns) / len(self.samples_ns))'''
+
+[[mutation]]
+name = "the p95 is the p50"
+find = '''    @property
+    def p95_ns(self) -> int:
+        return self.percentile_ns(0.95)'''
+replace = '''    @property
+    def p95_ns(self) -> int:
+        return self.percentile_ns(0.5)'''
+
+[[mutation]]
+name = "an empty measurement is allowed"
+find = '''        if not self.samples_ns:'''
+replace = '''        if False and not self.samples_ns:'''
+
+[[mutation]]
+name = "scaling compares durations, not ratios"
+find = '''    return tuple(
+        later / max(1, earlier) for earlier, later in zip(medians, medians[1:], strict=False)
+    )'''
+replace = '''    return tuple(float(later) for later in medians[1:])'''
+
+[[mutation]]
+name = "scaling divides the wrong way"
+find = '''        later / max(1, earlier) for earlier, later in zip(medians, medians[1:], strict=False)'''
+replace = '''        earlier / max(1, later) for earlier, later in zip(medians, medians[1:], strict=False)'''
+
+[[mutation]]
+name = "a single measurement is a scaling series"
+find = '''    if len(measurements) < 2:'''
+replace = '''    if len(measurements) < 1:'''
+
+[[mutation]]
+name = "the budget is a thousand times larger"
+find = '''        budget_ns=2 * NS_PER_SECOND,
+    ),
+    Target(
+        name="signal_after_bar_close",'''
+replace = '''        budget_ns=2000 * NS_PER_SECOND,
+    ),
+    Target(
+        name="signal_after_bar_close",'''
+
+[[mutation]]
+name = "headroom is inverted"
+find = '''    return target.budget_ns / max(1, observed)'''
+replace = '''    return observed / max(1, target.budget_ns)'''
+
+[[mutation]]
+name = "a run of zero repeats is allowed"
+find = '''    if repeats < 1:'''
+replace = '''    if repeats < 0:'''
