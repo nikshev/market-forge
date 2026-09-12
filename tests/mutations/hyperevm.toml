@@ -1,0 +1,170 @@
+# Reproduces the mutation sweep recorded for this module.
+#
+# Patterns are TOML *literal* strings on purpose: the basic form treats a
+# trailing backslash as a line continuation and eats the next line's indentation.
+source = "src/channelflow/chain/hyperevm.py"
+tests = "tests/unit/chain/test_hyperevm.py"
+
+[[mutation]]
+name = "sign extension dropped from the tick and amounts"
+find = '''    return word - (1 << 256) if word >= (1 << 255) else word'''
+replace = '''    return word'''
+
+[[mutation]]
+name = "sign threshold off by a bit"
+find = '''    return word - (1 << 256) if word >= (1 << 255) else word'''
+replace = '''    return word - (1 << 256) if word >= (1 << 254) else word'''
+
+[[mutation]]
+name = "a dynamic-fee pool may carry a pool-level fee"
+find = '''        if self.family in DYNAMIC_FEE_FAMILIES and self.fee_pips is not None:'''
+replace = '''        if False:'''
+
+[[mutation]]
+name = "an immutable-fee pool need not record one"
+find = '''        if self.family not in DYNAMIC_FEE_FAMILIES and self.fee_pips is None:'''
+replace = '''        if False:'''
+
+[[mutation]]
+name = "algebra is treated as a fixed-fee family"
+find = '''DYNAMIC_FEE_FAMILIES = frozenset({PoolFamily.ALGEBRA_INTEGRAL})'''
+replace = '''DYNAMIC_FEE_FAMILIES = frozenset()'''
+
+[[mutation]]
+name = "an absent fee reads as zero"
+find = '''        if self.fee_pips is None:
+            raise FeeNotPublished('''
+replace = '''        if False:
+            raise FeeNotPublished('''
+
+[[mutation]]
+name = "an unknown factory defaults to uniswap v3"
+find = '''    if family is None:
+        raise UnknownFactory('''
+replace = '''    if family is None:
+        return PoolFamily.UNISWAP_V3
+    if False:
+        raise UnknownFactory('''
+
+[[mutation]]
+name = "the two factories are swapped"
+find = '''    "0xff7b3e8c00e57ea31477c32a5b52a58eea47b072": PoolFamily.UNISWAP_V3,
+    "0xf77bd082c627aa54591cf2f2eaa811fd1ab3b1f3": PoolFamily.ALGEBRA_INTEGRAL,'''
+replace = '''    "0xff7b3e8c00e57ea31477c32a5b52a58eea47b072": PoolFamily.ALGEBRA_INTEGRAL,
+    "0xf77bd082c627aa54591cf2f2eaa811fd1ab3b1f3": PoolFamily.UNISWAP_V3,'''
+
+[[mutation]]
+name = "fee pairing takes the first fee instead of the last"
+find = '''        if record.topic0 == FEE_TOPIC0:
+            latest = decode_fee(record)'''
+replace = '''        if record.topic0 == FEE_TOPIC0 and latest is None:
+            latest = decode_fee(record)'''
+
+[[mutation]]
+name = "fee pairing assumes a fixed offset of three"
+find = '''        elif record.topic0 == SWAP_TOPIC0 and latest is not None:
+            paired[record.log_index] = latest'''
+replace = '''        elif record.topic0 == SWAP_TOPIC0 and latest is not None:
+            paired[record.log_index - 3] = latest'''
+
+[[mutation]]
+name = "fee pairing ignores log order"
+find = '''    ordered = sorted(records, key=lambda record: record.log_index)'''
+replace = '''    ordered = sorted(records, key=lambda record: -record.log_index)'''
+
+[[mutation]]
+name = "a swap prices itself from a later fee"
+find = '''        if record.log_index >= swap_log_index:
+            continue'''
+replace = '''        if record.log_index == swap_log_index:
+            continue'''
+
+[[mutation]]
+name = "settlement takes the earliest transfer, not the nearest"
+find = '''        if best is None or record.log_index > best.log_index:'''
+replace = '''        if best is None or record.log_index < best.log_index:'''
+
+[[mutation]]
+name = "a transfer out of the pool counts as one in"
+find = '''        amount = value if recipient == pool else -value'''
+replace = '''        amount = value'''
+
+[[mutation]]
+name = "a zero side counts as matched"
+find = '''    if amount == 0:
+        return Settlement.ZERO_SIDE'''
+replace = '''    if amount == 0:
+        return Settlement.MATCHED'''
+
+[[mutation]]
+name = "a mismatch counts as matched"
+find = '''    if flow is not None and flow.amount == amount:
+        return Settlement.MATCHED
+    return Settlement.MISMATCHED'''
+replace = '''    return Settlement.MATCHED'''
+
+[[mutation]]
+name = "the system index is the address itself"
+find = '''    index = value - SYSTEM_BASE'''
+replace = '''    index = value'''
+
+[[mutation]]
+name = "index zero reads as no index"
+find = '''    if index < 0 or index >= SYSTEM_INDEX_CEILING:'''
+replace = '''    if index <= 0 or index >= SYSTEM_INDEX_CEILING:'''
+
+[[mutation]]
+name = "every address is a system address"
+find = '''    if index < 0 or index >= SYSTEM_INDEX_CEILING:
+        return None'''
+replace = '''    if False:
+        return None'''
+
+[[mutation]]
+name = "the credited amount is the transfer amount"
+find = '''        core_wei, remainder = divmod(evm_amount, 10**extra)
+        return CoreAmount(core_wei=core_wei, remainder=remainder)'''
+replace = '''        return CoreAmount(core_wei=evm_amount, remainder=0)'''
+
+[[mutation]]
+name = "dust is rounded away"
+find = '''        core_wei, remainder = divmod(evm_amount, 10**extra)
+        return CoreAmount(core_wei=core_wei, remainder=remainder)'''
+replace = '''        return CoreAmount(core_wei=evm_amount // 10**extra, remainder=0)'''
+
+[[mutation]]
+name = "the exponent sign is inverted"
+find = '''    return CoreAmount(core_wei=evm_amount * 10**-extra, remainder=0)'''
+replace = '''    return CoreAmount(core_wei=evm_amount // 10**-extra, remainder=0)'''
+
+[[mutation]]
+name = "a foreign token at a system address is credited"
+find = '''    if asset is None or asset.evm_contract.lower() != record.address.lower():'''
+replace = '''    if asset is None:'''
+
+[[mutation]]
+name = "direction is always to_core"
+find = '''        index, direction, counterparty = from_index, TransferDirection.TO_EVM, recipient'''
+replace = '''        index, direction, counterparty = from_index, TransferDirection.TO_CORE, recipient'''
+
+[[mutation]]
+name = "the decoder accepts any pool of any family"
+find = '''            and pool.family == self.protocol'''
+replace = '''            and True'''
+
+[[mutation]]
+name = "the decoder accepts any topic"
+find = '''            record.topic0 == SWAP_TOPIC0'''
+replace = '''            True'''
+
+[[mutation]]
+name = "an absent fee becomes a zero field"
+find = '''        if swap.fee_pips is not None:'''
+replace = '''        if True:
+            fields["fee_pips"] = str(swap.fee_pips or 0)
+        if False:'''
+
+[[mutation]]
+name = "a swap payload of any width is accepted"
+find = '''    if len(body) != 5 * 64:'''
+replace = '''    if False:'''
