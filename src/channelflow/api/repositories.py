@@ -23,9 +23,6 @@ import uuid
 from dataclasses import dataclass, field
 from typing import Protocol
 
-#: Namespace for signal ids. Shared with REQ-WP-008 so an alert's deep link and
-#: the API name the same signal -- a different namespace here would make every
-#: link a 404 while looking entirely correct.
 from channelflow.alerting import signal_id_for
 from channelflow.bars import Bar
 from channelflow.channels import ChannelSnapshot
@@ -33,6 +30,11 @@ from channelflow.domain import Instrument
 from channelflow.extrema.models import ConfirmedExtremum, ExtremumCandidate
 from channelflow.scoring import SignalScore
 from channelflow.signals import Candidate
+
+#: Namespace for signal ids. Shared with REQ-WP-008 so an alert's deep link and
+#: the API name the same signal -- a different namespace here would make every
+#: link a 404 while looking entirely correct.
+from channelflow.tables.dex_depth import DepthBand
 
 
 @dataclass(frozen=True)
@@ -130,6 +132,8 @@ class Repository(Protocol):
 
     def setup_score(self, *, venue: str, symbol: str) -> ScoredSetup | None: ...
 
+    def dex_depth_at(self, *, chain_id: int, pool: str, at_ns: int) -> list[DepthBand]: ...
+
 
 @dataclass
 class InMemoryRepository:
@@ -147,6 +151,7 @@ class InMemoryRepository:
     _snapshots: dict[tuple[str, str, int], list[ChannelSnapshot]] = field(default_factory=dict)
     _features: dict[tuple[str, str, int], list[FeaturePoint]] = field(default_factory=dict)
     _signals: list[Candidate] = field(default_factory=list)
+    _depth_bands: list[DepthBand] = field(default_factory=list)
     #: One score per market, its latest. A history of scores is section 29's
     #: storage work; overwriting is honest about what this holds.
     _scores: dict[tuple[str, str], ScoredSetup] = field(default_factory=dict)
@@ -336,3 +341,24 @@ class InMemoryRepository:
             if signal_id_for(c) == signal_id:
                 return c
         return None
+
+    def add_depth_band(self, band: DepthBand) -> None:
+        self._depth_bands.append(band)
+
+    def dex_depth_at(self, *, chain_id: int, pool: str, at_ns: int) -> list[DepthBand]:
+        """The most recent curve at or before `at_ns`, as the lakehouse one does.
+
+        The same reading deliberately: two implementations of one protocol that
+        disagreed about "as of" would make the API's answer depend on how it was
+        wired, which is the kind of difference nobody finds until a backtest and
+        a live chart disagree.
+        """
+        eligible = [
+            band
+            for band in self._depth_bands
+            if band.chain_id == chain_id and band.pool == pool and band.state_time_ns <= at_ns
+        ]
+        if not eligible:
+            return []
+        newest = max(band.state_time_ns for band in eligible)
+        return [band for band in eligible if band.state_time_ns == newest]

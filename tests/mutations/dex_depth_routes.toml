@@ -1,0 +1,13 @@
+# The endpoint's own decisions.
+source = "src/channelflow/api/routes.py"
+tests = "tests/unit/api/test_dex_depth_route.py"
+
+[[mutation]]
+name = "the curve's time is the requested time"
+find = '''        state_time_ns=str(bands[0].state_time_ns) if bands else None,'''
+replace = '''        state_time_ns=str(at_ns) if bands else None,'''
+
+[[mutation]]
+name = "times cross the wire as numbers"
+find = '''        requested_at_ns=str(at_ns),'''
+replace = '''        requested_at_ns=at_ns,'''

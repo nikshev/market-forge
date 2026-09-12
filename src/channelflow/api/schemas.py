@@ -28,6 +28,7 @@ from channelflow.channels import ChannelSnapshot
 from channelflow.extrema.models import ConfirmedExtremum, ExtremumCandidate
 from channelflow.scoring import Explanation, Factor
 from channelflow.signals import Candidate
+from channelflow.tables.dex_depth import DepthBand
 
 
 class MarketOut(BaseModel):
@@ -381,3 +382,71 @@ class FeatureSnapshotResponse(BaseModel):
 
 class FeatureSeriesResponse(BaseModel):
     points: tuple[FeaturePointOut, ...]
+
+
+class DexDepthBandOut(BaseModel):
+    """One band of PRD §18.12.3's curve, as the API serves it.
+
+    Amounts and prices are strings, as bars' are: they are money, and JSON's
+    number is a float64 that cannot hold 0.1.
+
+    **`reachable` is the field a reader must consult first**, and it is here
+    rather than being folded into the amounts. When it is false the amounts
+    describe exhausting the known liquidity rather than reaching the target
+    ([[ADR-036]]), and a client that saw only a band and a notional would draw a
+    pool too thin to move 100 bps as a pool where 100 bps is cheap.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    side: str
+    target_bps: str
+    reachable: bool
+    #: How far the book actually went. Equal to `target_bps` when reached, and
+    #: the reason the unreached row is worth drawing at all.
+    reached_bps: str
+    amount0: str
+    amount1: str
+    reference_price: str
+    ticks_crossed: int
+    reason: str
+
+    @classmethod
+    def of(cls, band: DepthBand) -> DexDepthBandOut:
+        return cls(
+            side=band.side,
+            target_bps=str(band.target_bps),
+            reachable=band.reachable,
+            reached_bps=str(band.reached_bps),
+            amount0=str(band.amount0),
+            amount1=str(band.amount1),
+            reference_price=str(band.reference_price),
+            ticks_crossed=band.ticks_crossed,
+            reason=band.reason,
+        )
+
+
+class DexDepthResponse(BaseModel):
+    """A pool's curve at an instant, and which instant that was.
+
+    `state_time_ns` is the curve's own time rather than the requested one. They
+    differ whenever the most recent curve predates the chart's cursor, and a
+    reader who could not tell would have no way to know how stale the overlay is.
+
+    `None` when the pool has no curve at or before the instant -- distinct from
+    an empty band list, which nothing produces: a curve is written whole.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    chain_id: int
+    pool: str
+    #: Times cross the wire as strings, for the same reason prices do: JSON's
+    #: number is a float64. A nanosecond epoch timestamp is around 1.7e18 and
+    #: `Number.MAX_SAFE_INTEGER` is 9.0e15, so a browser reading one as a number
+    #: quantises it to the nearest 256 nanoseconds and cannot represent the
+    #: value it was sent. Measured, and true of every `_ns` field this API
+    #: already serves -- see [[REQ-WP-054]]'s open question.
+    requested_at_ns: str
+    state_time_ns: str | None
+    bands: tuple[DexDepthBandOut, ...]

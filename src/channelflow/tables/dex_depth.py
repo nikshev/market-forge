@@ -141,3 +141,69 @@ class DexDepthSink:
 
 def table_for(catalog: Catalog) -> IcebergTable:
     return IcebergTable(name=TABLE_NAME, schema=SCHEMA, catalog=catalog)
+
+
+@dataclass(frozen=True)
+class DepthBand:
+    """One band of one side, as stored.
+
+    A read model rather than a `DepthQuote`: the stored row carries the pool and
+    the instant a quote does not, and rebuilding a quote would drop exactly the
+    provenance a reader came for.
+    """
+
+    state_time_ns: int
+    chain_id: int
+    pool: str
+    side: str
+    target_bps: Decimal
+    reachable: bool
+    reached_bps: Decimal
+    amount0: Decimal
+    amount1: Decimal
+    reference_price: Decimal
+    ticks_crossed: int
+    reason: str
+
+
+def read_bands(
+    table: IcebergTable,
+    *,
+    chain_id: int | None = None,
+    pool: str | None = None,
+    as_of_ns: int | None = None,
+    snapshot_id: int | None = None,
+) -> list[DepthBand]:
+    """Bands in this table's order, optionally filtered and as of an instant.
+
+    `as_of_ns` is the storage layer's point-in-time read on `state_time_ns`, so a
+    curve computed after that instant is not returned. A depth overlay on a
+    historical chart that fetched the latest curve would be the look-ahead
+    Principle I forbids, arriving through the one door nobody guards.
+    """
+    rows = table.read(snapshot_id=snapshot_id, as_of_ns=as_of_ns).to_pylist()
+    matched = [
+        from_row(row)
+        for row in rows
+        if (chain_id is None or row["chain_id"] == chain_id)
+        and (pool is None or row["pool"] == pool)
+    ]
+    matched.sort(key=lambda row: tuple(str(row[name]) for name in ORDER))
+    return [DepthBand(**row) for row in matched]  # type: ignore[arg-type]
+
+
+def latest_curve_at(
+    table: IcebergTable, *, chain_id: int, pool: str, at_ns: int
+) -> list[DepthBand]:
+    """The most recent curve for a pool at or before an instant.
+
+    One curve, not every curve: an overlay draws the state as it stood, and
+    handing it the whole history would make the caller pick -- which is where a
+    caller picks the newest and reintroduces the look-ahead this read exists to
+    prevent.
+    """
+    bands = read_bands(table, chain_id=chain_id, pool=pool, as_of_ns=at_ns)
+    if not bands:
+        return []
+    newest = max(band.state_time_ns for band in bands)
+    return [band for band in bands if band.state_time_ns == newest]

@@ -1,0 +1,27 @@
+# Reproduces the mutation sweep recorded for the depth overlay's server side.
+#
+# Patterns are TOML *literal* strings on purpose: the basic form treats a
+# trailing backslash as a line continuation and eats the next line's indentation.
+source = "src/channelflow/tables/dex_depth.py"
+tests = ["tests/unit/api/test_dex_depth_route.py", "tests/unit/tables/test_dex_tables.py"]
+
+[[mutation]]
+name = "the whole history is returned"
+find = '''    newest = max(band.state_time_ns for band in bands)
+    return [band for band in bands if band.state_time_ns == newest]'''
+replace = '''    return bands'''
+
+[[mutation]]
+name = "the oldest curve wins"
+find = '''    newest = max(band.state_time_ns for band in bands)'''
+replace = '''    newest = min(band.state_time_ns for band in bands)'''
+
+[[mutation]]
+name = "the point-in-time bound is ignored"
+find = '''    bands = read_bands(table, chain_id=chain_id, pool=pool, as_of_ns=at_ns)'''
+replace = '''    bands = read_bands(table, chain_id=chain_id, pool=pool)'''
+
+[[mutation]]
+name = "the pool filter is ignored"
+find = '''        and (pool is None or row["pool"] == pool)'''
+replace = '''        and True'''

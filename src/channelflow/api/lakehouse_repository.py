@@ -40,6 +40,7 @@ from channelflow.scoring import SignalScore
 from channelflow.signals import Candidate
 from channelflow.tables import bars as bars_table
 from channelflow.tables import channels as channels_table
+from channelflow.tables import dex_depth as dex_depth_table
 from channelflow.tables import extrema as extrema_table
 from channelflow.tables import features as features_table
 from channelflow.tables import signals as signals_table
@@ -67,9 +68,11 @@ class LakehouseRepository:
     _confirmed: IcebergTable = field(init=False)
     _candidates: IcebergTable = field(init=False)
     _transitions: IcebergTable = field(init=False)
+    _dex_depth: IcebergTable = field(init=False)
 
     def __post_init__(self) -> None:
         self._bars = bars_table.table_for(self.catalog)
+        self._dex_depth = dex_depth_table.table_for(self.catalog)
         self._channels = channels_table.table_for(self.catalog)
         self._features = features_table.features_table_for(self.catalog)
         self._markets = features_table.markets_table_for(self.catalog)
@@ -340,4 +343,19 @@ class LakehouseRepository:
             model_version=as_str(core, "model_version"),
             liquidity_factor=as_float(core, "liquidity_factor"),
             novelty_factor=as_float(core, "novelty_factor"),
+        )
+
+    def dex_depth_at(
+        self, *, chain_id: int, pool: str, at_ns: int
+    ) -> list[dex_depth_table.DepthBand]:
+        """The pool's depth curve as it stood at an instant.
+
+        `at_ns` is required rather than defaulted to now, which is the whole
+        point: PRD §27.5 already distinguishes what was known then from what is
+        known now, and a depth layer that quietly fetched the latest curve onto a
+        historical chart would be the look-ahead Principle I forbids arriving
+        through the one door nobody guards.
+        """
+        return dex_depth_table.latest_curve_at(
+            self._dex_depth, chain_id=chain_id, pool=pool, at_ns=at_ns
         )

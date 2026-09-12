@@ -8,6 +8,7 @@
 
 import type {
   BarOut,
+  DexDepthResponse,
   ChannelMode,
   ChannelOut,
   ExtremaResponse,
@@ -102,5 +103,20 @@ export function fetchExtrema(params: {
     // endpoint reads an absent `as_of_ns` as "everything on record", which is
     // what CURRENT REFIT wants.
     ...(params.asOfNs === null ? {} : { as_of_ns: params.asOfNs }),
+  });
+}
+
+export function fetchDexDepth(params: {
+  chainId: number;
+  pool: string;
+  atNs: number;
+}): Promise<Result<DexDepthResponse>> {
+  // `atNs` is not optional here either. The endpoint requires it, and a client
+  // that filled it in would put the decision somewhere the reader of a chart
+  // cannot see.
+  return get("/api/v1/dex/depth", {
+    chain_id: params.chainId,
+    pool: params.pool,
+    at_ns: params.atNs,
   });
 }
