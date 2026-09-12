@@ -1,0 +1,249 @@
+# Reproduces the mutation sweep recorded for this module.
+#
+# Patterns are TOML *literal* strings on purpose: the basic form treats a
+# trailing backslash as a line continuation and eats the next line's indentation.
+source = "src/channelflow/dex/cryptoswap.py"
+tests = "tests/unit/dex/test_cryptoswap.py"
+
+[[mutation]]
+name = "sdiv floors"
+find = '''    quotient = abs(numerator) // abs(denominator)
+    return quotient if (numerator >= 0) == (denominator >= 0) else -quotient'''
+replace = '''    return numerator // denominator'''
+
+[[mutation]]
+name = "cbrt six steps"
+find = '''    for _ in range(7):'''
+replace = '''    for _ in range(6):'''
+survives = "Measured equivalent. Six refinements give results identical to seven over two hundred thousand magnitudes; the contract's comment says otherwise and could not be reproduced. The count stays at the contract's seven for fidelity."
+
+[[mutation]]
+name = "cbrt eight steps"
+find = '''    for _ in range(7):'''
+replace = '''    for _ in range(8):'''
+survives = "Measured equivalent, for the same reason as six: eight refinements are indistinguishable from seven on every magnitude tried."
+
+[[mutation]]
+name = "cbrt seed remainder"
+find = '''    guess = (int(2 ** (log2x // 3)) * int(1260**remainder)) // int(1000**remainder)'''
+replace = '''    guess = int(2 ** (log2x // 3))'''
+
+[[mutation]]
+name = "cbrt no rescale"
+find = '''        scaled, unscale = x * 10**36, 1'''
+replace = '''        scaled, unscale = x, 1'''
+
+[[mutation]]
+name = "cbrt zero raises"
+find = '''    if x == 0:
+'''
+replace = '''    if False:
+'''
+
+[[mutation]]
+name = "fee coefficient skipped"
+find = '''    if fee_gamma > 0:
+        k = fee_gamma * PRECISION // (fee_gamma + PRECISION - k)
+'''
+replace = ''''''
+
+[[mutation]]
+name = "fee ends swapped"
+find = '''        return (self.mid_fee * coefficient + self.out_fee * (PRECISION - coefficient)) // PRECISION'''
+replace = '''        return (self.out_fee * coefficient + self.mid_fee * (PRECISION - coefficient)) // PRECISION'''
+
+[[mutation]]
+name = "fee before the trade"
+find = '''    return dy - after.fee(tuple(xp)) * dy // FEE_DENOMINATOR'''
+replace = '''    return dy - after.fee(after.xp_at(now=now)) * dy // FEE_DENOMINATOR'''
+
+[[mutation]]
+name = "fee not charged"
+find = '''    return dy - after.fee(tuple(xp)) * dy // FEE_DENOMINATOR'''
+replace = '''    return dy'''
+
+[[mutation]]
+name = "fee denominator 1e6"
+find = '''FEE_DENOMINATOR = 10**10'''
+replace = '''FEE_DENOMINATOR = 10**6'''
+
+[[mutation]]
+name = "price scale dropped"
+find = '''            self.balances[1] * self.price_scale[0] * self.precisions[1] // PRECISION,'''
+replace = '''            self.balances[1] * self.precisions[1],'''
+
+[[mutation]]
+name = "precision dropped"
+find = '''            self.balances[0] * self.precisions[0],'''
+replace = '''            self.balances[0],'''
+
+[[mutation]]
+name = "scale back out skipped"
+find = '''    if j > 0:
+        dy = dy * PRECISION // state.price_scale[j - 1]
+'''
+replace = ''''''
+
+[[mutation]]
+name = "output precision kept"
+find = '''    dy //= state.precisions[j]'''
+replace = '''    pass'''
+
+[[mutation]]
+name = "dy off by one"
+find = '''    dy = xp[j] - y - 1'''
+replace = '''    dy = xp[j] - y'''
+
+[[mutation]]
+name = "ramp ignored"
+find = '''        if self.ramp_ends > now:
+            raise RampInProgress(f"A/gamma ramp ends at {self.ramp_ends}, now {now}")
+'''
+replace = ''''''
+
+[[mutation]]
+name = "A band unchecked"
+find = '''    if not MIN_A - 1 < ann < MAX_A + 1:
+        raise UnsafeValues(f"A out of band: {ann}")
+'''
+replace = ''''''
+
+[[mutation]]
+name = "gamma band unchecked"
+find = '''    if not MIN_GAMMA - 1 < gamma < MAX_GAMMA + 1:
+        raise UnsafeValues(f"gamma out of band: {gamma}")
+'''
+replace = ''''''
+
+[[mutation]]
+name = "D band unchecked"
+find = '''    if not 10**17 - 1 < invariant < 10**15 * PRECISION + 1:
+        raise UnsafeValues(f"D out of band: {invariant}")
+'''
+replace = ''''''
+survives = "Redundant with the final y-band check on every input tried, including a D violating only its own band. Kept because it fails early and names the actual problem instead of blaming y."
+
+[[mutation]]
+name = "x band unchecked"
+find = '''        frac = xp[k] * PRECISION // invariant
+        if not 10**16 - 1 < frac < 10**20 + 1:
+            raise UnsafeValues(f"x[{k}] out of band relative to D: {frac}")
+'''
+replace = ''''''
+survives = "Redundant with the final y-band check, as above. Kept for the same reason."
+
+[[mutation]]
+name = "index range unchecked"
+find = '''    if not (0 <= i < N_COINS and 0 <= j < N_COINS):
+        raise IndexError(f"coin index out of range for a {N_COINS}-coin pool: {i}, {j}")
+'''
+replace = ''''''
+
+[[mutation]]
+name = "same coin allowed"
+find = '''    if i == j:
+        raise UnsafeValues("a coin cannot be exchanged for itself")
+'''
+replace = ''''''
+
+[[mutation]]
+name = "zero dx allowed"
+find = '''    if dx <= 0:
+        raise UnsafeValues("do not exchange 0 coins")
+'''
+replace = ''''''
+
+[[mutation]]
+name = "jk mapping shuffled"
+find = '''    j, k = {0: (1, 2), 1: (0, 2), 2: (0, 1)}[i]'''
+replace = '''    j, k = {0: (2, 1), 1: (2, 0), 2: (1, 0)}[i]'''
+
+[[mutation]]
+name = "b sign flipped"
+find = '''    b = (10**36 // 9 + 2 * PRECISION * gamma // 27) - ('''
+replace = '''    b = (10**36 // 9 + 2 * PRECISION * gamma // 27) + ('''
+
+[[mutation]]
+name = "c sign flipped"
+find = '''    c = (10**36 // 9 + gamma * (gamma + 4 * PRECISION) // 27) + ('''
+replace = '''    c = (10**36 // 9 + gamma * (gamma + 4 * PRECISION) // 27) - ('''
+
+[[mutation]]
+name = "d constant divisor"
+find = '''    d = (PRECISION + gamma) ** 2 // 27'''
+replace = '''    d = (PRECISION + gamma) ** 2 // 9'''
+
+[[mutation]]
+name = "divider always one"
+find = '''    divider = _divider_for(d0)'''
+replace = '''    divider = 1'''
+
+[[mutation]]
+name = "rescale branches same"
+find = '''        additional_precision = abs(_sdiv(b, a))
+        a = _sdiv(_sdiv(a, additional_precision), divider)'''
+replace = '''        additional_precision = abs(_sdiv(b, a))
+        a = _sdiv(a * additional_precision, divider)'''
+
+[[mutation]]
+name = "delta1 middle term"
+find = '''    delta1 = _sdiv(3 * three_ac, b) - 2 * b - _sdiv(_sdiv(27 * a * a, b) * d, b)'''
+replace = '''    delta1 = _sdiv(3 * three_ac, b) - b - _sdiv(_sdiv(27 * a * a, b) * d, b)'''
+
+[[mutation]]
+name = "sqrt_arg second term"
+find = '''    sqrt_arg = delta1**2 + _sdiv(4 * delta0**2, b) * delta0'''
+replace = '''    sqrt_arg = delta1**2 + _sdiv(delta0**2, b) * delta0'''
+
+[[mutation]]
+name = "negative b cbrt sign"
+find = '''    b_cbrt = cube_root(b) if b >= 0 else -cube_root(-b)'''
+replace = '''    b_cbrt = cube_root(abs(b))'''
+survives = "Every state reaching a negative b is refused by the chain, including one with a usable discriminant, so the value is computed and discarded. Kept because the contract has it."
+
+[[mutation]]
+name = "second cbrt sign"
+find = '''        second_cbrt = -cube_root((sqrt_val - delta1) // 2)'''
+replace = '''        second_cbrt = cube_root((sqrt_val - delta1) // 2)'''
+survives = "Reached only alongside a negative b, which the chain refuses. Same disposition."
+
+[[mutation]]
+name = "root_K0 divisor"
+find = '''    root_k0 = _sdiv(b + _sdiv(b * delta0, c1) - c1, 3)'''
+replace = '''    root_k0 = b + _sdiv(b * delta0, c1) - c1'''
+
+[[mutation]]
+name = "no fallback"
+find = '''    if sqrt_arg <= 0:
+        # No usable real root. The contract falls back rather than refusing.
+        return _newton_y(ann, gamma, xp, invariant, i), 0
+'''
+replace = ''''''
+
+[[mutation]]
+name = "negative root allowed"
+find = '''    if root < 0 or root_k0 < 0:
+        # `uint256` in the contract, so a negative here reverts on conversion.
+        raise UnsafeValues(f"negative root: y={root}, K0={root_k0}")
+'''
+replace = ''''''
+survives = "Redundant with the y-band check for a negative root; retained for a negative K0, which nothing reached."
+
+[[mutation]]
+name = "y band unchecked"
+find = '''    frac = root * PRECISION // invariant
+    if not 10**16 - 1 < frac < 10**20 + 1:
+        raise UnsafeValues(f"y out of band relative to D: {frac}")
+'''
+replace = ''''''
+
+[[mutation]]
+name = "newton never refuses"
+find = '''    raise DidNotConverge("newton_y")'''
+replace = '''    return y'''
+survives = "The single state that reaches the Newton fallback converges, so its refusal is unexercised."
+
+[[mutation]]
+name = "k0 return unscaled"
+find = '''    return root, _sdiv(PRECISION * root_k0, a)'''
+replace = '''    return root, root_k0'''

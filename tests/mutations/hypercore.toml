@@ -1,0 +1,203 @@
+# Reproduces the mutation sweep recorded for this module.
+#
+# Patterns are TOML *literal* strings on purpose: the basic form treats a
+# trailing backslash as a line continuation and eats the next line's indentation.
+source = "src/channelflow/connectors/hypercore/normalize.py"
+tests = "tests/unit/connectors/hypercore"
+
+[[mutation]]
+name = "taker sides swapped"
+find = '''_TAKER: dict[str, Literal["buy", "sell"]] = {"B": "buy", "A": "sell"}'''
+replace = '''_TAKER: dict[str, Literal["buy", "sell"]] = {"B": "sell", "A": "buy"}'''
+
+[[mutation]]
+name = "buyer-maker inverted"
+find = '''        is_buyer_maker=side == "A",'''
+replace = '''        is_buyer_maker=side == "B",'''
+
+[[mutation]]
+name = "book sides swapped"
+find = '''_BID_SIDE = 0
+_ASK_SIDE = 1'''
+replace = '''_BID_SIDE = 1
+_ASK_SIDE = 0'''
+
+[[mutation]]
+name = "crossed book allowed"
+find = '''    if bids and asks and bids[0].price >= asks[0].price:
+        raise CrossedBook(f"{context}: best bid {bids[0].price} >= best ask {asks[0].price}")
+'''
+replace = ''''''
+
+[[mutation]]
+name = "two-sides check dropped"
+find = '''    if not isinstance(levels, list) or len(levels) != 2:
+        raise NormalizationError(f"{context}: levels must be exactly two sides")
+'''
+replace = ''''''
+
+[[mutation]]
+name = "perps compacted"
+find = '''        self._perps: tuple[str, ...] = tuple(str(asset["name"]) for asset in universe)'''
+replace = '''        self._perps: tuple[str, ...] = tuple(str(a["name"]) for a in universe if not a.get("isDelisted"))'''
+
+[[mutation]]
+name = "spot keyed by position"
+find = '''        self._spot: dict[int, str] = {
+            int(pair["index"]): str(pair["name"])
+            for pair in _require(spot_meta, "universe", "spotMeta")
+        }'''
+replace = '''        self._spot: dict[int, str] = {
+            position: str(pair["name"])
+            for position, pair in enumerate(_require(spot_meta, "universe", "spotMeta"))
+        }'''
+
+[[mutation]]
+name = "hash namespace accepted"
+find = '''        if key.startswith("#"):
+            raise UnknownSymbol(
+                f"{key!r}: the '#' namespace is not established. Its values arrive in "
+                "pairs summing to one, which is consistent with binary markets and is "
+                "not evidence"
+            )
+'''
+replace = ''''''
+
+[[mutation]]
+name = "unknown spot resolved"
+find = '''        if index not in self._spot:
+            raise UnknownSymbol(f"spot pair {index} is not in this metadata read")
+'''
+replace = '''        if index not in self._spot:
+            return str(index)
+'''
+
+[[mutation]]
+name = "unknown perp accepted"
+find = '''        if key not in self._perps:
+            raise UnknownSymbol(f"{key!r} is not a perp in this metadata read")
+'''
+replace = ''''''
+
+[[mutation]]
+name = "any dex accepted"
+find = '''            if dex not in self._dexes:
+                raise UnknownSymbol(f"{key!r}: no deployed perp dex named {dex!r}")
+'''
+replace = ''''''
+
+[[mutation]]
+name = "empty asset accepted"
+find = '''            if not asset:
+                raise UnknownSymbol(f"{key!r}: no asset after the dex")
+'''
+replace = ''''''
+
+[[mutation]]
+name = "perp index unchecked"
+find = '''        if not 0 <= index < len(self._perps):
+            raise UnknownSymbol(f"perp index {index} outside the venue's {len(self._perps)}")
+'''
+replace = ''''''
+
+[[mutation]]
+name = "evm extra ignored"
+find = '''    decimals = int(_require(token, "weiDecimals", "token")) + int(
+        _require(contract, "evm_extra_wei_decimals", "evmContract")
+    )'''
+replace = '''    decimals = int(_require(token, "weiDecimals", "token"))'''
+
+[[mutation]]
+name = "missing evm contract ok"
+find = '''    if contract is None:
+        raise UnknownSymbol(f"{token.get('name')!r} has no HyperEVM contract")
+'''
+replace = '''    if contract is None:
+        contract = {"evm_extra_wei_decimals": 0}
+'''
+
+[[mutation]]
+name = "negative decimals ok"
+find = '''    if decimals < 0:
+        raise NormalizationError(f"{token.get('name')!r} resolves to {decimals} decimals")
+'''
+replace = ''''''
+
+[[mutation]]
+name = "absent funding is zero"
+find = '''        funding_rate=None if funding is None else float(funding),'''
+replace = '''        funding_rate=float(funding or 0),'''
+
+[[mutation]]
+name = "absent OI is zero"
+find = '''        open_interest_base=None if open_interest is None else float(open_interest),'''
+replace = '''        open_interest_base=float(open_interest or 0),'''
+
+[[mutation]]
+name = "basis sign flipped"
+find = '''        basis_bps = float((mark / oracle - 1) * 10_000)'''
+replace = '''        basis_bps = float((oracle / mark - 1) * 10_000)'''
+
+[[mutation]]
+name = "basis always computed"
+find = '''    if mark is not None and oracle is not None and oracle != 0:
+        basis_bps = float((mark / oracle - 1) * 10_000)'''
+replace = '''    if True:
+        basis_bps = 0.0'''
+
+[[mutation]]
+name = "mark and oracle swapped"
+find = '''        mark_price=mark,
+        # The venue's oracle price is its index: an external reference, not a
+        # figure derived from its own book.
+        index_price=oracle,'''
+replace = '''        mark_price=oracle,
+        index_price=mark,'''
+
+[[mutation]]
+name = "unknown side accepted"
+find = '''    if side not in _TAKER:
+        raise NormalizationError(f"{context}: unknown taker side {side!r}")
+'''
+replace = '''    if side not in _TAKER:
+        side = "B"
+'''
+
+[[mutation]]
+name = "trade id from hash"
+find = '''    trade_id = str(_require(raw, "tid", context))'''
+replace = '''    trade_id = str(_require(raw, "hash", context))'''
+
+[[mutation]]
+name = "ms not converted"
+find = '''            event_time_ns=int(_require(raw, "time", context)) * MS_TO_NS,
+            ingest_time_ns=ingest_time_ns,
+            sequence=int(trade_id),'''
+replace = '''            event_time_ns=int(_require(raw, "time", context)),
+            ingest_time_ns=ingest_time_ns,
+            sequence=int(trade_id),'''
+
+[[mutation]]
+name = "book ms not converted"
+find = '''    event_time_ns = int(_require(message, "time", context)) * MS_TO_NS'''
+replace = '''    event_time_ns = int(_require(message, "time", context))'''
+
+[[mutation]]
+name = "null bbo becomes zero"
+find = '''                [] if sides[_BID_SIDE] is None else [sides[_BID_SIDE]],'''
+replace = '''                [{"px": "0", "sz": "0"}] if sides[_BID_SIDE] is None else [sides[_BID_SIDE]],'''
+
+[[mutation]]
+name = "empty key accepted"
+find = '''        if not key:
+            raise UnknownSymbol("an empty key names nothing")
+'''
+replace = ''''''
+survives = "Equivalent. The fallthrough already refuses an empty key -- it is not a perp -- so the guard only improves the message."
+
+[[mutation]]
+name = "at prefix unchecked"
+find = '''            if not digits.isdigit():
+                raise UnknownSymbol(f"{key!r}: '@' must be followed by a pair index")
+'''
+replace = ''''''

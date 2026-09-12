@@ -1,0 +1,214 @@
+# Reproduces the mutation sweep recorded for this module.
+#
+# Patterns are TOML *literal* strings on purpose: the basic form treats a
+# trailing backslash as a line continuation and eats the next line's indentation.
+source = "src/channelflow/dex/curve.py"
+tests = "tests/unit/dex/test_curve.py"
+
+[[mutation]]
+name = "fee denominator 1e6"
+find = '''FEE_DENOMINATOR = 10**10'''
+replace = '''FEE_DENOMINATOR = 10**6'''
+
+[[mutation]]
+name = "A_PRECISION dropped"
+find = '''amp = state.amplification * A_PRECISION'''
+replace = '''amp = state.amplification'''
+
+[[mutation]]
+name = "xp uses raw balances"
+find = '''            rate * balance // PRECISION
+'''
+replace = '''            balance * PRECISION // PRECISION
+'''
+
+[[mutation]]
+name = "dy off by one"
+find = '''dy = xp[j] - y - 1'''
+replace = '''dy = xp[j] - y'''
+
+[[mutation]]
+name = "fee not subtracted"
+find = '''return (dy - fee) * PRECISION // state.stored_rates[j]'''
+replace = '''return dy * PRECISION // state.stored_rates[j]'''
+
+[[mutation]]
+name = "output rate ignored"
+find = '''return (dy - fee) * PRECISION // state.stored_rates[j]'''
+replace = '''return (dy - fee)'''
+
+[[mutation]]
+name = "fee at endpoints not mid"
+find = '''            (xp[i] + x) // 2,
+            (xp[j] + y) // 2,'''
+replace = '''            xp[i],
+            xp[j],'''
+
+[[mutation]]
+name = "base fee always"
+find = '''    if multiplier <= FEE_DENOMINATOR:
+        return fee
+'''
+replace = ''''''
+
+[[mutation]]
+name = "dynamic fee inverted"
+find = '''    if multiplier <= FEE_DENOMINATOR:
+        return fee'''
+replace = '''    if multiplier > FEE_DENOMINATOR:
+        return fee'''
+
+[[mutation]]
+name = "offpeg factor of four"
+find = '''(multiplier - FEE_DENOMINATOR) * 4 * xpi * xpj // xps2'''
+replace = '''(multiplier - FEE_DENOMINATOR) * xpi * xpj // xps2'''
+
+[[mutation]]
+name = "D loop skips a coin"
+find = '''        for x in xp:
+            d_p = d_p * d // x'''
+replace = '''        for x in xp[:-1]:
+            d_p = d_p * d // x'''
+
+[[mutation]]
+name = "n**n dropped"
+find = '''        d_p //= _n_to_the_n(n_coins)'''
+replace = '''        pass'''
+
+[[mutation]]
+name = "D convergence 0 not 1"
+find = '''        if abs(d - previous) <= 1:
+            return d'''
+replace = '''        if abs(d - previous) <= 0:
+            return d'''
+
+[[mutation]]
+name = "D never refuses"
+find = '''    raise DidNotConverge("get_D")'''
+replace = '''    return d'''
+
+[[mutation]]
+name = "empty pool invariant"
+find = '''    if total == 0:
+        return 0
+'''
+replace = ''''''
+
+[[mutation]]
+name = "y skips i substitution"
+find = '''        value = x if index == i else xp[index]'''
+replace = '''        value = xp[index]'''
+
+[[mutation]]
+name = "y includes j"
+find = '''        if index == j:
+            continue
+'''
+replace = ''''''
+
+[[mutation]]
+name = "y b term dropped"
+find = '''    b = total + d * A_PRECISION // ann'''
+replace = '''    b = total'''
+
+[[mutation]]
+name = "y c scaling dropped"
+find = '''    c = c * d * A_PRECISION // (ann * n_coins)'''
+replace = '''    c = c * d // (ann * n_coins)'''
+
+[[mutation]]
+name = "y never refuses"
+find = '''    raise DidNotConverge("newton_y")'''
+replace = '''    return y'''
+survives = "Six hundred thousand generated inputs never exhaust the 255-round budget, so the branch is unreachable in practice -- but unlike the underflow guard beside it, that is not provable, and removing the raise would trade a refusal for a silently wrong estimate."
+
+[[mutation]]
+name = "same-coin allowed"
+find = '''    if i == j:
+        raise WrongFamily("a coin cannot be exchanged for itself")
+'''
+replace = ''''''
+
+[[mutation]]
+name = "index range unchecked"
+find = '''    if not (0 <= i < n_coins and 0 <= j < n_coins):
+        raise IndexError(f"coin index out of range for a {n_coins}-coin pool: {i}, {j}")
+'''
+replace = ''''''
+
+[[mutation]]
+name = "meta checked last"
+find = '''    if capabilities.is_meta:
+        return PoolFamily.META_POOL
+'''
+replace = ''''''
+
+[[mutation]]
+name = "NG/plain swapped"
+find = '''            if capabilities.offpeg_fee_multiplier
+'''
+replace = '''            if not capabilities.offpeg_fee_multiplier
+'''
+
+[[mutation]]
+name = "gamma ignored"
+find = '''    if capabilities.get_dy_uint256 and capabilities.gamma:'''
+replace = '''    if capabilities.get_dy_uint256 or capabilities.gamma:'''
+
+[[mutation]]
+name = "unknown becomes stable"
+find = '''    return PoolFamily.UNKNOWN'''
+replace = '''    return PoolFamily.STABLESWAP'''
+
+[[mutation]]
+name = "rate/coin count unchecked"
+find = '''        if len(self.balances) != len(self.stored_rates):
+            raise ValueError("a rate per coin, or the indices no longer line up")
+'''
+replace = ''''''
+
+[[mutation]]
+name = "slippage sign flipped"
+find = '''                slippage_bps=(1 - effective / reference) * BPS,'''
+replace = '''                slippage_bps=(effective / reference - 1) * BPS,'''
+
+[[mutation]]
+name = "depth uses float"
+find = '''                effective_price=effective,'''
+replace = '''                effective_price=float(effective),'''
+
+[[mutation]]
+name = "unreachable reported true"
+find = '''            reached=False,'''
+replace = '''            reached=True,'''
+
+[[mutation]]
+name = "bisection off by one"
+find = '''            low = middle + 1'''
+replace = '''            low = middle'''
+
+[[mutation]]
+name = "bisection returns ceiling"
+find = '''    received, reached_at = slippage(low)'''
+replace = '''    received, reached_at = slippage(ceiling)'''
+
+[[mutation]]
+name = "zero notional allowed"
+find = '''        if notional <= 0:
+            raise ValueError(f"a notional of {notional} is not a trade")
+'''
+replace = ''''''
+
+[[mutation]]
+name = "zero ceiling allowed"
+find = '''    if ceiling <= 0:
+        raise ValueError("a ceiling of nothing cannot be searched")
+'''
+replace = ''''''
+
+[[mutation]]
+name = "zero probe allowed"
+find = '''    if probe <= 0:
+        raise ValueError("a probe of nothing prices nothing")
+'''
+replace = ''''''
