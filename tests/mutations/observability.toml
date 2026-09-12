@@ -1,0 +1,49 @@
+# Reproduces the mutation sweep recorded for the monitoring dashboard.
+#
+# Patterns are TOML *literal* strings on purpose: the basic form treats a
+# trailing backslash as a line continuation and eats the next line's indentation.
+source = "src/channelflow/observability/dashboard.py"
+tests = ["tests/unit/observability", "tests/unit/api/test_metrics_route.py"]
+
+[[mutation]]
+name = "absences are dropped from the document"
+find = '''                "absences": [
+                    {"metric": absence.metric, "reason": absence.reason}
+                    for absence in self.absences
+                ],'''
+replace = '''                "absences": [],'''
+
+[[mutation]]
+name = "absences lose their reasons"
+find = '''                    {"metric": absence.metric, "reason": absence.reason}'''
+replace = '''                    {"metric": absence.metric, "reason": ""}'''
+
+[[mutation]]
+name = "the dashboard carries no absences"
+find = '''    absences=stated_absences(),'''
+replace = '''    absences=(),'''
+
+[[mutation]]
+name = "absences are transcribed, not derived"
+find = '''    return tuple(
+        Absence(metric=metric, reason=reason)
+        for metric, reason in sorted(unimplemented_reasons().items())
+    )'''
+replace = '''    return (Absence(metric="queue depth", reason="there is no queue"),)'''
+
+[[mutation]]
+name = "a panel queries an unproduced metric"
+find = '''            metric=STALE_FEEDS,'''
+replace = '''            metric="queue depth",'''
+
+[[mutation]]
+name = "panels are not comparable by value"
+find = '''@dataclass(frozen=True)
+class Panel:'''
+replace = '''@dataclass(frozen=True, eq=False)
+class Panel:'''
+
+[[mutation]]
+name = "queried metrics reports nothing"
+find = '''    return frozenset(panel.metric for panel in dashboard.panels)'''
+replace = '''    return frozenset()'''

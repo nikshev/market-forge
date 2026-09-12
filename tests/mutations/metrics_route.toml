@@ -1,0 +1,18 @@
+# The exposition endpoint's own decisions.
+source = "src/channelflow/api/metrics_route.py"
+tests = "tests/unit/api/test_metrics_route.py"
+
+[[mutation]]
+name = "the content type loses its version"
+find = '''CONTENT_TYPE = "text/plain; version=0.0.4; charset=utf-8"'''
+replace = '''CONTENT_TYPE = "text/plain; charset=utf-8"'''
+
+[[mutation]]
+name = "the route joins the read api"
+find = '''@router.get("/metrics")'''
+replace = '''@router.get("/api/v1/metrics")'''
+
+[[mutation]]
+name = "an empty exposition becomes a placeholder"
+find = '''    return Response(content=registry.render(), media_type=CONTENT_TYPE)'''
+replace = '''    return Response(content=registry.render() or "# no metrics\\n", media_type=CONTENT_TYPE)'''
