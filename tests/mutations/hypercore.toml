@@ -193,7 +193,7 @@ find = '''        if not key:
             raise UnknownSymbol("an empty key names nothing")
 '''
 replace = ''''''
-survives = "Equivalent. The fallthrough already refuses an empty key -- it is not a perp -- so the guard only improves the message."
+survives = "Equivalent. The fallthrough already refuses an empty key -- it is not a perp -- so the guard only improves the message, which no value comparison can see."
 
 [[mutation]]
 name = "at prefix unchecked"
@@ -201,3 +201,18 @@ find = '''            if not digits.isdigit():
                 raise UnknownSymbol(f"{key!r}: '@' must be followed by a pair index")
 '''
 replace = ''''''
+
+[[mutation]]
+name = "a stale book is served anyway"
+find = '''    if age > max_age_ns:'''
+replace = '''    if False and age > max_age_ns:'''
+
+[[mutation]]
+name = "the freshness bound is not required"
+find = '''    if max_age_ns <= 0:'''
+replace = '''    if False and max_age_ns <= 0:'''
+
+[[mutation]]
+name = "book age is clamped at zero"
+find = '''    return now_ns - snapshot.meta.event_time_ns'''
+replace = '''    return max(0, now_ns - snapshot.meta.event_time_ns)'''

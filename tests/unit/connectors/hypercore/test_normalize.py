@@ -20,13 +20,16 @@ from channelflow.connectors.hypercore.normalize import (
     CrossedBook,
     Namespace,
     NormalizationError,
+    StaleBook,
     SymbolTable,
     UnknownSymbol,
     asset_context,
     best_bid_offer,
+    book_age_ns,
     evm_wei,
     order_book,
     public_trade,
+    require_fresh,
 )
 
 FIXTURE = Path(__file__).resolve().parents[3] / "fixtures" / "hypercore" / "info.jsonl"
@@ -498,3 +501,40 @@ def test_trades_and_quotes_share_a_recording() -> None:
     assert channels == {"trades", "bbo"}
     ordered = [row["received_ns"] for row in STREAM]
     assert ordered == sorted(ordered)
+
+
+# --- book freshness (§18.25) ---------------------------------------------------
+
+
+@pytest.mark.trace("REQ-WP-052")
+def test_a_book_older_than_the_caller_allows_is_refused() -> None:
+    """The venue closes without a close frame, so a consumer holding the last
+    book it received cannot tell a quiet market from a dead socket. An old book
+    is not a wrong book -- it is a right book about a moment that has passed.
+    """
+    snapshot = order_book(BOOKS[0]["body"], market_type="perp", ingest_time_ns=7)
+    stamped = snapshot.meta.event_time_ns
+
+    assert require_fresh(snapshot, now_ns=stamped + 500, max_age_ns=1_000) is snapshot
+    with pytest.raises(StaleBook, match="past the"):
+        require_fresh(snapshot, now_ns=stamped + 1_001, max_age_ns=1_000)
+
+
+@pytest.mark.trace("REQ-WP-052")
+def test_the_freshness_bound_has_no_default() -> None:
+    """How old is too old depends on what the book is for: a depth curve
+    tolerates more than a quote."""
+    snapshot = order_book(BOOKS[0]["body"], market_type="perp", ingest_time_ns=7)
+    for bound in (0, -1):
+        with pytest.raises(ValueError, match="freshness bound"):
+            require_fresh(snapshot, now_ns=snapshot.meta.event_time_ns, max_age_ns=bound)
+
+
+@pytest.mark.trace("REQ-WP-052")
+def test_a_book_age_is_signed_so_clock_skew_is_visible() -> None:
+    """A venue clock ahead of ours is a fact about the pair of clocks. Clamping
+    it to zero would turn a skew problem into a book that is eternally fresh."""
+    snapshot = order_book(BOOKS[0]["body"], market_type="perp", ingest_time_ns=7)
+    stamped = snapshot.meta.event_time_ns
+    assert book_age_ns(snapshot, now_ns=stamped + 5) == 5
+    assert book_age_ns(snapshot, now_ns=stamped - 5) == -5

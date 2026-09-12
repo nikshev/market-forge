@@ -12,7 +12,7 @@ covers: [REQ-WP-014, REQ-WP-015, REQ-WP-045, REQ-WP-046, REQ-WP-047, REQ-WP-048,
 not_delivered:
   - "Curve twocrypto quoting: [[REQ-WP-046]] classifies it and quotes Stableswap-NG and tricrypto; the deployed twocrypto version has no matching published source"
   - "Uniswap v4 executable quoting for CUSTOM_ACCOUNTING pools: [[REQ-WP-047]] routes, classifies and refuses them; nothing quotes them"
-  - "HyperEVM ingestion profile and HyperCore socket recovery: [[REQ-WP-048]] normalizes HyperCore market data; the EVM profile and reconnect/snapshot recovery are not built"
+  - "HyperEVM protocol decoders and cross-layer transfers: [[REQ-WP-052]] profiles the chain and recovers the socket; no DEX on that chain is registered and no transfer events are tracked"
   - "Iceberg canonical DeFi tables: the plane is Iceberg since [[REQ-WP-039]], and no DeFi table is defined on it"
   - "Pinot HOT DeFi datasets: deferred by ADR-002 until a HOT serving requirement exists, not missing by oversight"
   - "UI liquidity/depth overlay: the web app has no DEX overlay"

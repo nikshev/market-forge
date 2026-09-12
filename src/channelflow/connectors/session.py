@@ -167,7 +167,26 @@ OKX = VenuePolicy(
     ping_payload="ping",
 )
 
-POLICIES: dict[str, VenuePolicy] = {policy.venue: policy for policy in (BINANCE, BYBIT, OKX)}
+#: HyperCore closed an idle connection at 60.6 seconds with no close frame --
+#: the same shape as Bybit, and the same consequence: silence is the only signal
+#: there is. Pinging `{"method":"ping"}` every twenty seconds survived a
+#: hundred, answered `{"channel":"pong"}`.
+#:
+#: A fourth venue and a fourth payload convention. Binance is pinged by the
+#: venue; Bybit sends `{"op":"ping"}`; OKX sends the bare string `ping`; this one
+#: sends `{"method":"ping"}`. Nothing about a venue's name predicts it.
+HYPERCORE = VenuePolicy(
+    venue="hyperliquid",
+    keepalive=Keepalive.CLIENT_INITIATED,
+    idle_timeout_ns=60 * SECOND_NS,
+    client_ping_interval_ns=20 * SECOND_NS,
+    ping_payload='{"method":"ping"}',
+    announces_close=False,
+)
+
+POLICIES: dict[str, VenuePolicy] = {
+    policy.venue: policy for policy in (BINANCE, BYBIT, OKX, HYPERCORE)
+}
 
 
 @dataclass

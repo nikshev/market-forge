@@ -386,3 +386,44 @@ def asset_context(
         open_interest_base=None if open_interest is None else float(open_interest),
         basis_bps=basis_bps,
     )
+
+
+class StaleBook(NormalizationError):
+    """The book on hand is older than the caller is willing to act on.
+
+    Section 18.25 lists "book freshness" among what a HyperCore adapter must
+    get right, and the reason is the venue's own measured behaviour: it closes
+    an idle connection without a close frame ([[REQ-WP-051]]). A consumer
+    holding the last book it received has no way to tell a quiet market from a
+    dead socket, and an old book is not a wrong book -- it is a right book about
+    a moment that has passed, which is worse, because every check it passes it
+    passes honestly.
+    """
+
+
+def book_age_ns(snapshot: BookSnapshot, *, now_ns: int) -> int:
+    """How long ago the venue stamped this book.
+
+    Signed deliberately. A negative age means the venue's clock is ahead of
+    ours, which is a fact about the pair of clocks and not something to clamp
+    to zero -- clamping would turn a clock-skew problem into a book that is
+    eternally fresh.
+    """
+    return now_ns - snapshot.meta.event_time_ns
+
+
+def require_fresh(snapshot: BookSnapshot, *, now_ns: int, max_age_ns: int) -> BookSnapshot:
+    """The same book, or a refusal.
+
+    `max_age_ns` has no default. How old is too old depends on what the book is
+    for -- a depth curve tolerates more than a quote -- and a default here would
+    be this module deciding that for every caller.
+    """
+    if max_age_ns <= 0:
+        raise ValueError("a book younger than no time at all is not a freshness bound")
+    age = book_age_ns(snapshot, now_ns=now_ns)
+    if age > max_age_ns:
+        raise StaleBook(
+            f"{snapshot.meta.symbol}: the book is {age}ns old, past the {max_age_ns}ns allowed"
+        )
+    return snapshot
