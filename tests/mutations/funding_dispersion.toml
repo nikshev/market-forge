@@ -1,0 +1,97 @@
+# Reproduces the mutation sweep recorded for cross-venue funding dispersion.
+#
+# Patterns are TOML *literal* strings on purpose: the basic form treats a
+# trailing backslash as a line continuation and eats the next line's indentation.
+source = "src/channelflow/crossvenue/funding.py"
+tests = "tests/unit/crossvenue/test_funding_dispersion.py"
+
+[[mutation]]
+name = "rates not normalised"
+find = '''        reading.venue_id: normalise(
+            reading.rate,
+            from_interval_ns=reading.interval_ns,
+            to_interval_ns=to_interval_ns,
+        )'''
+replace = '''        reading.venue_id: reading.rate * BPS'''
+
+[[mutation]]
+name = "normalisation inverted"
+find = '''    return rate * BPS * (to_interval_ns / from_interval_ns)'''
+replace = '''    return rate * BPS * (from_interval_ns / to_interval_ns)'''
+
+[[mutation]]
+name = "normalisation compounds"
+find = '''    return rate * BPS * (to_interval_ns / from_interval_ns)'''
+replace = '''    return ((1 + rate) ** (to_interval_ns / from_interval_ns) - 1) * BPS'''
+
+[[mutation]]
+name = "spread taken over absolutes"
+find = '''        spread_bps=max(values) - min(values),'''
+replace = '''        spread_bps=max(abs(value) for value in values) - min(abs(value) for value in values),'''
+
+[[mutation]]
+name = "stale readings carried forward"
+find = '''        if age_ns > reading.interval_ns:'''
+replace = '''        if False and age_ns > reading.interval_ns:'''
+
+[[mutation]]
+name = "staleness a fixed eight hours"
+find = '''        if age_ns > reading.interval_ns:'''
+replace = '''        if age_ns > 8 * 3600 * 10**9:'''
+
+[[mutation]]
+name = "future readings admitted"
+find = '''        if reading.observed_at_ns > at_ns:'''
+replace = '''        if False and reading.observed_at_ns > at_ns:'''
+
+[[mutation]]
+name = "one venue is a dispersion"
+find = '''    if len(eligible) < 2:'''
+replace = '''    if len(eligible) < 1:'''
+
+[[mutation]]
+name = "interval from the first gap"
+find = '''    middle = statistics.median(gaps)'''
+replace = '''    middle = gaps[0]'''
+
+[[mutation]]
+name = "irregular schedules accepted"
+find = '''        if abs(gap - middle) / middle > SCHEDULE_TOLERANCE:'''
+replace = '''        if False and abs(gap - middle) / middle > SCHEDULE_TOLERANCE:'''
+
+[[mutation]]
+name = "two settlements are a schedule"
+find = '''    if len(stamps) < 3:'''
+replace = '''    if len(stamps) < 2:'''
+
+[[mutation]]
+name = "settlements need not advance"
+find = '''    if any(gap <= 0 for gap in gaps):'''
+replace = '''    if False and any(gap <= 0 for gap in gaps):'''
+
+[[mutation]]
+name = "zero interval accepted on a reading"
+find = '''        if self.interval_ns <= 0:'''
+replace = '''        if False and self.interval_ns <= 0:'''
+
+[[mutation]]
+name = "zero interval accepted in normalise"
+find = '''    if from_interval_ns <= 0 or to_interval_ns <= 0:'''
+replace = '''    if False and (from_interval_ns <= 0 or to_interval_ns <= 0):'''
+
+[[mutation]]
+name = "reporting interval not required"
+find = '''    if to_interval_ns <= 0:
+        raise ValueError("a dispersion needs an interval to express itself over")'''
+replace = '''    if False:
+        raise ValueError("a dispersion needs an interval to express itself over")'''
+
+[[mutation]]
+name = "median is the mean"
+find = '''        median_bps=statistics.median(values),'''
+replace = '''        median_bps=statistics.fmean(values),'''
+
+[[mutation]]
+name = "exclusions not reported"
+find = '''        excluded=excluded,'''
+replace = '''        excluded={},'''
