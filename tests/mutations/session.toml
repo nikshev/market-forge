@@ -19,8 +19,10 @@ replace = '''    idle_timeout_ns=60 * SECOND_NS,
 
 [[mutation]]
 name = "bybit announces its closes"
-find = '''    announces_close=False,'''
-replace = '''    announces_close=True,'''
+find = '''    ping_payload='{"op":"ping"}',
+    announces_close=False,'''
+replace = '''    ping_payload='{"op":"ping"}',
+    announces_close=True,'''
 
 [[mutation]]
 name = "silent drops not inferred"
@@ -105,3 +107,15 @@ replace = '''            if False:'''
 name = "a payloadless ping policy is accepted"
 find = '''            if self.ping_payload is None or self.client_ping_interval_ns is None:'''
 replace = '''            if False:'''
+
+[[mutation]]
+name = "hypercore payload is bybit's"
+find = '''    ping_payload='{"method":"ping"}','''
+replace = '''    ping_payload='{"op":"ping"}','''
+
+[[mutation]]
+name = "hypercore announces its closes"
+find = '''    ping_payload='{"method":"ping"}',
+    announces_close=False,'''
+replace = '''    ping_payload='{"method":"ping"}',
+    announces_close=True,'''

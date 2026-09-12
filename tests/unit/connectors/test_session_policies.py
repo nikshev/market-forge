@@ -13,6 +13,7 @@ import pytest
 from channelflow.connectors.session import (
     BINANCE,
     BYBIT,
+    HYPERCORE,
     OKX,
     POLICIES,
     SECOND_NS,
@@ -70,12 +71,40 @@ def test_the_three_venues_do_not_share_a_keepalive_convention() -> None:
 
 
 @pytest.mark.trace("REQ-WP-051")
-def test_the_two_client_pinging_venues_do_not_share_a_payload() -> None:
-    """OKX's ping is a bare string and Bybit's is JSON, which is why the payload
-    is carried rather than assembled from a venue's name."""
-    assert BYBIT.ping_payload == '{"op":"ping"}'
-    assert OKX.ping_payload == "ping"
-    assert BYBIT.ping_payload != OKX.ping_payload
+def test_the_client_pinging_venues_do_not_share_a_payload() -> None:
+    """Bybit's is JSON, OKX's is a bare string, HyperCore's is different JSON.
+    Four venues, four conventions, and nothing about a venue's name predicts
+    which -- which is why the payload is carried rather than assembled."""
+    payloads = [BYBIT.ping_payload, OKX.ping_payload, HYPERCORE.ping_payload]
+    assert payloads == ['{"op":"ping"}', "ping", '{"method":"ping"}']
+    assert len(set(payloads)) == 3
+
+
+@pytest.mark.trace("REQ-WP-052")
+def test_hypercore_measures_the_same_shape_as_bybit_and_is_a_separate_policy() -> None:
+    """Both close an idle connection at sixty seconds without a close frame, so
+    both read silence as a drop -- and they still disagree about the payload,
+    which is why matching one venue's timeout does not license copying its
+    policy."""
+    assert HYPERCORE.idle_timeout_ns == BYBIT.idle_timeout_ns == 60 * SECOND_NS
+    assert HYPERCORE.announces_close is False
+    assert HYPERCORE.ping_payload != BYBIT.ping_payload
+
+
+@pytest.mark.trace("REQ-WP-052")
+def test_hypercore_drives_the_shared_session_unchanged() -> None:
+    """The point of [[REQ-WP-051]]: a fourth venue is a policy, not a module."""
+    session, transport, clock = _session(HYPERCORE)
+    assert HYPERCORE.client_ping_interval_ns is not None
+    clock.advance_ns(HYPERCORE.client_ping_interval_ns)
+    session.tick()
+    assert transport.sent == ['{"method":"ping"}']
+
+    assert HYPERCORE.idle_timeout_ns is not None
+    clock.advance_ns(HYPERCORE.idle_timeout_ns + 1)
+    session.tick()
+    assert session.metrics.silent_drops == 1
+    assert session.needs_snapshot is True
 
 
 @pytest.mark.trace("REQ-WP-051")

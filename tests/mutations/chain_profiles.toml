@@ -1,0 +1,50 @@
+# Reproduces the mutation sweep recorded for the chain profiles.
+#
+# Patterns are TOML *literal* strings on purpose: the basic form treats a
+# trailing backslash as a line continuation and eats the next line's indentation.
+source = "src/channelflow/chain/profiles.py"
+tests = "tests/unit/chain/test_profiles.py"
+
+[[mutation]]
+name = "hyperevm given ethereum's depths"
+find = '''    finality=FinalityPolicy(head_confirmed_depth=1, safe_depth=1, finalized_depth=1),'''
+replace = '''    finality=FinalityPolicy(head_confirmed_depth=1, safe_depth=12, finalized_depth=64),'''
+
+[[mutation]]
+name = "hyperevm given ethereum's block time"
+find = '''    block_time_ns=SECOND_NS,
+    finality=FinalityPolicy(head_confirmed_depth=1, safe_depth=1, finalized_depth=1),'''
+replace = '''    block_time_ns=12 * SECOND_NS,
+    finality=FinalityPolicy(head_confirmed_depth=1, safe_depth=1, finalized_depth=1),'''
+
+[[mutation]]
+name = "hyperevm chain id is ethereum's"
+find = '''    chain_id=999,'''
+replace = '''    chain_id=1,'''
+
+[[mutation]]
+name = "an unknown chain falls back"
+find = '''    if chain_id not in PROFILES:
+        raise UnknownChain('''
+replace = '''    if False:
+        raise UnknownChain('''
+
+[[mutation]]
+name = "time to finality ignores block time"
+find = '''        return self.finality.finalized_depth * self.block_time_ns / SECOND_NS'''
+replace = '''        return self.finality.finalized_depth / SECOND_NS'''
+
+[[mutation]]
+name = "time to finality uses the safe depth"
+find = '''        return self.finality.finalized_depth * self.block_time_ns / SECOND_NS'''
+replace = '''        return self.finality.safe_depth * self.block_time_ns / SECOND_NS'''
+
+[[mutation]]
+name = "one endpoint is a strategy"
+find = '''        if len(self.rpcs) < 2:'''
+replace = '''        if False and len(self.rpcs) < 2:'''
+
+[[mutation]]
+name = "a chain id of zero is accepted"
+find = '''        if self.chain_id < 1:'''
+replace = '''        if False and self.chain_id < 1:'''
