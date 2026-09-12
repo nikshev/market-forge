@@ -195,8 +195,27 @@ class Schema:
                     "content hash would agree with both"
                 )
             parts.append(_TAG[column.type])
-            parts.append(_length_prefixed(_encode(column.type, row[column.name])))
+            value = row[column.name]
+            if value is None:
+                # A null is its own thing, and it hashes as one. Every column in
+                # this project's schemas is nullable in Arrow, and until a table
+                # needed one ([[REQ-WP-053]]) nothing had ever written a null --
+                # so `_encode` refused every type's None and the refusal read as
+                # a type error from three layers down.
+                #
+                # The type tag stays, so a null string and a null decimal in the
+                # same position are still different rows.
+                parts.append(_NULL_LENGTH)
+                continue
+            parts.append(_length_prefixed(_encode(column.type, value)))
         return b"".join(parts)
+
+
+#: A length no payload can have -- four gigabytes, against rows measured in
+#: bytes. It marks a null, and it is a *length* rather than a new tag on purpose:
+#: every non-null value's bytes are unchanged by this, so no content hash
+#: already recorded in the registry moves.
+_NULL_LENGTH = struct.pack("<I", 0xFFFFFFFF)
 
 
 def _length_prefixed(payload: bytes) -> bytes:

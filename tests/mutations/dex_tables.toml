@@ -1,0 +1,27 @@
+# Reproduces the mutation sweep recorded for the canonical DeFi tables and the
+# null handling they exposed in the lakehouse.
+#
+# Patterns are TOML *literal* strings on purpose: the basic form treats a
+# trailing backslash as a line continuation and eats the next line's indentation.
+source = "src/channelflow/lakehouse/schema.py"
+tests = ["tests/unit/lakehouse", "tests/unit/tables"]
+
+[[mutation]]
+name = "a null encodes as an empty payload"
+find = '''                parts.append(_NULL_LENGTH)'''
+replace = '''                parts.append(_length_prefixed(b""))'''
+
+[[mutation]]
+name = "a null drops its type tag"
+find = '''            parts.append(_TAG[column.type])
+            value = row[column.name]
+            if value is None:'''
+replace = '''            value = row[column.name]
+            if value is None:'''
+
+[[mutation]]
+name = "a missing column is treated as a null"
+find = '''            if column.name not in row:
+                raise UnknownColumn('''
+replace = '''            if False:
+                raise UnknownColumn('''

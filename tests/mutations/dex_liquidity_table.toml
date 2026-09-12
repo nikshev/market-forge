@@ -1,0 +1,20 @@
+# The liquidity table's own decisions.
+source = "src/channelflow/tables/dex_liquidity.py"
+tests = "tests/unit/tables/test_dex_tables.py"
+
+[[mutation]]
+name = "liquidity delta loses its sign"
+find = '''        "liquidity_delta": str(event.liquidity_delta),'''
+replace = '''        "liquidity_delta": str(abs(event.liquidity_delta)),'''
+
+[[mutation]]
+name = "the kind is derived from the sign"
+find = '''        "event_type": event.event_type,'''
+replace = '''        "event_type": "burn" if event.liquidity_delta < 0 else "mint",'''
+
+[[mutation]]
+name = "delta not restored to an integer"
+find = '''        elif name in _BIG_INTEGERS:
+            restored[name] = int(str(value))'''
+replace = '''        elif name in _BIG_INTEGERS:
+            restored[name] = value'''
