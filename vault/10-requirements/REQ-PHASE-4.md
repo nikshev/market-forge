@@ -8,12 +8,11 @@ phase: 4
 status: planned
 depends_on: ["REQ-PHASE-3"]
 tags: []
-covers: [REQ-WP-014, REQ-WP-015, REQ-WP-045, REQ-WP-046, REQ-WP-047, REQ-WP-048, REQ-ASSET-001, REQ-BIAS-006, REQ-EXP-007]
+covers: [REQ-WP-014, REQ-WP-015, REQ-WP-045, REQ-WP-046, REQ-WP-047, REQ-WP-048, REQ-WP-058, REQ-ASSET-001, REQ-BIAS-006, REQ-EXP-007]
 not_delivered:
   - "Curve twocrypto quoting: [[REQ-WP-046]] classifies it and quotes Stableswap-NG and tricrypto; the deployed twocrypto version has no matching published source"
   - "Uniswap v4 executable quoting for CUSTOM_ACCOUNTING pools: [[REQ-WP-047]] routes, classifies and refuses them; nothing quotes them"
-  - "HyperEVM protocol decoders and cross-layer transfers: [[REQ-WP-052]] profiles the chain and recovers the socket; no DEX on that chain is registered and no transfer events are tracked"
-  - "Iceberg `LiquidityState` table: [[REQ-WP-053]] defines swaps, liquidity changes and depth curves; §18.12.2 waits for something that reconstructs a pool state"
+  - "Iceberg `LiquidityState` table: [[REQ-WP-053]] defines swaps, liquidity changes and depth curves; §18.12.2 waits for something that reconstructs a pool state, which on HyperEVM needs an archive node no public endpoint provides ([[ADR-067]])"
   - "Pinot HOT DeFi datasets: deferred by ADR-002 until a HOT serving requirement exists, not missing by oversight"
   - "UI liquidity/depth rendering: [[REQ-WP-054]] serves the bands and decides what to draw; nothing draws them, and §27.3's DEX panes are not built"
 ---
@@ -90,19 +89,22 @@ requirement exists and has reached `implemented`.
 
 - [[REQ-WP-014]]
 - [[REQ-WP-015]]
+- [[REQ-WP-045]]
+- [[REQ-WP-046]]
+- [[REQ-WP-047]]
+- [[REQ-WP-048]]
+- [[REQ-WP-058]]
 - [[REQ-ASSET-001]]
 - [[REQ-BIAS-006]]
 - [[REQ-EXP-007]]
 
 **Not delivered:**
 
-- Aerodrome Slipstream and v2 adapters: not built
-- Curve Stableswap-NG/Cryptoswap adapter: not built
-- Uniswap v4 PoolManager adapter and hook safety classification: not built
-- HyperCore CLOB adapter and HyperEVM ingestion profile: not built
-- Iceberg canonical DeFi tables: no Parquet/Iceberg plane exists; the API reads from an in-memory repository ([[ADR-019]])
+- Curve twocrypto quoting: [[REQ-WP-046]] classifies it and quotes Stableswap-NG and tricrypto; the deployed twocrypto version has no matching published source
+- Uniswap v4 executable quoting for `CUSTOM_ACCOUNTING` pools: [[REQ-WP-047]] routes, classifies and refuses them; nothing quotes them
+- Iceberg `LiquidityState` table: [[REQ-WP-053]] defines swaps, liquidity changes and depth curves; §18.12.2 waits for something that reconstructs a pool state, which on HyperEVM needs an archive node no public endpoint provides ([[ADR-067]])
 - Pinot HOT DeFi datasets: deferred by [[ADR-002]] until a HOT serving requirement exists, not missing by oversight
-- UI liquidity/depth overlay: the web app has no DEX overlay
+- UI liquidity/depth rendering: [[REQ-WP-054]] serves the bands and decides what to draw; nothing draws them, and §27.3's DEX panes are not built
 
 This phase is `planned` rather than `implemented` because that list is not
 empty. A phase is its deliverables; a phase with a missing deliverable is a
