@@ -149,5 +149,12 @@ jobs:
       - name: Frontend build
         run: make web-build
 
+      # An acceptance audit rather than a regression gate: it answers whether the
+      # tests are worth having. In CI because a number nobody else can reproduce
+      # is not evidence, and because a drifted pattern or a stale "this survives
+      # because" is a regression nothing else catches. 151 mutations, ~250s.
+      - name: Mutation sweep
+        run: make mutate
+
       - name: Traceability coverage
         run: make validate

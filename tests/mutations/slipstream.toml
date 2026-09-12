@@ -1,0 +1,114 @@
+# Reproduces the mutation sweep recorded for this module.
+#
+# Patterns are TOML *literal* strings on purpose: the basic form treats a
+# trailing backslash as a line continuation and eats the next line's indentation.
+source = "src/channelflow/dex/slipstream.py"
+tests = "tests/unit/dex/test_slipstream.py"
+
+[[mutation]]
+name = "cap not applied"
+find = '''total = min(total, fee_cap)'''
+replace = '''total = total'''
+
+[[mutation]]
+name = "cap becomes a floor"
+find = '''total = min(total, fee_cap)'''
+replace = '''total = max(total, fee_cap)'''
+
+[[mutation]]
+name = "floor instead of truncate"
+find = '''    quotient = abs(numerator) // denominator
+    return quotient if numerator >= 0 else -quotient'''
+replace = '''    return numerator // denominator'''
+
+[[mutation]]
+name = "dynamic term keeps sign"
+find = '''return abs(delta) * scaling_factor // PIPS'''
+replace = '''return delta * scaling_factor // PIPS'''
+
+[[mutation]]
+name = "scaling precision dropped"
+find = '''return abs(delta) * scaling_factor // PIPS'''
+replace = '''return abs(delta) * scaling_factor'''
+
+[[mutation]]
+name = "unset base fee inverted"
+find = '''base_fee = schedule.base_fee if schedule.base_fee != 0 else spacing_default'''
+replace = '''base_fee = spacing_default if schedule.base_fee != 0 else schedule.base_fee'''
+
+[[mutation]]
+name = "zero sentinel ignored"
+find = '''    if schedule.base_fee == ZERO_FEE_INDICATOR:
+        return 0
+'''
+replace = ''''''
+
+[[mutation]]
+name = "cardinality guard off by one"
+find = '''if oracle.observation_cardinality < seconds_ago // MIN_SECONDS_AGO:'''
+replace = '''if oracle.observation_cardinality < seconds_ago // MIN_SECONDS_AGO - 1:'''
+
+[[mutation]]
+name = "cardinality guard inverted"
+find = '''if oracle.observation_cardinality < seconds_ago // MIN_SECONDS_AGO:'''
+replace = '''if oracle.observation_cardinality > seconds_ago // MIN_SECONDS_AGO:'''
+
+[[mutation]]
+name = "revert guard removed"
+find = '''    if oracle.tick_cumulatives is None:
+        return 0
+'''
+replace = ''''''
+
+[[mutation]]
+name = "discount floors"
+find = '''total -= (total * discount_pips + PIPS - 1) // PIPS'''
+replace = '''total -= total * discount_pips // PIPS'''
+
+[[mutation]]
+name = "discount added"
+find = '''total -= (total * discount_pips + PIPS - 1) // PIPS'''
+replace = '''total += (total * discount_pips + PIPS - 1) // PIPS'''
+
+[[mutation]]
+name = "only scaling substituted"
+find = '''scaling_factor, fee_cap = defaults.scaling_factor, defaults.fee_cap'''
+replace = '''scaling_factor = defaults.scaling_factor'''
+
+[[mutation]]
+name = "initial fee branch removed"
+find = '''    if schedule.initial_fee_enabled and not oracle.observation_is_current:'''
+replace = '''    if False:'''
+
+[[mutation]]
+name = "initial fee sentinel gone"
+find = '''        if schedule.initial_fee == ZERO_FEE_INDICATOR:
+            return 0
+'''
+replace = ''''''
+
+[[mutation]]
+name = "initial fee unset ignored"
+find = '''        if schedule.initial_fee == 0:
+            return base_fee
+'''
+replace = ''''''
+
+[[mutation]]
+name = "int24 wrap is identity"
+find = '''    return (value + _INT24_MAX + 1) % _INT24_SPAN - _INT24_MAX - 1'''
+replace = '''    return value'''
+
+[[mutation]]
+name = "unknown fee tolerated"
+find = '''    if observed_fee is None:
+        raise UnknownFee(address)'''
+replace = '''    if observed_fee is None:
+        observed_fee = 0'''
+
+[[mutation]]
+name = "spacing guard removed"
+find = '''    if tick_spacing not in spacing_defaults:
+        raise SpacingNotEnabled(tick_spacing)
+'''
+replace = ''''''

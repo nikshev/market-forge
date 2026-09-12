@@ -2,7 +2,7 @@ VENV := .venv
 PY   := $(VENV)/bin/python
 PIP  := uv pip install --python $(PY)
 
-.PHONY: venv install test lint markers trace validate dashboard graph clean index \
+.PHONY: venv install test lint markers trace validate dashboard graph clean index mutate \
 	web-install web-typecheck web-test web-build
 
 venv:
@@ -68,6 +68,13 @@ trace: markers
 
 validate: markers
 	$(PY) -m tools.trace.cli validate
+
+# The acceptance audit: change the source in ways that should break something,
+# and see whether anything breaks. Slower than the suite by the number of
+# mutations -- about 1.7 seconds each -- so it is a step of its own rather than
+# part of `test` (REQ-INFRA-004, ADR-065).
+mutate:
+	$(PY) -m tools.mutate
 
 dashboard: markers
 	$(PY) -m tools.trace.cli dashboard

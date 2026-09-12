@@ -1,0 +1,32 @@
+# Reproduces the mutation sweep recorded for this module.
+#
+# Patterns are TOML *literal* strings on purpose: the basic form treats a
+# trailing backslash as a line continuation and eats the next line's indentation.
+source = "src/channelflow/dex/aerodrome.py"
+tests = "tests/unit/dex/test_slipstream.py"
+
+[[mutation]]
+name = "v2 missing stable assumed"
+find = '''    if stable is None:
+        raise UnknownFamily(f"{factory}: a v2 pool must answer stable()")'''
+replace = '''    if stable is None:
+        stable = False'''
+
+[[mutation]]
+name = "unknown factory assumed CL"
+find = '''    if address != V2_FACTORY:
+        raise UnknownFamily(factory)'''
+replace = '''    if address != V2_FACTORY:
+        return PoolFamily.SLIPSTREAM_CL'''
+
+[[mutation]]
+name = "stable/volatile swapped"
+find = '''return PoolFamily.V2_STABLE if stable else PoolFamily.V2_VOLATILE'''
+replace = '''return PoolFamily.V2_VOLATILE if stable else PoolFamily.V2_STABLE'''
+
+[[mutation]]
+name = "one CL factory known"
+find = '''        "0xade65c38cd4849adba595a4323a8c7ddfe89716a",
+        "0xf8f2eb4940cfe7d13603dddd87f123820fc061ef",
+'''
+replace = ''''''
