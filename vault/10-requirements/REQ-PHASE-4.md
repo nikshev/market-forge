@@ -8,11 +8,11 @@ phase: 4
 status: planned
 depends_on: ["REQ-PHASE-3"]
 tags: []
-covers: [REQ-WP-014, REQ-WP-015, REQ-WP-045, REQ-WP-046, REQ-WP-047, REQ-ASSET-001, REQ-BIAS-006, REQ-EXP-007]
+covers: [REQ-WP-014, REQ-WP-015, REQ-WP-045, REQ-WP-046, REQ-WP-047, REQ-WP-048, REQ-ASSET-001, REQ-BIAS-006, REQ-EXP-007]
 not_delivered:
   - "Curve twocrypto quoting: [[REQ-WP-046]] classifies it and quotes Stableswap-NG and tricrypto; the deployed twocrypto version has no matching published source"
   - "Uniswap v4 executable quoting for CUSTOM_ACCOUNTING pools: [[REQ-WP-047]] routes, classifies and refuses them; nothing quotes them"
-  - "HyperCore CLOB adapter and HyperEVM ingestion profile: not built"
+  - "HyperEVM ingestion profile and HyperCore socket recovery: [[REQ-WP-048]] normalizes HyperCore market data; the EVM profile and reconnect/snapshot recovery are not built"
   - "Iceberg canonical DeFi tables: the plane is Iceberg since [[REQ-WP-039]], and no DeFi table is defined on it"
   - "Pinot HOT DeFi datasets: deferred by ADR-002 until a HOT serving requirement exists, not missing by oversight"
   - "UI liquidity/depth overlay: the web app has no DEX overlay"
