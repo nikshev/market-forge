@@ -189,12 +189,18 @@ jobs:
           done
           # The refusal, not only the success: a composition root that defaulted
           # would start here too, and serve an empty warehouse.
-          if docker run --rm channelflow-api:ci \
-              uvicorn channelflow.api.main:application --factory 2>&1 \
-              | grep -q "CHANNELFLOW_CATALOG_URI"; then
+          #
+          # The output is captured before it is searched. As a pipeline under
+          # `set -o pipefail` the status is `docker run`'s, and `docker run`
+          # fails here **because the refusal worked** -- so the check reported
+          # the opposite of what it saw. It passed locally in a shell without
+          # pipefail, which is why it reached CI.
+          refusal=$(docker run --rm channelflow-api:ci \
+              uvicorn channelflow.api.main:application --factory 2>&1 || true)
+          if printf '%s' "$refusal" | grep -q "CHANNELFLOW_CATALOG_URI"; then
             echo "an unconfigured image refuses to start, naming the variable"
           else
-            echo "an unconfigured image did not refuse"; exit 1
+            echo "an unconfigured image did not refuse"; printf '%s\n' "$refusal"; exit 1
           fi
           docker rm -f channelflow-api >/dev/null
 

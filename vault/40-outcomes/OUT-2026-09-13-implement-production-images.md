@@ -42,6 +42,26 @@ is why CI now builds the images **and starts one** — a Dockerfile that is neve
 built is a document, and one that is built but never run is a slightly longer
 document.
 
+## A third failure, found by CI itself
+
+The step that checks the refusal was written as a pipeline:
+
+    docker run ... 2>&1 | grep -q "CHANNELFLOW_CATALOG_URI"
+
+CI runs its steps under `set -o pipefail`, where a pipeline's status is the
+first non-zero one -- and `docker run` exits non-zero here **because the refusal
+worked**. So the check reported the opposite of what it saw, and reported it as
+the product failing. Locally it passed, in a shell without pipefail.
+
+Verified rather than reasoned about: the same command against the same image
+prints "refuses" without `pipefail` and "does not refuse" with it. The output is
+now captured first and searched afterwards.
+
+Three failures in one requirement, and none of them in the code being shipped:
+an editable install, the wrong driver, and a shell option. That is the shape of
+deployment work, and it is the argument for building the images in CI rather
+than reviewing them.
+
 ## Readiness is not §32's health, and not a ping
 
 [[REQ-WP-035]]'s `HealthState` grades feeds: a stale book disqualifies a signal.
