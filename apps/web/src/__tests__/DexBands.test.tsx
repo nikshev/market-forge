@@ -45,8 +45,8 @@ function overlayOf(bands: DexDepthBandOut[], stateTimeNs: bigint | null = STATE_
   const value: DexDepthResponse = {
     chain_id: 1,
     pool: "0xpool",
-    requested_at_ns: String(STATE_TIME),
-    state_time_ns: bands.length === 0 || stateTimeNs === null ? null : String(stateTimeNs),
+    requested_at_ns: STATE_TIME,
+    state_time_ns: bands.length === 0 || stateTimeNs === null ? null : stateTimeNs,
     bands,
   };
   return depthOverlay({ ok: true, value });

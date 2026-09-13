@@ -10,6 +10,7 @@
 // were and nothing says why.
 
 import { overlaysFromQuery } from "./overlays";
+import { nanosecondsFromIso } from "./time";
 import type { OverlaySelection } from "./overlays";
 import { AS_SEEN_THEN, CURRENT_REFIT } from "./types";
 import type { ChannelMode } from "./types";
@@ -18,7 +19,7 @@ export interface DeepLink {
   venue: string;
   symbol: string;
   timeframe: string;
-  atNs: number | null;
+  atNs: bigint | null;
   signalId: string | null;
   mode: ChannelMode;
   // REQ-US-002: which of PRD section 27.2's layers were on when the alert
@@ -60,7 +61,10 @@ export function parseDeepLink(pathname: string, search: string): DeepLink | null
     venue: decodeURIComponent(match[1]),
     symbol: decodeURIComponent(match[2]),
     timeframe: params.get("tf") ?? "15m",
-    atNs: at === null ? null : Date.parse(at) * 1_000_000 || null,
+    // `Date.parse` gives milliseconds and the multiplication is done in
+    // `bigint`: `ms * 1e6` in floating point lands above the safe range and
+    // rounds the instant the link was built to name (REQ-WP-061).
+    atNs: at === null ? null : nanosecondsFromIso(at),
     signalId: params.get("signal"),
     mode: modeFromQuery(params),
     overlays: overlaysFromQuery(params),

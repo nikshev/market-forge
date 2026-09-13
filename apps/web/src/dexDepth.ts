@@ -54,8 +54,9 @@ export interface DepthOverlay {
   // wrong, and a reader cannot tell without being told.
   //
   // A `bigint`, because a nanosecond epoch timestamp does not fit in a
-  // JavaScript number -- 1.7e18 against a safe maximum of 9.0e15, quantising to
-  // the nearest 256 nanoseconds.
+  // JavaScript number -- 1.8e18 against a safe maximum of 9.0e15, quantising to
+  // the nearest 256 nanoseconds. Parsed in `api.ts` now, along with every other
+  // instant this app receives ([[REQ-WP-061]]); this module reads one.
   stateTimeNs: bigint | null;
   // Why nothing is drawn, when nothing is. Null when something is.
   notice: string | null;
@@ -104,7 +105,7 @@ export function depthOverlay(
   return {
     state: DRAWN,
     bands: bands.map(toBand),
-    stateTimeNs: stateTimeNs === null ? null : BigInt(stateTimeNs),
+    stateTimeNs,
     notice: null,
   };
 }

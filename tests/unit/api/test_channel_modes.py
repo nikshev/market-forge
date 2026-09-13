@@ -95,7 +95,7 @@ def test_as_seen_then_returns_the_stored_snapshot_unchanged(
     assert served["upper_now"] == stored.upper_now
     assert served["lower_now"] == stored.lower_now
     assert served["slope_normalized"] == stored.slope_normalized
-    assert served["as_of_ns"] == stored.as_of_ns
+    assert served["as_of_ns"] == str(stored.as_of_ns)
     assert served["quality_score"] == stored.quality.score
 
 
@@ -132,7 +132,7 @@ def test_the_refit_cannot_see_past_the_requested_instant(
     """
     refit = _channel(diverging_client, as_seen_then=False)
 
-    assert refit["source_max_event_time_ns"] <= AT_NS
+    assert int(refit["source_max_event_time_ns"]) <= AT_NS
 
 
 @pytest.mark.trace("REQ-API-001")

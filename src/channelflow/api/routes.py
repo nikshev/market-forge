@@ -172,7 +172,7 @@ def get_feature_snapshot(
     )
     latest = points[-1] if points else None
     return FeatureSnapshotResponse(
-        at_ns=latest.at_ns if latest else at_ns,
+        at_ns=str(latest.at_ns if latest else at_ns),
         values=latest.values if latest else {},
     )
 
@@ -287,7 +287,7 @@ def get_signal(request: Request, signal_id: uuid.UUID) -> SignalDetailOut:
             TransitionOut(
                 from_state=t.from_state.value,
                 to_state=t.to_state.value,
-                bar_close_time_ns=t.bar_close_time_ns,
+                bar_close_time_ns=str(t.bar_close_time_ns),
                 reason=t.reason,
             )
             for t in candidate.history

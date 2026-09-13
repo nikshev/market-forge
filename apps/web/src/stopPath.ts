@@ -34,7 +34,7 @@ export interface StopLevel {
 }
 
 export interface StopPathPoint {
-  at_ns: number;
+  at_ns: bigint;
   price: string;
   kind: "moved" | "held" | "refused";
   reasons: string[];
@@ -90,7 +90,7 @@ export function stopPath({
   proposals: readonly StopProposalOut[];
   excursion: ExcursionOut;
   mode: ChannelMode;
-  atNs: number;
+  atNs: bigint;
 }): StopPathView {
   const levels = levelsOf(position);
 
@@ -131,7 +131,9 @@ export function stopPath({
     };
   }
 
-  const path = [...shown].sort((a, b) => a.at_ns - b.at_ns).map(pointOf);
+  const path = [...shown]
+    .sort((a, b) => (a.at_ns < b.at_ns ? -1 : a.at_ns > b.at_ns ? 1 : 0))
+    .map(pointOf);
 
   return {
     state: path.length === 0 ? "empty" : "ok",

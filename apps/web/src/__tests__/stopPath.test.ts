@@ -13,10 +13,10 @@ import { stopPath } from "../stopPath";
 import { AS_SEEN_THEN, CURRENT_REFIT } from "../types";
 import type { PositionOut, StopAnchorOut, StopProposalOut } from "../types";
 
-const MINUTE_NS = 60 * 1_000_000_000;
-const BASE_NS = 1788838800000000000;
+const MINUTE_NS = 60_000_000_000n;
+const BASE_NS = 1788838800000000000n;
 
-const at = (minute: number) => BASE_NS + minute * MINUTE_NS;
+const at = (minute: number) => BASE_NS + BigInt(minute) * MINUTE_NS;
 
 const LONG: PositionOut = {
   position_id: "pos-1",

@@ -7,6 +7,7 @@
 // tested. Here it is a selector, a line, and the three messages.
 
 import { paneSeries, PANES } from "./panes";
+import { chartMilliseconds } from "./time";
 import type { FeaturePointOut } from "./types";
 
 const WIDTH = 720;
@@ -70,11 +71,14 @@ export function FlowPane({
 }
 
 function plot(
-  points: readonly { at_ns: number; value: number }[],
+  points: readonly { at_ns: bigint; value: number }[],
   width: number,
   height: number,
 ): string {
-  const times = points.map((p) => p.at_ns);
+  // Milliseconds, through the named narrowing: one pixel of this pane is minutes
+  // wide, so nanosecond resolution cannot reach it. The division happens in
+  // `bigint`, so what is given up is resolution the drawing never had.
+  const times = points.map((p) => chartMilliseconds(p.at_ns));
   const values = points.map((p) => p.value);
   const [t0, t1] = [Math.min(...times), Math.max(...times)];
   const [v0, v1] = [Math.min(...values), Math.max(...values)];
@@ -85,7 +89,7 @@ function plot(
   const spanV = v1 - v0 || 1;
   return points
     .map((p) => {
-      const x = ((p.at_ns - t0) / spanT) * width;
+      const x = ((chartMilliseconds(p.at_ns) - t0) / spanT) * width;
       const y = height - ((p.value - v0) / spanV) * height;
       return `${x.toFixed(2)},${y.toFixed(2)}`;
     })

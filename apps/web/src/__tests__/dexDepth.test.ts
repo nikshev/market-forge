@@ -43,8 +43,8 @@ function response(bands: DexDepthBandOut[], stateTimeNs: bigint = STATE_TIME): D
   return {
     chain_id: 1,
     pool: "0xpool",
-    requested_at_ns: String(STATE_TIME + 1_000n),
-    state_time_ns: bands.length === 0 ? null : String(stateTimeNs),
+    requested_at_ns: STATE_TIME + 1_000n,
+    state_time_ns: bands.length === 0 ? null : stateTimeNs,
     bands,
   };
 }

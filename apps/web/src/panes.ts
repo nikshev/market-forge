@@ -51,7 +51,7 @@ export const PANES: readonly Pane[] = [
 ];
 
 export interface PanePoint {
-  at_ns: number;
+  at_ns: bigint;
   value: number;
 }
 
@@ -84,7 +84,10 @@ export function paneSeries(points: readonly FeaturePointOut[], feature: string):
   // Keyed by instant, last write winning: two points at one instant is the API
   // reporting a correction, and taking the last is a decision rather than a
   // property of the sort's stability.
-  const byInstant = new Map<number, number>();
+  // Keyed by `bigint`, which compares by value: two instants 100 nanoseconds
+  // apart are two keys. As numbers they were one, and the rule below would have
+  // dropped a point while calling it a correction (REQ-WP-061).
+  const byInstant = new Map<bigint, number>();
   for (const point of points) {
     const value = point.values[feature];
     if (value === undefined) {
@@ -106,7 +109,7 @@ export function paneSeries(points: readonly FeaturePointOut[], feature: string):
 
   const drawn = [...byInstant.entries()]
     .map(([at_ns, value]) => ({ at_ns, value }))
-    .sort((a, b) => a.at_ns - b.at_ns);
+    .sort((a, b) => (a.at_ns < b.at_ns ? -1 : a.at_ns > b.at_ns ? 1 : 0));
 
   return { points: drawn, state: "ok", note: "" };
 }

@@ -52,7 +52,8 @@ def test_bars_are_served_in_event_time_order(client: TestClient) -> None:
 
     bars = response.json()["bars"]
     assert len(bars) == 10
-    assert [b["close_time_ns"] for b in bars] == sorted(b["close_time_ns"] for b in bars)
+    closes = [int(b["close_time_ns"]) for b in bars]
+    assert closes == sorted(closes)
 
 
 @pytest.mark.trace("REQ-API-001")
@@ -80,7 +81,7 @@ def test_bars_honour_the_time_range(client: TestClient) -> None:
     bars = response.json()["bars"]
     assert len(bars) == 4, "bars closing at minutes 3, 4, 5 and 6"
     assert all(
-        BASE_NS + 3 * MINUTE_NS <= b["close_time_ns"] <= BASE_NS + 6 * MINUTE_NS for b in bars
+        BASE_NS + 3 * MINUTE_NS <= int(b["close_time_ns"]) <= BASE_NS + 6 * MINUTE_NS for b in bars
     )
 
 
@@ -100,8 +101,8 @@ def test_a_limit_returns_the_most_recent_bars(client: TestClient) -> None:
     ).json()["bars"]
 
     assert len(limited) == 3
-    assert limited[-1]["close_time_ns"] == BASE_NS + 10 * MINUTE_NS
-    assert limited[0]["close_time_ns"] == BASE_NS + 8 * MINUTE_NS
+    assert int(limited[-1]["close_time_ns"]) == BASE_NS + 10 * MINUTE_NS
+    assert int(limited[0]["close_time_ns"]) == BASE_NS + 8 * MINUTE_NS
 
 
 @pytest.mark.trace("REQ-API-001")
@@ -328,7 +329,7 @@ def test_the_extrema_endpoint_hides_a_turn_that_was_not_yet_confirmed(
     (shown,) = read(14)["confirmed"]
     # Returned at last, and reporting where the turn was rather than when it
     # became knowable -- the pair that pins the honest picture.
-    assert shown["extremum_time_ns"] == BASE_NS + 10 * MINUTE_NS
-    assert shown["known_at_ns"] == BASE_NS + 14 * MINUTE_NS
+    assert int(shown["extremum_time_ns"]) == BASE_NS + 10 * MINUTE_NS
+    assert int(shown["known_at_ns"]) == BASE_NS + 14 * MINUTE_NS
     # A price as a string, like every other price on the wire.
     assert shown["price"] == "112000.10"

@@ -12,8 +12,8 @@ import { describe, expect, it } from "vitest";
 import { PositionView } from "../PositionView";
 import type { StopPathView } from "../stopPath";
 
-const BASE_NS = 1788838800000000000;
-const MINUTE_NS = 60 * 1_000_000_000;
+const BASE_NS = 1788838800000000000n;
+const MINUTE_NS = 60_000_000_000n;
 
 function view(overrides: Partial<StopPathView> = {}): StopPathView {
   return {
