@@ -99,8 +99,13 @@ def test_a_target_beyond_known_liquidity_is_unreachable() -> None:
     move the price 100 bps" when it actually cost that much to exhaust what we
     know about.
     """
+    # A pool whose liquidity ends just above spot. The range opens below the
+    # current tick and closes at 30, which is what makes it a pool that could
+    # exist: liquidity active at tick 0 has to have been minted at or below it,
+    # and a map saying otherwise is an incomplete map rather than a thin pool
+    # ([[REQ-WP-060]]).
     thin = pool()
-    thin.tick_liquidity_net = {30: Decimal("-1000000")}
+    thin.tick_liquidity_net = {-30: Decimal("1000000"), 30: Decimal("-1000000")}
 
     quote = depth_to_bps(thin, bps=Decimal(100), upward=True)
 
@@ -116,7 +121,7 @@ def test_an_unreachable_quote_still_reports_how_far_it_got() -> None:
     who genuinely wants "how far can we get" asks for it rather than receiving
     it by accident."""
     thin = pool()
-    thin.tick_liquidity_net = {30: Decimal("-1000000")}
+    thin.tick_liquidity_net = {-30: Decimal("1000000"), 30: Decimal("-1000000")}
 
     quote = depth_to_bps(thin, bps=Decimal(100), upward=True)
 
@@ -190,9 +195,16 @@ def test_a_negative_band_is_refused(deep_pool: PoolState) -> None:
 
 @pytest.mark.trace("REQ-WP-015")
 def test_a_pool_with_no_price_is_refused() -> None:
-    """An uninitialized pool has no spot to move from."""
+    """An uninitialized pool has no spot to move from.
+
+    It has no liquidity either, so the fixture says so: a pool with a million
+    units of active liquidity and no price is not a pool, and it would now be
+    refused for the tick map instead ([[REQ-WP-060]]).
+    """
     with pytest.raises(ValueError, match="no price"):
-        depth_to_bps(pool(sqrt_price_x96=0), bps=Decimal(10), upward=True)
+        depth_to_bps(
+            pool(sqrt_price_x96=0, active_liquidity=Decimal(0)), bps=Decimal(10), upward=True
+        )
 
 
 @pytest.mark.trace("REQ-WP-015")

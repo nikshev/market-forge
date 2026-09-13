@@ -37,8 +37,30 @@ from channelflow.dex.pool import (
     compare_with_contract,
     rebuild,
 )
+from channelflow.dex.reconstruction import (
+    DEPTH_CAPABLE,
+    DepthNotSupported,
+    Provenance,
+    Reconciliation,
+    ReconstructionQuality,
+    implied_active_liquidity,
+    quality,
+    require_depth_capable,
+    require_tick_map_complete,
+    tick_map_accounts_for_liquidity,
+)
 
 __all__ = [
+    "tick_map_accounts_for_liquidity",
+    "require_depth_capable",
+    "require_tick_map_complete",
+    "quality",
+    "implied_active_liquidity",
+    "ReconstructionQuality",
+    "Reconciliation",
+    "Provenance",
+    "DepthNotSupported",
+    "DEPTH_CAPABLE",
     "DEFAULT_ASYMMETRY_TOLERANCE",
     "DEFAULT_BANDS",
     "MAX_TICK",
