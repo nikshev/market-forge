@@ -156,5 +156,53 @@ jobs:
       - name: Mutation sweep
         run: make mutate
 
+      # A Dockerfile that is never built is a document. Both images are built and
+      # the API is started against the live stack, because the two failures this
+      # caught locally -- an editable install whose path link the runtime stage
+      # does not copy, and the wrong PostgreSQL driver in the catalog URI --
+      # both produce an image that builds and a container that cannot serve.
+      - name: Build the images
+        run: |
+          docker build -t channelflow-api:ci -f Dockerfile .
+          docker build -t channelflow-web:ci -f apps/web/Dockerfile apps/web
+
+      - name: Start the API image and probe it
+        run: |
+          set -euo pipefail
+          . ./.env
+          docker run -d --name channelflow-api --network host \
+            -e CHANNELFLOW_CATALOG_URI="postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@127.0.0.1:${POSTGRES_PORT}/${POSTGRES_DB}" \
+            -e CHANNELFLOW_WAREHOUSE="s3://${MINIO_BUCKET}/warehouse" \
+            -e CHANNELFLOW_S3_ENDPOINT="http://127.0.0.1:${MINIO_PORT}" \
+            -e CHANNELFLOW_S3_ACCESS_KEY_ID="${MINIO_ROOT_USER}" \
+            -e CHANNELFLOW_S3_SECRET_ACCESS_KEY="${MINIO_ROOT_PASSWORD}" \
+            -e CHANNELFLOW_S3_REGION=us-east-1 \
+            channelflow-api:ci
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8000/readyz | grep -q '"ready":true'; then
+              echo "the api image served /readyz after ${i}s"; break
+            fi
+            if [ "$i" = "30" ]; then
+              echo "the api image did not become ready"; docker logs channelflow-api; exit 1
+            fi
+            sleep 1
+          done
+          # The refusal, not only the success: a composition root that defaulted
+          # would start here too, and serve an empty warehouse.
+          #
+          # The output is captured before it is searched. As a pipeline under
+          # `set -o pipefail` the status is `docker run`'s, and `docker run`
+          # fails here **because the refusal worked** -- so the check reported
+          # the opposite of what it saw. It passed locally in a shell without
+          # pipefail, which is why it reached CI.
+          refusal=$(docker run --rm channelflow-api:ci \
+              uvicorn channelflow.api.main:application --factory 2>&1 || true)
+          if printf '%s' "$refusal" | grep -q "CHANNELFLOW_CATALOG_URI"; then
+            echo "an unconfigured image refuses to start, naming the variable"
+          else
+            echo "an unconfigured image did not refuse"; printf '%s\n' "$refusal"; exit 1
+          fi
+          docker rm -f channelflow-api >/dev/null
+
       - name: Traceability coverage
         run: make validate
