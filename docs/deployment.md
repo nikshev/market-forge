@@ -27,6 +27,34 @@ are not containerised here, and that is a gap rather than a decision: nothing ha
 needed a production image yet, and writing one before there is somewhere to
 deploy it would be guessing at a base image and a process supervisor.
 
+## Where the data lives
+
+Every stateful service writes into `CHANNELFLOW_DATA_DIR` — `./data` in a
+checkout, and on a server whatever disk is mounted for it. Not a Docker named
+volume: the data has to be copyable, movable and backed up with ordinary tools.
+
+**Prepare the directory before the first start:**
+
+```sh
+make data-dirs
+```
+
+It creates one directory per service and gives each to the user that service
+runs as. That step is not a formality. A named volume is initialised by Docker,
+which copies the image's ownership onto it; a bind mount keeps whatever the host
+directory already has, and the five images run as five different users —
+`postgres` and `minio` as root, `redpanda` as 101, `prometheus` as 65534,
+`grafana` as 472. A directory one of them cannot write is a container that fails
+to start, or one that starts and never persists.
+
+**It cannot be tested by hand on a Mac.** Docker Desktop maps bind-mount access
+onto the host user, so every service reports the directory writable whatever
+owns it. `make data-dirs` checks each directory **as the user the service is**,
+which is the only check that means anything on the machine this matters on.
+
+To back the stack up, stop it and copy the directory. To move it to another
+machine, copy the directory.
+
 ## Starting it
 
 ```
@@ -52,6 +80,7 @@ secret; `.env` is not committed and never should be.
 | `REDPANDA_PORT` | the event backbone |
 | `PROMETHEUS_PORT`, `GRAFANA_PORT` | observability |
 | `API_PORT`, `WEB_PORT` | where the application services are published |
+| `CHANNELFLOW_DATA_DIR` | the directory every stateful service writes into ([[REQ-WP-065]]) |
 | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` | alert delivery, empty unless alerting is wanted |
 | `CHANNELFLOW_CHART_BASE_URL` | where an alert's chart link points |
 

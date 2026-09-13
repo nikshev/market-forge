@@ -21,3 +21,6 @@ vault
 specs
 docs
 graphify-out
+
+# The data directory (REQ-WP-065): a bind mount, never part of a build context.
+data
