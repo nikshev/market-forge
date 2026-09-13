@@ -2,8 +2,8 @@
 #
 # Patterns are TOML *literal* strings on purpose: the basic form treats a
 # trailing backslash as a line continuation and eats the next line's indentation.
-source = "src/channelflow/api/main.py"
-tests = ["tests/unit/api/test_startup.py"]
+source = "src/channelflow/settings.py"
+tests = ["tests/unit/api/test_startup.py", "tests/unit/pipeline/test_ingest.py"]
 
 [[mutation]]
 name = "the warehouse stops being required"

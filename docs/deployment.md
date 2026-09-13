@@ -21,6 +21,7 @@ Five containers, started together:
 | `grafana` | renders the dashboard generated from the code |
 | `api` | the read API of PRD §28, built from this repository ([[REQ-WP-064]]) |
 | `web` | the chart application, static files behind nginx, which proxies `/api` to `api` |
+| `ingest-binance` | the live connector: one symbol, socket to bars ([[REQ-WP-066]]) |
 
 The API, the web app and any worker run **from the host** in development. They
 are not containerised here, and that is a gap rather than a decision: nothing has
@@ -81,6 +82,7 @@ secret; `.env` is not committed and never should be.
 | `PROMETHEUS_PORT`, `GRAFANA_PORT` | observability |
 | `API_PORT`, `WEB_PORT` | where the application services are published |
 | `CHANNELFLOW_DATA_DIR` | the directory every stateful service writes into ([[REQ-WP-065]]) |
+| `CHANNELFLOW_INGEST_SYMBOLS`, `CHANNELFLOW_INGEST_TIMEFRAME_NS` | what the ingest daemon reads, and at what bar size |
 | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` | alert delivery, empty unless alerting is wanted |
 | `CHANNELFLOW_CHART_BASE_URL` | where an alert's chart link points |
 
@@ -119,7 +121,7 @@ recorded reason:
 |---|---|
 | `clickhouse` | [[ADR-002]] dropped it before any of it was built; the canonical plane is Iceberg |
 | `redis` | listed as optional; nothing needs a cache, and [[ADR-018]] made alert delivery synchronous |
-| `worker`, `ingest-binance` | neither exists as code: [[REQ-PIPE-001]] chose a replay over a daemon deliberately, and a container running nothing reports healthy |
+| `worker` | does not exist as code: [[REQ-PIPE-001]] chose a replay over a daemon deliberately, and a container running nothing reports healthy |
 
 Pinot is in the target profile and not here: [[ADR-002]] defers it until a HOT
 serving requirement exists, which is a gap Phase 4 still records rather than an

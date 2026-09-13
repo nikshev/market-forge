@@ -8,7 +8,7 @@ phase: 8
 status: planned
 depends_on: ["REQ-PHASE-7A"]
 tags: []
-covers: [REQ-WP-064, REQ-WP-065, REQ-WP-035, REQ-WP-036, REQ-WP-037, REQ-WP-038, REQ-WP-039, REQ-WP-041, REQ-WP-042, REQ-WP-055, REQ-WP-056, REQ-WP-057]
+covers: [REQ-WP-064, REQ-WP-065, REQ-WP-066, REQ-WP-035, REQ-WP-036, REQ-WP-037, REQ-WP-038, REQ-WP-039, REQ-WP-041, REQ-WP-042, REQ-WP-055, REQ-WP-056, REQ-WP-057]
 not_delivered:
   - "load generation against a deployment: [[REQ-WP-057]] measures §36's targets and guards the scaling that would break them; [[REQ-WP-064]] made the API and the web app deployable and nothing drives concurrent traffic at them yet"
 ---

@@ -104,6 +104,7 @@ app, both of which exist.
 - **Code:**
     - `src/channelflow/api/main.py`
     - `src/channelflow/api/readiness.py`
+    - `src/channelflow/settings.py`
 - **Outcomes:** [[OUT-2026-09-13-implement-production-images]]
 <!-- trace:end -->
 

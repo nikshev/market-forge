@@ -108,7 +108,9 @@ python_version = "3.12"
 # two large C++ bindings, would be a second source of truth about someone else's
 # API (REQ-STORE-001).
 [[tool.mypy.overrides]]
-module = ["pyarrow.*", "duckdb.*"]
+# `websockets` ships types; `boto3` does not, and its stubs are a separate
+# package this project does not need for four calls (REQ-WP-066).
+module = ["pyarrow.*", "duckdb.*", "boto3.*"]
 ignore_missing_imports = true
 
 [tool.ruff]
