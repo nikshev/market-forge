@@ -1,0 +1,40 @@
+# Reproduces the mutation sweep recorded for this module.
+#
+# Patterns are TOML *literal* strings on purpose: the basic form treats a
+# trailing backslash as a line continuation and eats the next line's indentation.
+source = "src/channelflow/api/readiness.py"
+tests = ["tests/unit/api/test_startup.py", "tests/unit/api/test_reads.py"]
+
+[[mutation]]
+name = "a store that did not answer is reported ready"
+find = '''            return Readiness(ready=False, detail=f"the catalog did not answer: {cause}")'''
+replace = '''            return Readiness(ready=True, detail=f"the catalog did not answer: {cause}")'''
+
+[[mutation]]
+name = "the probe never asks the store"
+find = '''        try:
+            list_tables()'''
+replace = '''        try:
+            pass'''
+
+[[mutation]]
+name = "the failure loses its cause"
+find = '''            return Readiness(ready=False, detail=f"the catalog did not answer: {cause}")'''
+replace = '''            return Readiness(ready=False, detail="not ready")'''
+
+[[mutation]]
+name = "an unready process answers 200"
+find = '''NOT_READY = 503'''
+replace = '''NOT_READY = 200'''
+
+[[mutation]]
+name = "the status ignores the answer"
+find = '''    if not answer.ready:
+        response.status_code = NOT_READY'''
+replace = '''    if False:
+        response.status_code = NOT_READY'''
+
+[[mutation]]
+name = "an app with no store claims one answered"
+find = '''def always_ready(detail: str = "no store is configured") -> Probe:'''
+replace = '''def always_ready(detail: str = "the catalog answered") -> Probe:'''

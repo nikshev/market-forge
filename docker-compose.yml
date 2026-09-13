@@ -113,6 +113,58 @@ services:
   # Scrapes the API's exposition (REQ-WP-055). Development-only: it reaches the
   # API on the host rather than in the network, because the API runs from the
   # host in development and containerising it is a separate decision.
+  # PRD §6.2's `api` and `web`. Built here rather than pulled: they are this
+  # repository's own code, and an image tag would name a build nobody in this
+  # checkout can reproduce ([[REQ-WP-064]]).
+  #
+  # §6.2 also names `worker` and `ingest-binance`. Neither exists as code --
+  # REQ-PIPE-001 chose a replay over a daemon deliberately -- so neither has a
+  # service here. A container running nothing is worse than an absent one: it
+  # reports healthy.
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      CHANNELFLOW_CATALOG_URI: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      CHANNELFLOW_WAREHOUSE: s3://${MINIO_BUCKET}/warehouse
+      # The object store is reached by service name inside the network, not by
+      # the host port .env publishes for a developer's browser.
+      CHANNELFLOW_S3_ENDPOINT: http://minio:9000
+      CHANNELFLOW_S3_ACCESS_KEY_ID: ${MINIO_ROOT_USER}
+      CHANNELFLOW_S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
+      CHANNELFLOW_S3_REGION: us-east-1
+    ports:
+      - "${API_PORT}:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    healthcheck:
+      # `/readyz`, not a TCP probe: a process that started and cannot read its
+      # warehouse serves empty results, and an empty result is this system's
+      # most dangerous shape. The probe asks the catalog a question.
+      test:
+        [
+          "CMD-SHELL",
+          "python -c \"import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/readyz').status==200 else 1)\"",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 5s
+
+  web:
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile
+    ports:
+      - "${WEB_PORT}:8080"
+    depends_on:
+      api:
+        condition: service_healthy
+
   prometheus:
     image: prom/prometheus:v3.6.0
     ports:

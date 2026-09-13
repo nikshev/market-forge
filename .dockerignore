@@ -1,0 +1,23 @@
+# @trace: REQ-WP-064
+#
+# The build context is what the daemon copies before the first instruction runs.
+# Left unfiltered it carries the virtualenv, the vault, every fixture and the
+# git history -- slow, and it puts a developer's `.env` inside the context of an
+# image build, which §34 exists to prevent.
+
+.git
+.venv
+node_modules
+**/node_modules
+**/dist
+.env
+.env.*
+!.env.example
+.trace
+.pytest_cache
+**/__pycache__
+*.pyc
+vault
+specs
+docs
+graphify-out

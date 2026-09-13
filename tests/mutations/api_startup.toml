@@ -1,0 +1,43 @@
+# Reproduces the mutation sweep recorded for this module.
+#
+# Patterns are TOML *literal* strings on purpose: the basic form treats a
+# trailing backslash as a line continuation and eats the next line's indentation.
+source = "src/channelflow/api/main.py"
+tests = ["tests/unit/api/test_startup.py"]
+
+[[mutation]]
+name = "the warehouse stops being required"
+find = '''REQUIRED = (CATALOG_URI, WAREHOUSE)'''
+replace = '''REQUIRED = (CATALOG_URI,)'''
+
+[[mutation]]
+name = "nothing is required"
+find = '''REQUIRED = (CATALOG_URI, WAREHOUSE)'''
+replace = '''REQUIRED: tuple[str, ...] = ()'''
+
+[[mutation]]
+name = "a blank variable counts as set"
+find = '''    missing = [name for name in REQUIRED if not values.get(name, "").strip()]'''
+replace = '''    missing = [name for name in REQUIRED if name not in values]'''
+
+[[mutation]]
+name = "only the first missing variable is named"
+find = '''    missing = [name for name in REQUIRED if not values.get(name, "").strip()]'''
+replace = '''    missing = [name for name in REQUIRED if not values.get(name, "").strip()][:1]'''
+
+[[mutation]]
+name = "a missing variable is defaulted instead of refused"
+find = '''    if missing:
+        raise MissingConfiguration('''
+replace = '''    if False:
+        raise MissingConfiguration('''
+
+[[mutation]]
+name = "a blank storage option is passed through"
+find = '''        if values.get(name, "").strip()'''
+replace = '''        if name in values'''
+
+[[mutation]]
+name = "the storage options lose their pyiceberg names"
+find = '''        prop: values[name].strip()'''
+replace = '''        name: values[name].strip()'''
