@@ -1,6 +1,7 @@
 """PRD §18.12.2's `LiquidityState`, as a canonical table.
 
 # @trace: REQ-WP-060
+# @trace: REQ-WP-063
 
     venue / protocol / pool_id / reference_price / state_time / available_at /
     model_type / active_liquidity nullable / reserve_state nullable /
@@ -163,3 +164,67 @@ class DexStateSink:
 
 def table_for(catalog: Catalog) -> IcebergTable:
     return IcebergTable(name=TABLE_NAME, schema=SCHEMA, catalog=catalog)
+
+
+@dataclass(frozen=True)
+class PoolStateReading:
+    """One stored state, as a reader gets it back.
+
+    A read model rather than a `PoolState`: the row carries the pool, the
+    instant and the grade that a rebuilt state does not, and those are what a
+    reader came for. The two big integers come back as `int` -- they are stored
+    as strings because a `uint128` does not fit an `int64`, and returning the
+    string would push that decision onto every caller.
+    """
+
+    state_time_ns: int
+    chain_id: int
+    venue: str
+    protocol: str
+    pool: str
+    reference_price: Decimal
+    model_type: str
+    active_liquidity: int
+    reserve_state: str | None
+    invariant_state: str | None
+    fee_state: int
+    reconstruction_quality: str
+    implied_active_liquidity: int
+    initialized_ticks: int
+    from_block: int
+    to_block: int
+
+
+def read_states(
+    table: IcebergTable,
+    *,
+    chain_id: int | None = None,
+    pool: str | None = None,
+    as_of_ns: int | None = None,
+    snapshot_id: int | None = None,
+) -> list[PoolStateReading]:
+    """States in this table's order, optionally filtered and as of an instant.
+
+    `as_of_ns` is the storage layer's point-in-time read on `state_time_ns`, for
+    the reason `dex_depth.read_bands` gives: a pane on a historical chart that
+    fetched the newest state would be the look-ahead Principle I forbids,
+    arriving through the one door nobody guards.
+    """
+    rows = table.read(snapshot_id=snapshot_id, as_of_ns=as_of_ns).to_pylist()
+    matched = [
+        from_row(row)
+        for row in rows
+        if (chain_id is None or row["chain_id"] == chain_id)
+        and (pool is None or row["pool"] == pool)
+    ]
+    matched.sort(key=lambda row: tuple(str(row[name]) for name in ORDER))
+    return [
+        PoolStateReading(
+            **{
+                **row,  # type: ignore[arg-type]
+                "active_liquidity": int(str(row["active_liquidity"])),
+                "implied_active_liquidity": int(str(row["implied_active_liquidity"])),
+            }
+        )
+        for row in matched
+    ]

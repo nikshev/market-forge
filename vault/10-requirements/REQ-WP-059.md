@@ -104,7 +104,6 @@ phase's unfinished work in front of a reader as though it were finished.
     - `tests/unit/features/test_dex.py::test_the_feature_is_registered_and_says_what_it_is`
     - `tests/unit/features/test_dex.py::test_the_imbalance_is_the_signed_flow_over_the_gross_flow`
     - `tests/unit/features/test_dex.py::test_the_window_is_half_open_at_the_floor_and_closed_at_the_cursor`
-    - `tests/unit/features/test_pane_features.py::test_no_active_liquidity_pane_is_offered`
     - `tests/unit/features/test_pane_features.py::test_the_dex_swap_imbalance_pane_is_offered`
 - **Code:**
     - `apps/web/src/DexBands.tsx`

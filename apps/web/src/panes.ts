@@ -1,5 +1,6 @@
 // @trace: REQ-WP-027
 // @trace: REQ-WP-030
+// @trace: REQ-WP-063
 //
 // PRD section 27.3's lower panes, for the three Phase 2 has data for.
 //
@@ -22,17 +23,15 @@ export interface Pane {
   label: string;
 }
 
-// PRD section 27.3 lists nine panes. Eight are here: the order-flow three from
-// [[REQ-WP-027]], Phase 3's four added by [[REQ-WP-030]], and Phase 4's swap
-// imbalance added by [[REQ-WP-059]] once `dex_swap_imbalance` existed to draw.
+// PRD section 27.3 lists nine panes, and all nine are here: the order-flow three
+// from [[REQ-WP-027]], Phase 3's four added by [[REQ-WP-030]], Phase 4's swap
+// imbalance added by [[REQ-WP-059]], and active liquidity added by
+// [[REQ-WP-063]] once [[REQ-WP-062]] gave `dex_state` a producer.
 //
-// **`DEX active liquidity` is still absent, and deliberately.** §18.12.2's
-// `active_liquidity` lives on a `LiquidityState` nothing reconstructs, which on
-// HyperEVM needs an archive node no public endpoint provides ([[ADR-067]]).
-// Offering the pane would put a phase's unfinished work in front of a reader as
-// though it were finished: the pane would render "no readings of this feature"
-// forever, and that message is one the application produces honestly for a real
-// absence, so a reader could not tell the two apart.
+// Each one arrived only when its feature existed. A pane naming a feature nobody
+// records renders "no readings of this feature" forever -- the message this app
+// produces honestly for a real absence -- so a reader cannot tell an unbuilt pane
+// from a quiet market.
 //
 // Every entry's `feature` must be a name the registry knows. That is checked
 // from the Python suite (`tests/unit/features/test_pane_features.py`), because
@@ -48,6 +47,7 @@ export const PANES: readonly Pane[] = [
   { feature: "basis_bps", label: "Basis (bps)" },
   { feature: "liquidation_imbalance_5m", label: "Liquidations (5m)" },
   { feature: "dex_swap_imbalance", label: "DEX swap imbalance" },
+  { feature: "dex_active_liquidity", label: "DEX active liquidity" },
 ];
 
 export interface PanePoint {

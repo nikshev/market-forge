@@ -159,3 +159,52 @@ def test_every_quality_is_writable_as_a_string() -> None:
     for quality in ReconstructionQuality:
         row = _row(_state(), quality)
         assert row["reconstruction_quality"] == quality.value
+
+
+# --------------------------------------------------------------------------
+# Reading states back (REQ-WP-063)
+# --------------------------------------------------------------------------
+
+
+@pytest.mark.trace("REQ-WP-063")
+def test_a_state_reads_back_with_its_big_integers_as_integers(catalog: Catalog) -> None:
+    """Stored as strings because a `uint128` does not fit an `int64`; returned as
+    `int` so every caller does not repeat that decision."""
+    table = dex_state.table_for(catalog)
+    table.append([_row(_state(), ReconstructionQuality.REPLAYED)])
+
+    readings = dex_state.read_states(table)
+
+    assert len(readings) == 1
+    reading = readings[0]
+    assert reading.active_liquidity == int(CONTRACT["liquidity"])
+    assert isinstance(reading.active_liquidity, int)
+    assert reading.reconstruction_quality == "replayed"
+    assert reading.pool == HEADER["pool"]
+
+
+@pytest.mark.trace("REQ-WP-063")
+def test_a_state_computed_after_the_instant_asked_for_is_not_returned(catalog: Catalog) -> None:
+    """The point-in-time read `dex_depth.read_bands` has, for the same reason: a
+    pane on a historical chart that fetched the newest state would be the
+    look-ahead Principle I forbids, through the one door nobody guards."""
+    table = dex_state.table_for(catalog)
+    early = _row(_state(), ReconstructionQuality.REPLAYED) | {"state_time_ns": STATE_TIME_NS}
+    late = _row(_state(), ReconstructionQuality.REPLAYED) | {
+        "state_time_ns": STATE_TIME_NS + 60_000_000_000
+    }
+    table.append([early, late])
+
+    assert len(dex_state.read_states(table, as_of_ns=STATE_TIME_NS)) == 1
+    assert len(dex_state.read_states(table)) == 2
+
+
+@pytest.mark.trace("REQ-WP-063")
+def test_states_are_filtered_by_pool(catalog: Catalog) -> None:
+    table = dex_state.table_for(catalog)
+    other = _row(_state(address="0xother"), ReconstructionQuality.REPLAYED)
+    table.append([_row(_state(), ReconstructionQuality.REPLAYED), other])
+
+    mine = dex_state.read_states(table, chain_id=HEADER["chain_id"], pool=HEADER["pool"])
+
+    assert [reading.pool for reading in mine] == [HEADER["pool"]]

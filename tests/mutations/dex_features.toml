@@ -83,3 +83,48 @@ replace = '''                "absent when there is nothing to report"'''
 name = "the feature claims a different source event"
 find = '''            source_events=("dex_swap",),'''
 replace = '''            source_events=("trade",),'''
+
+[[mutation]]
+name = "a partial tick map disqualifies the reading"
+find = '''        ReconstructionQuality.PARTIAL_TICKS,
+    }
+)'''
+replace = '''    }
+)'''
+
+[[mutation]]
+name = "every grade carries a reading"
+find = '''        return self.quality in {grade.value for grade in USABLE_FOR_ACTIVE_LIQUIDITY}'''
+replace = '''        return True'''
+
+[[mutation]]
+name = "a state later than the instant is read"
+find = '''    usable = [reading for reading in readings if reading.usable and reading.state_time_ns <= at_ns]'''
+replace = '''    usable = [reading for reading in readings if reading.usable]'''
+
+[[mutation]]
+name = "a state exactly at the instant is skipped"
+find = '''    usable = [reading for reading in readings if reading.usable and reading.state_time_ns <= at_ns]'''
+replace = '''    usable = [reading for reading in readings if reading.usable and reading.state_time_ns < at_ns]'''
+
+[[mutation]]
+name = "the oldest usable state wins"
+find = '''    return float(max(usable, key=lambda reading: reading.state_time_ns).active_liquidity)'''
+replace = '''    return float(min(usable, key=lambda reading: reading.state_time_ns).active_liquidity)'''
+
+[[mutation]]
+name = "an absent reading becomes zero"
+find = '''    if not usable:
+        return None'''
+replace = '''    if not usable:
+        return 0.0'''
+
+[[mutation]]
+name = "the grade filter is dropped from the query"
+find = '''    usable = [reading for reading in readings if reading.usable and reading.state_time_ns <= at_ns]'''
+replace = '''    usable = [reading for reading in readings if reading.state_time_ns <= at_ns]'''
+
+[[mutation]]
+name = "the registration stops saying it is pool-internal"
+find = '''                "none, and deliberately not comparable across pools: L depends on "'''
+replace = '''                "none: L depends on "'''
