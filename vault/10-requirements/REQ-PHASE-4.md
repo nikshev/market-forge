@@ -8,11 +8,10 @@ phase: 4
 status: planned
 depends_on: ["REQ-PHASE-3"]
 tags: []
-covers: [REQ-WP-014, REQ-WP-015, REQ-WP-045, REQ-WP-046, REQ-WP-047, REQ-WP-048, REQ-WP-058, REQ-WP-059, REQ-WP-060, REQ-ASSET-001, REQ-BIAS-006, REQ-EXP-007]
+covers: [REQ-WP-014, REQ-WP-015, REQ-WP-045, REQ-WP-046, REQ-WP-047, REQ-WP-048, REQ-WP-058, REQ-WP-059, REQ-WP-060, REQ-WP-062, REQ-ASSET-001, REQ-BIAS-006, REQ-EXP-007]
 not_delivered:
   - "Curve twocrypto quoting: [[REQ-WP-046]] classifies it and quotes Stableswap-NG and tricrypto; the deployed twocrypto version has no matching published source"
   - "Uniswap v4 executable quoting for CUSTOM_ACCOUNTING pools: [[REQ-WP-047]] routes, classifies and refuses them; nothing quotes them"
-  - "Materializing `LiquidityState` from stored rows: [[REQ-WP-060]] builds the table and §18.12.2's `reconstruction_quality`, and the reconstruction is invoked with events a caller supplies; nothing drives it from `dex_liquidity`"
   - "Pinot HOT DeFi datasets: deferred by ADR-002 until a HOT serving requirement exists, not missing by oversight"
   - "§27.3's `DEX active liquidity` pane: [[REQ-WP-059]] draws the depth bands and offers the swap-imbalance pane; [[REQ-WP-060]] reconstructs `active_liquidity` and stores it, and no feature computes a series from those rows for a pane to draw"
 ---
@@ -96,6 +95,7 @@ requirement exists and has reached `implemented`.
 - [[REQ-WP-058]]
 - [[REQ-WP-059]]
 - [[REQ-WP-060]]
+- [[REQ-WP-062]]
 - [[REQ-ASSET-001]]
 - [[REQ-BIAS-006]]
 - [[REQ-EXP-007]]
@@ -104,7 +104,6 @@ requirement exists and has reached `implemented`.
 
 - Curve twocrypto quoting: [[REQ-WP-046]] classifies it and quotes Stableswap-NG and tricrypto; the deployed twocrypto version has no matching published source
 - Uniswap v4 executable quoting for `CUSTOM_ACCOUNTING` pools: [[REQ-WP-047]] routes, classifies and refuses them; nothing quotes them
-- Materializing `LiquidityState` from stored rows: [[REQ-WP-060]] builds the table and §18.12.2's `reconstruction_quality`; nothing drives the reconstruction from `dex_liquidity`
 - Pinot HOT DeFi datasets: deferred by [[ADR-002]] until a HOT serving requirement exists, not missing by oversight
 - §27.3's `DEX active liquidity` pane: [[REQ-WP-059]] draws the depth bands and offers the swap-imbalance pane; [[REQ-WP-060]] reconstructs `active_liquidity` and stores it, and no feature computes a series from those rows for a pane to draw
 
