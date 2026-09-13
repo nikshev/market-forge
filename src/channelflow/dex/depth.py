@@ -36,6 +36,7 @@ from channelflow.dex.math import (
     sqrt_price,
 )
 from channelflow.dex.pool import PoolState
+from channelflow.dex.reconstruction import require_tick_map_complete
 
 BPS = Decimal(10_000)
 
@@ -66,6 +67,7 @@ def depth_to_bps(state: PoolState, *, bps: Decimal, upward: bool) -> DepthQuote:
     liquidity is rarely symmetric, and that asymmetry is the reason a DEX depth
     curve is worth having at all.
     """
+    require_tick_map_complete(state)
     if bps < 0:
         raise ValueError("bps must not be negative")
     if state.sqrt_price_x96 <= 0:

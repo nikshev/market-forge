@@ -1,0 +1,122 @@
+# Reproduces the mutation sweep recorded for this module.
+#
+# Patterns are TOML *literal* strings on purpose: the basic form treats a
+# trailing backslash as a line continuation and eats the next line's indentation.
+source = "src/channelflow/dex/reconstruction.py"
+tests = [
+  "tests/unit/dex/test_reconstruction.py",
+  "tests/unit/dex/test_depth.py",
+  "tests/unit/tables/test_dex_state.py",
+]
+
+[[mutation]]
+name = "a tick exactly at spot is excluded"
+find = '''        (net for tick, net in state.tick_liquidity_net.items() if tick <= state.current_tick),'''
+replace = '''        (net for tick, net in state.tick_liquidity_net.items() if tick < state.current_tick),'''
+
+[[mutation]]
+name = "the sum reaches above spot"
+find = '''        (net for tick, net in state.tick_liquidity_net.items() if tick <= state.current_tick),'''
+replace = '''        (net for tick, net in state.tick_liquidity_net.items()),'''
+
+[[mutation]]
+name = "the invariant becomes an inequality"
+find = '''    return implied_active_liquidity(state) == state.active_liquidity'''
+replace = '''    return implied_active_liquidity(state) <= state.active_liquidity'''
+
+[[mutation]]
+name = "the invariant is inverted"
+find = '''    return implied_active_liquidity(state) == state.active_liquidity'''
+replace = '''    return implied_active_liquidity(state) != state.active_liquidity'''
+
+[[mutation]]
+name = "every map is taken as complete"
+find = '''    return implied_active_liquidity(state) == state.active_liquidity'''
+replace = '''    return True'''
+
+[[mutation]]
+name = "a gap ranks below a balanced map"
+find = '''    if not provenance.contiguous:
+        return ReconstructionQuality.GAPPED
+    if not tick_map_accounts_for_liquidity(state):
+        return ReconstructionQuality.PARTIAL_TICKS'''
+replace = '''    if not tick_map_accounts_for_liquidity(state):
+        return ReconstructionQuality.PARTIAL_TICKS
+    if not provenance.contiguous:
+        return ReconstructionQuality.GAPPED'''
+
+[[mutation]]
+name = "a gap is ignored"
+find = '''    if not provenance.contiguous:
+        return ReconstructionQuality.GAPPED'''
+replace = '''    if False:
+        return ReconstructionQuality.GAPPED'''
+
+[[mutation]]
+name = "contiguity is read backwards"
+find = '''    if not provenance.contiguous:
+        return ReconstructionQuality.GAPPED'''
+replace = '''    if provenance.contiguous:
+        return ReconstructionQuality.GAPPED'''
+
+[[mutation]]
+name = "a partial map is only a warning"
+find = '''    if not tick_map_accounts_for_liquidity(state):
+        return ReconstructionQuality.PARTIAL_TICKS'''
+replace = '''    if False:
+        return ReconstructionQuality.PARTIAL_TICKS'''
+
+[[mutation]]
+name = "an unaligned read counts as a divergence"
+find = '''        return self.aligned and self.incident.diverged'''
+replace = '''        return self.incident.diverged'''
+
+[[mutation]]
+name = "any read anchors the state"
+find = '''    if reconciliation is not None and reconciliation.aligned:
+        return ReconstructionQuality.ANCHORED'''
+replace = '''    if reconciliation is not None:
+        return ReconstructionQuality.ANCHORED'''
+
+[[mutation]]
+name = "alignment is a range rather than a block"
+find = '''        return self.read_at_block == self.state_block'''
+replace = '''        return self.read_at_block >= self.state_block'''
+
+[[mutation]]
+name = "a partial reconstruction may be traversed"
+find = '''DEPTH_CAPABLE = frozenset({ReconstructionQuality.ANCHORED, ReconstructionQuality.REPLAYED})'''
+replace = '''DEPTH_CAPABLE = frozenset(ReconstructionQuality)'''
+
+[[mutation]]
+name = "the quality gate lets anything through"
+find = '''    if quality in DEPTH_CAPABLE:
+        return'''
+replace = '''    if True:
+        return'''
+
+[[mutation]]
+name = "the quality gate refuses everything"
+find = '''    if quality in DEPTH_CAPABLE:
+        return'''
+replace = '''    if False:
+        return'''
+
+[[mutation]]
+name = "the depth guard returns instead of refusing"
+find = '''    if tick_map_accounts_for_liquidity(state):
+        return
+    raise DepthNotSupported('''
+replace = '''    if True:
+        return
+    raise DepthNotSupported('''
+
+[[mutation]]
+name = "the refusal omits the pool's own number"
+find = '''        f"reports {state.active_liquidity}; the map is incomplete, and a curve from it "'''
+replace = '''        "reports a different one; the map is incomplete, and a curve from it "'''
+
+[[mutation]]
+name = "a backwards range is accepted"
+find = '''        if self.to_block < self.from_block:'''
+replace = '''        if False:'''
