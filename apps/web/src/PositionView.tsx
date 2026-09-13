@@ -13,6 +13,7 @@
 // prettier trail section 44A.33 forbids, reintroduced by a drawing choice.
 
 import type { StopPathView } from "./stopPath";
+import { chartMilliseconds } from "./time";
 
 const WIDTH = 720;
 const HEIGHT = 200;
@@ -105,7 +106,8 @@ export function PositionView({
 }
 
 function staircase(view: StopPathView, width: number, height: number): string {
-  const times = view.path.map((p) => p.at_ns);
+  // Milliseconds, through the named narrowing: a pixel here is minutes wide.
+  const times = view.path.map((p) => chartMilliseconds(p.at_ns));
   const prices = view.path.map((p) => Number(p.price));
   const [t0, t1] = [Math.min(...times), Math.max(...times)];
   const [p0, p1] = [Math.min(...prices), Math.max(...prices)];
@@ -118,7 +120,7 @@ function staircase(view: StopPathView, width: number, height: number): string {
   const points: string[] = [];
   let previousY: number | null = null;
   view.path.forEach((point) => {
-    const x = ((point.at_ns - t0) / spanT) * width;
+    const x = ((chartMilliseconds(point.at_ns) - t0) / spanT) * width;
     const y = height - ((Number(point.price) - p0) / spanP) * height;
     // The corner: hold the old price up to this instant, then step.
     if (previousY !== null) points.push(`${x.toFixed(2)},${previousY.toFixed(2)}`);

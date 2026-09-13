@@ -11,10 +11,10 @@ import { describe, expect, it, vi } from "vitest";
 import { FlowPane } from "../FlowPane";
 import type { FeaturePointOut } from "../types";
 
-const BASE_NS = 1788838800000000000;
+const BASE_NS = 1788838800000000000n;
 
 function points(values: Record<string, number>[]): FeaturePointOut[] {
-  return values.map((v, i) => ({ at_ns: BASE_NS + i * 1_000_000_000, values: v }));
+  return values.map((v, i) => ({ at_ns: BASE_NS + BigInt(i) * 1_000_000_000n, values: v }));
 }
 
 describe("the pane a reader sees", () => {

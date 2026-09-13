@@ -10,6 +10,7 @@
 import type { Time } from "lightweight-charts";
 
 import { ZONES } from "./types";
+import { chartSeconds } from "./time";
 import type { BarOut, ChannelOut, SignalOut } from "./types";
 
 // `Time` rather than `number`: lightweight-charts accepts a UNIX second, a
@@ -49,8 +50,13 @@ export interface Series {
 
 // lightweight-charts takes UNIX seconds. Feeding it nanoseconds puts every
 // candle somewhere around the year 58,000, with no error and an empty chart.
-export function toSeconds(eventTimeNs: number): Time {
-  return Math.floor(eventTimeNs / 1e9) as Time;
+//
+// This is the narrowing REQ-WP-061 allows: the axis is seconds and the layout is
+// floats, so nanoseconds cannot reach a pixel whatever this app does. The
+// division happens in `bigint` (`chartSeconds`) so the *input* is exact -- what
+// is given up is resolution the chart never had, not resolution the value had.
+export function toSeconds(eventTimeNs: bigint): Time {
+  return chartSeconds(eventTimeNs) as Time;
 }
 
 export function buildSeries({
@@ -123,7 +129,7 @@ export function markerFor(signal: SignalOut, _channel: ChannelOut | null): Marke
 // into empty space, which reads as a data outage rather than as an old link.
 export function visibleRangeFor(
   bars: BarOut[],
-  atNs: number | null,
+  atNs: bigint | null,
   span: number,
 ): { from: number; to: number } | null {
   if (atNs === null || bars.length === 0) {

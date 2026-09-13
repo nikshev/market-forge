@@ -11,14 +11,14 @@ import { DEFAULT_OVERLAYS } from "../types";
 import { visibleRangeFor } from "../series";
 import type { BarOut } from "../types";
 
-const SECOND_NS = 1_000_000_000;
-const MINUTE_NS = 60 * SECOND_NS;
-const BASE_NS = 1788838800000000000;
+const SECOND_NS = 1_000_000_000n;
+const MINUTE_NS = 60n * SECOND_NS;
+const BASE_NS = 1788838800000000000n;
 
 function bars(count: number): BarOut[] {
   return Array.from({ length: count }, (_, i) => ({
-    open_time_ns: BASE_NS + i * MINUTE_NS,
-    close_time_ns: BASE_NS + (i + 1) * MINUTE_NS,
+    open_time_ns: BASE_NS + BigInt(i) * MINUTE_NS,
+    close_time_ns: BASE_NS + BigInt(i + 1) * MINUTE_NS,
     open: "1",
     high: "1",
     low: "1",
@@ -81,7 +81,7 @@ describe("where the chart looks", () => {
   it("centres the visible range on the bar covering the instant", () => {
     // SC-006, FR-008. REQ-US-002 says "exactly the signal's timestamp"; a view
     // fitted to 500 bars contains that instant and hides it.
-    const range = visibleRangeFor(bars(101), BASE_NS + 50 * MINUTE_NS, 10);
+    const range = visibleRangeFor(bars(101), BASE_NS + 50n * MINUTE_NS, 10);
 
     expect(range).toEqual({ from: 45, to: 55 });
   });
@@ -90,14 +90,14 @@ describe("where the chart looks", () => {
     // SC-007, FR-009. Centring on a bar that does not exist would scroll the
     // chart to empty space and look like a data outage.
     expect(visibleRangeFor(bars(20), BASE_NS - MINUTE_NS, 10)).toBeNull();
-    expect(visibleRangeFor(bars(20), BASE_NS + 500 * MINUTE_NS, 10)).toBeNull();
+    expect(visibleRangeFor(bars(20), BASE_NS + 500n * MINUTE_NS, 10)).toBeNull();
   });
 
   it("keeps the range inside the data at the edges", () => {
     // FR-010. A range running past the last bar leaves the signal off-centre
     // with blank space beside it, which reads as missing data.
     expect(visibleRangeFor(bars(20), BASE_NS, 10)).toEqual({ from: 0, to: 10 });
-    expect(visibleRangeFor(bars(20), BASE_NS + 19 * MINUTE_NS, 10)).toEqual({
+    expect(visibleRangeFor(bars(20), BASE_NS + 19n * MINUTE_NS, 10)).toEqual({
       from: 9,
       to: 19,
     });
@@ -108,7 +108,7 @@ describe("where the chart looks", () => {
     // start of a backfill. A range running to bar 10 of five would leave the
     // chart showing blank space beside the signal, which reads as missing data
     // rather than as a short history.
-    expect(visibleRangeFor(bars(5), BASE_NS + 2 * MINUTE_NS, 10)).toEqual({ from: 0, to: 4 });
+    expect(visibleRangeFor(bars(5), BASE_NS + 2n * MINUTE_NS, 10)).toEqual({ from: 0, to: 4 });
   });
 
   it("has nothing to centre on when there are no bars", () => {

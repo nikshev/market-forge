@@ -12,11 +12,11 @@ import { describe, expect, it } from "vitest";
 import { PANES, paneSeries } from "../panes";
 import type { FeaturePointOut } from "../types";
 
-const SECOND_NS = 1_000_000_000;
-const BASE_NS = 1788838800000000000;
+const SECOND_NS = 1_000_000_000n;
+const BASE_NS = 1788838800000000000n;
 
 function point(index: number, values: Record<string, number>): FeaturePointOut {
-  return { at_ns: BASE_NS + index * SECOND_NS, values };
+  return { at_ns: BASE_NS + BigInt(index) * SECOND_NS, values };
 }
 
 describe("the pane list", () => {
@@ -89,7 +89,7 @@ describe("what a pane draws", () => {
     const drawn = paneSeries(points, "cvd");
 
     expect(drawn.points).toHaveLength(1);
-    expect(drawn.points[0]?.at_ns).toBe(BASE_NS + 2 * SECOND_NS);
+    expect(drawn.points[0]?.at_ns).toBe(BASE_NS + 2n * SECOND_NS);
   });
 
   it("orders by instant whatever order it was given", () => {

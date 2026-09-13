@@ -20,7 +20,7 @@ import { AS_SEEN_THEN } from "./types";
 import type { ChannelMode, ConfirmedExtremumOut, ExtremumCandidateOut } from "./types";
 
 export interface ExtremumMarker {
-  at_ns: number;
+  at_ns: bigint;
   kind: "confirmed" | "candidate";
   type: string;
   price: string;
@@ -35,7 +35,7 @@ export function extremumMarkers({
   confirmed: readonly ConfirmedExtremumOut[];
   candidates: readonly ExtremumCandidateOut[];
   mode: ChannelMode;
-  atNs: number;
+  atNs: bigint;
 }): ExtremumMarker[] {
   // In CURRENT REFIT the filter is deliberately absent. PRD section 27.5 makes
   // that mode the place where repaint-like differences are meant to be visible,
@@ -68,5 +68,5 @@ export function extremumMarkers({
       })),
   ];
 
-  return marks.sort((a, b) => a.at_ns - b.at_ns);
+  return marks.sort((a, b) => (a.at_ns < b.at_ns ? -1 : a.at_ns > b.at_ns ? 1 : 0));
 }

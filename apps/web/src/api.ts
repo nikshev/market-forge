@@ -15,13 +15,55 @@ import type {
   FeatureSeriesResponse,
   SignalOut,
 } from "./types";
+import { BadTime, nanoseconds } from "./time";
 import { AS_SEEN_THEN } from "./types";
 
 export type Result<T> = { ok: true; value: T } | { ok: false; error: string };
 
+// Every `_ns` key the API sends is converted here, once, by one rule: a **string**
+// is an instant and becomes a `bigint`; a **number** is a duration and stays one.
+//
+// That rule is safe because the other end enforces it. `tests/unit/api/
+// test_wire_time.py` asserts field by field which `_ns` fields of which schema
+// are strings and which are integers, and fails when a new one is added without
+// choosing -- so a timestamp cannot arrive here as a number and be quietly
+// accepted as a span.
+//
+// Conversion happens inside this module because a bad value has to become a
+// `Result` failure. REQ-WP-009's FR-016 says a failed load is stated and never
+// rendered, and `BigInt("abc")` thrown in a component gets an empty tree --
+// exactly the indistinguishable blank the rule forbids.
+function convertTimes(value: unknown, path = ""): unknown {
+  if (Array.isArray(value)) {
+    return value.map((item, index) => convertTimes(item, `${path}[${index}]`));
+  }
+  if (value === null || typeof value !== "object") {
+    return value;
+  }
+  const converted: Record<string, unknown> = {};
+  for (const [key, raw] of Object.entries(value as Record<string, unknown>)) {
+    const where = path === "" ? key : `${path}.${key}`;
+    if (!key.endsWith("_ns")) {
+      converted[key] = convertTimes(raw, where);
+      continue;
+    }
+    // A null instant is a real answer -- `state_time_ns` is null for a pool with
+    // no curve -- and is left alone. A number is a duration. Anything else is an
+    // instant and is validated.
+    converted[key] = raw === null || typeof raw === "number" ? raw : nanoseconds(raw, where);
+  }
+  return converted;
+}
+
 const BASE = import.meta.env.VITE_API_BASE ?? "";
 
-async function get<T>(path: string, params: Record<string, string | number>): Promise<Result<T>> {
+async function get<T>(
+  path: string,
+  // `bigint` is accepted and stringified exactly. Sending an instant as a number
+  // would round it on the way *out*, which for `as_of_ns` means asking the
+  // server about a slightly different moment than the chart is showing.
+  params: Record<string, string | number | bigint>,
+): Promise<Result<T>> {
   const query = new URLSearchParams(
     Object.entries(params).map(([k, v]) => [k, String(v)]),
   ).toString();
@@ -32,8 +74,13 @@ async function get<T>(path: string, params: Record<string, string | number>): Pr
       // sends them to the console.
       return { ok: false, error: `HTTP ${response.status}` };
     }
-    return { ok: true, value: (await response.json()) as T };
+    return { ok: true, value: convertTimes(await response.json()) as T };
   } catch (cause) {
+    if (cause instanceof BadTime) {
+      // Named, because this failure is about the payload rather than the
+      // network, and a reader who sees it should suspect the server.
+      return { ok: false, error: `the response carried an unreadable time — ${cause.message}` };
+    }
     return { ok: false, error: cause instanceof Error ? cause.message : String(cause) };
   }
 }
@@ -56,7 +103,7 @@ export function fetchChannel(params: {
   venue: string;
   symbol: string;
   timeframeNs: number;
-  atNs: number;
+  atNs: bigint;
   mode: ChannelMode;
 }): Promise<Result<ChannelOut>> {
   return get("/api/v1/channels", {
@@ -79,8 +126,8 @@ export function fetchFeatureSeries(params: {
   venue: string;
   symbol: string;
   timeframeNs: number;
-  startNs: number;
-  endNs: number;
+  startNs: bigint;
+  endNs: bigint;
 }): Promise<Result<FeatureSeriesResponse>> {
   return get("/api/v1/features/timeseries", {
     venue: params.venue,
@@ -94,7 +141,7 @@ export function fetchFeatureSeries(params: {
 export function fetchExtrema(params: {
   instrumentId: string;
   timeframeNs: number;
-  asOfNs: number | null;
+  asOfNs: bigint | null;
 }): Promise<Result<ExtremaResponse>> {
   return get("/api/v1/extrema", {
     instrument_id: params.instrumentId,
@@ -109,7 +156,7 @@ export function fetchExtrema(params: {
 export function fetchDexDepth(params: {
   chainId: number;
   pool: string;
-  atNs: number;
+  atNs: bigint;
 }): Promise<Result<DexDepthResponse>> {
   // `atNs` is not optional here either. The endpoint requires it, and a client
   // that filled it in would put the decision somewhere the reader of a chart

@@ -13,11 +13,11 @@ import { describe, expect, it } from "vitest";
 import { buildSeries, markerFor } from "../series";
 import type { BarOut, ChannelOut, SignalOut } from "../types";
 
-const MINUTE_NS = 60 * 1_000_000_000;
-const BASE_NS = 1_788_838_800_000_000_000;
+const MINUTE_NS = 60_000_000_000n;
+const BASE_NS = 1_788_838_800_000_000_000n;
 
 function bar(i: number, close: number): BarOut {
-  const open = BASE_NS + i * MINUTE_NS;
+  const open = BASE_NS + BigInt(i) * MINUTE_NS;
   return {
     open_time_ns: open,
     close_time_ns: open + MINUTE_NS,
@@ -31,7 +31,7 @@ function bar(i: number, close: number): BarOut {
 }
 
 const CHANNEL: ChannelOut = {
-  as_of_ns: BASE_NS + 3 * MINUTE_NS,
+  as_of_ns: BASE_NS + 3n * MINUTE_NS,
   model_name: "rolling_ols_log_price",
   model_version: "1.0.0",
   lookback: 60,
@@ -41,7 +41,7 @@ const CHANNEL: ChannelOut = {
   slope_normalized: -0.0037,
   width_pct: 0.024,
   quality_score: 0.83,
-  source_max_event_time_ns: BASE_NS + 3 * MINUTE_NS,
+  source_max_event_time_ns: BASE_NS + 3n * MINUTE_NS,
   mode: "AS-SEEN-THEN",
 };
 
@@ -49,11 +49,12 @@ const SIGNAL: SignalOut = {
   signal_id: "6f3d1a2e-8b47-5c19-9f2a-1d4e7c05b3a8",
   venue: "binance",
   symbol: "BTCUSDT",
-  timeframe_ns: MINUTE_NS,
+  // A duration stays a number, deliberately (REQ-WP-061).
+  timeframe_ns: Number(MINUTE_NS),
   direction: "short",
   boundary: "upper",
   state: "confirmed",
-  opened_at_ns: BASE_NS + 3 * MINUTE_NS,
+  opened_at_ns: BASE_NS + 3n * MINUTE_NS,
 };
 
 const BARS = [bar(0, 112_100), bar(1, 112_200), bar(2, 112_300), bar(3, 112_400)];
@@ -66,7 +67,7 @@ describe("chart series", () => {
     expect(candles[0]).toMatchObject({ open: 112_100, high: 112_105, low: 112_095 });
     // lightweight-charts takes seconds, not nanoseconds. Feeding it
     // nanoseconds silently places every candle in the year 58,000.
-    expect(candles[0].time).toBe(Math.floor((BASE_NS + MINUTE_NS) / 1e9));
+    expect(candles[0].time).toBe(Number((BASE_NS + MINUTE_NS) / 1_000_000_000n));
     const times = candles.map((c) => c.time as number);
     expect(times).toEqual([...times].sort((a, b) => a - b));
   });
@@ -106,7 +107,7 @@ describe("chart series", () => {
   it("places the marker at the signal's instant, on its boundary", () => {
     const marker = markerFor(SIGNAL, CHANNEL);
 
-    expect(marker.time).toBe(Math.floor(SIGNAL.opened_at_ns / 1e9));
+    expect(marker.time).toBe(Number(SIGNAL.opened_at_ns / 1_000_000_000n));
     expect(marker.position).toBe("aboveBar");
     expect(marker.text).toContain("SHORT");
     expect(marker.text).toContain("upper");

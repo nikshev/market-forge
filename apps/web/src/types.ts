@@ -9,8 +9,8 @@ export const CURRENT_REFIT = "CURRENT REFIT";
 export type ChannelMode = typeof AS_SEEN_THEN | typeof CURRENT_REFIT;
 
 export interface BarOut {
-  open_time_ns: number;
-  close_time_ns: number;
+  open_time_ns: bigint;
+  close_time_ns: bigint;
   open: string;
   high: string;
   low: string;
@@ -20,7 +20,7 @@ export interface BarOut {
 }
 
 export interface ChannelOut {
-  as_of_ns: number;
+  as_of_ns: bigint;
   model_name: string;
   model_version: string;
   lookback: number;
@@ -30,7 +30,7 @@ export interface ChannelOut {
   slope_normalized: number;
   width_pct: number;
   quality_score: number;
-  source_max_event_time_ns: number;
+  source_max_event_time_ns: bigint;
   mode: ChannelMode;
 }
 
@@ -42,7 +42,7 @@ export interface SignalOut {
   direction: "long" | "short";
   boundary: "upper" | "lower" | "middle";
   state: string;
-  opened_at_ns: number;
+  opened_at_ns: bigint;
 }
 
 // PRD section 13.11 calls these research defaults, not proven parameters. They
@@ -121,7 +121,7 @@ export const DEFAULT_OVERLAYS: readonly Overlay[] = [
  * measured then. A feature absent from the mapping is silent rather than
  * zero -- see `panes.ts`, where drawing the difference is the whole job. */
 export interface FeaturePointOut {
-  at_ns: number;
+  at_ns: bigint;
   values: Record<string, number>;
 }
 
@@ -135,8 +135,8 @@ export interface FeatureSeriesResponse {
 export interface ConfirmedExtremumOut {
   extremum_id: string;
   extremum_type: string;
-  extremum_time_ns: number;
-  known_at_ns: number;
+  extremum_time_ns: bigint;
+  known_at_ns: bigint;
   price: string;
   confirmation_lag_bars: number;
   prominence_bps: number | null;
@@ -146,8 +146,8 @@ export interface ConfirmedExtremumOut {
 export interface ExtremumCandidateOut {
   candidate_id: string;
   candidate_type: string;
-  candidate_time_ns: number;
-  observed_at_ns: number;
+  candidate_time_ns: bigint;
+  observed_at_ns: bigint;
   price: string;
   structural_score: number;
 }
@@ -165,12 +165,12 @@ export interface ExtremaResponse {
 export interface StopAnchorOut {
   kind: string;
   price: string;
-  known_at_ns: number;
+  known_at_ns: bigint;
   description: string;
 }
 
 export interface StopProposalOut {
-  at_ns: number;
+  at_ns: bigint;
   price: string;
   phase: string;
   reasons: string[];
@@ -184,7 +184,7 @@ export interface StopProposalOut {
 export interface PositionOut {
   position_id: string;
   side: "LONG" | "SHORT";
-  entry_time_ns: number;
+  entry_time_ns: bigint;
   average_entry_price: string;
   initial_stop_price: string;
   // Null means no catastrophic stop was set. Never the initial stop: those are
@@ -224,18 +224,15 @@ export interface DexDepthBandOut {
 export interface DexDepthResponse {
   chain_id: number;
   pool: string;
-  // Times arrive as strings, for the same reason prices do: JSON's number is a
-  // float64. A nanosecond epoch timestamp is around 1.7e18 and
-  // `Number.MAX_SAFE_INTEGER` is 9.0e15, so reading one as a number quantises
-  // it to the nearest 256 nanoseconds -- measured: `(t + 5000) - t` gives 5120.
-  //
-  // Every other `_ns` field in this file is a `number` and has the same
-  // problem. Fixing them is a change across this whole app and is REQ-WP-054's
-  // open question; this field is exact because it is new.
-  requested_at_ns: string;
+  // Every instant in this file is a `bigint`, parsed in `api.ts` from the string
+  // the API sends. A nanosecond mark is around 1.8e18 against a safe maximum of
+  // 9.0e15, so a `number` here rounds to a 256-nanosecond grid -- REQ-WP-054
+  // recorded that as an open question about the whole app and [[REQ-WP-061]]
+  // closed it.
+  requested_at_ns: bigint;
   // The curve's own time, which is not the requested one whenever the most
   // recent curve predates the cursor. Null when the pool has no curve at or
   // before the instant.
-  state_time_ns: string | null;
+  state_time_ns: bigint | null;
   bands: DexDepthBandOut[];
 }

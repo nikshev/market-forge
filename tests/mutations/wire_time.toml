@@ -1,0 +1,57 @@
+# Reproduces the mutation sweep recorded for this module.
+#
+# Patterns are TOML *literal* strings on purpose: the basic form treats a
+# trailing backslash as a line continuation and eats the next line's indentation.
+source = "src/channelflow/api/schemas.py"
+tests = [
+  "tests/unit/api/test_wire_time.py",
+  "tests/unit/api/test_reads.py",
+  "tests/unit/api/test_channel_modes.py",
+]
+
+[[mutation]]
+name = "an empty timestamp is accepted"
+find = '''WireTime = Annotated[str, StringConstraints(pattern=r"^(?:0|[1-9][0-9]*)$")]'''
+replace = '''WireTime = Annotated[str, StringConstraints(pattern=r"^[0-9]*$")]'''
+
+[[mutation]]
+name = "leading zeros are accepted"
+find = '''WireTime = Annotated[str, StringConstraints(pattern=r"^(?:0|[1-9][0-9]*)$")]'''
+replace = '''WireTime = Annotated[str, StringConstraints(pattern=r"^[0-9]+$")]'''
+
+[[mutation]]
+name = "anything is accepted"
+find = '''WireTime = Annotated[str, StringConstraints(pattern=r"^(?:0|[1-9][0-9]*)$")]'''
+replace = '''WireTime = Annotated[str, StringConstraints()]'''
+
+[[mutation]]
+name = "the pattern is unanchored"
+find = '''WireTime = Annotated[str, StringConstraints(pattern=r"^(?:0|[1-9][0-9]*)$")]'''
+replace = '''WireTime = Annotated[str, StringConstraints(pattern=r"(?:0|[1-9][0-9]*)")]'''
+
+[[mutation]]
+name = "a timestamp goes back to an integer"
+find = '''class FeatureSnapshotResponse(BaseModel):
+    at_ns: WireTime'''
+replace = '''class FeatureSnapshotResponse(BaseModel):
+    at_ns: int'''
+
+[[mutation]]
+name = "an extremum's two times go back to integers"
+find = '''    extremum_time_ns: WireTime'''
+replace = '''    extremum_time_ns: int'''
+
+[[mutation]]
+name = "a bar's close is served as a number"
+find = '''            close_time_ns=str(bar.close_time_ns),'''
+replace = '''            close_time_ns=bar.close_time_ns,'''
+
+[[mutation]]
+name = "a duration is converted too"
+find = '''    timeframe_ns: int'''
+replace = '''    timeframe_ns: WireTime'''
+
+[[mutation]]
+name = "the snapshot's instant loses its conversion"
+find = '''            as_of_ns=str(snapshot.as_of_ns),'''
+replace = '''            as_of_ns=snapshot.as_of_ns,'''

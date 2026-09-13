@@ -10,11 +10,11 @@
 // so a component test here would assert nothing about the picture -- which is
 // why the split exists.
 
-import { createChart, type IChartApi, type Time } from "lightweight-charts";
+import { createChart, type IChartApi } from "lightweight-charts";
 import { useEffect, useRef } from "react";
 
 import { extremumMarkers } from "./extrema";
-import { buildSeries, markerFor, visibleRangeFor } from "./series";
+import { buildSeries, markerFor, toSeconds, visibleRangeFor } from "./series";
 import { AS_SEEN_THEN, DEFAULT_OVERLAYS } from "./types";
 import type {
   BarOut,
@@ -52,7 +52,7 @@ export function Chart({
   signal: SignalOut | null;
   profile?: Profile | null;
   overlays?: readonly Overlay[];
-  focusAtNs?: number | null;
+  focusAtNs?: bigint | null;
   extrema?: ExtremaResponse;
   /** Which mode the chart is in. The extremum filter is AS-SEEN-THEN's only. */
   mode?: ChannelMode;
@@ -97,9 +97,9 @@ export function Chart({
         confirmed: extrema.confirmed,
         candidates: extrema.candidates,
         mode,
-        atNs: focusAtNs ?? bars.at(-1)?.close_time_ns ?? 0,
+        atNs: focusAtNs ?? bars.at(-1)?.close_time_ns ?? 0n,
       }).map((mark) => ({
-        time: (mark.at_ns / 1_000_000_000) as Time,
+        time: toSeconds(mark.at_ns),
         position: mark.type === "HIGH" ? ("aboveBar" as const) : ("belowBar" as const),
         // A confirmation is filled and a candidate is hollow: the same glyph
         // in two weights, so a reader sees one alphabet rather than two.

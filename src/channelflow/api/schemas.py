@@ -12,13 +12,26 @@ immutability guarantees are about stored records, not about JSON.
 Decimals become strings. A price that round-trips through a JSON float is a
 different price, and the whole point of ADR-003's `Decimal` at the boundary was
 to stop that happening once.
+
+**Timestamps become strings for the same reason and a worse one** ([[REQ-WP-061]]).
+A nanosecond count since the epoch is around 1.8e18 and JavaScript's
+`Number.MAX_SAFE_INTEGER` is 9.0e15, so at that magnitude the representable
+values are 256 nanoseconds apart: a mark read as a number is rounded, and two
+marks 100 nanoseconds apart compare equal. PRD §13A.1 requires
+`extremum_time != known_at` and the comparisons that enforce it are exactly the
+ones the rounding reaches, always in the permissive direction.
+
+Durations are not converted. `timeframe_ns` and `hindsight_ns` are bounded by the
+timeframes this system supports -- a week is 6.0e14, well inside the safe range --
+and converting them would obscure which fields had a reason.
 """
 
 from __future__ import annotations
 
 import uuid
+from typing import Annotated
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, StringConstraints
 
 from channelflow.api.channels import AS_SEEN_THEN, CURRENT_REFIT
 from channelflow.api.comparison import ChannelComparison
@@ -29,6 +42,16 @@ from channelflow.extrema.models import ConfirmedExtremum, ExtremumCandidate
 from channelflow.scoring import Explanation, Factor
 from channelflow.signals import Candidate
 from channelflow.tables.dex_depth import DepthBand
+
+#: A nanosecond timestamp on the wire: digits, as a string.
+#:
+#: The pattern is the contract rather than a convention. It refuses `""`, which
+#: `BigInt("")` in a browser turns into `0n` -- the epoch, which is positive,
+#: ordered and believable, and would place a bar at the beginning of time rather
+#: than failing. It also refuses a fractional or negative string, which
+#: `BigInt` throws on and which a reader would otherwise meet as a crash in a
+#: render instead of a stated load failure.
+WireTime = Annotated[str, StringConstraints(pattern=r"^(?:0|[1-9][0-9]*)$")]
 
 
 class MarketOut(BaseModel):
@@ -66,8 +89,8 @@ class MarketOut(BaseModel):
 class BarOut(BaseModel):
     model_config = ConfigDict(frozen=True)
 
-    open_time_ns: int
-    close_time_ns: int
+    open_time_ns: WireTime
+    close_time_ns: WireTime
     open: str
     high: str
     low: str
@@ -78,8 +101,8 @@ class BarOut(BaseModel):
     @classmethod
     def of(cls, bar: Bar) -> BarOut:
         return cls(
-            open_time_ns=bar.open_time_ns,
-            close_time_ns=bar.close_time_ns,
+            open_time_ns=str(bar.open_time_ns),
+            close_time_ns=str(bar.close_time_ns),
             open=str(bar.open),
             high=str(bar.high),
             low=str(bar.low),
@@ -92,7 +115,7 @@ class BarOut(BaseModel):
 class ChannelOut(BaseModel):
     model_config = ConfigDict(frozen=True)
 
-    as_of_ns: int
+    as_of_ns: WireTime
     model_name: str
     model_version: str
     lookback: int
@@ -102,7 +125,7 @@ class ChannelOut(BaseModel):
     slope_normalized: float
     width_pct: float
     quality_score: float
-    source_max_event_time_ns: int
+    source_max_event_time_ns: WireTime
     #: Which of PRD section 27.5's two views this is. Carried in the payload,
     #: not only in the request, so a cached or forwarded response can still say
     #: what it is (ADR-020).
@@ -111,7 +134,7 @@ class ChannelOut(BaseModel):
     @classmethod
     def of(cls, snapshot: ChannelSnapshot, *, mode: str) -> ChannelOut:
         return cls(
-            as_of_ns=snapshot.as_of_ns,
+            as_of_ns=str(snapshot.as_of_ns),
             model_name=snapshot.model_name,
             model_version=snapshot.model_version,
             lookback=snapshot.lookback,
@@ -121,7 +144,7 @@ class ChannelOut(BaseModel):
             slope_normalized=snapshot.slope_normalized,
             width_pct=snapshot.width_pct,
             quality_score=snapshot.quality.score,
-            source_max_event_time_ns=snapshot.source_max_event_time_ns,
+            source_max_event_time_ns=str(snapshot.source_max_event_time_ns),
             mode=mode,
         )
 
@@ -181,7 +204,7 @@ class SignalOut(BaseModel):
     direction: str
     boundary: str
     state: str
-    opened_at_ns: int
+    opened_at_ns: WireTime
 
     @classmethod
     def of(cls, candidate: Candidate, *, signal_id: uuid.UUID) -> SignalOut:
@@ -193,7 +216,7 @@ class SignalOut(BaseModel):
             direction=candidate.direction,
             boundary=candidate.boundary,
             state=candidate.state.value,
-            opened_at_ns=candidate.opened_at_ns,
+            opened_at_ns=str(candidate.opened_at_ns),
         )
 
 
@@ -202,7 +225,7 @@ class TransitionOut(BaseModel):
 
     from_state: str
     to_state: str
-    bar_close_time_ns: int
+    bar_close_time_ns: WireTime
     reason: str
 
 
@@ -285,12 +308,12 @@ class SignalDetailOut(BaseModel):
 class FeaturePointOut(BaseModel):
     model_config = ConfigDict(frozen=True)
 
-    at_ns: int
+    at_ns: WireTime
     values: dict[str, float]
 
     @classmethod
     def of(cls, point: FeaturePoint) -> FeaturePointOut:
-        return cls(at_ns=point.at_ns, values=point.values)
+        return cls(at_ns=str(point.at_ns), values=point.values)
 
 
 class MarketsResponse(BaseModel):
@@ -309,9 +332,9 @@ class ConfirmedExtremumOut(BaseModel):
     extremum_id: str
     extremum_type: str
     #: Where the marker goes.
-    extremum_time_ns: int
+    extremum_time_ns: WireTime
     #: The earliest instant this may be shown at all.
-    known_at_ns: int
+    known_at_ns: WireTime
     price: str
     confirmation_lag_bars: int
     prominence_bps: float | None
@@ -322,8 +345,8 @@ class ConfirmedExtremumOut(BaseModel):
         return cls(
             extremum_id=str(extremum.extremum_id),
             extremum_type=extremum.extremum_type,
-            extremum_time_ns=extremum.extremum_time_ns,
-            known_at_ns=extremum.known_at_ns,
+            extremum_time_ns=str(extremum.extremum_time_ns),
+            known_at_ns=str(extremum.known_at_ns),
             # A string, like every other price on the wire: a Decimal through a
             # JSON float is a different price.
             price=str(extremum.price),
@@ -340,8 +363,8 @@ class ExtremumCandidateOut(BaseModel):
 
     candidate_id: str
     candidate_type: str
-    candidate_time_ns: int
-    observed_at_ns: int
+    candidate_time_ns: WireTime
+    observed_at_ns: WireTime
     price: str
     structural_score: float
 
@@ -350,8 +373,8 @@ class ExtremumCandidateOut(BaseModel):
         return cls(
             candidate_id=str(candidate.candidate_id),
             candidate_type=candidate.candidate_type,
-            candidate_time_ns=candidate.candidate_time_ns,
-            observed_at_ns=candidate.observed_at_ns,
+            candidate_time_ns=str(candidate.candidate_time_ns),
+            observed_at_ns=str(candidate.observed_at_ns),
             price=str(candidate.price),
             structural_score=candidate.structural_score,
         )
@@ -376,7 +399,7 @@ class SignalsResponse(BaseModel):
 
 
 class FeatureSnapshotResponse(BaseModel):
-    at_ns: int
+    at_ns: WireTime
     values: dict[str, float]
 
 

@@ -12,8 +12,8 @@ import { extremumMarkers } from "../extrema";
 import { AS_SEEN_THEN, CURRENT_REFIT } from "../types";
 import type { ConfirmedExtremumOut, ExtremumCandidateOut } from "../types";
 
-const MINUTE_NS = 60 * 1_000_000_000;
-const BASE_NS = 1788838800000000000;
+const MINUTE_NS = 60_000_000_000n;
+const BASE_NS = 1788838800000000000n;
 
 function turn(
   turnAt: number,
@@ -23,8 +23,8 @@ function turn(
   return {
     extremum_id: `turn-${turnAt}`,
     extremum_type: "HIGH",
-    extremum_time_ns: BASE_NS + turnAt * MINUTE_NS,
-    known_at_ns: BASE_NS + knownAt * MINUTE_NS,
+    extremum_time_ns: BASE_NS + BigInt(turnAt) * MINUTE_NS,
+    known_at_ns: BASE_NS + BigInt(knownAt) * MINUTE_NS,
     price: "112000.10",
     confirmation_lag_bars: knownAt - turnAt,
     prominence_bps: null,
@@ -37,8 +37,8 @@ function candidate(at: number, observed: number, id = `cand-${at}`): ExtremumCan
   return {
     candidate_id: id,
     candidate_type: "LOW",
-    candidate_time_ns: BASE_NS + at * MINUTE_NS,
-    observed_at_ns: BASE_NS + observed * MINUTE_NS,
+    candidate_time_ns: BASE_NS + BigInt(at) * MINUTE_NS,
+    observed_at_ns: BASE_NS + BigInt(observed) * MINUTE_NS,
     price: "111000.00",
     structural_score: 0.4,
   };
@@ -50,11 +50,11 @@ describe("what the chart may show about turns", () => {
       confirmed: [turn(10, 14)],
       candidates: [],
       mode: AS_SEEN_THEN,
-      atNs: BASE_NS + 20 * MINUTE_NS,
+      atNs: BASE_NS + 20n * MINUTE_NS,
     });
 
     expect(marks).toHaveLength(1);
-    expect(marks[0]?.at_ns).toBe(BASE_NS + 10 * MINUTE_NS);
+    expect(marks[0]?.at_ns).toBe(BASE_NS + 10n * MINUTE_NS);
     expect(marks[0]?.kind).toBe("confirmed");
   });
 
@@ -65,7 +65,7 @@ describe("what the chart may show about turns", () => {
       confirmed: [turn(10, 14)],
       candidates: [],
       mode: AS_SEEN_THEN,
-      atNs: BASE_NS + 13 * MINUTE_NS,
+      atNs: BASE_NS + 13n * MINUTE_NS,
     });
 
     expect(marks).toEqual([]);
@@ -76,7 +76,7 @@ describe("what the chart may show about turns", () => {
       confirmed: [turn(10, 14)],
       candidates: [],
       mode: AS_SEEN_THEN,
-      atNs: BASE_NS + 14 * MINUTE_NS,
+      atNs: BASE_NS + 14n * MINUTE_NS,
     });
 
     expect(marks).toHaveLength(1);
@@ -89,7 +89,7 @@ describe("what the chart may show about turns", () => {
       confirmed: [],
       candidates: [candidate(10, 12)],
       mode: AS_SEEN_THEN,
-      atNs: BASE_NS + 11 * MINUTE_NS,
+      atNs: BASE_NS + 11n * MINUTE_NS,
     });
 
     expect(marks).toEqual([]);
@@ -100,7 +100,7 @@ describe("what the chart may show about turns", () => {
       confirmed: [turn(10, 12)],
       candidates: [candidate(20, 21)],
       mode: AS_SEEN_THEN,
-      atNs: BASE_NS + 30 * MINUTE_NS,
+      atNs: BASE_NS + 30n * MINUTE_NS,
     });
 
     expect(marks.map((m) => m.kind).sort()).toEqual(["candidate", "confirmed"]);
@@ -112,7 +112,7 @@ describe("what the chart may show about turns", () => {
       confirmed: [turn(10, 12, { source_candidate_id: "cand-10" })],
       candidates: [candidate(10, 11, "cand-10")],
       mode: AS_SEEN_THEN,
-      atNs: BASE_NS + 30 * MINUTE_NS,
+      atNs: BASE_NS + 30n * MINUTE_NS,
     });
 
     expect(marks).toHaveLength(1);
@@ -126,7 +126,7 @@ describe("what the chart may show about turns", () => {
       confirmed: [],
       candidates: [candidate(20, 21)],
       mode: AS_SEEN_THEN,
-      atNs: BASE_NS + 30 * MINUTE_NS,
+      atNs: BASE_NS + 30n * MINUTE_NS,
     });
 
     expect(marks).toHaveLength(1);
@@ -138,12 +138,12 @@ describe("what the chart may show about turns", () => {
       confirmed: [turn(30, 31), turn(10, 11)],
       candidates: [],
       mode: AS_SEEN_THEN,
-      atNs: BASE_NS + 40 * MINUTE_NS,
+      atNs: BASE_NS + 40n * MINUTE_NS,
     });
 
     expect(marks.map((m) => m.at_ns)).toEqual([
-      BASE_NS + 10 * MINUTE_NS,
-      BASE_NS + 30 * MINUTE_NS,
+      BASE_NS + 10n * MINUTE_NS,
+      BASE_NS + 30n * MINUTE_NS,
     ]);
   });
 
@@ -155,7 +155,7 @@ describe("what the chart may show about turns", () => {
       confirmed: [turn(10, 14)],
       candidates: [],
       mode: CURRENT_REFIT,
-      atNs: BASE_NS + 13 * MINUTE_NS,
+      atNs: BASE_NS + 13n * MINUTE_NS,
     });
 
     expect(marks).toHaveLength(1);

@@ -115,7 +115,8 @@ phase's unfinished work in front of a reader as though it were finished.
 
 ## Notes
 
-Every `_ns` field in the web app except `DexDepthResponse`'s two is still a
-`number`, quantising to the nearest 256 nanoseconds — [[REQ-WP-054]]'s open
-question, unchanged. Nothing added here makes it worse: the staleness arithmetic
-is `bigint` throughout.
+When this was written, every `_ns` field in the web app except
+`DexDepthResponse`'s two was a `number`, quantising to the nearest 256
+nanoseconds — [[REQ-WP-054]]'s open question. Nothing added here made it worse:
+the staleness arithmetic was `bigint` throughout. **[[REQ-WP-061]] closed it**,
+and every instant in the app is now a `bigint` parsed at the API boundary.

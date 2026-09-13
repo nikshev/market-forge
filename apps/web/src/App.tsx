@@ -32,8 +32,8 @@ const MINUTE_NS = 60 * 1_000_000_000;
 // The instant the chart is showing: the link's, or the last bar's close when the
 // link named none. Zero when there is neither, which ages every curve as
 // `ahead` and says so rather than silently calling it fresh.
-function atNsForDepth(linkAtNs: number | null, bars: readonly BarOut[]): number {
-  return linkAtNs ?? bars.at(-1)?.close_time_ns ?? 0;
+function atNsForDepth(linkAtNs: bigint | null, bars: readonly BarOut[]): bigint {
+  return linkAtNs ?? bars.at(-1)?.close_time_ns ?? 0n;
 }
 
 export function App(): JSX.Element {
