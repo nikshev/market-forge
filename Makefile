@@ -35,6 +35,9 @@ typecheck:
 # every service is healthy -- a started container is not a ready service.
 # --wait names only the long-running services: it treats a one-shot container
 # that exited 0 as a failure, so minio_init runs as a separate step.
+data-dirs:
+	$(PY) -m tools.deploy.data_dir --root $${CHANNELFLOW_DATA_DIR:-./data}
+
 up:
 	@test -f .env || (echo "No .env found. Run: cp .env.example .env" && exit 1)
 	docker compose up -d --wait postgres minio

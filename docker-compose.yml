@@ -14,7 +14,9 @@
 # records why that is a registry problem rather than a pinning one.
 #
 # Ports and credentials come from .env (copy .env.example). Nothing here is
-# hardcoded, so a port clash is fixed by editing one file.
+# hardcoded, so a port clash is fixed by editing one file, and neither is the
+# data directory: `CHANNELFLOW_DATA_DIR` moves the whole stack's state to a
+# mounted disk without touching this file.
 
 name: channelflow
 
@@ -28,7 +30,7 @@ services:
     ports:
       - "${POSTGRES_PORT}:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - ${CHANNELFLOW_DATA_DIR:-./data}/postgres:/var/lib/postgresql/data
     healthcheck:
       # pg_isready, not a TCP probe: Postgres accepts connections before it
       # will serve queries, and reporting success into that gap is the race
@@ -49,7 +51,7 @@ services:
       - "${MINIO_PORT}:9000"
       - "${MINIO_CONSOLE_PORT}:9001"
     volumes:
-      - minio_data:/data
+      - ${CHANNELFLOW_DATA_DIR:-./data}/minio:/data
     healthcheck:
       test: ["CMD-SHELL", "mc ready local || exit 1"]
       interval: 2s
@@ -99,7 +101,7 @@ services:
     ports:
       - "${REDPANDA_PORT}:9092"
     volumes:
-      - redpanda_data:/var/lib/redpanda/data
+      - ${CHANNELFLOW_DATA_DIR:-./data}/redpanda:/var/lib/redpanda/data
     healthcheck:
       # `cluster health` rather than a TCP probe, for the reason Postgres uses
       # pg_isready: the port opens before the cluster will serve, and reporting
@@ -171,7 +173,7 @@ services:
       - "${PROMETHEUS_PORT}:9090"
     volumes:
       - ./deploy/prometheus:/etc/prometheus:ro
-      - prometheus_data:/prometheus
+      - ${CHANNELFLOW_DATA_DIR:-./data}/prometheus:/prometheus
     extra_hosts:
       - "host.docker.internal:host-gateway"
     healthcheck:
@@ -200,7 +202,7 @@ services:
     volumes:
       - ./deploy/grafana/provisioning:/etc/grafana/provisioning:ro
       - ./deploy/grafana/dashboards:/var/lib/grafana/dashboards:ro
-      - grafana_data:/var/lib/grafana
+      - ${CHANNELFLOW_DATA_DIR:-./data}/grafana:/var/lib/grafana
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/api/health || exit 1"]
       interval: 5s
@@ -208,9 +210,13 @@ services:
       retries: 20
       start_period: 10s
 
-volumes:
-  postgres_data:
-  minio_data:
-  redpanda_data:
-  prometheus_data:
-  grafana_data:
+# No named volumes. Every stateful service writes into `CHANNELFLOW_DATA_DIR`
+# ([[REQ-WP-065]]), so the data is a directory the operator chose: on a server a
+# mounted disk, in a checkout `./data`, and copyable with ordinary tools either
+# way.
+#
+# A named volume is initialised by Docker, which copies the image's ownership
+# onto it; a bind mount keeps whatever the host directory has. `make data-dirs`
+# creates each one and gives it to the user its service runs as, and checks it
+# **as that user** -- a check run as the operator would pass everywhere and
+# prove nothing.
