@@ -21,8 +21,9 @@ function point(index: number, values: Record<string, number>): FeaturePointOut {
 
 describe("the pane list", () => {
   it("offers the panes whose phases have finished their data", () => {
-    // Order flow from [[REQ-WP-027]], derivatives from [[REQ-WP-030]], the DEX
-    // swap imbalance from [[REQ-WP-059]] once a feature existed to draw.
+    // All nine of PRD section 27.3's panes: order flow from [[REQ-WP-027]],
+    // derivatives from [[REQ-WP-030]], swap imbalance from [[REQ-WP-059]] and
+    // active liquidity from [[REQ-WP-063]], each when its feature existed.
     expect(PANES.map((p) => p.feature)).toEqual([
       "cvd",
       "ofi_1m",
@@ -32,16 +33,18 @@ describe("the pane list", () => {
       "basis_bps",
       "liquidation_imbalance_5m",
       "dex_swap_imbalance",
+      "dex_active_liquidity",
     ]);
   });
 
-  it("offers no active-liquidity pane while nothing reconstructs pool state", () => {
-    // §18.12.2's `active_liquidity` lives on a `LiquidityState` nothing builds,
-    // which on HyperEVM needs an archive node no public endpoint provides
-    // (ADR-067). The pane would render "no readings of this feature" forever --
-    // the message this app produces for a genuine absence -- so a reader could
-    // not tell an unbuilt pane from a quiet pool.
-    expect(PANES.map((p) => p.feature).filter((f) => f.includes("liquidity"))).toEqual([]);
+  it("covers every pane PRD section 27.3 lists", () => {
+    // Nine, and the count is asserted so a tenth cannot be added without a
+    // reason and a feature behind it.
+    expect(PANES).toHaveLength(9);
+    expect(PANES.map((p) => p.feature).filter((f) => f.startsWith("dex_"))).toEqual([
+      "dex_swap_imbalance",
+      "dex_active_liquidity",
+    ]);
   });
 
   it("gives every pane a label a reader can choose by", () => {

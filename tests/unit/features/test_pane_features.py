@@ -88,20 +88,18 @@ def test_the_dex_swap_imbalance_pane_is_offered() -> None:
     assert "dex_swap_imbalance" in set(offered_features())
 
 
-@pytest.mark.trace("REQ-WP-059")
-def test_no_active_liquidity_pane_is_offered() -> None:
-    """The other half, still unfinished, and the reason REQ-WP-027 gave for
-    deferring the derivatives panes applies unchanged to it.
+@pytest.mark.trace("REQ-WP-063")
+def test_the_active_liquidity_pane_is_offered() -> None:
+    """Phase 4's ninth pane. This assertion read the other way through
+    [[REQ-WP-059]] and [[REQ-WP-060]]; [[REQ-WP-062]] gave `dex_state` a producer
+    and the change is the deliverable."""
+    assert "dex_active_liquidity" in set(offered_features())
 
-    §18.12.2's `active_liquidity` lives on a `LiquidityState` nothing
-    reconstructs, which on HyperEVM needs an archive node no public endpoint
-    provides (ADR-067). A pane of it would render "no readings of this feature"
-    forever -- the message the application produces for a genuine absence -- so
-    a reader could not tell an unbuilt pane from a quiet pool."""
-    offered = " ".join(offered_features())
 
-    assert "active_liquidity" not in offered
-    assert "liquidity" not in offered, "no liquidity-state pane while none is reconstructed"
+@pytest.mark.trace("REQ-WP-063")
+def test_every_pane_prd_section_27_3_lists_is_offered() -> None:
+    """Nine panes, and the count asserted: a tenth needs a reason and a feature."""
+    assert len(offered_features()) == 9
 
 
 @pytest.mark.trace("REQ-WP-030")
