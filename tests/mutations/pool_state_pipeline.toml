@@ -1,0 +1,94 @@
+# Reproduces the mutation sweep recorded for this module.
+#
+# Patterns are TOML *literal* strings on purpose: the basic form treats a
+# trailing backslash as a line continuation and eats the next line's indentation.
+source = "src/channelflow/pipeline/pool_state.py"
+tests = ["tests/unit/pipeline/test_pool_state.py"]
+
+[[mutation]]
+name = "the contradiction check never fires"
+find = '''    if required is not None and (delta > 0) != (required > 0):'''
+replace = '''    if False:'''
+
+[[mutation]]
+name = "the contradiction check fires on agreement"
+find = '''    if required is not None and (delta > 0) != (required > 0):'''
+replace = '''    if required is not None and (delta > 0) == (required > 0):'''
+
+[[mutation]]
+name = "a mint and a burn are the same sign"
+find = '''_REQUIRED_SIGN = {"mint": 1, "burn": -1}'''
+replace = '''_REQUIRED_SIGN = {"mint": 1, "burn": 1}'''
+
+[[mutation]]
+name = "a burn is applied as a mint"
+find = '''        kind=PoolEventKind.MINT if delta > 0 else PoolEventKind.BURN,'''
+replace = '''        kind=PoolEventKind.MINT,'''
+
+[[mutation]]
+name = "a zero-amount burn is applied as a burn"
+find = '''            amount=Decimal(0),
+            kind=PoolEventKind.MINT,
+        )'''
+replace = '''            amount=Decimal(0),
+            kind=PoolEventKind.BURN,
+        )'''
+
+[[mutation]]
+name = "a zero delta falls through to the signed path"
+find = '''    if delta == 0:'''
+replace = '''    if False:'''
+
+[[mutation]]
+name = "the magnitude keeps its sign"
+find = '''        amount=Decimal(abs(delta)),'''
+replace = '''        amount=Decimal(delta),'''
+
+[[mutation]]
+name = "a collect is treated as a liquidity change"
+find = '''    if event_type == "collect":'''
+replace = '''    if False:'''
+
+[[mutation]]
+name = "the transaction index is dropped from the position"
+find = '''        transaction_index=int(row["transaction_index"]),'''
+replace = '''        transaction_index=0,'''
+
+[[mutation]]
+name = "an empty replay writes an empty state"
+find = '''    if not events:
+        raise NothingToReplay('''
+replace = '''    if False:
+        raise NothingToReplay('''
+
+[[mutation]]
+name = "a state with no price is materialized anyway"
+find = '''    if state.sqrt_price_x96 <= 0:
+        raise NotAnchored('''
+replace = '''    if False:
+        raise NotAnchored('''
+
+[[mutation]]
+name = "a zero price counts as a price"
+find = '''    if state.sqrt_price_x96 <= 0:'''
+replace = '''    if state.sqrt_price_x96 < 0:'''
+
+[[mutation]]
+name = "the swap's own liquidity is ignored"
+find = '''        liquidity=Decimal(str(row["liquidity"])),'''
+replace = '''        liquidity=Decimal(0),'''
+
+[[mutation]]
+name = "the swap's tick is ignored"
+find = '''        tick=int(row["tick"]),'''
+replace = '''        tick=0,'''
+
+[[mutation]]
+name = "the quality is claimed rather than derived"
+find = '''    verdict = quality(state, provenance=provenance, reconciliation=reconciliation)'''
+replace = '''    verdict = ReconstructionQuality.ANCHORED'''
+
+[[mutation]]
+name = "the liquidity rows are dropped"
+find = '''    return [*(swap_event(row) for row in swaps), *(liquidity_event(row) for row in liquidity)]'''
+replace = '''    return [*(swap_event(row) for row in swaps)]'''

@@ -33,6 +33,11 @@ SCHEMA = Schema(
         Column(name="chain_id", type="int64"),
         Column(name="block_number", type="int64"),
         Column(name="tx_hash", type="string"),
+        # §18.7's canonical ordering is (block_number, transaction_index,
+        # log_index). `ChainMeta` has carried it since [[REQ-WP-014]] and this
+        # table did not, so the canonical order was not expressible from a
+        # stored row ([[REQ-WP-062]]).
+        Column(name="transaction_index", type="int64"),
         Column(name="log_index", type="int64"),
         Column(name="venue", type="string"),
         Column(name="dex", type="string"),
@@ -47,7 +52,7 @@ SCHEMA = Schema(
     event_time_column="event_time_ns",
 )
 
-ORDER = ("chain_id", "block_number", "tx_hash", "log_index")
+ORDER = ("chain_id", "pool", "block_number", "transaction_index", "log_index")
 
 _DECIMALS = SCHEMA.decimal_columns
 _BIG_INTEGERS = ("liquidity_delta",)
@@ -59,6 +64,7 @@ def to_row(event: DexLiquidityEvent) -> dict[str, object]:
         "chain_id": event.chain.chain_id,
         "block_number": event.chain.block_number,
         "tx_hash": event.chain.tx_hash,
+        "transaction_index": event.chain.tx_index,
         "log_index": event.chain.log_index,
         "venue": event.meta.venue,
         "dex": event.dex,

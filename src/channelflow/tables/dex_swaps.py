@@ -50,6 +50,11 @@ SCHEMA = Schema(
         Column(name="chain_id", type="int64"),
         Column(name="block_number", type="int64"),
         Column(name="tx_hash", type="string"),
+        # §18.7's canonical ordering is (block_number, transaction_index,
+        # log_index). `ChainMeta` has carried it since [[REQ-WP-014]] and this
+        # table did not, so the canonical order was not expressible from a
+        # stored row ([[REQ-WP-062]]).
+        Column(name="transaction_index", type="int64"),
         Column(name="log_index", type="int64"),
         Column(name="venue", type="string"),
         Column(name="dex", type="string"),
@@ -69,7 +74,7 @@ SCHEMA = Schema(
 
 #: PRD §11.2's identity for a DEX log, which is also the order two readers of
 #: one snapshot see.
-ORDER = ("chain_id", "block_number", "tx_hash", "log_index")
+ORDER = ("chain_id", "pool", "block_number", "transaction_index", "log_index")
 
 _DECIMALS = SCHEMA.decimal_columns
 
@@ -86,6 +91,7 @@ def to_row(swap: DexSwapEvent) -> dict[str, object]:
         "chain_id": swap.chain.chain_id,
         "block_number": swap.chain.block_number,
         "tx_hash": swap.chain.tx_hash,
+        "transaction_index": swap.chain.tx_index,
         "log_index": swap.chain.log_index,
         "venue": swap.meta.venue,
         "dex": swap.dex,
