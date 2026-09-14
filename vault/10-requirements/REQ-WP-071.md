@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "§18.8.1"
 prd_lines: "2928-2949"
 phase: 4
-status: draft
+status: specified
 depends_on: [REQ-WP-047, REQ-WP-060]
 tags: []
 ---
@@ -108,7 +108,10 @@ about. The size quoted is part of the answer.
 ## Trace
 
 <!-- trace:begin -->
-_Not yet generated. Run `make graph`._
+- **Specs:** [[SPEC-112-v4-executable-quoting]]
+- **Code:**
+    - `tools/record/v4_quote_capture.py`
+- **Outcomes:** [[OUT-2026-09-14-spec-v4-executable-quoting]]
 <!-- trace:end -->
 
 ## Notes
