@@ -17,6 +17,14 @@
 # hardcoded, so a port clash is fixed by editing one file, and neither is the
 # data directory: `CHANNELFLOW_DATA_DIR` moves the whole stack's state to a
 # mounted disk without touching this file.
+#
+# Every published port binds `CHANNELFLOW_BIND_ADDRESS`, which defaults to
+# 127.0.0.1 ([[REQ-WP-072]]). A bare `"${PORT}:…"` binds every interface, which
+# on a host that is not a laptop offers Postgres, MinIO and the event backbone to
+# whatever can reach it. Binding to loopback also removes a question rather than
+# answering it: on Linux, Docker's rules live in the `nat` table's DOCKER chain,
+# traversed before the INPUT chain `ufw` manages, so a published port can be
+# reachable while the firewall reports it denied.
 
 name: channelflow
 
@@ -28,7 +36,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
     ports:
-      - "${POSTGRES_PORT}:5432"
+      - "${CHANNELFLOW_BIND_ADDRESS}:${POSTGRES_PORT}:5432"
     volumes:
       - ${CHANNELFLOW_DATA_DIR:-./data}/postgres:/var/lib/postgresql/data
     healthcheck:
@@ -48,8 +56,8 @@ services:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
     ports:
-      - "${MINIO_PORT}:9000"
-      - "${MINIO_CONSOLE_PORT}:9001"
+      - "${CHANNELFLOW_BIND_ADDRESS}:${MINIO_PORT}:9000"
+      - "${CHANNELFLOW_BIND_ADDRESS}:${MINIO_CONSOLE_PORT}:9001"
     volumes:
       - ${CHANNELFLOW_DATA_DIR:-./data}/minio:/data
     healthcheck:
@@ -99,7 +107,7 @@ services:
       - --kafka-addr=PLAINTEXT://0.0.0.0:29092,OUTSIDE://0.0.0.0:9092
       - --advertise-kafka-addr=PLAINTEXT://redpanda:29092,OUTSIDE://127.0.0.1:${REDPANDA_PORT}
     ports:
-      - "${REDPANDA_PORT}:9092"
+      - "${CHANNELFLOW_BIND_ADDRESS}:${REDPANDA_PORT}:9092"
     volumes:
       - ${CHANNELFLOW_DATA_DIR:-./data}/redpanda:/var/lib/redpanda/data
     healthcheck:
@@ -119,10 +127,10 @@ services:
   # repository's own code, and an image tag would name a build nobody in this
   # checkout can reproduce ([[REQ-WP-064]]).
   #
-  # §6.2 also names `worker` and `ingest-binance`. Neither exists as code --
-  # REQ-PIPE-001 chose a replay over a daemon deliberately -- so neither has a
-  # service here. A container running nothing is worse than an absent one: it
-  # reports healthy.
+  # §6.2 also names `worker`. It does not exist as code -- REQ-PIPE-001 chose a
+  # replay over a daemon deliberately -- so it has no service here. A container
+  # running nothing is worse than an absent one: it reports healthy.
+  # `ingest-binance` does exist, below ([[REQ-WP-066]]).
   api:
     build:
       context: .
@@ -137,7 +145,7 @@ services:
       CHANNELFLOW_S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
       CHANNELFLOW_S3_REGION: us-east-1
     ports:
-      - "${API_PORT}:8000"
+      - "${CHANNELFLOW_BIND_ADDRESS}:${API_PORT}:8000"
     depends_on:
       postgres:
         condition: service_healthy
@@ -230,7 +238,7 @@ services:
       context: ./apps/web
       dockerfile: Dockerfile
     ports:
-      - "${WEB_PORT}:8080"
+      - "${CHANNELFLOW_BIND_ADDRESS}:${WEB_PORT}:8080"
     depends_on:
       api:
         condition: service_healthy
@@ -238,7 +246,7 @@ services:
   prometheus:
     image: prom/prometheus:v3.6.0
     ports:
-      - "${PROMETHEUS_PORT}:9090"
+      - "${CHANNELFLOW_BIND_ADDRESS}:${PROMETHEUS_PORT}:9090"
     volumes:
       - ./deploy/prometheus:/etc/prometheus:ro
       - ${CHANNELFLOW_DATA_DIR:-./data}/prometheus:/prometheus
@@ -260,13 +268,15 @@ services:
       prometheus:
         condition: service_healthy
     ports:
-      - "${GRAFANA_PORT}:3000"
+      - "${CHANNELFLOW_BIND_ADDRESS}:${GRAFANA_PORT}:3000"
     environment:
-      # Development only, and anonymous rather than a password nobody rotates:
-      # this stack holds no secrets and is not reachable from anywhere.
-      GF_AUTH_ANONYMOUS_ENABLED: "true"
-      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
-      GF_AUTH_DISABLE_LOGIN_FORM: "true"
+      # Anonymous access is opt-in, and off by default ([[REQ-WP-072]]). The old
+      # setting was an anonymous *admin* with the login form disabled, under a
+      # comment whose premise was "not reachable from anywhere" -- true of a
+      # laptop, false the moment this is deployed, and the setting could not tell
+      # the difference.
+      GF_AUTH_ANONYMOUS_ENABLED: ${GRAFANA_ANONYMOUS:-false}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
     volumes:
       - ./deploy/grafana/provisioning:/etc/grafana/provisioning:ro
       - ./deploy/grafana/dashboards:/var/lib/grafana/dashboards:ro

@@ -1,0 +1,90 @@
+# The route gate and the limiter for REQ-WP-072. A separate specification
+# because `tools/mutate.py` takes one source file per spec.
+source = "src/channelflow/api/security.py"
+tests = [
+  "tests/unit/api/test_security.py",
+]
+
+[[mutation]]
+name = "the walk does not descend into included routers"
+find = '''            included = getattr(route, "original_router", None)
+            if included is not None:
+                yield from walk(included.routes)
+                continue'''
+replace = '''            included = None
+            if included is not None:
+                yield from walk(included.routes)
+                continue'''
+
+[[mutation]]
+name = "a websocket route is dropped instead of reported"
+find = '''            path = getattr(route, "path", None)
+            if path is None:
+                continue'''
+replace = '''            path = getattr(route, "path", None)
+            if path is None or not getattr(route, "methods", None):
+                continue'''
+
+[[mutation]]
+name = "only POST is treated as a write"
+find = '''READ_METHODS = frozenset({"GET", "HEAD"})'''
+replace = '''READ_METHODS = frozenset({"GET", "HEAD", "PUT", "PATCH", "DELETE"})'''
+
+[[mutation]]
+name = "HEAD is treated as a write, so the docs routes offend"
+find = '''READ_METHODS = frozenset({"GET", "HEAD"})'''
+replace = '''READ_METHODS = frozenset({"GET"})'''
+
+[[mutation]]
+name = "the authenticated allow-list lets everything through"
+find = '''        if path in authenticated or methods <= READ_METHODS:'''
+replace = '''        if path not in authenticated or methods <= READ_METHODS:'''
+
+[[mutation]]
+name = "the window never resets"
+find = '''        if now - started >= self._limit.window_seconds:
+            started, count = now, 0'''
+replace = '''        if False:
+            started, count = now, 0'''
+
+[[mutation]]
+name = "the window resets on every request"
+find = '''        if now - started >= self._limit.window_seconds:'''
+replace = '''        if now - started >= 0:'''
+
+[[mutation]]
+name = "the limit is off by one"
+find = '''        if count >= self._limit.requests:'''
+replace = '''        if count > self._limit.requests:'''
+
+[[mutation]]
+name = "every key shares one budget"
+find = '''        started, count = self._windows.get(key, (now, 0))'''
+replace = '''        started, count = self._windows.get("", (now, 0))'''
+
+[[mutation]]
+name = "a refusal reports no wait"
+find = '''                retry_after_seconds=started + self._limit.window_seconds - now,'''
+replace = '''                retry_after_seconds=0.0,'''
+
+[[mutation]]
+name = "readiness and metrics are throttled like anything else"
+find = '''UNLIMITED_PATHS = frozenset({"/readyz", "/metrics"})'''
+replace = '''UNLIMITED_PATHS = frozenset()'''
+
+[[mutation]]
+name = "a refusal is served as a success"
+find = '''            status_code=TOO_MANY_REQUESTS,'''
+replace = '''            status_code=200,'''
+
+[[mutation]]
+name = "the retry-after header can be zero"
+find = '''            headers={"Retry-After": str(max(1, int(decision.retry_after_seconds) + 1))},'''
+replace = '''            headers={"Retry-After": "0"},'''
+
+[[mutation]]
+name = "the limiter keeps a row per request rather than a count"
+find = '''    def tracked_keys(self) -> int:
+        return len(self._windows)'''
+replace = '''    def tracked_keys(self) -> int:
+        return 1'''
