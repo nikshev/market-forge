@@ -191,6 +191,40 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  # The plane degrades in two directions without this ([[REQ-WP-070]]): reads get
+  # slower as files accumulate, and storage grows because nothing collects what
+  # a compaction unreferenced. Measured before it existed: 2.6 MB of bar data
+  # against 304.9 MB of metadata.
+  #
+  # Expiry is opt-in even here. `CHANNELFLOW_KEEP_DAYS` empty means compact and
+  # keep everything, because expiring is the one operation that destroys.
+  maintenance:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command:
+      - sh
+      - -c
+      - >
+        python -m channelflow.pipeline.maintenance_main
+        --loop "$$CHANNELFLOW_MAINTENANCE_INTERVAL"
+        $${CHANNELFLOW_KEEP_DAYS:+--keep-days "$$CHANNELFLOW_KEEP_DAYS"}
+    environment:
+      CHANNELFLOW_CATALOG_URI: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      CHANNELFLOW_WAREHOUSE: s3://${MINIO_BUCKET}/warehouse
+      CHANNELFLOW_S3_ENDPOINT: http://minio:9000
+      CHANNELFLOW_S3_ACCESS_KEY_ID: ${MINIO_ROOT_USER}
+      CHANNELFLOW_S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
+      CHANNELFLOW_S3_REGION: us-east-1
+      CHANNELFLOW_MAINTENANCE_INTERVAL: ${CHANNELFLOW_MAINTENANCE_INTERVAL}
+      CHANNELFLOW_KEEP_DAYS: ${CHANNELFLOW_KEEP_DAYS}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    restart: unless-stopped
+
   web:
     build:
       context: ./apps/web

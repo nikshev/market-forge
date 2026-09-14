@@ -1,0 +1,28 @@
+# Reproduces the mutation sweep recorded for this module.
+#
+# Patterns are TOML *literal* strings on purpose: the basic form treats a
+# trailing backslash as a line continuation and eats the next line's indentation.
+source = "src/channelflow/lakehouse/maintenance.py"
+tests = ["tests/unit/lakehouse/test_maintenance.py"]
+
+[[mutation]]
+name = "retention runs before compaction"
+find = '''    pruned = table.prune_metadata()
+    before = table.compact()'''
+replace = '''    pruned = table.prune_metadata()
+    before = 0'''
+
+[[mutation]]
+name = "metadata pruning is skipped"
+find = '''    pruned = table.prune_metadata()'''
+replace = '''    pruned = False'''
+
+[[mutation]]
+name = "retention runs even when no policy was given"
+find = '''    if policy is not None:'''
+replace = '''    if True:'''
+
+[[mutation]]
+name = "the pass reports a compaction it did not do"
+find = '''        files_before=before,'''
+replace = '''        files_before=0,'''

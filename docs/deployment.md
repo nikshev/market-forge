@@ -22,6 +22,7 @@ Five containers, started together:
 | `api` | the read API of PRD §28, built from this repository ([[REQ-WP-064]]) |
 | `web` | the chart application, static files behind nginx, which proxies `/api` to `api` |
 | `ingest-binance` | the live connector: one symbol, socket to bars ([[REQ-WP-066]]) |
+| `maintenance` | prunes metadata, compacts and optionally expires, on a loop ([[REQ-WP-070]]) |
 
 The API, the web app and any worker run **from the host** in development. They
 are not containerised here, and that is a gap rather than a decision: nothing has
@@ -70,8 +71,19 @@ Rewrites each table's live rows into one file, preserving the order a read
 guarantees. Measured on a table of 717 files holding 721 rows: 7.2 seconds once,
 and the read that followed took **45ms against 6478ms** ([[REQ-WP-068]]).
 
-Nothing schedules it. A deployment that never runs it drifts back — slowly, but
-it drifts, and §36's chart-load target is what goes first.
+The `maintenance` service runs this on a loop, every
+`CHANNELFLOW_MAINTENANCE_INTERVAL`. Run `make compact` by hand when you want it
+sooner.
+
+**Expiry is opt-in.** `CHANNELFLOW_KEEP_DAYS` empty means compact and keep
+everything: expiring snapshots is the only operation in this system that
+destroys ([[ADR-062]]), and compacting without it is safe and costs storage.
+Set it to a number of days when you have decided what this deployment may
+forget.
+
+Measured before any of this existed: a table holding **2.6 MB of bar data and
+304.9 MB of metadata**, with 933 data files where its current snapshot used
+one.
 
 ## Starting it
 
@@ -100,6 +112,7 @@ secret; `.env` is not committed and never should be.
 | `API_PORT`, `WEB_PORT` | where the application services are published |
 | `CHANNELFLOW_DATA_DIR` | the directory every stateful service writes into ([[REQ-WP-065]]) |
 | `CHANNELFLOW_INGEST_SYMBOLS`, `CHANNELFLOW_INGEST_TIMEFRAME_NS` | what the ingest daemon reads, and at what bar size |
+| `CHANNELFLOW_MAINTENANCE_INTERVAL`, `CHANNELFLOW_KEEP_DAYS` | how often maintenance runs, and what it may expire |
 | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` | alert delivery, empty unless alerting is wanted |
 | `CHANNELFLOW_CHART_BASE_URL` | where an alert's chart link points |
 
