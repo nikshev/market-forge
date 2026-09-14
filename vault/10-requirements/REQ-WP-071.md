@@ -144,6 +144,7 @@ about. The size quoted is part of the answer.
     - `tests/unit/dex/test_v4_quoting.py::test_unknown_is_excluded_alongside_custom_accounting`
 - **Code:**
     - `src/channelflow/chain/providers.py`
+    - `src/channelflow/dex/v4_quoting.py`
     - `tools/record/v4_quote_capture.py`
 - **Outcomes:** [[OUT-2026-09-14-implement-v4-executable-quoting]], [[OUT-2026-09-14-plan-v4-executable-quoting]], [[OUT-2026-09-14-spec-v4-executable-quoting]], [[OUT-2026-09-14-tasks-v4-executable-quoting]]
 <!-- trace:end -->

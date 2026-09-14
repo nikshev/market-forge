@@ -2,7 +2,7 @@
 id: OUT-2026-09-14-implement-v4-executable-quoting
 step: implement
 records: [REQ-WP-071]
-commit: null
+commit: 8de24a9bd088f3467a1100971f173b1ba1d3d63d
 ---
 
 ## What was done
