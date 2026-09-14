@@ -10,6 +10,8 @@ depends_on: ["REQ-PHASE-5"]
 tags: []
 covers: [REQ-WP-017, REQ-US-006, REQ-US-007, REQ-NRT-E, REQ-BIAS-001, REQ-BIAS-003, REQ-BIAS-010, REQ-STORE-001, REQ-REPRO-001]
 not_delivered: []
+blocked: []
+deferred: []
 ---
 
 ## Requirement

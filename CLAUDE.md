@@ -159,12 +159,20 @@ derivation names the PRD section behind each line — see
 PRD section with no criteria, the marker comes back, and it means the same thing
 it meant before.
 
-The 11 `REQ-PHASE-*` notes also carry `covers:` and `not_delivered:`
-frontmatter: which requirements deliver the phase, and which of its deliverables
-nothing does. `tests/tools/trace/test_phase_coverage.py` checks the first list
-mechanically — every covering requirement must exist and have reached
-`implemented` — and checks that a phase claiming to be `implemented` has an
-empty second list. `REQ-PHASE-6` is `implemented` — the first to get there, on
+The 11 `REQ-PHASE-*` notes also carry four lists in frontmatter: `covers:`
+names the requirements that deliver the phase, and three name what it does not.
+`not_delivered:` is work that remains and that this project can do;
+`blocked:` waits on something outside this repository and **must name what**;
+`deferred:` was decided against and **must name an ADR that exists**. They were
+one list until [[REQ-WP-069]], which found Phase 4 unable to close however much
+of it was finished, because two of its three entries were things nobody here
+could do.
+
+`tests/tools/trace/test_phase_coverage.py` checks `covers:` mechanically — every
+covering requirement must exist and have reached `implemented` — checks that a
+phase claiming to be `implemented` has an empty `not_delivered:`, and checks the
+two costs above. Those costs are the point: without them, moving an entry from
+one list to the next would close any phase at will. `REQ-PHASE-6` is `implemented` — the first to get there, on
 2026-09-09, when `REQ-STORE-001` and `REQ-REPRO-001` closed its last two
 deliverables. The other ten still have a non-empty list, which is why they are
 `planned`.

@@ -10,6 +10,8 @@ depends_on: []
 tags: []
 covers: [REQ-WP-001, REQ-WP-002, REQ-INFRA-001, REQ-INFRA-002, REQ-INFRA-003]
 not_delivered: []
+blocked: []
+deferred: []
 ---
 
 ## Requirement

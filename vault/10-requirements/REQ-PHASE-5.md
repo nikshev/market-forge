@@ -10,6 +10,8 @@ depends_on: ["REQ-PHASE-4"]
 tags: []
 covers: [REQ-WP-016, REQ-ASSET-001, REQ-EXP-010, REQ-EXP-015, REQ-WP-043, REQ-WP-044, REQ-WP-049, REQ-WP-050, REQ-WP-051]
 not_delivered: []
+blocked: []
+deferred: []
 ---
 
 ## Requirement
