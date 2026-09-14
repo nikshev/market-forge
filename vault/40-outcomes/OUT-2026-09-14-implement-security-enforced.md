@@ -2,7 +2,7 @@
 id: OUT-2026-09-14-implement-security-enforced
 step: implement
 records: [REQ-WP-072]
-commit: null
+commit: 7f1231d330b1d5ee54b517d26def1024a5ba67d9
 ---
 
 ## What was done
