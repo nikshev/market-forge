@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "§34"
 prd_lines: "4821-4836"
 phase: null
-status: draft
+status: specified
 depends_on: [REQ-WP-064, REQ-WP-065]
 tags: []
 ---
@@ -96,7 +96,8 @@ the larger version of the same mistake.
 ## Trace
 
 <!-- trace:begin -->
-_No linked artifacts yet._
+- **Specs:** [[SPEC-113-security-enforced]]
+- **Outcomes:** [[OUT-2026-09-14-spec-security-enforced]]
 <!-- trace:end -->
 
 ## Notes
