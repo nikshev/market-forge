@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "§34"
 prd_lines: "4821-4836"
 phase: null
-status: specified
+status: planned
 depends_on: [REQ-WP-064, REQ-WP-065]
 tags: []
 ---
@@ -97,7 +97,7 @@ the larger version of the same mistake.
 
 <!-- trace:begin -->
 - **Specs:** [[SPEC-113-security-enforced]]
-- **Outcomes:** [[OUT-2026-09-14-spec-security-enforced]]
+- **Outcomes:** [[OUT-2026-09-14-plan-security-enforced]], [[OUT-2026-09-14-spec-security-enforced]]
 <!-- trace:end -->
 
 ## Notes
