@@ -157,6 +157,40 @@ services:
       retries: 12
       start_period: 5s
 
+  # PRD §6.2's `ingest-binance`. The same image as the API with a different
+  # command: one Python image, and a second would be a second dependency tree
+  # to keep in step ([[REQ-WP-066]]).
+  #
+  # One process per symbol, deliberately. `BarBuilder` is one symbol and one
+  # timeframe, and a daemon multiplexing several would share one socket's
+  # failure across all of them.
+  ingest-binance:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command:
+      - python
+      - -m
+      - channelflow.pipeline.ingest_main
+    environment:
+      CHANNELFLOW_CATALOG_URI: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      CHANNELFLOW_WAREHOUSE: s3://${MINIO_BUCKET}/warehouse
+      CHANNELFLOW_S3_ENDPOINT: http://minio:9000
+      CHANNELFLOW_S3_ACCESS_KEY_ID: ${MINIO_ROOT_USER}
+      CHANNELFLOW_S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
+      CHANNELFLOW_S3_REGION: us-east-1
+      CHANNELFLOW_INGEST_SYMBOLS: ${CHANNELFLOW_INGEST_SYMBOLS}
+      CHANNELFLOW_INGEST_TIMEFRAME_NS: ${CHANNELFLOW_INGEST_TIMEFRAME_NS}
+      # The raw tier of §6.4.4, in the same bucket as the warehouse and beside
+      # it rather than inside it: `raw/` and `warehouse/` are different zones.
+      CHANNELFLOW_ARCHIVE_URI: s3://${MINIO_BUCKET}/raw/cex
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    restart: unless-stopped
+
   web:
     build:
       context: ./apps/web

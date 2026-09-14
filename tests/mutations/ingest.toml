@@ -1,0 +1,78 @@
+# Reproduces the mutation sweep recorded for this module.
+#
+# Patterns are TOML *literal* strings on purpose: the basic form treats a
+# trailing backslash as a line continuation and eats the next line's indentation.
+source = "src/channelflow/pipeline/ingest.py"
+tests = ["tests/unit/pipeline/test_ingest.py"]
+
+[[mutation]]
+name = "a frame is archived only if it parses"
+find = '''            written = self.archive.add(received_at_ns=received_at, frame=frame)'''
+replace = '''            written = None'''
+
+[[mutation]]
+name = "an unreadable frame stops the ingest"
+find = '''        except ValueError:
+            self.unparsed += 1
+            return False'''
+replace = '''        except ValueError:
+            raise'''
+
+[[mutation]]
+name = "a bad payload counts as a trade"
+find = '''        if not isinstance(stream, str) or not isinstance(payload, dict):
+            self.unparsed += 1
+            return False'''
+replace = '''        if False:
+            self.unparsed += 1
+            return False'''
+
+[[mutation]]
+name = "every stream is consumed as a trade"
+find = '''        if not stream.endswith("@aggTrade"):'''
+replace = '''        if False:'''
+
+[[mutation]]
+name = "an ignored stream is dropped silently"
+find = '''            self.ignored += 1
+            return False'''
+replace = '''            return False'''
+
+[[mutation]]
+name = "a normalization failure is not counted"
+find = '''        except Exception:  # noqa: BLE001 -- a bad frame is not a reason to stop
+            self.unparsed += 1
+            return False'''
+replace = '''        except Exception:  # noqa: BLE001 -- a bad frame is not a reason to stop
+            return False'''
+
+[[mutation]]
+name = "the session never sees a frame"
+find = '''            self.session.on_frame()'''
+replace = '''            pass'''
+
+[[mutation]]
+name = "stopping closes before it commits"
+find = '''        flushed = self.flush_bars()
+        archived = self.archive.flush()
+        self.session.transport.close()'''
+replace = '''        self.session.transport.close()
+        flushed = self.flush_bars()
+        archived = self.archive.flush()'''
+
+[[mutation]]
+name = "stopping does not commit at all"
+find = '''        flushed = self.flush_bars()
+        archived = self.archive.flush()'''
+replace = '''        flushed = None
+        archived = None'''
+
+[[mutation]]
+name = "the stream names keep their case"
+find = '''    return tuple(f"{symbol.lower()}@aggTrade" for symbol in symbols)'''
+replace = '''    return tuple(f"{symbol}@aggTrade" for symbol in symbols)'''
+
+[[mutation]]
+name = "bars are committed on every step"
+find = '''FLUSH_INTERVAL_NS = 60_000_000_000'''
+replace = '''FLUSH_INTERVAL_NS = 0'''

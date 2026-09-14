@@ -1,0 +1,49 @@
+# Reproduces the mutation sweep recorded for this module.
+#
+# Patterns are TOML *literal* strings on purpose: the basic form treats a
+# trailing backslash as a line continuation and eats the next line's indentation.
+source = "src/channelflow/pipeline/archive.py"
+tests = ["tests/unit/pipeline/test_ingest.py"]
+
+[[mutation]]
+name = "a quiet minute writes an empty object"
+find = '''        if not self._frames or self._minute_ns is None:
+            return None'''
+replace = '''        if False:
+            return None'''
+
+[[mutation]]
+name = "the minute boundary never closes an object"
+find = '''        if self._minute_ns is not None and minute != self._minute_ns:'''
+replace = '''        if False:'''
+
+[[mutation]]
+name = "a backwards clock is accepted"
+find = '''        if self._frames and received_at_ns < self._frames[-1][0]:'''
+replace = '''        if False:'''
+
+[[mutation]]
+name = "the receipt time is dropped"
+find = '''            json.dumps({"received_at_ns": at, "frame": frame}, separators=(",", ":"))'''
+replace = '''            json.dumps({"received_at_ns": 0, "frame": frame}, separators=(",", ":"))'''
+
+[[mutation]]
+name = "the archive stops compressing"
+find = '''        self.store.put(key, gzip.compress(body.encode(), GZIP_LEVEL))'''
+replace = '''        self.store.put(key, gzip.compress(body.encode(), 0))'''
+
+[[mutation]]
+name = "every minute lands in one object"
+find = '''        key = self.key_for(self._minute_ns * MINUTE_NS)'''
+replace = '''        key = self.key_for(0)'''
+
+[[mutation]]
+name = "the key loses its day"
+find = '''        return f"{self.prefix}/{self.venue}/{at:%Y}/{at:%m}/{at:%d}/{at:%H%M}.jsonl.gz"'''
+replace = '''        return f"{self.prefix}/{self.venue}/{at:%Y}/{at:%m}/{at:%H%M}.jsonl.gz"'''
+
+[[mutation]]
+name = "the buffer is not cleared after a write"
+find = '''        self._frames.clear()
+        self._minute_ns = None'''
+replace = '''        self._minute_ns = None'''
