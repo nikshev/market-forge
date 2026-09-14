@@ -63,11 +63,15 @@ allowance at all — the state the system is in today.
 requests; the next is **refused** with a status that says so and a header saying
 when to retry. It is not queued, not delayed, not served slowly.
 
-### User Story 4 - Logging cannot render a credential (Priority: P2)
+### User Story 4 - A credential cannot be rendered (Priority: P1)
 
-**Acceptance**: the rule exists before logging does. A settings object, a catalog
-URI, or any credential-bearing value rendered into a log record fails the suite —
-on the day logging is introduced, not on the day somebody remembers §34.
+**Acceptance**: the configuration object hides its credentials whenever anything
+renders it — `repr`, `str`, an f-string, a traceback showing locals — while still
+showing the host, port, database and access-key id that make it useful to read.
+
+**Why P1**: this is the only story fixing a defect that exists today rather than
+guarding one that might. Measured during planning: the object renders the
+Postgres password and the S3 secret in full.
 
 ### User Story 5 - The stack publishes only what it means to (Priority: P1)
 
@@ -96,8 +100,11 @@ against the repository.
   they are rate limited is a decision that must be made rather than defaulted.
 - A rate limiter keyed on client address sees the proxy's address when behind
   one. What it keys on has to be stated.
-- A test that greps for `logging` catches the import, not the leak. It must fail
-  on the value reaching a record, not on the module being imported.
+- A mask that hides every field makes the object useless for diagnosis, and
+  whoever needs the host will then render the fields one at a time — the same
+  leak by a longer road. What stays visible is part of the contract.
+- A password containing `@` or `:` defeats a mask that splits the URI on
+  punctuation, and does so silently.
 
 ## Requirements *(mandatory)*
 
@@ -114,7 +121,9 @@ against the repository.
   "too many requests" and a retry-after indication.
 - **FR-006**: What the limiter keys on, and its scope (per process or shared),
   is stated in the deployment document.
-- **FR-007**: A test fails if a credential-bearing value can reach a log record.
+- **FR-007**: The configuration object renders no credential under `repr`, `str`,
+  or string formatting, and renders the non-secret fields unchanged — so the
+  masking is useful rather than blanket.
 - **FR-008**: Every compose service binds its published port to a configurable
   address defaulting to loopback.
 - **FR-009**: A test reads `docker-compose.yml` and fails on a published port
@@ -129,7 +138,8 @@ against the repository.
 
 - **Exposure**: a service, the address its port binds to, and whether that is
   deliberate.
-- **Rate limit**: a count, a window, and what the count is keyed on.
+- **Rate limit**: a count and a window. What the count is keyed on belongs to
+  the limiter that applies it, not to the value being configured.
 
 ## Success Criteria *(mandatory)*
 
@@ -138,9 +148,10 @@ against the repository.
 - **SC-001**: Adding a `POST` handler without authentication turns the suite
   red, demonstrated by a test that does exactly that.
 - **SC-002**: Setting a wildcard origin turns the suite red.
-- **SC-003**: A client exceeding the configured limit receives a refusal, and
-  the refusal arrives in the same order of magnitude of time as a served
-  request — it is a refusal, not a delay.
+- **SC-003**: A client exceeding the configured limit receives a refusal status
+  carrying a retry indication — not a delayed success. Checked by the status and
+  the headers, not by timing: a wall-clock assertion in a unit test measures the
+  machine, not the design.
 - **SC-004**: With the default configuration, no compose service listens on a
   non-loopback address, verified by reading the file.
 - **SC-005**: Every one of §34's eight bullets has at least one test that fails

@@ -843,6 +843,7 @@ graph LR
   OUT_2026_09_14_plan_v4_executable_quoting["OUT-2026-09-14-plan-v4-executable-quoting"]
   OUT_2026_09_14_spec_security_enforced["OUT-2026-09-14-spec-security-enforced"]
   OUT_2026_09_14_spec_v4_executable_quoting["OUT-2026-09-14-spec-v4-executable-quoting"]
+  OUT_2026_09_14_tasks_security_enforced["OUT-2026-09-14-tasks-security-enforced"]
   OUT_2026_09_14_tasks_v4_executable_quoting["OUT-2026-09-14-tasks-v4-executable-quoting"]
   PRD["PRD: ChannelFlow PRD"]
   REQ_API_001["REQ-API-001: Read API for bars, channel snapshots, signals and live updates"]
@@ -4766,6 +4767,7 @@ graph LR
   OUT_2026_09_14_plan_v4_executable_quoting -.->|RECORDS| REQ_WP_071
   OUT_2026_09_14_spec_security_enforced -.->|RECORDS| REQ_WP_072
   OUT_2026_09_14_spec_v4_executable_quoting -.->|RECORDS| REQ_WP_071
+  OUT_2026_09_14_tasks_security_enforced -.->|RECORDS| REQ_WP_072
   OUT_2026_09_14_tasks_v4_executable_quoting -.->|RECORDS| REQ_WP_071
   SPEC_001_traceability_tooling ==>|SPECIFIES| REQ_INFRA_001
   SPEC_002_project_bootstrap ==>|SPECIFIES| REQ_WP_001

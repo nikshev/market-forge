@@ -97,7 +97,7 @@ the larger version of the same mistake.
 
 <!-- trace:begin -->
 - **Specs:** [[SPEC-113-security-enforced]]
-- **Outcomes:** [[OUT-2026-09-14-plan-security-enforced]], [[OUT-2026-09-14-spec-security-enforced]]
+- **Outcomes:** [[OUT-2026-09-14-plan-security-enforced]], [[OUT-2026-09-14-spec-security-enforced]], [[OUT-2026-09-14-tasks-security-enforced]]
 <!-- trace:end -->
 
 ## Notes
