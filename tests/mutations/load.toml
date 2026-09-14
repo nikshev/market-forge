@@ -1,0 +1,65 @@
+# Reproduces the mutation sweep recorded for this module.
+#
+# Patterns are TOML *literal* strings on purpose: the basic form treats a
+# trailing backslash as a line continuation and eats the next line's indentation.
+source = "src/channelflow/perf/load.py"
+tests = ["tests/unit/perf/test_load.py"]
+
+[[mutation]]
+name = "an error counts as a fast request"
+find = '''            errors.append(f"{type(cause).__name__}: {cause}")
+            return'''
+replace = '''            errors.append(f"{type(cause).__name__}: {cause}")'''
+
+[[mutation]]
+name = "a run where everything failed reports zero"
+find = '''    if not samples:'''
+replace = '''    if False:'''
+
+[[mutation]]
+name = "errors do not disqualify a run"
+find = '''        met = measured.clean and measured.measurement.p95_ns <= target.budget_ns'''
+replace = '''        met = measured.measurement.p95_ns <= target.budget_ns'''
+
+[[mutation]]
+name = "a budget overrun still passes"
+find = '''        met = measured.clean and measured.measurement.p95_ns <= target.budget_ns'''
+replace = '''        met = measured.clean'''
+
+[[mutation]]
+name = "an unmeasured target is left out"
+find = '''        if measured is None:
+            reports.append(TargetReport(target=target, verdict=Verdict.NOT_MEASURED))
+            continue'''
+replace = '''        if measured is None:
+            continue'''
+
+[[mutation]]
+name = "an unmeasured target counts as met"
+find = '''    return bool(reports) and all(item.verdict is Verdict.MET for item in reports)'''
+replace = '''    return bool(reports) and all(item.verdict is not Verdict.NOT_MET for item in reports)'''
+
+[[mutation]]
+name = "an empty report passes"
+find = '''    return bool(reports) and all(item.verdict is Verdict.MET for item in reports)'''
+replace = '''    return all(item.verdict is Verdict.MET for item in reports)'''
+
+[[mutation]]
+name = "the best concurrency decides"
+find = '''        if current is None or result.measurement.p95_ns > current.measurement.p95_ns:'''
+replace = '''        if current is None or result.measurement.p95_ns < current.measurement.p95_ns:'''
+
+[[mutation]]
+name = "fewer requests than workers is accepted"
+find = '''    if requests < concurrency:'''
+replace = '''    if False:'''
+
+[[mutation]]
+name = "the line drops the concurrency that produced it"
+find = '''            f"{self.target.name}: {self.verdict} at concurrency {self.concurrency} "'''
+replace = '''            f"{self.target.name}: {self.verdict} at concurrency ? "'''
+
+[[mutation]]
+name = "an unmeasured line stops stating the promise"
+find = '''            return f"{self.target.name}: not measured — {self.target.stated}"'''
+replace = '''            return f"{self.target.name}: not measured"'''
