@@ -49,7 +49,9 @@ is computed from its signature at import, never written as a literal.
 | `WrongQuoter` | the quoter does not name the pool's manager | a revert |
 | `QuoteNotCaptured` | a replay provider was asked for bytes it does not hold | an empty return |
 
-`QuoteNotCaptured` matters as much as the rest: a replay that answered `0x` for
+`QuoteNotCaptured` is the one exception that lives with the replay provider in
+the test tree rather than in `src/` — nothing in production can raise it. It
+matters as much as the rest: a replay that answered `0x` for
 an unknown call would decode to `amount_out = 0`, and zero is the one answer this
 whole requirement exists to forbid.
 

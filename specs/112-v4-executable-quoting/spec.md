@@ -112,7 +112,9 @@ the same call path the live source uses.
 - **QuoteRequest**: pool id, direction, exact input amount.
 - **Quote**: the request, block, amount out, gas estimate.
 - **Refusal**: pool id, reason, raw revert payload.
-- **QuoteSource**: the protocol both the live and the replay side implement.
+- **ChainDataProvider**: the existing chain-access protocol. It is the seam:
+  live and replay differ only in which provider supplies the bytes, so the
+  encoder and the decoder are one implementation, exercised both ways.
 
 ## Success Criteria *(mandatory)*
 
@@ -123,8 +125,11 @@ the same call path the live source uses.
 - **SC-002**: Both distinct refusal reasons in the fixture are decoded by name,
   and the pool id inside `NotEnoughLiquidity` matches the pool asked about.
 - **SC-003**: The two one-sided pools yield no mid, and the attempt raises.
-- **SC-004**: No test or code path can obtain a depth figure for a
-  `CUSTOM_ACCOUNTING` pool from the tick kernel.
+- **SC-004**: The class gate raises for every `CUSTOM_ACCOUNTING` pool in the
+  fixture, so no path that goes through it reaches the tick kernel. One test
+  deliberately goes round the gate and pins what the kernel answers there —
+  `reachable=False, amount0=0` — so the hazard is asserted rather than assumed
+  away.
 - **SC-005**: The suite runs with no network access.
 
 ## Assumptions

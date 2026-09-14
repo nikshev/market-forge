@@ -111,7 +111,7 @@ about. The size quoted is part of the answer.
 - **Specs:** [[SPEC-112-v4-executable-quoting]]
 - **Code:**
     - `tools/record/v4_quote_capture.py`
-- **Outcomes:** [[OUT-2026-09-14-plan-v4-executable-quoting]], [[OUT-2026-09-14-spec-v4-executable-quoting]]
+- **Outcomes:** [[OUT-2026-09-14-plan-v4-executable-quoting]], [[OUT-2026-09-14-spec-v4-executable-quoting]], [[OUT-2026-09-14-tasks-v4-executable-quoting]]
 <!-- trace:end -->
 
 ## Notes

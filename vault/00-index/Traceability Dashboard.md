@@ -838,6 +838,7 @@ graph LR
   OUT_2026_09_14_implement_read_cost["OUT-2026-09-14-implement-read-cost"]
   OUT_2026_09_14_plan_v4_executable_quoting["OUT-2026-09-14-plan-v4-executable-quoting"]
   OUT_2026_09_14_spec_v4_executable_quoting["OUT-2026-09-14-spec-v4-executable-quoting"]
+  OUT_2026_09_14_tasks_v4_executable_quoting["OUT-2026-09-14-tasks-v4-executable-quoting"]
   PRD["PRD: ChannelFlow PRD"]
   REQ_API_001["REQ-API-001: Read API for bars, channel snapshots, signals and live updates"]
   REQ_ASSET_001["REQ-ASSET-001: Asset identity and cross-venue instrument registry"]
@@ -4718,6 +4719,7 @@ graph LR
   OUT_2026_09_14_implement_read_cost -.->|RECORDS| REQ_WP_068
   OUT_2026_09_14_plan_v4_executable_quoting -.->|RECORDS| REQ_WP_071
   OUT_2026_09_14_spec_v4_executable_quoting -.->|RECORDS| REQ_WP_071
+  OUT_2026_09_14_tasks_v4_executable_quoting -.->|RECORDS| REQ_WP_071
   SPEC_001_traceability_tooling ==>|SPECIFIES| REQ_INFRA_001
   SPEC_002_project_bootstrap ==>|SPECIFIES| REQ_WP_001
   SPEC_003_ci_full_gate ==>|SPECIFIES| REQ_INFRA_002
@@ -8103,6 +8105,7 @@ graph LR
   OUT_2026_09_13_implement_pool_state_quality["OUT-2026-09-13-implement-pool-state-quality"]
   OUT_2026_09_14_plan_v4_executable_quoting["OUT-2026-09-14-plan-v4-executable-quoting"]
   OUT_2026_09_14_spec_v4_executable_quoting["OUT-2026-09-14-spec-v4-executable-quoting"]
+  OUT_2026_09_14_tasks_v4_executable_quoting["OUT-2026-09-14-tasks-v4-executable-quoting"]
   PRD["PRD: ChannelFlow PRD"]
   REQ_API_001["REQ-API-001: Read API for bars, channel snapshots, signals and live updates"]
   REQ_ASSET_001["REQ-ASSET-001: Asset identity and cross-venue instrument registry"]
@@ -8769,6 +8772,7 @@ graph LR
   OUT_2026_09_13_implement_pool_state_quality -.->|RECORDS| REQ_WP_060
   OUT_2026_09_14_plan_v4_executable_quoting -.->|RECORDS| REQ_WP_071
   OUT_2026_09_14_spec_v4_executable_quoting -.->|RECORDS| REQ_WP_071
+  OUT_2026_09_14_tasks_v4_executable_quoting -.->|RECORDS| REQ_WP_071
   SPEC_051_phase_coverage ==>|SPECIFIES| REQ_PHASE_3
   SPEC_051_phase_coverage ==>|SPECIFIES| REQ_PHASE_4
   SPEC_051_phase_coverage ==>|SPECIFIES| REQ_PHASE_5
