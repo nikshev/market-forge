@@ -1,0 +1,83 @@
+# Reproduces the mutation sweep recorded for REQ-WP-072's configuration half.
+#
+# Patterns are TOML *literal* strings on purpose: the basic form treats a
+# trailing backslash as a line continuation and eats the next line's indentation.
+source = "src/channelflow/settings.py"
+tests = [
+  "tests/unit/test_settings.py",
+  "tests/unit/api/test_startup.py",
+]
+
+[[mutation]]
+name = "a limit of zero is accepted"
+find = '''        if self.requests <= 0:'''
+replace = '''        if self.requests < 0:'''
+
+[[mutation]]
+name = "a window of zero is accepted"
+find = '''        if self.window_seconds <= 0:'''
+replace = '''        if self.window_seconds < 0:'''
+
+[[mutation]]
+name = "the password is not masked at all"
+find = '''    return f"{scheme}://{user}:{MASK}@{host}{slash}{path}"'''
+replace = '''    return uri'''
+
+[[mutation]]
+name = "the userinfo is split on the first at-sign instead of the last"
+find = '''    userinfo, at, host = netloc.rpartition("@")'''
+replace = '''    userinfo, at, host = netloc.partition("@")'''
+
+[[mutation]]
+name = "the password is split on the last colon instead of the first"
+find = '''    user, colon, _password = userinfo.partition(":")'''
+replace = '''    user, colon, _password = userinfo.rpartition(":")'''
+
+[[mutation]]
+name = "the host and path are dropped from the masked uri"
+find = '''    return f"{scheme}://{user}:{MASK}@{host}{slash}{path}"'''
+replace = '''    return f"{scheme}://{user}:{MASK}"'''
+
+[[mutation]]
+name = "the s3 secret is rendered"
+find = '''            key: MASK if key in _SECRET_PROPERTIES else value'''
+replace = '''            key: value'''
+
+[[mutation]]
+name = "the access key id is masked too, making the object unreadable"
+find = '''_SECRET_PROPERTIES = frozenset({"s3.secret-access-key"})'''
+replace = '''_SECRET_PROPERTIES = frozenset({"s3.secret-access-key", "s3.access-key-id"})'''
+
+[[mutation]]
+name = "str falls back to the unmasked dataclass repr"
+find = '''    def __str__(self) -> str:
+        return self._rendered()'''
+replace = '''    def __str__(self) -> str:
+        return object.__repr__(self)'''
+
+[[mutation]]
+name = "a wildcard among named origins is allowed"
+find = '''    if any(origin == "*" for origin in origins):'''
+replace = '''    if origins and all(origin == "*" for origin in origins):'''
+
+[[mutation]]
+name = "a wildcard is allowed outright"
+find = '''    if any(origin == "*" for origin in origins):'''
+replace = '''    if False:'''
+
+[[mutation]]
+name = "an unset limit becomes a compiled-in default"
+find = '''    if not raw:
+        return None'''
+replace = '''    if not raw:
+        return RateLimit(requests=60, window_seconds=DEFAULT_RATE_WINDOW_SECONDS)'''
+
+[[mutation]]
+name = "the configured window is ignored"
+find = '''        window_seconds=float(window) if window else DEFAULT_RATE_WINDOW_SECONDS,'''
+replace = '''        window_seconds=DEFAULT_RATE_WINDOW_SECONDS,'''
+
+[[mutation]]
+name = "origins are not trimmed, so a space makes an origin never match"
+find = '''    origins = tuple(part.strip() for part in raw.split(",") if part.strip())'''
+replace = '''    origins = tuple(part for part in raw.split(",") if part.strip())'''

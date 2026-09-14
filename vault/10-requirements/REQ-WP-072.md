@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "§34"
 prd_lines: "4821-4836"
 phase: null
-status: planned
+status: implemented
 depends_on: [REQ-WP-064, REQ-WP-065]
 tags: []
 ---
@@ -97,7 +97,70 @@ the larger version of the same mistake.
 
 <!-- trace:begin -->
 - **Specs:** [[SPEC-113-security-enforced]]
-- **Outcomes:** [[OUT-2026-09-14-plan-security-enforced]], [[OUT-2026-09-14-spec-security-enforced]], [[OUT-2026-09-14-tasks-security-enforced]]
+- **Tests:**
+    - `tests/unit/api/test_security.py::test_a_configured_origin_is_allowed_and_another_is_not`
+    - `tests/unit/api/test_security.py::test_a_refusal_says_how_long_to_wait`
+    - `tests/unit/api/test_security.py::test_a_refused_request_is_a_refusal_not_a_late_success`
+    - `tests/unit/api/test_security.py::test_a_write_route_behind_authentication_is_permitted`
+    - `tests/unit/api/test_security.py::test_a_write_route_is_reported_by_path_and_method`
+    - `tests/unit/api/test_security.py::test_every_write_method_is_caught_not_only_post[delete]`
+    - `tests/unit/api/test_security.py::test_every_write_method_is_caught_not_only_post[patch]`
+    - `tests/unit/api/test_security.py::test_every_write_method_is_caught_not_only_post[put]`
+    - `tests/unit/api/test_security.py::test_no_route_does_anything_but_read`
+    - `tests/unit/api/test_security.py::test_readiness_and_metrics_are_never_throttled`
+    - `tests/unit/api/test_security.py::test_the_limiter_keeps_one_row_per_key_not_one_per_request`
+    - `tests/unit/api/test_security.py::test_the_walk_reaches_every_route`
+    - `tests/unit/api/test_security.py::test_the_websocket_is_recognised_rather_than_slipping_through`
+    - `tests/unit/api/test_security.py::test_the_window_has_to_pass_entirely`
+    - `tests/unit/api/test_security.py::test_these_tests_reach_nothing_outside_the_process`
+    - `tests/unit/api/test_security.py::test_three_are_allowed_and_the_fourth_is_not`
+    - `tests/unit/api/test_security.py::test_two_clients_do_not_share_a_budget`
+    - `tests/unit/api/test_security.py::test_with_no_origins_no_cors_header_is_ever_sent`
+    - `tests/unit/api/test_security.py::test_without_a_limit_nothing_is_refused`
+    - `tests/unit/deploy/test_exposure.py::test_a_public_service_has_to_give_a_reason`
+    - `tests/unit/deploy/test_exposure.py::test_every_published_port_binds_an_address_we_chose`
+    - `tests/unit/deploy/test_exposure.py::test_grafana_is_not_an_unconditional_anonymous_admin`
+    - `tests/unit/deploy/test_exposure.py::test_grafanas_credentials_are_named_in_the_env_template`
+    - `tests/unit/deploy/test_exposure.py::test_the_bind_address_defaults_to_loopback`
+    - `tests/unit/deploy/test_exposure.py::test_the_compose_file_no_longer_says_ingest_binance_does_not_exist`
+    - `tests/unit/deploy/test_exposure.py::test_the_compose_file_still_publishes_ports`
+    - `tests/unit/deploy/test_section_34.py::test_no_connector_reads_a_trading_credential`
+    - `tests/unit/deploy/test_section_34.py::test_no_rpc_endpoint_carries_a_key_in_its_url`
+    - `tests/unit/deploy/test_section_34.py::test_the_alerting_package_reads_no_environment`
+    - `tests/unit/deploy/test_section_34.py::test_the_environment_file_is_ignored_and_the_template_holds_no_live_secret`
+    - `tests/unit/test_settings.py::test_a_configured_limit_is_read_with_its_window`
+    - `tests/unit/test_settings.py::test_a_limit_that_forbids_everything_is_not_a_limit[-1-60.0]`
+    - `tests/unit/test_settings.py::test_a_limit_that_forbids_everything_is_not_a_limit[0-60.0]`
+    - `tests/unit/test_settings.py::test_a_limit_that_forbids_everything_is_not_a_limit[5--1.0]`
+    - `tests/unit/test_settings.py::test_a_limit_that_forbids_everything_is_not_a_limit[5-0.0]`
+    - `tests/unit/test_settings.py::test_a_limit_without_a_window_gets_the_documented_default`
+    - `tests/unit/test_settings.py::test_a_password_full_of_punctuation_is_still_fully_masked[::@@::]`
+    - `tests/unit/test_settings.py::test_a_password_full_of_punctuation_is_still_fully_masked[]weird[]`
+    - `tests/unit/test_settings.py::test_a_password_full_of_punctuation_is_still_fully_masked[a:b:c]`
+    - `tests/unit/test_settings.py::test_a_password_full_of_punctuation_is_still_fully_masked[p@ss:w@rd]`
+    - `tests/unit/test_settings.py::test_a_password_full_of_punctuation_is_still_fully_masked[p@ssword]`
+    - `tests/unit/test_settings.py::test_a_password_full_of_punctuation_is_still_fully_masked[with@at:and:colons]`
+    - `tests/unit/test_settings.py::test_a_sub_second_window_is_allowed`
+    - `tests/unit/test_settings.py::test_a_uri_with_no_password_is_unchanged`
+    - `tests/unit/test_settings.py::test_a_user_with_no_password_keeps_its_at_sign`
+    - `tests/unit/test_settings.py::test_a_wildcard_is_refused_where_configuration_is_read[ * ]`
+    - `tests/unit/test_settings.py::test_a_wildcard_is_refused_where_configuration_is_read[*,https://a.example]`
+    - `tests/unit/test_settings.py::test_a_wildcard_is_refused_where_configuration_is_read[*]`
+    - `tests/unit/test_settings.py::test_a_wildcard_is_refused_where_configuration_is_read[https://a.example, *]`
+    - `tests/unit/test_settings.py::test_no_origins_means_no_allowance_at_all`
+    - `tests/unit/test_settings.py::test_origins_are_read_as_a_list`
+    - `tests/unit/test_settings.py::test_something_that_is_not_a_uri_is_returned_unchanged`
+    - `tests/unit/test_settings.py::test_string_formatting_is_masked_too`
+    - `tests/unit/test_settings.py::test_the_password_and_the_s3_secret_are_masked`
+    - `tests/unit/test_settings.py::test_the_values_themselves_are_untouched`
+    - `tests/unit/test_settings.py::test_there_is_one_masked_spelling_not_a_masked_and_an_unmasked_one`
+    - `tests/unit/test_settings.py::test_unlimited_is_a_state_that_must_be_chosen`
+    - `tests/unit/test_settings.py::test_what_survives_the_mask_is_what_makes_it_readable`
+- **Code:**
+    - `src/channelflow/api/app.py`
+    - `src/channelflow/api/main.py`
+    - `src/channelflow/settings.py`
+- **Outcomes:** [[OUT-2026-09-14-implement-security-enforced]], [[OUT-2026-09-14-plan-security-enforced]], [[OUT-2026-09-14-spec-security-enforced]], [[OUT-2026-09-14-tasks-security-enforced]]
 <!-- trace:end -->
 
 ## Notes

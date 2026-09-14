@@ -1,6 +1,7 @@
 """How the read API starts.
 
 # @trace: REQ-WP-064
+# @trace: REQ-WP-072
 
 PRD §6.2's MVP deployment names an `api` service. There was no way to run one:
 `create_app` takes an already-built repository, `LakehouseRepository` takes a
@@ -46,6 +47,8 @@ def build_app(settings: Settings) -> FastAPI:
     return create_app(
         repository=LakehouseRepository(catalog=store),
         readiness=catalog_probe(lambda: store.list_tables(NAMESPACE)),
+        allowed_origins=settings.allowed_origins,
+        rate_limit=settings.rate_limit,
     )
 
 

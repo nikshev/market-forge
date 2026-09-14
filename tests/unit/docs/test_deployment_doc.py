@@ -171,5 +171,9 @@ def test_the_document_says_what_it_does_not_cover(doc: str) -> None:
     """A gap named is a gap somebody can plan around; a gap unmentioned is one
     they discover at the worst moment."""
     assert "not covered" in doc.lower()
-    for gap in ("Load tests", "Backups"):
+    for gap in ("TLS", "Backups"):
         assert gap in doc, gap
+    # "Load tests" left this list on 2026-09-14: `channelflow.perf.load` drives
+    # §36's targets and REQ-PHASE-8 reached `implemented` on that acceptance
+    # line. The document says where they went rather than dropping the subject.
+    assert "Load tests are **no longer** on this list" in doc

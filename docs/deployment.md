@@ -1,6 +1,7 @@
 # Running ChannelFlow
 
 <!-- @trace: REQ-WP-056 -->
+<!-- @trace: REQ-WP-072 -->
 
 This describes what actually runs. It is checked against the repository by
 `tests/unit/docs/test_deployment_doc.py`: every command named here is a real
@@ -10,7 +11,7 @@ rather than leaving prose that is confident, plausible and wrong.
 
 ## What the stack is
 
-Five containers, started together:
+Nine services, started together:
 
 | service | what it is for |
 |---|---|
@@ -24,10 +25,16 @@ Five containers, started together:
 | `ingest-binance` | the live connector: one symbol, socket to bars ([[REQ-WP-066]]) |
 | `maintenance` | prunes metadata, compacts and optionally expires, on a loop ([[REQ-WP-070]]) |
 
-The API, the web app and any worker run **from the host** in development. They
-are not containerised here, and that is a gap rather than a decision: nothing has
-needed a production image yet, and writing one before there is somewhere to
-deploy it would be guessing at a base image and a process supervisor.
+All four application services build from this repository ([[REQ-WP-064]],
+[[REQ-WP-066]], [[REQ-WP-070]]) rather than pulling a tag naming a build nobody
+in this checkout can reproduce. `worker` is the one §6.2 service with no
+container, because it has no code: [[REQ-PIPE-001]] chose a replay over a daemon.
+
+*(This paragraph said the opposite until 2026-09-14 — that the API and web app
+were not containerised. `tests/unit/docs/test_deployment_doc.py` checks that
+every **name** in this document is real, and it passed throughout. A document
+checked for names can still be confidently wrong about everything else, which is
+why the exposure table below is checked service by service.)*
 
 ## Where the data lives
 
@@ -111,6 +118,9 @@ secret; `.env` is not committed and never should be.
 | `PROMETHEUS_PORT`, `GRAFANA_PORT` | observability |
 | `API_PORT`, `WEB_PORT` | where the application services are published |
 | `CHANNELFLOW_DATA_DIR` | the directory every stateful service writes into ([[REQ-WP-065]]) |
+| `CHANNELFLOW_BIND_ADDRESS` | what every published port binds to; `127.0.0.1` by default ([[REQ-WP-072]]) |
+| `CHANNELFLOW_CORS_ORIGINS`, `CHANNELFLOW_RATE_LIMIT`, `CHANNELFLOW_RATE_WINDOW_SECONDS` | what the read API allows and refuses |
+| `GRAFANA_ADMIN_PASSWORD`, `GRAFANA_ANONYMOUS` | Grafana's credential; anonymous access is off unless enabled |
 | `CHANNELFLOW_INGEST_SYMBOLS`, `CHANNELFLOW_INGEST_TIMEFRAME_NS` | what the ingest daemon reads, and at what bar size |
 | `CHANNELFLOW_MAINTENANCE_INTERVAL`, `CHANNELFLOW_KEEP_DAYS` | how often maintenance runs, and what it may expire |
 | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` | alert delivery, empty unless alerting is wanted |
@@ -121,6 +131,64 @@ values. PRD §34 requires the Telegram token to come from a secret manager in
 anything that is not a laptop, and nothing in this repository reads it from the
 environment on its own: the transport and its credentials are supplied by the
 caller ([[ADR-018]]).
+
+## What is exposed, and to whom
+
+Every published port binds `CHANNELFLOW_BIND_ADDRESS`, which defaults to
+`127.0.0.1` ([[REQ-WP-072]]). With the default, nothing listens on an external
+interface: reach the stack over an SSH tunnel.
+
+```sh
+ssh -N -L 8080:127.0.0.1:8080 -L 3000:127.0.0.1:3000 user@server
+```
+
+| service | published as | reachable by default from |
+|---|---|---|
+| `postgres` | `POSTGRES_PORT` | the host only |
+| `minio` | `MINIO_PORT`, `MINIO_CONSOLE_PORT` | the host only |
+| `redpanda` | `REDPANDA_PORT` | the host only |
+| `api` | `API_PORT` | the host only |
+| `web` | `WEB_PORT` | the host only |
+| `prometheus` | `PROMETHEUS_PORT` | the host only |
+| `grafana` | `GRAFANA_PORT` | the host only |
+
+`tests/unit/deploy/test_exposure.py` reads `docker-compose.yml` and fails on any
+published port that does not bind through that variable. A service meant to be
+public is named there, with its reason, where somebody reviewing security will
+find it.
+
+**Binding to loopback removes a question rather than answering it.** On Linux,
+Docker inserts its rules into the nat table's DOCKER chain, traversed before
+the INPUT chain that `ufw` manages by default — so a published port can be
+reachable while `ufw` reports it denied. A port that never listens externally
+cannot be reached however the firewall is configured.
+
+## What the read API refuses
+
+PRD §34 asks for a rate limited public API with restricted CORS. Both are
+configuration:
+
+| variable | default | meaning |
+|---|---|---|
+| `CHANNELFLOW_RATE_LIMIT` | empty | requests per window; **empty means no limiting at all** |
+| `CHANNELFLOW_RATE_WINDOW_SECONDS` | `60` | the window |
+| `CHANNELFLOW_CORS_ORIGINS` | empty | comma-separated; empty allows no cross-origin read; `*` is refused at startup |
+
+**What the limiter keys on**: the client address as the application sees it.
+Behind a proxy that is the proxy's address — it does not trust a forwarded
+header, because trusting one is a decision with its own risks.
+
+**Its scope is one process.** The count lives in memory. With N API processes the
+effective limit is N times the configured one. This deployment runs one; the
+arithmetic is written here so the day a second appears the cost is visible rather
+than discovered.
+
+**Its edge behaviour**: a fixed window admits up to twice the limit across a
+boundary — the last requests of one window and the first of the next.
+
+`/readyz` and `/metrics` are never limited. Throttling a readiness probe makes an
+orchestrator declare the service unhealthy, which is the outage the limiter
+exists to prevent.
 
 ## Observability
 
@@ -159,9 +227,15 @@ oversight.
 
 ## What is not covered
 
-- **Production images and a supervisor.** Nothing is containerised beyond the
-  stateful services.
-- **Load tests.** Phase 8's remaining item, and it needs something deployed to
-  load.
+- **A process supervisor beyond Compose's `restart: unless-stopped`.**
+- **TLS.** Nothing terminates it. This stack expects to be reached over an SSH
+  tunnel or from behind something that does.
+- **Authentication on the read API.** There is nothing to protect — every route
+  is a `GET` — and [[REQ-WP-072]] makes adding a write route a deliberate act
+  rather than building an auth scheme in advance of a user for one.
 - **Backups.** `channelflow.lakehouse.backup` backs a table up and restores it
   where it came from ([[ADR-061]]); nothing schedules that.
+
+Load tests are **no longer** on this list. `channelflow.perf.load` drives §36's
+targets and reports a target it could not measure as *not measured* rather than
+omitting it, which closed [[REQ-PHASE-8]]'s last acceptance line.
