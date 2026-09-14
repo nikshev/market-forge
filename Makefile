@@ -35,6 +35,9 @@ typecheck:
 # every service is healthy -- a started container is not a ready service.
 # --wait names only the long-running services: it treats a one-shot container
 # that exited 0 as a failure, so minio_init runs as a separate step.
+compact:
+	$(PY) -m tools.lakehouse.compact
+
 data-dirs:
 	$(PY) -m tools.deploy.data_dir --root $${CHANNELFLOW_DATA_DIR:-./data}
 

@@ -25,7 +25,12 @@ from channelflow.pipeline.archive import (
     LocalObjectStore,
     read_frames,
 )
-from channelflow.pipeline.ingest import FLUSH_INTERVAL_NS, IngestDaemon, streams_for
+from channelflow.pipeline.ingest import (
+    FLUSH_CEILING_NS,
+    FLUSH_EVERY_BARS,
+    IngestDaemon,
+    streams_for,
+)
 from channelflow.pipeline.ingest_main import (
     ARCHIVE_URI,
     SYMBOLS,
@@ -305,10 +310,46 @@ def test_the_stream_names_are_lower_case() -> None:
     assert "btcusdt@aggTrade" in binance_stream_url(streams_for(["BTCUSDT"]))
 
 
-@pytest.mark.trace("REQ-WP-066")
-def test_the_flush_interval_is_a_minute_not_a_bar() -> None:
-    """A commit per bar would make the snapshot chain as long as the series."""
-    assert FLUSH_INTERVAL_NS == 60_000_000_000
+@pytest.mark.trace("REQ-WP-068")
+def test_a_commit_holds_more_than_one_bar() -> None:
+    """The first version flushed every sixty seconds while producing a bar every
+    sixty seconds, so every bar became its own file: 685 files holding 689 rows
+    after eleven hours, and a read of 4.4s against a 2s budget.
+
+    A count keeps `BarSink`'s rule where an interval cannot, because whether an
+    interval keeps it depends on a bar size the flush knows nothing about."""
+    assert FLUSH_EVERY_BARS > 1
+    assert FLUSH_CEILING_NS > 0
+
+
+@pytest.mark.trace("REQ-WP-068")
+def test_a_quiet_symbol_still_commits(tmp_path: Path) -> None:
+    """A count alone never commits for a symbol that stopped trading."""
+    daemon, _, clock = _daemon(tmp_path, frames=[])
+    daemon.bars_pending = lambda: 0
+    committed: list[str] = []
+    daemon.flush_bars = lambda: committed.append("x") or None  # type: ignore[func-returns-value]
+    daemon.start()
+
+    daemon.step()
+    assert committed == [], "nothing buffered and no time passed"
+
+    clock.advance_ns(FLUSH_CEILING_NS)
+    daemon.step()
+    assert committed == ["x"]
+
+
+@pytest.mark.trace("REQ-WP-068")
+def test_enough_bars_commit_before_the_ceiling(tmp_path: Path) -> None:
+    daemon, _, clock = _daemon(tmp_path, frames=[])
+    daemon.bars_pending = lambda: FLUSH_EVERY_BARS
+    committed: list[str] = []
+    daemon.flush_bars = lambda: committed.append("x") or None  # type: ignore[func-returns-value]
+    daemon.start()
+
+    daemon.step()
+
+    assert committed == ["x"], "the ceiling had not been reached"
 
 
 @pytest.mark.trace("REQ-WP-066")

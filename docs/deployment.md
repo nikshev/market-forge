@@ -56,6 +56,23 @@ which is the only check that means anything on the machine this matters on.
 To back the stack up, stop it and copy the directory. To move it to another
 machine, copy the directory.
 
+## Keeping it fast
+
+The plane is append-only, so every commit leaves a data file. A symbol at
+one-minute bars leaves about 96 a day, and a read costs one round trip to the
+object store per file.
+
+```sh
+make compact
+```
+
+Rewrites each table's live rows into one file, preserving the order a read
+guarantees. Measured on a table of 717 files holding 721 rows: 7.2 seconds once,
+and the read that followed took **45ms against 6478ms** ([[REQ-WP-068]]).
+
+Nothing schedules it. A deployment that never runs it drifts back — slowly, but
+it drifts, and §36's chart-load target is what goes first.
+
 ## Starting it
 
 ```

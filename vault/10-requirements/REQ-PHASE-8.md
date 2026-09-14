@@ -5,12 +5,11 @@ type: phase
 prd_ref: "Phase 8 — Production hardening"
 prd_lines: "6904-6917"
 phase: 8
-status: planned
+status: implemented
 depends_on: ["REQ-PHASE-7A"]
 tags: []
-covers: [REQ-WP-064, REQ-WP-065, REQ-WP-066, REQ-WP-067, REQ-WP-035, REQ-WP-036, REQ-WP-037, REQ-WP-038, REQ-WP-039, REQ-WP-041, REQ-WP-042, REQ-WP-055, REQ-WP-056, REQ-WP-057]
-not_delivered:
-  - "§36's chart-load target is missed in a deployment: [[REQ-WP-067]] drives the load and reports it — p95 4.4s at one client against a 2s budget, from 654 data files holding 657 rows, because [[REQ-WP-066]] commits once a minute and produces one bar a minute"
+covers: [REQ-WP-064, REQ-WP-065, REQ-WP-066, REQ-WP-067, REQ-WP-068, REQ-WP-035, REQ-WP-036, REQ-WP-037, REQ-WP-038, REQ-WP-039, REQ-WP-041, REQ-WP-042, REQ-WP-055, REQ-WP-056, REQ-WP-057]
+not_delivered: []
 ---
 
 ## Requirement
@@ -51,15 +50,8 @@ requirement exists and has reached `implemented`.
 
 _Nothing in this repository delivers any part of this phase._
 
-**Not delivered:**
+**Not delivered:** nothing. [[REQ-WP-068]] closed the last entry.
 
-- Redpanda/Kafka optional transport: not built
-- S3 cold retention: MinIO is provisioned for the dev stack, with no retention tiering
-- monitoring dashboards: no metrics are exported
-- alerting on data outages: the alerting layer sends trading signals, not operational alerts
-- backup/restore: not built
-- deployment docs: the repository documents development, not deployment
-- load tests: not built
 
 This phase is `planned` rather than `implemented` because that list is not
 empty. A phase is its deliverables; a phase with a missing deliverable is a
