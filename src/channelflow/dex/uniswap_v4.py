@@ -234,6 +234,54 @@ def classify(key: PoolKey) -> ReconstructionClass:
     return ReconstructionClass.STANDARD_CL
 
 
+#: Section 18.8.1's classes that permit a standard depth reconstruction.
+#:
+#: A permit list, not a deny list. `CUSTOM_ACCOUNTING` is excluded because the
+#: section says so outright; `UNKNOWN` because it gets "raw data only; exclude
+#: from predictive depth features", which is the same prohibition reached by a
+#: different route. A class added later is excluded until somebody decides
+#: otherwise, which is the safe direction to fail.
+CURVE_RECONSTRUCTIBLE = frozenset(
+    {
+        ReconstructionClass.STANDARD_CL,
+        ReconstructionClass.DYNAMIC_FEE_CL,
+        ReconstructionClass.HOOK_AUGMENTED_CL,
+    }
+)
+
+
+class CurveDoesNotApply(ValueError):
+    """The tick kernel was asked about a pool whose class forbids it.
+
+    Raised rather than answered, because the answer the kernel would give is
+    the dangerous one. Measured at block 25975796: three of the four
+    `CUSTOM_ACCOUNTING` pools in `tests/fixtures/uniswap_v4/` hold zero
+    liquidity in the manager, so a tick traversal reports "the pool has no
+    active liquidity, so its price cannot be moved" -- and two of those three
+    absorb a whole ether. The liquidity is in the hook.
+    """
+
+
+def require_curve_applies(key: PoolKey) -> None:
+    """Refuse the standard curve where section 18.8.1 refuses it.
+
+    The gate is on the class rather than on the reconstructed state because the
+    class is the only place the information exists. A `PoolState` built from
+    such a pool passes `require_tick_map_complete` -- an empty tick map explains
+    a pool reporting zero liquidity exactly -- and nothing downstream of that
+    can tell the difference. The hook address can.
+    """
+    found = classify(key)
+    if found in CURVE_RECONSTRUCTIBLE:
+        return
+    raise CurveDoesNotApply(
+        f"pool {pool_id(key)} is {found.value}; section 18.8.1 does not permit the "
+        f"standard curve here, and a depth from it would report the pool as empty "
+        f"rather than failing. Quote it instead. Permitted: "
+        f"{', '.join(sorted(c.value for c in CURVE_RECONSTRUCTIBLE))}"
+    )
+
+
 def key_fee(key: PoolKey) -> int:
     """The pool's LP fee, where the key is allowed to answer at all.
 

@@ -5,12 +5,11 @@ type: phase
 prd_ref: "Phase 4 — DeFi ingestion + AMM market structure"
 prd_lines: "6776-6820"
 phase: 4
-status: planned
+status: implemented
 depends_on: ["REQ-PHASE-3"]
 tags: []
-covers: [REQ-WP-014, REQ-WP-015, REQ-WP-045, REQ-WP-046, REQ-WP-047, REQ-WP-048, REQ-WP-058, REQ-WP-059, REQ-WP-060, REQ-WP-062, REQ-WP-063, REQ-ASSET-001, REQ-BIAS-006, REQ-EXP-007]
-not_delivered:
-  - "Uniswap v4 executable quoting for CUSTOM_ACCOUNTING pools: [[REQ-WP-047]] routes, classifies and refuses them; nothing quotes them"
+covers: [REQ-WP-014, REQ-WP-015, REQ-WP-045, REQ-WP-046, REQ-WP-047, REQ-WP-048, REQ-WP-058, REQ-WP-059, REQ-WP-060, REQ-WP-062, REQ-WP-063, REQ-WP-071, REQ-ASSET-001, REQ-BIAS-006, REQ-EXP-007]
+not_delivered: []
 blocked:
   - "Curve twocrypto quoting: [[REQ-WP-046]] classifies it and quotes Stableswap-NG and tricrypto; waits on Curve publishing source matching the deployed twocrypto version"
 deferred:
@@ -98,13 +97,14 @@ requirement exists and has reached `implemented`.
 - [[REQ-WP-060]]
 - [[REQ-WP-062]]
 - [[REQ-WP-063]]
+- [[REQ-WP-071]]
 - [[REQ-ASSET-001]]
 - [[REQ-BIAS-006]]
 - [[REQ-EXP-007]]
 
 **Not delivered:**
 
-- Uniswap v4 executable quoting for `CUSTOM_ACCOUNTING` pools: [[REQ-WP-047]] routes, classifies and refuses them; nothing quotes them
+- Nothing. [[REQ-WP-071]] closed the last entry on 2026-09-14.
 
 **Blocked:**
 
@@ -114,11 +114,19 @@ requirement exists and has reached `implemented`.
 
 - Pinot HOT DeFi datasets: deferred by [[ADR-002]] until a HOT serving requirement exists, not missing by oversight
 
-This phase is `planned` rather than `implemented` because the first list is not
-empty. The other two do not hold it open: a phase cannot deliver what it is not
-allowed to, and one that stayed `planned` for a decision this project made would
-make every later phase look unfinished too ([[REQ-WP-069]]). A phase is its deliverables; a phase with a missing deliverable is a
-phase in progress, however much of it is built.
+This phase is `implemented`: the first list is empty. The other two do not hold
+it open — a phase cannot deliver what it is not allowed to, and one that stayed
+`planned` for a decision this project made would make every later phase look
+unfinished too ([[REQ-WP-069]]).
+
+The acceptance line "unsupported v4 custom-accounting pool fails closed instead
+of emitting fake CL depth" is worth reading against what closing it took.
+[[REQ-WP-047]] already refused to answer for such a pool's *fee*. What was still
+open was depth, and the measurement is the reason this entry could not simply be
+ticked: three of the four `CUSTOM_ACCOUNTING` pools in the fixture hold zero
+liquidity in the manager, so the tick path did not fail at all — it succeeded,
+reporting that pools absorbing a whole ether could not be moved at any size. A
+requirement that fails closed had to be built, not asserted.
 
 ## Trace
 

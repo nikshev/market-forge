@@ -44,6 +44,7 @@ import json
 import time
 import urllib.error
 import urllib.request
+from dataclasses import dataclass
 from typing import Any
 
 from eth_hash.auto import keccak
@@ -84,7 +85,17 @@ class Reverted(RuntimeError):
 
     Distinct from `Refused` on purpose: for a capability probe this is the
     answer, not a failure.
+
+    `data` carries the revert payload where the endpoint sent one -- a custom
+    error's selector and arguments. Some endpoints omit it, so it is `None`
+    rather than `"0x"` when absent: a caller recording *why* a contract refused
+    has to be able to tell "it reverted with nothing" from "this endpoint did
+    not say".
     """
+
+    def __init__(self, message: str, data: str | None = None) -> None:
+        super().__init__(message)
+        self.data = data
 
 
 class EndpointPool:
@@ -129,7 +140,11 @@ class EndpointPool:
                 error.get("code") == REVERT_CODE
                 or "revert" in str(error.get("message", "")).lower()
             ):
-                raise Reverted(f"{method}: {error}")
+                payload = error.get("data")
+                raise Reverted(
+                    f"{method}: {error}",
+                    payload if isinstance(payload, str) else None,
+                )
             self._cool_off(url)
             raise Refused(f"{url}: {error}")
         return body["result"]
@@ -178,6 +193,88 @@ class EndpointPool:
         if len(distinct) != 1:
             raise RuntimeError(f"endpoints disagree on {to} {data[:10]} at {block}: {answers}")
         return distinct.pop()
+
+    def call_answer(self, to: str, data: str, block: str) -> Answer:
+        """One `eth_call` where a revert is an answer, still needing a quorum.
+
+        Two endpoints must agree on the outcome -- both returned the same value,
+        or both refused. A capture that recorded one endpoint's revert would be
+        asserting a fact about a contract on the word of a single node, which is
+        the thing this pool exists to stop.
+        """
+        params = [{"to": to, "data": data}, block]
+        deadline = time.monotonic() + QUORUM_WAIT_SECONDS
+        while True:
+            returned: dict[str, str] = {}
+            reverts: dict[str, str | None] = {}
+            for url in self.healthy():
+                if len(returned) + len(reverts) == QUORUM:
+                    break
+                try:
+                    returned[url] = self.rpc(url, "eth_call", params)
+                except Reverted as exc:  # noqa: PERF203
+                    reverts[url] = exc.data
+                except Refused:
+                    continue
+            if len(returned) + len(reverts) >= QUORUM:
+                break
+            wait = self._next_available_in()
+            if time.monotonic() + wait > deadline:
+                raise RuntimeError(
+                    f"fewer than {QUORUM} endpoints answered {to} {data[:10]} at {block}; "
+                    f"healthy: {self.healthy()}"
+                )
+            time.sleep(wait + 1.0)
+        if returned and reverts:
+            raise RuntimeError(
+                f"endpoints disagree on whether {to} {data[:10]} reverts at {block}: "
+                f"returned={returned}, reverted={reverts}"
+            )
+        if reverts:
+            return Answer(returned=None, revert_data=_agreed_revert(list(reverts.values())))
+        distinct = set(returned.values())
+        if len(distinct) != 1:
+            raise RuntimeError(f"endpoints disagree on {to} {data[:10]} at {block}: {returned}")
+        return Answer(returned=distinct.pop(), revert_data=None)
+
+
+@dataclass(frozen=True)
+class Answer:
+    """What a contract said, where "it refused" is one of the things it can say.
+
+    `EndpointPool.call` propagates a revert, which is right for a capability
+    probe: the question was "does this answer at all", and the first endpoint to
+    say no has answered it. It is wrong for a capture that records *why* a
+    contract refused, because then the refusal is the datum and a datum from one
+    endpoint is not a datum this tooling accepts.
+    """
+
+    returned: str | None
+    revert_data: str | None
+
+    @property
+    def reverted(self) -> bool:
+        return self.returned is None
+
+    def error_selector(self) -> str | None:
+        """The custom error's selector, where the endpoint sent a payload."""
+        if self.revert_data is None or len(self.revert_data) < 10:
+            return None
+        return self.revert_data[:10]
+
+
+def _agreed_revert(payloads: list[str | None]) -> str | None:
+    """One revert payload, or a refusal to guess which of several it was.
+
+    Endpoints differ in whether they forward the payload at all -- the module
+    docstring records one that omits it -- so `None` from an endpoint is an
+    abstention, not a disagreement. Two *different* payloads are a
+    disagreement, and there is no safe way to pick one.
+    """
+    distinct = {payload for payload in payloads if payload is not None}
+    if len(distinct) > 1:
+        raise RuntimeError(f"endpoints disagree on the revert payload: {sorted(distinct)}")
+    return distinct.pop() if distinct else None
 
 
 def word(result: str, index: int = 0) -> int:

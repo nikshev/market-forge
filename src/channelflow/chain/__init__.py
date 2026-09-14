@@ -12,6 +12,7 @@ from channelflow.chain.decoders import (
 )
 from channelflow.chain.ledger import ChainLedger, FinalityPolicy, FinalizedBlockCannotReorg
 from channelflow.chain.providers import (
+    CallReverted,
     ChainDataProvider,
     Disagreement,
     NoHealthyProvider,
@@ -22,6 +23,7 @@ from channelflow.chain.providers import (
 from channelflow.chain.records import ChainRecord, Finality, ReorgInvalidation
 
 __all__ = [
+    "CallReverted",
     "ChainDataProvider",
     "ChainLedger",
     "ChainRecord",

@@ -1,0 +1,51 @@
+# The class gate for REQ-WP-071. Separate from the quoting sweep because the
+# source file is a different one, and `tools/mutate.py` takes one source per
+# specification.
+source = "src/channelflow/dex/uniswap_v4.py"
+tests = [
+  "tests/unit/dex/test_v4_quoting.py",
+  "tests/unit/dex/test_uniswap_v4.py",
+]
+
+[[mutation]]
+name = "custom accounting is permitted to use the curve"
+find = '''        ReconstructionClass.HOOK_AUGMENTED_CL,
+    }
+)'''
+replace = '''        ReconstructionClass.HOOK_AUGMENTED_CL,
+        ReconstructionClass.CUSTOM_ACCOUNTING,
+    }
+)'''
+
+[[mutation]]
+name = "unknown is permitted to use the curve"
+find = '''        ReconstructionClass.STANDARD_CL,
+        ReconstructionClass.DYNAMIC_FEE_CL,
+        ReconstructionClass.HOOK_AUGMENTED_CL,
+    }
+)'''
+replace = '''        ReconstructionClass.STANDARD_CL,
+        ReconstructionClass.DYNAMIC_FEE_CL,
+        ReconstructionClass.HOOK_AUGMENTED_CL,
+        ReconstructionClass.UNKNOWN,
+    }
+)'''
+
+[[mutation]]
+name = "the gate never refuses"
+find = '''    found = classify(key)
+    if found in CURVE_RECONSTRUCTIBLE:
+        return'''
+replace = '''    found = classify(key)
+    if found not in CURVE_RECONSTRUCTIBLE:
+        return'''
+
+[[mutation]]
+name = "hook-augmented pools are refused too"
+find = '''        ReconstructionClass.DYNAMIC_FEE_CL,
+        ReconstructionClass.HOOK_AUGMENTED_CL,
+    }
+)'''
+replace = '''        ReconstructionClass.DYNAMIC_FEE_CL,
+    }
+)'''
