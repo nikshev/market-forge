@@ -1,0 +1,34 @@
+# Reproduces the mutation sweep recorded for this module.
+#
+# Patterns are TOML *literal* strings on purpose: the basic form treats a
+# trailing backslash as a line continuation and eats the next line's indentation.
+source = "src/channelflow/lakehouse/iceberg.py"
+tests = ["tests/unit/lakehouse/test_iceberg.py", "tests/unit/tables/test_bars.py"]
+
+[[mutation]]
+name = "the parallel read loses commit order"
+find = '''        return pa.concat_tables(list(_read_pool().map(one, paths)))'''
+replace = '''        return pa.concat_tables(list(reversed(list(_read_pool().map(one, paths)))))'''
+
+[[mutation]]
+name = "the read pool is unbounded"
+find = '''READ_WORKERS = 16'''
+replace = '''READ_WORKERS = 4096'''
+
+[[mutation]]
+name = "compaction drops the rows it rewrites"
+find = '''        table.overwrite(self.read())
+        return before'''
+replace = '''        return before'''
+
+[[mutation]]
+name = "compaction reverses the rows"
+find = '''        table.overwrite(self.read())'''
+replace = '''        rows = self.read()
+        table.overwrite(rows.take(list(reversed(range(rows.num_rows)))))'''
+
+[[mutation]]
+name = "compaction runs on a single file too"
+find = '''        if before <= 1:'''
+replace = '''        if False:'''
+

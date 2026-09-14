@@ -95,7 +95,6 @@ makes the tier affordable.
     - `tests/unit/pipeline/test_ingest.py::test_the_archive_compresses`
     - `tests/unit/pipeline/test_ingest.py::test_the_archive_scheme_chooses_the_store`
     - `tests/unit/pipeline/test_ingest.py::test_the_fixture_is_what_the_venue_sent`
-    - `tests/unit/pipeline/test_ingest.py::test_the_flush_interval_is_a_minute_not_a_bar`
     - `tests/unit/pipeline/test_ingest.py::test_the_key_is_dated_and_nested_by_day`
     - `tests/unit/pipeline/test_ingest.py::test_the_live_transport_delivers_frames_across_the_thread`
     - `tests/unit/pipeline/test_ingest.py::test_the_order_of_shutdown_is_commit_then_close`

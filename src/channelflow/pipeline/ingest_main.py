@@ -124,6 +124,7 @@ def build_daemon(
         builder=builder,
         venue=VENUE,
         flush_bars=sink.flush,
+        bars_pending=lambda: sink.pending,
     )
 
 

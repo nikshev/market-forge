@@ -37,10 +37,26 @@ from channelflow.connectors.binance import normalize
 from channelflow.connectors.session import StreamSession
 from channelflow.pipeline.archive import FrameArchive
 
-#: How often the bars buffered by the sink are committed. A commit per bar would
-#: make the snapshot chain as long as the series (`BarSink` says why); a commit
-#: per hour would lose an hour to a restart.
-FLUSH_INTERVAL_NS = 60_000_000_000
+#: How many bars a commit holds, at least.
+#:
+#: **Not an interval.** The first version flushed every sixty seconds while
+#: producing a bar every sixty seconds, so every bar became its own file --
+#: measured after eleven hours: 685 files holding 689 rows, and a read that took
+#: 4.4 seconds against §36's two-second budget ([[REQ-WP-067]]).
+#:
+#: `BarSink`'s docstring states the rule that broke: "a commit per bar would
+#: make the snapshot chain as long as the series". An interval cannot keep it,
+#: because whether it does depends on a bar size the flush knows nothing about.
+#: A count can.
+#:
+#: Fifteen because a restart loses at most fifteen bars' worth of buffer, which
+#: at one-minute bars is a quarter of an hour and at fifteen-minute bars is most
+#: of a day -- so the ceiling below bounds the second case.
+FLUSH_EVERY_BARS = 15
+
+#: And a ceiling in time, so a quiet symbol still commits. Without it a pool
+#: that trades once an hour would hold its bars until the process stopped.
+FLUSH_CEILING_NS = 15 * 60_000_000_000
 
 
 class Drainable(Protocol):
@@ -83,6 +99,10 @@ class IngestDaemon:
     #: Returns the wall clock in nanoseconds. Injected, so a test is not slow.
     now_ns: Callable[[], int] = field(default=lambda: time.time_ns())
     flush_bars: Callable[[], str | None] = field(default=lambda: None)
+    #: How many bars are waiting to be committed. The sink's own buffer rather
+    #: than a count kept here: it is the number of rows a commit would actually
+    #: write, and a second counter would be a second answer to one question.
+    bars_pending: Callable[[], int] = field(default=lambda: 0)
 
     #: Frames whose stream this daemon does not turn into events. Counted, not
     #: dropped silently: a subscription nobody consumes is a cost with no
@@ -92,6 +112,17 @@ class IngestDaemon:
     #: must not end an ingest -- and never invisible.
     unparsed: int = 0
     _last_flush_ns: int = 0
+
+    def _should_flush(self, now_ns: int) -> bool:
+        """Enough bars, or too long since the last commit.
+
+        Both, because either alone fails on a market the other suits: a count
+        alone never commits for a symbol that stops trading, and an interval
+        alone becomes a commit per bar whenever the two happen to match.
+        """
+        if self.bars_pending() >= FLUSH_EVERY_BARS:
+            return True
+        return now_ns - self._last_flush_ns >= FLUSH_CEILING_NS
 
     def start(self) -> None:
         self.session.start()
@@ -119,7 +150,7 @@ class IngestDaemon:
         self.session.tick()
 
         flushed = None
-        if received_at - self._last_flush_ns >= FLUSH_INTERVAL_NS:
+        if self._should_flush(received_at):
             flushed = self.flush_bars()
             self.archive.flush()
             self._last_flush_ns = received_at

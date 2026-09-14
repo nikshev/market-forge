@@ -399,3 +399,101 @@ def test_a_null_and_a_value_are_different_datasets(catalog: Catalog) -> None:
     absent_snapshot = absent.append([{"t": 1, "price": None}])
     zero_snapshot = zero.append([{"t": 1, "price": Decimal("0")}])
     assert absent_snapshot.content_hash != zero_snapshot.content_hash
+
+
+# --------------------------------------------------------------------------
+# What a read costs (REQ-WP-068)
+# --------------------------------------------------------------------------
+
+
+@pytest.mark.trace("REQ-WP-068")
+def test_many_commits_read_back_in_commit_order(catalog: Catalog) -> None:
+    """The guarantee the parallel read must not break.
+
+    [[REQ-WP-039]] made commit order load-bearing: every "latest row wins"
+    reader folds rows in order, and Iceberg's own scan returns the newest
+    manifest first. Concurrency here is only the waiting -- the paths are sorted
+    and the pieces concatenated in that order -- and this is what says so.
+    """
+    table = IcebergTable(
+        name="ordered",
+        schema=Schema(columns=(Column(name="n", type="int64"),)),
+        catalog=catalog,
+    )
+    for n in range(40):
+        table.append([{"n": n}])
+
+    assert [row["n"] for row in table.read().to_pylist()] == list(range(40))
+
+
+@pytest.mark.trace("REQ-WP-068")
+def test_a_single_file_needs_no_pool(catalog: Catalog) -> None:
+    """A pool costs threads and a queue to discover there is nothing to
+    parallelise, and most tables in the fast gate hold one commit."""
+    table = IcebergTable(
+        name="one_file",
+        schema=Schema(columns=(Column(name="n", type="int64"),)),
+        catalog=catalog,
+    )
+    table.append([{"n": 1}, {"n": 2}])
+
+    assert [row["n"] for row in table.read().to_pylist()] == [1, 2]
+
+
+@pytest.mark.trace("REQ-WP-068")
+def test_the_read_concurrency_is_bounded() -> None:
+    """Sixteen concurrent requests against a table of many files would otherwise
+    open hundreds of connections to one object store."""
+    from channelflow.lakehouse.iceberg import READ_WORKERS
+
+    assert 1 < READ_WORKERS <= 32
+
+
+@pytest.mark.trace("REQ-WP-068")
+def test_compaction_keeps_every_row_in_its_order(catalog: Catalog) -> None:
+    """The guarantee that makes compaction safe rather than merely faster.
+
+    Measured on a live table of 717 files holding 721 rows: the read that
+    followed took 45ms against 6478ms before, and the rows compared equal.
+    """
+    table = IcebergTable(
+        name="fragmented",
+        schema=Schema(columns=(Column(name="n", type="int64"),)),
+        catalog=catalog,
+    )
+    for n in range(30):
+        table.append([{"n": n}])
+    before = table.read().to_pylist()
+
+    files = table.compact()
+
+    assert files == 30
+    assert table.read().to_pylist() == before
+
+
+@pytest.mark.trace("REQ-WP-068")
+def test_compacting_once_is_enough(catalog: Catalog) -> None:
+    """A second pass would spend a snapshot saying something happened."""
+    table = IcebergTable(
+        name="twice",
+        schema=Schema(columns=(Column(name="n", type="int64"),)),
+        catalog=catalog,
+    )
+    for n in range(5):
+        table.append([{"n": n}])
+    table.compact()
+    settled = len(table.snapshot_ids())
+
+    assert table.compact() == 1
+    assert len(table.snapshot_ids()) == settled, "a second pass wrote a snapshot"
+
+
+@pytest.mark.trace("REQ-WP-068")
+def test_compacting_a_table_that_does_not_exist_does_nothing(catalog: Catalog) -> None:
+    table = IcebergTable(
+        name="absent",
+        schema=Schema(columns=(Column(name="n", type="int64"),)),
+        catalog=catalog,
+    )
+
+    assert table.compact() == 0

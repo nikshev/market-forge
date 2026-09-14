@@ -36,8 +36,10 @@ from __future__ import annotations
 
 import hashlib
 from collections.abc import Mapping, Sequence
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from decimal import Decimal
+from threading import Lock
 
 import pyarrow as pa
 import pyarrow.compute as pc
@@ -51,6 +53,34 @@ from channelflow.lakehouse.schema import Schema
 #: One namespace for the whole plane. Tables are named by the domain, and a
 #: second level of naming would be a place for two tables to disagree about
 #: which one is canonical.
+#: How many data files are opened at once **across every reader in the process**.
+#:
+#: Measured on a deployment of 685 files: 4394ms serial, 741ms at eight workers,
+#: 654ms at sixteen, 605ms at thirty-two.
+#:
+#: **Shared, not per read.** A per-read pool made one client faster and sixteen
+#: clients slower -- 20.2s to 29.1s -- because sixteen requests each opening
+#: sixteen files is 256 connections to one object store, which is congestion
+#: rather than concurrency. Measured, not reasoned about: the first version was
+#: bounded per read and the load test reported the regression ([[REQ-WP-068]]).
+READ_WORKERS = 16
+
+#: One pool for the process, created on first use. A reader waits for a slot
+#: instead of adding a thread, which is the whole point of a shared bound.
+_READ_POOL: ThreadPoolExecutor | None = None
+_READ_POOL_LOCK = Lock()
+
+
+def _read_pool() -> ThreadPoolExecutor:
+    global _READ_POOL  # noqa: PLW0603 -- one pool per process, by design
+    with _READ_POOL_LOCK:
+        if _READ_POOL is None:
+            _READ_POOL = ThreadPoolExecutor(
+                max_workers=READ_WORKERS, thread_name_prefix="lakehouse-read"
+            )
+        return _READ_POOL
+
+
 NAMESPACE = "channelflow"
 
 
@@ -250,13 +280,38 @@ class IcebergTable:
         if not ordered:
             return self.schema.arrow().empty_table()
 
+        return self._read_in_order([path for _, path in sorted(ordered)], table)
+
+    def _read_in_order(self, paths: Sequence[str], table: _IcebergTable) -> pa.Table:
+        """Open the data files concurrently and concatenate them in order.
+
+        **Order is preserved by construction**, not by the pool: the paths are
+        already sorted by sequence number and the pieces are concatenated in
+        that order, so what runs concurrently is only the waiting. Measured on a
+        deployment, 685 files: 4394ms serial against 654ms at sixteen workers,
+        and the two results compare equal ([[REQ-WP-068]]).
+
+        Serial was never justified -- it was what a comprehension does -- and
+        the cost is one round trip to the object store per file, paid one at a
+        time. pyiceberg's own `scan().to_arrow()` is concurrent and takes
+        1411ms, and is not the answer here because it does not return rows in
+        commit order, which [[REQ-WP-039]] made load-bearing.
+        """
         import pyarrow.parquet as pq
 
-        pieces = [
-            pq.read_table(table.io.new_input(path).open()).cast(self.schema.arrow())
-            for _, path in sorted(ordered)
-        ]
-        return pa.concat_tables(pieces)
+        schema = self.schema.arrow()
+
+        def one(path: str) -> pa.Table:
+            return pq.read_table(table.io.new_input(path).open()).cast(schema)
+
+        # One file needs no pool, and a pool costs threads and a queue to find
+        # that out. The bound matters more than the speed-up above it: sixteen
+        # concurrent readers of a sixteen-file table would otherwise be 256
+        # connections to one object store.
+        if len(paths) <= 1:
+            return pa.concat_tables([one(path) for path in paths])
+
+        return pa.concat_tables(list(_read_pool().map(one, paths)))
 
     # --- appending ---------------------------------------------------------
 
@@ -300,6 +355,43 @@ class IcebergTable:
         if table is None:
             return
         table.delete(f"{column} < {event_time_ns}")
+
+    def compact(self) -> int:
+        """Rewrite the live rows into one file, preserving their order.
+
+        The operation `append` cannot undo. A table written one row at a time
+        holds one file per row: measured on a deployment, **685 files for 689
+        rows**, each about 8 KiB of Parquet around a few hundred bytes of data,
+        and a read that cost 4.4 seconds against §36's two-second budget
+        ([[REQ-WP-067]]).
+
+        [[REQ-WP-068]]'s flush policy stops the count growing. It cannot shrink
+        one that already grew, and a deployment that ran for a day before the
+        fix would otherwise stay slow for as long as it kept its history.
+
+        **Rows come back in commit order and go out in it**, which is what makes
+        this safe: `read` already guarantees that order and every "latest row
+        wins" reader depends on it, so a compaction that reordered would change
+        answers rather than timings. The rewritten file carries them in the same
+        sequence, and the old files stop being referenced by the current
+        snapshot -- earlier snapshots still name them until they are expired, so
+        nothing pinned is lost.
+
+        Returns how many files the live set had before.
+        """
+        table = self._table()
+        if table is None:
+            return 0
+        before = sum(1 for _ in table.scan().plan_files())
+        if before <= 1:
+            # Nothing to gain, and an overwrite would spend a snapshot saying
+            # something happened.
+            return before
+        # No empty-table guard: `before > 1` means at least two data files, and
+        # Iceberg does not write a file with no rows. The mutation sweep found
+        # that branch unreachable, which is what it is for.
+        table.overwrite(self.read())
+        return before
 
     def expire_snapshots_except(self, keep: Sequence[int]) -> None:
         """Forget every snapshot but these.

@@ -73,6 +73,18 @@ find = '''    return tuple(f"{symbol.lower()}@aggTrade" for symbol in symbols)''
 replace = '''    return tuple(f"{symbol}@aggTrade" for symbol in symbols)'''
 
 [[mutation]]
-name = "bars are committed on every step"
-find = '''FLUSH_INTERVAL_NS = 60_000_000_000'''
-replace = '''FLUSH_INTERVAL_NS = 0'''
+name = "a commit holds one bar again"
+find = '''FLUSH_EVERY_BARS = 15'''
+replace = '''FLUSH_EVERY_BARS = 1'''
+
+[[mutation]]
+name = "a quiet symbol never commits"
+find = '''        return now_ns - self._last_flush_ns >= FLUSH_CEILING_NS'''
+replace = '''        return False'''
+
+[[mutation]]
+name = "the buffer size is ignored"
+find = '''        if self.bars_pending() >= FLUSH_EVERY_BARS:
+            return True'''
+replace = '''        if False:
+            return True'''
