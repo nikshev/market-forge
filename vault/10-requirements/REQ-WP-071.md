@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "§18.8.1"
 prd_lines: "2928-2949"
 phase: 4
-status: planned
+status: implemented
 depends_on: [REQ-WP-047, REQ-WP-060]
 tags: []
 ---
@@ -109,9 +109,43 @@ about. The size quoted is part of the answer.
 
 <!-- trace:begin -->
 - **Specs:** [[SPEC-112-v4-executable-quoting]]
+- **Tests:**
+    - `tests/unit/dex/test_v4_quoting.py::test_a_broken_endpoint_is_not_a_refusing_pool`
+    - `tests/unit/dex/test_v4_quoting.py::test_a_mid_is_exactly_two_calls_at_one_block`
+    - `tests/unit/dex/test_v4_quoting.py::test_a_negative_tick_spacing_fills_the_word`
+    - `tests/unit/dex/test_v4_quoting.py::test_a_one_sided_pool_has_no_mid[0x5d10cbe0fdcd8b52e0cf64e84d692b124396a1be49d2b77c1665293bcd855ab4]`
+    - `tests/unit/dex/test_v4_quoting.py::test_a_one_sided_pool_has_no_mid[0xf7caa8ee16fff4e0cd360f9248c1dde011a28a0de3038845c85b904cda1c9b75]`
+    - `tests/unit/dex/test_v4_quoting.py::test_a_payload_that_is_not_a_wrapper_and_a_missing_payload_are_both_unknown`
+    - `tests/unit/dex/test_v4_quoting.py::test_a_question_the_chain_was_never_asked_is_not_answered_zero`
+    - `tests/unit/dex/test_v4_quoting.py::test_a_quote_of_zero_cannot_be_built`
+    - `tests/unit/dex/test_v4_quoting.py::test_a_quote_request_refuses_a_size_that_is_not_a_size`
+    - `tests/unit/dex/test_v4_quoting.py::test_a_quoter_naming_another_manager_is_refused_before_it_is_asked_anything`
+    - `tests/unit/dex/test_v4_quoting.py::test_a_reason_inside_the_wrong_wrapper_is_not_read`
+    - `tests/unit/dex/test_v4_quoting.py::test_a_refusal_is_asked_once_and_never_retried_smaller`
+    - `tests/unit/dex/test_v4_quoting.py::test_a_return_too_short_to_hold_a_quote_is_not_decoded[0x000000000000000000000000000000000000000000000000000000000000007b]`
+    - `tests/unit/dex/test_v4_quoting.py::test_a_return_too_short_to_hold_a_quote_is_not_decoded[0x]`
+    - `tests/unit/dex/test_v4_quoting.py::test_a_revert_payload_the_endpoint_did_not_send_is_still_a_refusal`
+    - `tests/unit/dex/test_v4_quoting.py::test_a_verified_quoter_is_one_that_names_our_manager`
+    - `tests/unit/dex/test_v4_quoting.py::test_an_unrecognised_selector_is_unknown_and_never_a_recognised_one`
+    - `tests/unit/dex/test_v4_quoting.py::test_every_call_names_the_adapters_own_block`
+    - `tests/unit/dex/test_v4_quoting.py::test_every_captured_quote_replays_to_its_exact_amount`
+    - `tests/unit/dex/test_v4_quoting.py::test_the_adapter_knows_nothing_about_replay`
+    - `tests/unit/dex/test_v4_quoting.py::test_the_deep_pool_absorbs_an_ether`
+    - `tests/unit/dex/test_v4_quoting.py::test_the_deep_pool_sells_but_will_not_buy_back`
+    - `tests/unit/dex/test_v4_quoting.py::test_the_empty_pool_refuses_at_every_rung_and_names_itself`
+    - `tests/unit/dex/test_v4_quoting.py::test_the_encoder_sign_extends_tick_spacing_across_a_whole_word`
+    - `tests/unit/dex/test_v4_quoting.py::test_the_fixture_holds_one_block_and_every_answer`
+    - `tests/unit/dex/test_v4_quoting.py::test_the_gate_passes_the_three_classes_that_permit_reconstruction`
+    - `tests/unit/dex/test_v4_quoting.py::test_the_gate_refuses_every_custom_accounting_pool_in_the_fixture`
+    - `tests/unit/dex/test_v4_quoting.py::test_the_pinned_pool_refuses_to_be_pushed_past_the_top_of_the_range`
+    - `tests/unit/dex/test_v4_quoting.py::test_the_tick_path_calls_a_pool_that_absorbs_an_ether_unmovable`
+    - `tests/unit/dex/test_v4_quoting.py::test_the_two_directions_are_not_reciprocal_and_selling_is_the_worse_side`
+    - `tests/unit/dex/test_v4_quoting.py::test_the_two_sided_pool_has_a_mid_between_its_two_prices`
+    - `tests/unit/dex/test_v4_quoting.py::test_unknown_is_excluded_alongside_custom_accounting`
 - **Code:**
+    - `src/channelflow/chain/providers.py`
     - `tools/record/v4_quote_capture.py`
-- **Outcomes:** [[OUT-2026-09-14-plan-v4-executable-quoting]], [[OUT-2026-09-14-spec-v4-executable-quoting]], [[OUT-2026-09-14-tasks-v4-executable-quoting]]
+- **Outcomes:** [[OUT-2026-09-14-implement-v4-executable-quoting]], [[OUT-2026-09-14-plan-v4-executable-quoting]], [[OUT-2026-09-14-spec-v4-executable-quoting]], [[OUT-2026-09-14-tasks-v4-executable-quoting]]
 <!-- trace:end -->
 
 ## Notes

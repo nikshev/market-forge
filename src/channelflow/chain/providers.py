@@ -25,6 +25,26 @@ class NoHealthyProvider(RuntimeError):
     """
 
 
+class CallReverted(RuntimeError):
+    """The contract refused an `eth_call`. Every provider would say the same.
+
+    # @trace: REQ-WP-071
+
+    Distinct from a transport failure on purpose. A revert is a fact about the
+    contract and the arguments; a timeout is a fact about the endpoint. A caller
+    that conflated them would read "this pool has no depth" off a node that was
+    simply busy.
+
+    `data` carries the revert payload where the node sent one -- a custom error's
+    selector and arguments. Nodes differ in whether they forward it, so `None`
+    means "this provider did not say", not "the contract reverted with nothing".
+    """
+
+    def __init__(self, message: str, data: str | None = None) -> None:
+        super().__init__(message)
+        self.data = data
+
+
 class ChainDataProvider(Protocol):
     """PRD section 18.17's interface."""
 

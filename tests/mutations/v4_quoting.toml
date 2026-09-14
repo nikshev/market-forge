@@ -1,0 +1,116 @@
+# Reproduces the mutation sweep recorded for REQ-WP-071.
+#
+# Patterns are TOML *literal* strings on purpose: the basic form treats a
+# trailing backslash as a line continuation and eats the next line's indentation.
+source = "src/channelflow/dex/v4_quoting.py"
+tests = [
+  "tests/unit/dex/test_v4_quoting.py",
+]
+
+[[mutation]]
+name = "a size of zero is a size"
+find = '''        if self.exact_amount <= 0:'''
+replace = '''        if self.exact_amount < 0:'''
+
+[[mutation]]
+name = "a quote of nothing is a quote"
+find = '''        if self.amount_out <= 0:'''
+replace = '''        if self.amount_out < 0:'''
+
+[[mutation]]
+name = "the reverse direction is not inverted"
+find = '''    if quote.request.zero_for_one:
+        return amount_out / amount_in
+    return amount_in / amount_out'''
+replace = '''    return amount_out / amount_in'''
+
+[[mutation]]
+name = "tick spacing is packed into 24 bits instead of sign-extended"
+find = '''        + _word(key.tick_spacing)'''
+replace = '''        + _word(key.tick_spacing & 0xFFFFFF)'''
+
+[[mutation]]
+name = "the hook data offset is off by one word"
+find = '''        + _word(8 * 32)  # offset to hookData, from the start of the tuple'''
+replace = '''        + _word(7 * 32)  # offset to hookData, from the start of the tuple'''
+
+[[mutation]]
+name = "the direction flag is dropped"
+find = '''        + _word(1 if zero_for_one else 0)'''
+replace = '''        + _word(0)'''
+
+[[mutation]]
+name = "an unreadable payload becomes a known reason"
+find = '''    unreadable = (RefusalReason.UNKNOWN, None, ())'''
+replace = '''    unreadable = (RefusalReason.NOT_ENOUGH_LIQUIDITY, None, ())'''
+
+[[mutation]]
+name = "an unrecognised inner selector becomes the first known reason"
+find = '''    if known is None:
+        return (RefusalReason.UNKNOWN, None, ())'''
+replace = '''    if known is None:
+        return (RefusalReason.NOT_ENOUGH_LIQUIDITY, None, ())'''
+
+[[mutation]]
+name = "a price-limit refusal claims a pool id it does not carry"
+find = '''    named = "0x" + args[:_WORD] if reason is RefusalReason.NOT_ENOUGH_LIQUIDITY else None'''
+replace = '''    named = "0x" + args[:_WORD]'''
+
+[[mutation]]
+name = "the price-limit error is read as carrying one argument"
+find = '''    selector("PriceLimitAlreadyExceeded(uint160,uint160)"): (
+        RefusalReason.PRICE_LIMIT_ALREADY_EXCEEDED,
+        2,
+    ),'''
+replace = '''    selector("PriceLimitAlreadyExceeded(uint160,uint160)"): (
+        RefusalReason.PRICE_LIMIT_ALREADY_EXCEEDED,
+        1,
+    ),'''
+
+[[mutation]]
+name = "a wrapper is not required"
+find = '''    if not body.startswith(UNEXPECTED_REVERT_BYTES[2:]):
+        return unreadable'''
+replace = '''    if False:
+        return unreadable'''
+
+[[mutation]]
+name = "a refusal becomes a transport failure"
+find = '''        except CallReverted as reverted:'''
+replace = '''        except QuoteUnavailable as reverted:'''
+
+[[mutation]]
+name = "the mid is the buy side alone"
+find = '''        return (implied_price(buy) * implied_price(sell)).sqrt()'''
+replace = '''        return implied_price(buy)'''
+
+[[mutation]]
+name = "a one-sided pool gets a mid anyway"
+find = '''        except QuoteRefused as refused:
+            raise NoTwoSidedMarket('''
+replace = '''        except ZeroDivisionError as refused:
+            raise NoTwoSidedMarket('''
+
+[[mutation]]
+name = "the quote is stamped with the wrong block"
+find = '''            block=self.block,
+            amount_out=int(body[:_WORD], 16),'''
+replace = '''            block=self.block + 1,
+            amount_out=int(body[:_WORD], 16),'''
+
+[[mutation]]
+name = "the amount and the gas estimate are swapped"
+find = '''            amount_out=int(body[:_WORD], 16),
+            gas_estimate=int(body[_WORD : 2 * _WORD], 16),'''
+replace = '''            amount_out=int(body[_WORD : 2 * _WORD], 16),
+            gas_estimate=int(body[:_WORD], 16),'''
+
+[[mutation]]
+name = "the quoter is never checked against the manager"
+find = '''        if named.lower() != self.pool_manager:'''
+replace = '''        if False:'''
+
+[[mutation]]
+name = "a short return is decoded anyway"
+find = '''        if len(body) < 2 * _WORD:'''
+replace = '''        if len(body) < 0:'''
