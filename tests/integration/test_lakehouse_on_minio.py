@@ -139,3 +139,87 @@ def test_an_earlier_read_is_unchanged_by_a_later_commit(catalog: object) -> None
     table.append([_row(3)])
 
     assert table.read(snapshot_id=1).num_rows == before
+
+
+# --------------------------------------------------------------------------
+# Maintenance, where it runs (REQ-WP-070)
+# --------------------------------------------------------------------------
+
+
+@pytest.mark.integration
+@pytest.mark.trace("REQ-WP-070")
+def test_unreferenced_files_are_found_on_an_object_store(catalog: object) -> None:
+    """The gap that let a no-op survive.
+
+    `unreferenced_files` walked the table's location with `Path.is_dir()`, which
+    is false for `s3://…`, so it returned nothing — and retention deleted nothing
+    while reporting `files_removed=0`, which is what it also reports when there
+    is genuinely nothing to delete.
+
+    Every test of it ran against a local warehouse, where the walk works. This
+    is the one that runs where the data is.
+    """
+    table = IcebergTable(
+        name=f"orphans_{uuid.uuid4().hex[:8]}",
+        schema=Schema(columns=(Column(name="n", type="int64"),)),
+        catalog=catalog,  # type: ignore[arg-type]
+    )
+    for n in range(6):
+        table.append([{"n": n}])
+
+    assert table.unreferenced_files() == (), "nothing is orphaned before a compaction"
+
+    # Compaction alone orphans nothing: the files it replaced are still named by
+    # the snapshots that wrote them. They become orphans when those go.
+    table.compact()
+    assert table.unreferenced_files() == ()
+
+    table.expire_snapshots_except([table.snapshot_ids()[-1]])
+
+    orphans = table.unreferenced_files()
+    assert len(orphans) == 6, "the walk found the files no live snapshot names"
+    assert all(path.startswith("s3://") for path in orphans)
+
+
+@pytest.mark.integration
+@pytest.mark.trace("REQ-WP-070")
+def test_a_maintenance_pass_frees_objects_and_keeps_the_rows(catalog: object) -> None:
+    """What the pass is for, end to end, against the real store."""
+    from channelflow.lakehouse import maintenance
+    from channelflow.lakehouse.retention import RetentionPolicy
+
+    table = IcebergTable(
+        name=f"maintained_{uuid.uuid4().hex[:8]}",
+        schema=Schema(
+            columns=(Column(name="at_ns", type="timestamp_ns"), Column(name="n", type="int64")),
+            event_time_column="at_ns",
+        ),
+        catalog=catalog,  # type: ignore[arg-type]
+    )
+    base = 1_700_000_000 * SECOND
+    for n in range(8):
+        table.append([{"at_ns": base + n * SECOND, "n": n}])
+    before = table.read().to_pylist()
+
+    report = maintenance.run(
+        table,
+        policy=RetentionPolicy(keep_ns=10_000 * 365 * 24 * 3600 * SECOND),
+        now_ns=base + 100 * SECOND,
+    )
+
+    assert report.files_before == 8
+    assert report.retention is not None
+    assert report.retention.files_removed == 8, "the objects compaction replaced are gone"
+    assert table.read().to_pylist() == before, "every row survived, in order"
+    assert table.unreferenced_files() == ()
+
+
+@pytest.mark.integration
+@pytest.mark.trace("REQ-WP-070")
+def test_a_location_that_cannot_be_listed_is_refused(catalog: object) -> None:
+    """An empty answer from the walk reads as 'nothing is orphaned'. When the
+    walk cannot look, it must say so instead."""
+    from channelflow.lakehouse.iceberg import CannotList, _walk
+
+    with pytest.raises(CannotList, match="cannot enumerate"):
+        _walk("s3://bucket/prefix", io=None)

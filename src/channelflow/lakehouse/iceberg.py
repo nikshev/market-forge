@@ -40,6 +40,7 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from decimal import Decimal
 from threading import Lock
+from typing import Any
 
 import pyarrow as pa
 import pyarrow.compute as pc
@@ -64,6 +65,23 @@ from channelflow.lakehouse.schema import Schema
 #: rather than concurrency. Measured, not reasoned about: the first version was
 #: bounded per read and the load test reported the regression ([[REQ-WP-068]]).
 READ_WORKERS = 16
+
+#: Iceberg keeps every `metadata.json` it has ever written unless told not to,
+#: and each one carries the **full** snapshot list -- so a table committed to N
+#: times holds N files whose sizes grow with N.
+#:
+#: Measured on a deployment after ~900 commits: 2.6 MB of data against **304.9
+#: MB of metadata**, a hundred and seventeen times more. Measured again on sixty
+#: commits with and without these properties: 61 metadata files and 2020 KiB
+#: against 6 and 710 KiB.
+#:
+#: `delete-after-commit` is off by default, which is the whole reason the growth
+#: went unnoticed ([[REQ-WP-070]]). Twenty previous versions is enough to read a
+#: table back through a handful of commits and far short of keeping all of them.
+METADATA_PRUNING: dict[str, Any] = {
+    "write.metadata.delete-after-commit.enabled": "true",
+    "write.metadata.previous-versions-max": "20",
+}
 
 #: One pool for the process, created on first use. A reader waits for a slot
 #: instead of adding a thread, which is the whole point of a shared bound.
@@ -328,9 +346,13 @@ class IcebergTable:
                 f"an append of no rows to {self.name} would commit a snapshot saying "
                 "something happened"
             )
-        table = self._table() or self.catalog.create_table(
-            f"{NAMESPACE}.{self.name}", schema=self.schema.arrow()
-        )
+        table = self._table()
+        if table is None:
+            table = self.catalog.create_table(
+                f"{NAMESPACE}.{self.name}",
+                schema=self.schema.arrow(),
+                properties=dict(METADATA_PRUNING),
+            )
         table.append(self._arrow(rows))
         return self._describe(self.snapshot_ids()[-1])
 
@@ -355,6 +377,25 @@ class IcebergTable:
         if table is None:
             return
         table.delete(f"{column} < {event_time_ns}")
+
+    def prune_metadata(self) -> bool:
+        """Ask Iceberg to delete its own superseded metadata from now on.
+
+        Idempotent, and needed on every table created before [[REQ-WP-070]]: the
+        properties are set at creation for new ones, and a table that predates
+        that keeps writing a file per commit until somebody says otherwise.
+
+        Returns whether anything changed, so a maintenance pass can say it did
+        something rather than reporting a success it did not cause.
+        """
+        table = self._table()
+        if table is None:
+            return False
+        if all(table.properties.get(key) == value for key, value in METADATA_PRUNING.items()):
+            return False
+        with table.transaction() as transaction:
+            transaction.set_properties(**dict(METADATA_PRUNING))
+        return True
 
     def compact(self) -> int:
         """Rewrite the live rows into one file, preserving their order.
@@ -447,7 +488,9 @@ class IcebergTable:
             for snapshot in table.metadata.snapshots
             for task in table.scan(snapshot_id=snapshot.snapshot_id).plan_files()
         }
-        on_disk = {entry for entry in _walk(table.location()) if entry.endswith(".parquet")}
+        on_disk = {
+            entry for entry in _walk(table.location(), table.io) if entry.endswith(".parquet")
+        }
         return tuple(
             sorted(path for path in on_disk if _strip(path) not in {_strip(f) for f in live})
         )
@@ -563,13 +606,65 @@ def _for_arrow(column_type: str, value: object) -> object:
     return value
 
 
-def _walk(location: str) -> list[str]:
+class CannotList(RuntimeError):
+    """A location this cannot enumerate.
+
+    Raised rather than answered with an empty list. `unreferenced_files` is what
+    [[ADR-062]]'s only deletion asks before it removes anything, and an empty
+    answer there means "nothing is orphaned" -- indistinguishable from "I could
+    not look". That is what made the walk a no-op on S3 for as long as it was:
+    retention expired 933 snapshots and reported freeing zero files, which is
+    also what it reports when there is genuinely nothing to free ([[REQ-WP-070]]).
+    """
+
+
+def _walk(location: str, io: object | None = None) -> list[str]:
+    """Every file under a location, wherever the location is.
+
+    A local directory for tests and the fast gate, an object store in a
+    deployment -- the same line `catalog` draws between one URL and another.
+    """
     from pathlib import Path
+
+    if location.startswith(("s3://", "s3a://", "gs://")):
+        return _walk_object_store(location, io)
 
     root = location.removeprefix("file://")
     if not Path(root).is_dir():
+        # A local location that is not a directory holds nothing, which is an
+        # answer rather than an inability: the directory is created with the
+        # first write.
         return []
     return [str(path) for path in Path(root).rglob("*") if path.is_file()]
+
+
+def _walk_object_store(location: str, io: object | None) -> list[str]:
+    """List an object store prefix through the FileIO the table already has.
+
+    Through the table's own `io` rather than a client of this module's making,
+    so the credentials and endpoint are the ones the table is already using and
+    there is no second place to configure them.
+    """
+    scheme, _, rest = location.partition("://")
+    bucket, _, prefix = rest.partition("/")
+    filesystem = getattr(io, "fs_by_scheme", None)
+    if filesystem is None:
+        raise CannotList(
+            f"cannot enumerate {location}: the table's FileIO offers no filesystem, "
+            "and an empty answer here would read as 'nothing is orphaned'"
+        )
+    try:
+        from pyarrow.fs import FileSelector
+
+        handle = filesystem(scheme, bucket)
+        selector = FileSelector(f"{bucket}/{prefix}".rstrip("/"), recursive=True)
+        return [
+            f"{scheme}://{info.path}" for info in handle.get_file_info(selector) if info.is_file
+        ]
+    except CannotList:
+        raise
+    except Exception as cause:  # noqa: BLE001 -- any failure is an inability to look
+        raise CannotList(f"cannot enumerate {location}: {cause}") from cause
 
 
 def _strip(path: str) -> str:
