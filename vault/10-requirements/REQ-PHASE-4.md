@@ -10,9 +10,11 @@ depends_on: ["REQ-PHASE-3"]
 tags: []
 covers: [REQ-WP-014, REQ-WP-015, REQ-WP-045, REQ-WP-046, REQ-WP-047, REQ-WP-048, REQ-WP-058, REQ-WP-059, REQ-WP-060, REQ-WP-062, REQ-WP-063, REQ-ASSET-001, REQ-BIAS-006, REQ-EXP-007]
 not_delivered:
-  - "Curve twocrypto quoting: [[REQ-WP-046]] classifies it and quotes Stableswap-NG and tricrypto; the deployed twocrypto version has no matching published source"
   - "Uniswap v4 executable quoting for CUSTOM_ACCOUNTING pools: [[REQ-WP-047]] routes, classifies and refuses them; nothing quotes them"
-  - "Pinot HOT DeFi datasets: deferred by ADR-002 until a HOT serving requirement exists, not missing by oversight"
+blocked:
+  - "Curve twocrypto quoting: [[REQ-WP-046]] classifies it and quotes Stableswap-NG and tricrypto; waits on Curve publishing source matching the deployed twocrypto version"
+deferred:
+  - "Pinot HOT DeFi datasets: deferred by [[ADR-002]] until a HOT serving requirement exists, not missing by oversight"
 ---
 
 ## Requirement
@@ -102,12 +104,20 @@ requirement exists and has reached `implemented`.
 
 **Not delivered:**
 
-- Curve twocrypto quoting: [[REQ-WP-046]] classifies it and quotes Stableswap-NG and tricrypto; the deployed twocrypto version has no matching published source
 - Uniswap v4 executable quoting for `CUSTOM_ACCOUNTING` pools: [[REQ-WP-047]] routes, classifies and refuses them; nothing quotes them
+
+**Blocked:**
+
+- Curve twocrypto quoting: [[REQ-WP-046]] classifies it and quotes Stableswap-NG and tricrypto; waits on Curve publishing source matching the deployed twocrypto version
+
+**Deferred:**
+
 - Pinot HOT DeFi datasets: deferred by [[ADR-002]] until a HOT serving requirement exists, not missing by oversight
 
-This phase is `planned` rather than `implemented` because that list is not
-empty. A phase is its deliverables; a phase with a missing deliverable is a
+This phase is `planned` rather than `implemented` because the first list is not
+empty. The other two do not hold it open: a phase cannot deliver what it is not
+allowed to, and one that stayed `planned` for a decision this project made would
+make every later phase look unfinished too ([[REQ-WP-069]]). A phase is its deliverables; a phase with a missing deliverable is a
 phase in progress, however much of it is built.
 
 ## Trace

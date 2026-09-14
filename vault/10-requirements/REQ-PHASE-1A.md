@@ -10,6 +10,8 @@ depends_on: ["REQ-PHASE-1"]
 tags: []
 covers: [REQ-WP-019, REQ-NRT-A, REQ-NRT-B, REQ-NRT-C, REQ-NRT-E, REQ-EXP-011, REQ-EXP-012, REQ-WP-028]
 not_delivered: []
+blocked: []
+deferred: []
 ---
 
 ## Requirement
