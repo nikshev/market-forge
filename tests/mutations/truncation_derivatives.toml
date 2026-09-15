@@ -1,0 +1,30 @@
+# Does the derivatives half of the truncation suite discriminate? (REQ-NRT-LEAK)
+#
+# Nineteen features, and five of them are pure scalar functions -- basis_bps,
+# mark_premium_bps, oi_to_volume, price_oi_regime, liquidation_intensity_5m --
+# with no dataset of their own to truncate. Their arguments are sourced through
+# `state_at`, which is the point-in-time seam and therefore the path that can
+# actually leak. These mutations break that seam and the window filters beside
+# it, one at a time. If the cases do not catch them, the cases are decoration.
+#
+# Patterns are TOML *literal* strings on purpose: the basic form treats a
+# trailing backslash as a line continuation and eats the next line's indentation.
+source = "src/channelflow/derivatives/state.py"
+tests = [
+  "tests/unit/features/test_truncation_parity.py",
+]
+
+[[mutation]]
+name = "the point-in-time seam stops filtering on at_ns"
+find = '''    eligible = [s for s in states if s.meta.event_time_ns <= at_ns]'''
+replace = '''    eligible = list(states)'''
+
+[[mutation]]
+name = "the seam takes the newest state rather than the newest at or before at_ns"
+find = '''    eligible = [s for s in states if s.meta.event_time_ns <= at_ns]'''
+replace = '''    eligible = [s for s in states if s.meta.event_time_ns <= at_ns + 3_600_000_000_000]'''
+
+[[mutation]]
+name = "the seam reads ingest time instead of event time"
+find = '''    eligible = [s for s in states if s.meta.event_time_ns <= at_ns]'''
+replace = '''    eligible = [s for s in states if s.meta.ingest_time_ns <= at_ns]'''
