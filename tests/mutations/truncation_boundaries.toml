@@ -1,0 +1,42 @@
+# Does the truncation suite actually discriminate? (REQ-NRT-LEAK)
+#
+# The cases in tests/unit/features/test_truncation_parity.py feed one tracker
+# only data at or before `t` and another all of it, then compare. That is only
+# worth anything if a window which *did* reach past `t` would be caught. These
+# mutations move the boundary the wrong way, one at a time.
+#
+# Measured: run against `test_truncation_parity.py` **alone**, these cases catch
+# two of the three. "The window ignores its start" survives, and correctly so --
+# widening a window backwards does not reach into the future, so the truncated
+# and the full run change by the same amount and still agree. A truncation test
+# is blind to window-width errors by construction, which is the right blindness:
+# §35.4 asks whether a value depends on data after `t`, not whether the window
+# is the length it claims. `test_ofi.py` owns that question and catches it, which
+# is why both files are listed below.
+#
+# Patterns are TOML *literal* strings on purpose: the basic form treats a
+# trailing backslash as a line continuation and eats the next line's indentation.
+source = "src/channelflow/features/ofi.py"
+tests = [
+  "tests/unit/features/test_truncation_parity.py",
+  "tests/unit/features/test_ofi.py",
+]
+
+[[mutation]]
+name = "the window reaches past t"
+find = '''        inside = [value for time_ns, value in self._increments if floor < time_ns <= as_of_ns]'''
+replace = '''        inside = [value for time_ns, value in self._increments if floor < time_ns]'''
+
+[[mutation]]
+name = "the window's end is one increment too generous"
+find = '''        inside = [value for time_ns, value in self._increments if floor < time_ns <= as_of_ns]'''
+replace = '''        inside = [
+            value
+            for time_ns, value in self._increments
+            if floor < time_ns <= as_of_ns + 1_000_000_000
+        ]'''
+
+[[mutation]]
+name = "the window ignores its start"
+find = '''        inside = [value for time_ns, value in self._increments if floor < time_ns <= as_of_ns]'''
+replace = '''        inside = [value for time_ns, value in self._increments if time_ns <= as_of_ns]'''

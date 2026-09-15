@@ -1,0 +1,37 @@
+# The same question for the trade-flow tracker (REQ-NRT-LEAK). See
+# truncation_boundaries.toml for why these exist.
+source = "src/channelflow/features/flow.py"
+tests = [
+  "tests/unit/features/test_truncation_parity.py",
+  "tests/unit/features/test_flow.py",
+]
+
+[[mutation]]
+name = "the window reaches past t"
+find = '''        inside = [row for row in self._history if floor < row[0] <= as_of_ns]'''
+replace = '''        inside = [row for row in self._history if floor < row[0]]'''
+
+[[mutation]]
+name = "the window's end is a second too generous"
+find = '''        inside = [row for row in self._history if floor < row[0] <= as_of_ns]'''
+replace = '''        inside = [row for row in self._history if floor < row[0] <= as_of_ns + 1_000_000_000]'''
+
+[[mutation]]
+name = "cumulative delta is read from the end of history rather than at t"
+find = '''        result = Decimal(0)
+        for time_ns, _, _, cvd in self._history:
+            if time_ns > event_time_ns:
+                break
+            result = cvd
+        return result'''
+replace = '''        result = Decimal(0)
+        for _time_ns, _, _, cvd in self._history:
+            result = cvd
+        return result'''
+
+[[mutation]]
+name = "the cvd cursor runs one event past t"
+find = '''            if time_ns > event_time_ns:
+                break'''
+replace = '''            if time_ns > event_time_ns + 1_000_000_000:
+                break'''
