@@ -14,6 +14,8 @@ from __future__ import annotations
 
 import os
 import uuid
+from collections.abc import Iterator
+from contextlib import suppress
 from pathlib import Path
 
 import pytest
@@ -63,14 +65,34 @@ def transport() -> KafkaTransport:
 
 
 @pytest.fixture
-def topic() -> str:
-    """A fresh topic per test.
+def topic(transport: KafkaTransport) -> Iterator[str]:
+    """A fresh topic per test, **removed afterwards**.
 
-    These write to a real broker, and a reused topic would let one test consume
-    another run's records and pass for the wrong reason -- the same rule the
-    object-store fixtures follow with prefixes.
+    Fresh, because a reused topic would let one test consume another run's
+    records and pass for the wrong reason -- the same rule the object-store
+    fixtures follow with prefixes.
+
+    Removed, because a broker outlives the test run. This leaked one topic per
+    test for months and the cost was invisible until it was total: measured at
+    259 abandoned topics, the development broker answered
+
+        Refusing to create 1 new partition replicas as total partition replica
+        count 263 would exceed memory limit of 262 partition replicas
+
+    and stopped creating them. The consumer then subscribes to a topic that does
+    not exist, the poll returns nothing, and the failure reads `assert [] ==
+    [1, 2, 3]` -- which says nothing whatever about topics. CI never saw it: its
+    broker is new every run, which is exactly the shape of defect a disposable
+    environment hides.
     """
-    return f"market.trade_{uuid.uuid4().hex[:8]}.v1"
+    name = f"market.trade_{uuid.uuid4().hex[:8]}.v1"
+    yield name
+    from confluent_kafka.admin import AdminClient
+
+    admin = AdminClient({"bootstrap.servers": transport.bootstrap})
+    for future in admin.delete_topics([name], operation_timeout=10).values():
+        with suppress(Exception):  # the test may never have created it
+            future.result(timeout=10)
 
 
 @pytest.mark.integration

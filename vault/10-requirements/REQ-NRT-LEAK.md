@@ -5,7 +5,7 @@ type: constraint
 prd_ref: "§35.4"
 prd_lines: "4879-4887"
 phase: null
-status: specified
+status: tested
 depends_on: [REQ-WP-019]
 tags: []
 hard_gated: true
@@ -86,7 +86,30 @@ failure that names the feature.
 
 <!-- trace:begin -->
 - **Specs:** [[SPEC-114-repaint-and-leak-suites]]
-- **Outcomes:** [[OUT-2026-09-15-spec-repaint-and-leak-suites]]
+- **Tests:**
+    - `tests/unit/features/test_truncation_parity.py::test_a_case_for_an_unregistered_feature_is_refused`
+    - `tests/unit/features/test_truncation_parity.py::test_a_difference_inside_the_tolerance_is_not_a_divergence`
+    - `tests/unit/features/test_truncation_parity.py::test_a_difference_outside_the_tolerance_is_a_divergence`
+    - `tests/unit/features/test_truncation_parity.py::test_a_leaking_feature_is_caught_and_names_both_values`
+    - `tests/unit/features/test_truncation_parity.py::test_a_refusal_covers_the_feature_it_names`
+    - `tests/unit/features/test_truncation_parity.py::test_a_refusal_has_to_give_a_reason[   ]`
+    - `tests/unit/features/test_truncation_parity.py::test_a_refusal_has_to_give_a_reason[\n  ]`
+    - `tests/unit/features/test_truncation_parity.py::test_a_refusal_has_to_give_a_reason[\t]`
+    - `tests/unit/features/test_truncation_parity.py::test_a_refusal_has_to_give_a_reason[]`
+    - `tests/unit/features/test_truncation_parity.py::test_an_integer_and_an_equal_float_are_different_answers`
+    - `tests/unit/features/test_truncation_parity.py::test_every_registered_feature_is_covered_or_declared_outstanding`
+    - `tests/unit/features/test_truncation_parity.py::test_integers_and_none_compare_exactly`
+    - `tests/unit/features/test_truncation_parity.py::test_the_case_actually_computes_something`
+    - `tests/unit/features/test_truncation_parity.py::test_the_debt_register_is_what_stops_this_requirement_completing`
+    - `tests/unit/features/test_truncation_parity.py::test_the_registry_is_fully_imported_before_anything_is_counted`
+    - `tests/unit/features/test_truncation_parity.py::test_the_truncated_and_full_runs_agree[channel_position]`
+    - `tests/unit/features/test_truncation_parity.py::test_the_truncated_and_full_runs_agree[channel_quality_score]`
+    - `tests/unit/features/test_truncation_parity.py::test_the_truncated_and_full_runs_agree[channel_slope_normalized]`
+    - `tests/unit/features/test_truncation_parity.py::test_the_truncated_and_full_runs_agree[channel_width_pct]`
+    - `tests/unit/features/test_truncation_parity.py::test_two_large_integers_one_apart_are_not_the_same_answer`
+- **Code:**
+    - `src/channelflow/features/truncation.py`
+- **Outcomes:** [[OUT-2026-09-15-implement-truncation-channel-family]], [[OUT-2026-09-15-spec-repaint-and-leak-suites]]
 <!-- trace:end -->
 
 ## Notes
