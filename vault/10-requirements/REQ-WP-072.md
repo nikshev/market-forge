@@ -159,6 +159,7 @@ the larger version of the same mistake.
 - **Code:**
     - `src/channelflow/api/app.py`
     - `src/channelflow/api/main.py`
+    - `src/channelflow/api/security.py`
     - `src/channelflow/settings.py`
 - **Outcomes:** [[OUT-2026-09-14-implement-security-enforced]], [[OUT-2026-09-14-plan-security-enforced]], [[OUT-2026-09-14-spec-security-enforced]], [[OUT-2026-09-14-tasks-security-enforced]]
 <!-- trace:end -->

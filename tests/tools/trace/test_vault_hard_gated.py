@@ -41,6 +41,7 @@ def test_every_nrt_requirement_is_hard_gated():
     for path in _requirement_notes("REQ-NRT"):
         meta, _ = split_frontmatter(path.read_text())
         assert meta.get("hard_gated") is True, (
-            f"{path.name}: PRD §13A.28 non-repainting requirements must carry "
+            f"{path.name}: PRD §13A.28's and §35.3/§35.4's correctness-test "
+            "requirements must carry "
             "`hard_gated: true` -- R5 silently stops covering a note that omits it"
         )
