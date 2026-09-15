@@ -30,19 +30,24 @@ is a suite that grows a hole every time a feature is added.
 **The token is a word, not a letter**, for the reason [[REQ-NRT-REPAINT]] gives:
 `A`–`F` are §13A.28's own names, and this is §35.4.
 
-### 27 features promise this, and nothing checks
+### 55 features promise this, and nothing checks
 
 `FeatureSpec` carries `point_in_time_safe: Literal[True]`. The type makes any
-other value unregisterable, so **every registered feature declares that it is
+other value unregisterable, so **all 55 registered features declare that they are
 point-in-time safe** — and the only test that touches the field asserts it is a
 `bool`, which `Literal[True]` guarantees before the test runs. The declaration is
 a promise the type extracts and nobody verifies. §35.4 is its verification.
 
 ### The surface this has to cover
 
-Measured: `channelflow.features.REGISTRY` holds **27** specifications once the
-feature modules are imported, and they expose **55** names between them
-(`exposed_feature_names()`), with no exposed name lacking a registration.
+Measured: **55** specifications, one per exposed name, across eight producing
+modules and seven families — `derivatives` 19, `order_book` 15, `trade_flow` 5,
+`order_flow` 5, `volume_structure` 5, `channel` 4, `defi` 2.
+
+*(An earlier draft of this note said 27. That was the registry after importing
+only `channelflow.features.*`; three more packages register features, and
+`exposed_feature_names()` is the canonical enumeration because it imports all
+eight. Corrected here rather than quietly — the number is the scope.)*
 
 `tests/unit/dataset/test_leakage.py` checks *dataset rows* — that a feature's
 `available_at` is not after `t`, that a label is not knowable at `t`. That is a

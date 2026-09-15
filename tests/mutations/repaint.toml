@@ -1,0 +1,80 @@
+# Reproduces the mutation sweep recorded for REQ-NRT-REPAINT.
+#
+# Patterns are TOML *literal* strings on purpose: the basic form treats a
+# trailing backslash as a line continuation and eats the next line's indentation.
+source = "src/channelflow/channels/repaint.py"
+tests = [
+  "tests/unit/channels/test_repaint_regression.py",
+]
+
+[[mutation]]
+name = "the replay stops after the first moment"
+find = '''    for index in range(model.lookback - 1, len(bars)):'''
+replace = '''    for index in range(model.lookback - 1, model.lookback):'''
+
+[[mutation]]
+name = "the replay starts at the wrong bar"
+find = '''    for index in range(model.lookback - 1, len(bars)):'''
+replace = '''    for index in range(model.lookback, len(bars)):'''
+
+[[mutation]]
+name = "the retained copy is the snapshot itself"
+find = '''                taken=deepcopy(snapshot),'''
+replace = '''                taken=snapshot,'''
+
+[[mutation]]
+name = "the model is given every bar rather than the prefix"
+find = '''        prefix = list(bars[: index + 1])'''
+replace = '''        prefix = list(bars)'''
+
+[[mutation]]
+name = "comparison is by identity rather than by value"
+find = '''        if getattr(stored, field) != getattr(other, field)'''
+replace = '''        if getattr(stored, field) is not getattr(other, field)'''
+
+[[mutation]]
+name = "comparison finds nothing ever"
+find = '''        if getattr(stored, field) != getattr(other, field)'''
+replace = '''        if False'''
+
+[[mutation]]
+name = "only one field is compared"
+find = '''    return tuple(type(snapshot).model_fields)'''
+replace = '''    return ("as_of_ns",)'''
+
+[[mutation]]
+name = "mutations only checks the first snapshot"
+find = '''    for entry in retained:
+        found.extend(_compare(entry.as_of_ns, entry.taken, entry.snapshot))'''
+replace = '''    for entry in retained[:1]:
+        found.extend(_compare(entry.as_of_ns, entry.taken, entry.snapshot))'''
+
+[[mutation]]
+name = "the refit is given the prefix rather than the whole series"
+find = '''        refit = build().fit(list(bars), as_of_ns=entry.as_of_ns)'''
+replace = '''        refit = build().fit(list(bars[: entry.prefix_length]), as_of_ns=entry.as_of_ns)'''
+
+[[mutation]]
+name = "recomputations reuses one model instead of building a fresh one"
+find = '''    for entry in retained:
+        refit = build().fit(list(bars), as_of_ns=entry.as_of_ns)'''
+replace = '''    model = build()
+    for entry in retained:
+        refit = model.fit(list(bars), as_of_ns=entry.as_of_ns)'''
+
+[[mutation]]
+name = "recomputations checks only the last moment"
+find = '''    found: list[Divergence] = []
+    for entry in retained:
+        refit = build().fit(list(bars), as_of_ns=entry.as_of_ns)'''
+replace = '''    found: list[Divergence] = []
+    for entry in retained[-1:]:
+        refit = build().fit(list(bars), as_of_ns=entry.as_of_ns)'''
+
+[[mutation]]
+name = "a divergence stops naming where it happened"
+find = '''        return (
+            f"at as_of_ns={self.as_of_ns}, field {self.field!r} was {self.stored!r} "
+            f"and is now {self.now!r}"
+        )'''
+replace = '''        return "a snapshot changed"'''

@@ -41,7 +41,7 @@ incremental, would break §35.3 with a one-model one-moment test watching.
 
 **§35.4.** Every registered feature declares `point_in_time_safe: Literal[True]`
 — the type makes any other value unregisterable — and the only test touching that
-field asserts it is a `bool`, which the type guarantees before the test runs. **27
+field asserts it is a `bool`, which the type guarantees before the test runs. **55
 features promise point-in-time safety and nothing verifies it.**
 `tests/unit/dataset/test_leakage.py` checks assembled *rows*; §35.4 checks the
 *computation*. A feature whose implementation peeks at a later row produces rows
@@ -143,8 +143,8 @@ the failure names the feature and both values.
 
 - **SC-001**: All four channel models are exercised, and the suite fails if a
   fifth appears without one.
-- **SC-002**: All 27 registered feature specifications are covered, and the suite
-  fails if a 28th appears without a case.
+- **SC-002**: All 55 registered feature specifications are covered, and the suite
+  fails if a 56th appears without a case.
 - **SC-003**: A repainting model and a leaking feature are each caught by a test
   that introduces the fault on purpose.
 - **SC-004**: Neither suite can report success having examined nothing — each
@@ -160,8 +160,9 @@ the failure names the feature and both values.
 - **The tolerance is relative, not absolute**, and stated once rather than per
   feature. Absolute tolerance is meaningless across features whose units range
   from a ratio to a notional.
-- **"Every feature" means every registered specification**, not every exposed
-  name. A specification exposing several columns is checked across all of them,
-  because a leak in one column is a leak.
+- **"Every feature" means every name `exposed_feature_names()` returns**, which
+  is one-to-one with the registry at 55. That function, not `REGISTRY`, is the
+  enumeration: it imports all eight producing packages, where importing only
+  `channelflow.features.*` reaches 27 and looks complete.
 - **Refusals are expected to be rare and are reviewed.** The mechanism exists so
   that an unverifiable feature is visible, not so that it is convenient.

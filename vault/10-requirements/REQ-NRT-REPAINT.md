@@ -5,7 +5,7 @@ type: constraint
 prd_ref: "§35.3"
 prd_lines: "4870-4877"
 phase: null
-status: specified
+status: implemented
 depends_on: [REQ-WP-006]
 tags: []
 hard_gated: true
@@ -84,7 +84,30 @@ notices.
 
 <!-- trace:begin -->
 - **Specs:** [[SPEC-114-repaint-and-leak-suites]]
-- **Outcomes:** [[OUT-2026-09-15-spec-repaint-and-leak-suites]]
+- **Tests:**
+    - `tests/unit/channels/test_repaint_regression.py::test_a_model_that_edits_what_it_handed_out_is_caught`
+    - `tests/unit/channels/test_repaint_regression.py::test_a_mutation_of_only_the_latest_snapshot_is_caught_too`
+    - `tests/unit/channels/test_repaint_regression.py::test_a_repainting_model_is_caught_and_named`
+    - `tests/unit/channels/test_repaint_regression.py::test_a_retained_entry_keeps_a_copy_that_is_not_the_snapshot`
+    - `tests/unit/channels/test_repaint_regression.py::test_a_snapshot_field_added_later_is_compared_too`
+    - `tests/unit/channels/test_repaint_regression.py::test_each_moment_is_refitted_by_a_fresh_model`
+    - `tests/unit/channels/test_repaint_regression.py::test_equality_is_by_value_not_by_identity`
+    - `tests/unit/channels/test_repaint_regression.py::test_every_channel_model_is_covered`
+    - `tests/unit/channels/test_repaint_regression.py::test_no_snapshot_changes_once_the_future_exists[HuberChannel]`
+    - `tests/unit/channels/test_repaint_regression.py::test_no_snapshot_changes_once_the_future_exists[KalmanChannel]`
+    - `tests/unit/channels/test_repaint_regression.py::test_no_snapshot_changes_once_the_future_exists[QuantileChannel]`
+    - `tests/unit/channels/test_repaint_regression.py::test_no_snapshot_changes_once_the_future_exists[RollingOLSChannel]`
+    - `tests/unit/channels/test_repaint_regression.py::test_no_stored_snapshot_is_mutated[HuberChannel]`
+    - `tests/unit/channels/test_repaint_regression.py::test_no_stored_snapshot_is_mutated[KalmanChannel]`
+    - `tests/unit/channels/test_repaint_regression.py::test_no_stored_snapshot_is_mutated[QuantileChannel]`
+    - `tests/unit/channels/test_repaint_regression.py::test_no_stored_snapshot_is_mutated[RollingOLSChannel]`
+    - `tests/unit/channels/test_repaint_regression.py::test_the_replay_examines_every_moment[HuberChannel]`
+    - `tests/unit/channels/test_repaint_regression.py::test_the_replay_examines_every_moment[KalmanChannel]`
+    - `tests/unit/channels/test_repaint_regression.py::test_the_replay_examines_every_moment[QuantileChannel]`
+    - `tests/unit/channels/test_repaint_regression.py::test_the_replay_examines_every_moment[RollingOLSChannel]`
+- **Code:**
+    - `src/channelflow/channels/repaint.py`
+- **Outcomes:** [[OUT-2026-09-15-implement-repaint-regression]], [[OUT-2026-09-15-spec-repaint-and-leak-suites]]
 <!-- trace:end -->
 
 ## Notes
