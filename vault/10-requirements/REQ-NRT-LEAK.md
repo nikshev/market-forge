@@ -96,20 +96,56 @@ failure that names the feature.
     - `tests/unit/features/test_truncation_parity.py::test_a_refusal_has_to_give_a_reason[\n  ]`
     - `tests/unit/features/test_truncation_parity.py::test_a_refusal_has_to_give_a_reason[\t]`
     - `tests/unit/features/test_truncation_parity.py::test_a_refusal_has_to_give_a_reason[]`
+    - `tests/unit/features/test_truncation_parity.py::test_a_wall_ignores_trades_from_after_its_moment`
     - `tests/unit/features/test_truncation_parity.py::test_an_integer_and_an_equal_float_are_different_answers`
+    - `tests/unit/features/test_truncation_parity.py::test_every_case_computes_a_value`
     - `tests/unit/features/test_truncation_parity.py::test_every_registered_feature_is_covered_or_declared_outstanding`
     - `tests/unit/features/test_truncation_parity.py::test_integers_and_none_compare_exactly`
-    - `tests/unit/features/test_truncation_parity.py::test_the_case_actually_computes_something`
     - `tests/unit/features/test_truncation_parity.py::test_the_debt_register_is_what_stops_this_requirement_completing`
+    - `tests/unit/features/test_truncation_parity.py::test_the_inputs_are_not_degenerate`
     - `tests/unit/features/test_truncation_parity.py::test_the_registry_is_fully_imported_before_anything_is_counted`
+    - `tests/unit/features/test_truncation_parity.py::test_the_truncated_and_full_runs_agree[basis_bps]`
     - `tests/unit/features/test_truncation_parity.py::test_the_truncated_and_full_runs_agree[channel_position]`
     - `tests/unit/features/test_truncation_parity.py::test_the_truncated_and_full_runs_agree[channel_quality_score]`
     - `tests/unit/features/test_truncation_parity.py::test_the_truncated_and_full_runs_agree[channel_slope_normalized]`
     - `tests/unit/features/test_truncation_parity.py::test_the_truncated_and_full_runs_agree[channel_width_pct]`
+    - `tests/unit/features/test_truncation_parity.py::test_the_truncated_and_full_runs_agree[cvd]`
+    - `tests/unit/features/test_truncation_parity.py::test_the_truncated_and_full_runs_agree[cvd_acceleration]`
+    - `tests/unit/features/test_truncation_parity.py::test_the_truncated_and_full_runs_agree[cvd_slope]`
+    - `tests/unit/features/test_truncation_parity.py::test_the_truncated_and_full_runs_agree[delta_notional]`
+    - `tests/unit/features/test_truncation_parity.py::test_the_truncated_and_full_runs_agree[funding_acceleration]`
+    - `tests/unit/features/test_truncation_parity.py::test_the_truncated_and_full_runs_agree[funding_rate_settled]`
+    - `tests/unit/features/test_truncation_parity.py::test_the_truncated_and_full_runs_agree[funding_z]`
+    - `tests/unit/features/test_truncation_parity.py::test_the_truncated_and_full_runs_agree[liquidation_imbalance_5m]`
+    - `tests/unit/features/test_truncation_parity.py::test_the_truncated_and_full_runs_agree[liquidation_intensity_5m]`
+    - `tests/unit/features/test_truncation_parity.py::test_the_truncated_and_full_runs_agree[liquidation_long_usd_5m]`
+    - `tests/unit/features/test_truncation_parity.py::test_the_truncated_and_full_runs_agree[liquidation_short_usd_5m]`
+    - `tests/unit/features/test_truncation_parity.py::test_the_truncated_and_full_runs_agree[long_short_ratio]`
+    - `tests/unit/features/test_truncation_parity.py::test_the_truncated_and_full_runs_agree[long_short_z]`
+    - `tests/unit/features/test_truncation_parity.py::test_the_truncated_and_full_runs_agree[mark_premium_bps]`
+    - `tests/unit/features/test_truncation_parity.py::test_the_truncated_and_full_runs_agree[normalized_delta]`
+    - `tests/unit/features/test_truncation_parity.py::test_the_truncated_and_full_runs_agree[ofi_1m]`
+    - `tests/unit/features/test_truncation_parity.py::test_the_truncated_and_full_runs_agree[ofi_1s]`
+    - `tests/unit/features/test_truncation_parity.py::test_the_truncated_and_full_runs_agree[ofi_30s]`
+    - `tests/unit/features/test_truncation_parity.py::test_the_truncated_and_full_runs_agree[ofi_5s]`
+    - `tests/unit/features/test_truncation_parity.py::test_the_truncated_and_full_runs_agree[ofi_bar]`
+    - `tests/unit/features/test_truncation_parity.py::test_the_truncated_and_full_runs_agree[oi_change_1h]`
+    - `tests/unit/features/test_truncation_parity.py::test_the_truncated_and_full_runs_agree[oi_change_5m]`
+    - `tests/unit/features/test_truncation_parity.py::test_the_truncated_and_full_runs_agree[oi_to_volume]`
+    - `tests/unit/features/test_truncation_parity.py::test_the_truncated_and_full_runs_agree[oi_z]`
+    - `tests/unit/features/test_truncation_parity.py::test_the_truncated_and_full_runs_agree[open_interest_usd]`
+    - `tests/unit/features/test_truncation_parity.py::test_the_truncated_and_full_runs_agree[price_oi_regime]`
+    - `tests/unit/features/test_truncation_parity.py::test_the_truncated_and_full_runs_agree[time_since_liquidation_spike]`
+    - `tests/unit/features/test_truncation_parity.py::test_the_truncated_and_full_runs_agree[top_trader_long_short_ratio]`
+    - `tests/unit/features/test_truncation_parity.py::test_the_truncated_and_full_runs_agree[wall_cancelled_size_est]`
+    - `tests/unit/features/test_truncation_parity.py::test_the_truncated_and_full_runs_agree[wall_executed_size_est]`
+    - `tests/unit/features/test_truncation_parity.py::test_the_truncated_and_full_runs_agree[wall_persistence_ns]`
+    - `tests/unit/features/test_truncation_parity.py::test_the_truncated_and_full_runs_agree[wall_refill_count]`
     - `tests/unit/features/test_truncation_parity.py::test_two_large_integers_one_apart_are_not_the_same_answer`
 - **Code:**
     - `src/channelflow/features/truncation.py`
-- **Outcomes:** [[OUT-2026-09-15-implement-truncation-channel-family]], [[OUT-2026-09-15-spec-repaint-and-leak-suites]]
+    - `src/channelflow/features/walls.py`
+- **Outcomes:** [[OUT-2026-09-15-implement-truncation-channel-family]], [[OUT-2026-09-15-implement-truncation-derivatives]], [[OUT-2026-09-15-implement-truncation-flow-families]], [[OUT-2026-09-15-implement-truncation-order-book]], [[OUT-2026-09-15-spec-repaint-and-leak-suites]]
 <!-- trace:end -->
 
 ## Notes
