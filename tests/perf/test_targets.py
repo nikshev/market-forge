@@ -241,7 +241,8 @@ def test_the_scaling_guard_fails_on_something_quadratic() -> None:
 
     sizes = (200, 400, 800)
     measurements = [
-        timed(lambda n=rows: quadratic(n), name=f"quadratic:{rows}", repeats=3) for rows in sizes
+        timed(lambda n=rows: quadratic(n), name=f"quadratic:{rows}", repeats=REPEATS)
+        for rows in sizes
     ]
     ratios = scaling_ratio(measurements)
     print(f"\nquadratic scaling across {sizes}: {[f'{r:.2f}x' for r in ratios]}")
@@ -254,6 +255,15 @@ def test_a_linear_operation_passes_the_same_guard() -> None:
 
     Without this, a bound low enough to fail everything would pass the test
     above and look like a working guard.
+
+    **Measured with `REPEATS` samples, not three.** This test failed once in CI
+    with ratios `(3.04, 1.36)` against a bound of 3.0 -- and the second ratio is
+    the tell: a linear operation gives about 2, so 1.36 means the *middle*
+    measurement was slow, inflating the first ratio and deflating the second. One
+    slow sample did that, because `scaling_ratio` takes a median and a median of
+    three has no defence against one. The same commit passed on the push run and
+    failed on the pull-request run, which is what a timing test on a shared
+    runner looks like. Twenty samples is what the rest of this file already uses.
     """
 
     def linear(rows: int) -> None:
@@ -263,7 +273,7 @@ def test_a_linear_operation_passes_the_same_guard() -> None:
 
     sizes = (200, 400, 800)
     measurements = [
-        timed(lambda n=rows: linear(n), name=f"linear:{rows}", repeats=3) for rows in sizes
+        timed(lambda n=rows: linear(n), name=f"linear:{rows}", repeats=REPEATS) for rows in sizes
     ]
     ratios = scaling_ratio(measurements)
     print(f"\nlinear scaling across {sizes}: {[f'{r:.2f}x' for r in ratios]}")

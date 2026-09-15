@@ -18,8 +18,13 @@
 # data directory: `CHANNELFLOW_DATA_DIR` moves the whole stack's state to a
 # mounted disk without touching this file.
 #
-# Every published port binds `CHANNELFLOW_BIND_ADDRESS`, which defaults to
-# 127.0.0.1 ([[REQ-WP-072]]). A bare `"${PORT}:…"` binds every interface, which
+# Every published port binds `CHANNELFLOW_BIND_ADDRESS`, and the default is in
+# the substitution itself -- `${CHANNELFLOW_BIND_ADDRESS:-127.0.0.1}`, not in
+# .env.example alone ([[REQ-WP-072]]). Measured the hard way: with the bare
+# `${CHANNELFLOW_BIND_ADDRESS}` form, an .env written before the variable existed
+# leaves it blank, compose parses `":19092:9092"` as a published port with no
+# host_ip, and every service binds **all interfaces** -- the exact opposite of
+# the intent, silently. A security default has to fail closed. A bare `"${PORT}:…"` binds every interface, which
 # on a host that is not a laptop offers Postgres, MinIO and the event backbone to
 # whatever can reach it. Binding to loopback also removes a question rather than
 # answering it: on Linux, Docker's rules live in the `nat` table's DOCKER chain,
@@ -36,7 +41,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
     ports:
-      - "${CHANNELFLOW_BIND_ADDRESS}:${POSTGRES_PORT}:5432"
+      - "${CHANNELFLOW_BIND_ADDRESS:-127.0.0.1}:${POSTGRES_PORT}:5432"
     volumes:
       - ${CHANNELFLOW_DATA_DIR:-./data}/postgres:/var/lib/postgresql/data
     healthcheck:
@@ -56,8 +61,8 @@ services:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
     ports:
-      - "${CHANNELFLOW_BIND_ADDRESS}:${MINIO_PORT}:9000"
-      - "${CHANNELFLOW_BIND_ADDRESS}:${MINIO_CONSOLE_PORT}:9001"
+      - "${CHANNELFLOW_BIND_ADDRESS:-127.0.0.1}:${MINIO_PORT}:9000"
+      - "${CHANNELFLOW_BIND_ADDRESS:-127.0.0.1}:${MINIO_CONSOLE_PORT}:9001"
     volumes:
       - ${CHANNELFLOW_DATA_DIR:-./data}/minio:/data
     healthcheck:
@@ -107,7 +112,7 @@ services:
       - --kafka-addr=PLAINTEXT://0.0.0.0:29092,OUTSIDE://0.0.0.0:9092
       - --advertise-kafka-addr=PLAINTEXT://redpanda:29092,OUTSIDE://127.0.0.1:${REDPANDA_PORT}
     ports:
-      - "${CHANNELFLOW_BIND_ADDRESS}:${REDPANDA_PORT}:9092"
+      - "${CHANNELFLOW_BIND_ADDRESS:-127.0.0.1}:${REDPANDA_PORT}:9092"
     volumes:
       - ${CHANNELFLOW_DATA_DIR:-./data}/redpanda:/var/lib/redpanda/data
     healthcheck:
@@ -145,7 +150,7 @@ services:
       CHANNELFLOW_S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
       CHANNELFLOW_S3_REGION: us-east-1
     ports:
-      - "${CHANNELFLOW_BIND_ADDRESS}:${API_PORT}:8000"
+      - "${CHANNELFLOW_BIND_ADDRESS:-127.0.0.1}:${API_PORT}:8000"
     depends_on:
       postgres:
         condition: service_healthy
@@ -238,7 +243,7 @@ services:
       context: ./apps/web
       dockerfile: Dockerfile
     ports:
-      - "${CHANNELFLOW_BIND_ADDRESS}:${WEB_PORT}:8080"
+      - "${CHANNELFLOW_BIND_ADDRESS:-127.0.0.1}:${WEB_PORT}:8080"
     depends_on:
       api:
         condition: service_healthy
@@ -246,7 +251,7 @@ services:
   prometheus:
     image: prom/prometheus:v3.6.0
     ports:
-      - "${CHANNELFLOW_BIND_ADDRESS}:${PROMETHEUS_PORT}:9090"
+      - "${CHANNELFLOW_BIND_ADDRESS:-127.0.0.1}:${PROMETHEUS_PORT}:9090"
     volumes:
       - ./deploy/prometheus:/etc/prometheus:ro
       - ${CHANNELFLOW_DATA_DIR:-./data}/prometheus:/prometheus
@@ -268,7 +273,7 @@ services:
       prometheus:
         condition: service_healthy
     ports:
-      - "${CHANNELFLOW_BIND_ADDRESS}:${GRAFANA_PORT}:3000"
+      - "${CHANNELFLOW_BIND_ADDRESS:-127.0.0.1}:${GRAFANA_PORT}:3000"
     environment:
       # Anonymous access is opt-in, and off by default ([[REQ-WP-072]]). The old
       # setting was an anonymous *admin* with the login form disabled, under a
@@ -276,7 +281,11 @@ services:
       # laptop, false the moment this is deployed, and the setting could not tell
       # the difference.
       GF_AUTH_ANONYMOUS_ENABLED: ${GRAFANA_ANONYMOUS:-false}
-      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
+      # `:?` rather than a bare substitution: blank is not a password, and
+      # Grafana falls back to `admin` when it gets one. Compose refuses to
+      # start and says which variable is missing -- the same fail-closed rule
+      # the bind address needed.
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?set it in .env; see .env.example}
     volumes:
       - ./deploy/grafana/provisioning:/etc/grafana/provisioning:ro
       - ./deploy/grafana/dashboards:/var/lib/grafana/dashboards:ro

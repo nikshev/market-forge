@@ -1,0 +1,80 @@
+# Reproduces the mutation sweep recorded for REQ-NRT-LEAK's comparison core.
+#
+# Patterns are TOML *literal* strings on purpose: the basic form treats a
+# trailing backslash as a line continuation and eats the next line's indentation.
+source = "src/channelflow/features/truncation.py"
+tests = [
+  "tests/unit/features/test_truncation_parity.py",
+]
+
+[[mutation]]
+name = "a refusal no longer needs a reason"
+find = '''        if not self.reason.strip():'''
+replace = '''        if False:'''
+
+[[mutation]]
+name = "a whitespace reason counts as a reason"
+find = '''        if not self.reason.strip():'''
+replace = '''        if not self.reason:'''
+
+[[mutation]]
+name = "a case naming an unregistered feature is accepted"
+find = '''        if name not in registry:'''
+replace = '''        if False:'''
+
+[[mutation]]
+name = "refusals do not count as coverage"
+find = '''    named = [case.feature for case in cases] + [refusal.feature for refusal in refusals]'''
+replace = '''    named = [case.feature for case in cases]'''
+
+[[mutation]]
+name = "cases do not count as coverage"
+find = '''    named = [case.feature for case in cases] + [refusal.feature for refusal in refusals]'''
+replace = '''    named = [refusal.feature for refusal in refusals]'''
+
+[[mutation]]
+name = "uncovered reports everything as covered"
+find = '''    return frozenset(registry) - frozenset(named)'''
+replace = '''    return frozenset()'''
+
+[[mutation]]
+name = "the tolerance is absolute rather than relative"
+find = '''        return isclose(left, right, rel_tol=RELATIVE_TOLERANCE, abs_tol=0.0)'''
+replace = '''        return isclose(left, right, rel_tol=0.0, abs_tol=RELATIVE_TOLERANCE)'''
+
+[[mutation]]
+name = "the tolerance is wide enough to hide a leak"
+find = '''RELATIVE_TOLERANCE = 1e-9'''
+replace = '''RELATIVE_TOLERANCE = 1e-1'''
+
+[[mutation]]
+name = "integers get the floating-point tolerance too"
+find = '''    if isinstance(left, float) and isinstance(right, float):'''
+replace = '''    if isinstance(left, int | float) and isinstance(right, int | float):'''
+
+[[mutation]]
+name = "None and a number compare equal"
+find = '''    return bool(left == right) and type(left) is type(right)'''
+replace = '''    return left == right or left is None or right is None'''
+
+[[mutation]]
+name = "everything compares equal"
+find = '''    if _same(truncated, full):
+        return None'''
+replace = '''    if True:
+        return None'''
+
+[[mutation]]
+name = "a divergence stops naming the feature"
+find = '''        return (
+            f"{self.feature} at {self.at_ns}: truncated gave {self.truncated!r}, "
+            f"full gave {self.full!r} -- the value depends on data after t"
+        )'''
+replace = '''        return "values differ"'''
+
+[[mutation]]
+name = "the full run is never made"
+find = '''    truncated = case.truncated()
+    full = case.full()'''
+replace = '''    truncated = case.truncated()
+    full = truncated'''

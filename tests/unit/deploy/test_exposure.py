@@ -25,7 +25,7 @@ ROOT = Path(__file__).resolve().parents[3]
 COMPOSE = ROOT / "docker-compose.yml"
 ENV_EXAMPLE = ROOT / ".env.example"
 
-BIND = "${CHANNELFLOW_BIND_ADDRESS}"
+BIND = "${CHANNELFLOW_BIND_ADDRESS:-127.0.0.1}"
 
 #: Services deliberately reachable from outside the host, with the reason.
 #: Empty: this deployment is reached through an SSH tunnel, so nothing needs to
@@ -94,11 +94,31 @@ def test_the_bind_address_defaults_to_loopback() -> None:
 
 
 @pytest.mark.trace("REQ-WP-072")
+def test_the_default_is_in_the_compose_file_not_only_in_the_template() -> None:
+    """A security default has to fail closed, and .env.example is not a default.
+
+    Measured: with the bare `${CHANNELFLOW_BIND_ADDRESS}` form, an `.env` written
+    before the variable existed leaves it blank, and compose parses
+    `":19092:9092"` as a published port with **no** host_ip -- every service on
+    every interface, which is the opposite of what this file says it does. The
+    inline `:-127.0.0.1` is what makes an unset variable safe rather than wide
+    open.
+    """
+    text = COMPOSE.read_text()
+    bare = re.findall(r'"\$\{CHANNELFLOW_BIND_ADDRESS\}:', text)
+    assert bare == [], f"{len(bare)} port mappings would bind all interfaces if unset"
+    assert text.count("${CHANNELFLOW_BIND_ADDRESS:-127.0.0.1}:") == 8
+
+
+@pytest.mark.trace("REQ-WP-072")
 def test_grafana_is_not_an_unconditional_anonymous_admin() -> None:
     text = COMPOSE.read_text()
     assert 'GF_AUTH_ANONYMOUS_ENABLED: "true"' not in text
     assert "GF_AUTH_ANONYMOUS_ORG_ROLE: Admin" not in text
-    assert "GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}" in text
+    assert "GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?" in text, (
+        "a bare substitution gives Grafana a blank password, and Grafana then "
+        "falls back to `admin`; `:?` makes compose refuse and say so"
+    )
 
 
 @pytest.mark.trace("REQ-WP-072")
