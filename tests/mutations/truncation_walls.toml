@@ -1,0 +1,21 @@
+# The wall tracker's point-in-time filter (REQ-NRT-LEAK, PRD §35.4).
+#
+# `observe` takes `trades` and `as_of_ns` separately. Until this requirement it
+# reconciled them nowhere, and handing it the whole day's trades with an earlier
+# moment attributed future volume to a wall's execution. This is the mutation
+# that removes the filter again.
+source = "src/channelflow/features/walls.py"
+tests = [
+  "tests/unit/features/test_truncation_parity.py",
+  "tests/unit/features/test_walls.py",
+]
+
+[[mutation]]
+name = "trades from after the moment are counted again"
+find = '''        traded = _volume_by_price(tuple(t for t in trades if t.meta.event_time_ns <= as_of_ns))'''
+replace = '''        traded = _volume_by_price(trades)'''
+
+[[mutation]]
+name = "the filter keeps the moment's own trades out"
+find = '''tuple(t for t in trades if t.meta.event_time_ns <= as_of_ns)'''
+replace = '''tuple(t for t in trades if t.meta.event_time_ns < as_of_ns)'''
