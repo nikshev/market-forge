@@ -29,6 +29,7 @@ from decimal import Decimal
 import pytest
 
 from channelflow.bars import Bar
+from channelflow.book import BookService
 from channelflow.channels import RollingOLSChannel
 from channelflow.channels.features import (
     channel_position,
@@ -57,7 +58,7 @@ from channelflow.derivatives.positioning import (
     top_trader_ratio,
 )
 from channelflow.derivatives.state import state_at
-from channelflow.domain import DerivativesState, LiquidationEvent
+from channelflow.domain import BookDelta, DerivativesState, LiquidationEvent
 from channelflow.features import REGISTRY, exposed_feature_names
 from channelflow.features.flow import FlowTracker
 from channelflow.features.ofi import OFITracker
@@ -68,12 +69,14 @@ from channelflow.features.truncation import (
     divergence,
     uncovered,
 )
+from channelflow.features.walls import WallTracker
 from tests.unit.channels.conftest import log_linear_series
 from tests.unit.derivatives.conftest import BASE_NS as DBASE_NS
 from tests.unit.derivatives.conftest import MINUTE_NS as DMINUTE_NS
 from tests.unit.derivatives.conftest import NOT_ABOUT_FRESHNESS, liquidation
 from tests.unit.derivatives.conftest import meta as dmeta
-from tests.unit.features.conftest import BASE_NS, SECOND_NS, trade
+from tests.unit.features.conftest import BASE_NS, SECOND_NS, levels, snapshot, trade
+from tests.unit.features.conftest import meta as bmeta
 from tests.unit.features.test_ofi import obs
 
 LOOKBACK = 30
@@ -317,14 +320,135 @@ def _derivatives_cases() -> list[TruncationCase]:
     ]
 
 
-CASES: list[TruncationCase] = _channel_cases() + _flow_cases() + _ofi_cases() + _derivatives_cases()
+#: Which `Wall` attribute each registered wall feature reads.
+WALL_FIELDS = {
+    "wall_persistence_ns": "persistence_ns",
+    "wall_executed_size_est": "executed_size_est",
+    "wall_cancelled_size_est": "cancelled_size_est",
+    "wall_refill_count": "refill_count",
+}
 
-REFUSALS: list[Refusal] = []
+
+def _wall_field(tracker: WallTracker, field: str) -> object:
+    """Summed over every wall the tracker knows, active and finished alike.
+
+    Summed rather than "the biggest wall": which wall is biggest can change
+    between two replays for reasons that have nothing to do with the future, and
+    a case that picked one would report that churn as a leak.
+    """
+    walls = [*tracker.active, *tracker.finished]
+    return (
+        sum((getattr(w, field) for w in walls), type(getattr(walls[0], field))(0)) if walls else 0
+    )
+
+
+def _order_book_cases() -> list[TruncationCase]:
+    """`order_book`: only the wall half can be asked §35.4's question.
+
+    The eleven instant features -- `qi_l1`, `microprice`, the eight depth
+    imbalances -- read `BookService` as it stands. No API in that path accepts a
+    dataset **and** a moment, so "run on the full dataset but ask for the feature
+    at `t`" has no expression: the only way to ask for `t` is to have replayed
+    exactly to `t`, which makes the two runs one run. They are refused, with that
+    as the reason, rather than covered by a case that would agree with itself.
+
+    `WallTracker.observe(service, *, trades, as_of_ns)` is different: it takes
+    the data and the moment **separately**, so the full run hands it every trade
+    -- including trades after `t` -- and still says `as_of_ns=t`. That is §35.4's
+    question exactly, and it had an answer worth having (see the note beside
+    `test_a_wall_ignores_trades_from_after_its_moment`).
+    """
+    at_index = 10
+    total = 20
+
+    def delta(index: int) -> BookDelta:
+        return BookDelta(
+            meta=bmeta(BASE_NS + index * SECOND_NS),
+            first_update_id=index + 2,
+            final_update_id=index + 2,
+            prev_update_id=index + 1,
+            bids=levels([("112000", str(max(1, 40 - index * 3))), ("111999", "2")]),
+            asks=levels([("112002", "4"), ("112003", "1")]),
+        )
+
+    deltas = [delta(i) for i in range(total)]
+    at_ns = BASE_NS + at_index * SECOND_NS
+    #: Small enough that the traded volume, not the wall's shrink, is what binds.
+    #: At one unit a trade the attribution saturates and the two runs agree for a
+    #: reason that has nothing to do with point-in-time safety.
+    trades = tuple(
+        trade(f"w{i}", "112000", "0.2", "buy", at_ns=BASE_NS + i * SECOND_NS) for i in range(total)
+    )
+
+    def wall_value(field: str, *, hand_over_the_future: bool) -> object:
+        service = BookService()
+        service.on_snapshot(
+            snapshot(
+                1,
+                [("112000", "3"), ("111999", "2")],
+                [("112002", "4"), ("112003", "1")],
+                at_ns=BASE_NS,
+            )
+        )
+        tracker = WallTracker()
+        for event in deltas:
+            moment = event.meta.event_time_ns
+            if moment > at_ns:
+                break
+            service.on_delta(event)
+            given = (
+                trades
+                if hand_over_the_future
+                else tuple(t for t in trades if t.meta.event_time_ns <= moment)
+            )
+            tracker.observe(service, trades=given, as_of_ns=moment)
+        return _wall_field(tracker, field)
+
+    return [
+        TruncationCase(
+            feature=name,
+            at_ns=at_ns,
+            truncated=lambda f=field: wall_value(f, hand_over_the_future=False),
+            full=lambda f=field: wall_value(f, hand_over_the_future=True),
+        )
+        for name, field in WALL_FIELDS.items()
+    ]
+
+
+CASES: list[TruncationCase] = (
+    _channel_cases() + _flow_cases() + _ofi_cases() + _derivatives_cases() + _order_book_cases()
+)
+
+#: The eleven `order_book` instant features. Their path holds no API that takes
+#: a dataset and a moment, so §35.4's second run cannot be expressed for them.
+_NO_MOMENT = (
+    "reads BookService as it stands; nothing in this path accepts a dataset and "
+    "a moment, so the only way to ask for t is to have replayed exactly to t, "
+    "and the two runs would be one run. Point-in-time safety here is the replay "
+    "driver's, and tests/unit/book/ owns it"
+)
+
+REFUSALS: list[Refusal] = [
+    Refusal(feature=name, reason=_NO_MOMENT)
+    for name in (
+        "qi_l1",
+        "microprice",
+        "microprice_mid_spread_bps",
+        "depth_imbalance_5",
+        "depth_imbalance_10",
+        "depth_imbalance_20",
+        "depth_imbalance_50",
+        "depth_imbalance_bps_5",
+        "depth_imbalance_bps_10",
+        "depth_imbalance_bps_25",
+        "depth_imbalance_bps_50",
+    )
+]
 
 #: Registered features with neither a case nor a refusal. This list is debt and
 #: must only shrink. REQ-NRT-LEAK cannot reach `implemented` while it is
 #: non-empty.
-COVERED_FAMILIES = frozenset({"channel", "trade_flow", "order_flow", "derivatives"})
+COVERED_FAMILIES = frozenset({"channel", "trade_flow", "order_flow", "derivatives", "order_book"})
 
 NOT_YET_COVERED: frozenset[str] = frozenset(
     name for name in exposed_feature_names() if REGISTRY[name].family not in COVERED_FAMILIES
@@ -358,8 +482,9 @@ def test_every_registered_feature_is_covered_or_declared_outstanding() -> None:
 
 @pytest.mark.trace("REQ-NRT-LEAK")
 def test_the_debt_register_is_what_stops_this_requirement_completing() -> None:
-    assert len(NOT_YET_COVERED) == 22
-    assert len(CASES) == 33
+    assert len(NOT_YET_COVERED) == 7
+    assert len(CASES) == 37
+    assert len(REFUSALS) == 11
     assert {REGISTRY[case.feature].family for case in CASES} == COVERED_FAMILIES
 
 
@@ -411,6 +536,35 @@ def test_the_inputs_are_not_degenerate() -> None:
 
 
 # --- the fault, introduced on purpose ---------------------------------------
+
+
+@pytest.mark.trace("REQ-NRT-LEAK")
+def test_a_wall_ignores_trades_from_after_its_moment() -> None:
+    """The one real leak §35.4 has found in this repository so far.
+
+    `WallTracker.observe(service, *, trades, as_of_ns)` takes the data and the
+    moment separately and, until this requirement, reconciled them nowhere. Every
+    production caller filtered; nothing made them. Measured before the fix, on a
+    wall shrinking three units a step against trades of 0.2 each:
+
+        executed_size_est   2.0 filtered    4.0 unfiltered
+        cancelled_size_est 25.0 filtered   23.0 unfiltered
+
+    Trade size matters and is why an earlier attempt at this test saw nothing: at
+    one unit a trade the attribution saturates against the shrink, and the two
+    runs agree for a reason that has nothing to do with point-in-time safety.
+    """
+    walls = _order_book_cases()
+    by_feature = {case.feature: case for case in walls}
+    assert set(by_feature) == set(WALL_FIELDS)
+    for name in ("wall_executed_size_est", "wall_cancelled_size_est"):
+        case = by_feature[name]
+        assert case.truncated() == case.full(), f"{name} still depends on trades after as_of_ns"
+    #: The fixture has to be in the regime where the filter can matter at all.
+    executed = by_feature["wall_executed_size_est"].truncated()
+    assert executed not in (0, Decimal(0)), (
+        "no volume was attributed, so this test would pass with the filter removed"
+    )
 
 
 @pytest.mark.trace("REQ-NRT-LEAK")
@@ -531,6 +685,6 @@ def test_a_refusal_covers_the_feature_it_names() -> None:
     """Otherwise the debt register and the refusals disagree about the same name."""
     outstanding = sorted(NOT_YET_COVERED)[0]
     refusal = Refusal(feature=outstanding, reason="a reason long enough to be one")
-    still_open = uncovered(REGISTRY, CASES, [refusal])
+    still_open = uncovered(REGISTRY, CASES, [*REFUSALS, refusal])
     assert outstanding not in still_open
     assert still_open == NOT_YET_COVERED - {outstanding}

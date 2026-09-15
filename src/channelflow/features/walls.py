@@ -1,6 +1,7 @@
 """Liquidity wall lifecycle (PRD section 15.6).
 
 # @trace: REQ-WP-011
+# @trace: REQ-NRT-LEAK
 
 A level whose resting size is anomalous against its neighbours is tracked from
 the moment it appears until it is gone, and what happened to it is split into
@@ -105,9 +106,23 @@ class WallTracker:
     def observe(
         self, service: BookService, *, trades: tuple[TradeEvent, ...], as_of_ns: int
     ) -> None:
-        """Advance every tracked wall by one observation."""
+        """Advance every tracked wall by one observation.
+
+        **Trades after `as_of_ns` are ignored here rather than by the caller.**
+        This takes the data and the moment separately, and nothing reconciled
+        them: handing over the whole day's trades with an earlier `as_of_ns`
+        attributed future volume to a wall's execution. Measured before the
+        filter existed, on a wall shrinking 3 units a step against trades of 0.2:
+        `executed_size_est` 2.0 filtered against 4.0 unfiltered, with
+        `cancelled_size_est` moving 25.0 to 23.0 to match.
+
+        Nothing in production called it that way. It was reachable through the
+        signature, which is the same argument `state_at` makes for owning its
+        own freshness rule: a rule each call site has to remember is a rule one
+        call site will forget ([[REQ-NRT-LEAK]], PRD §35.4).
+        """
         bids, asks = service.top(50)
-        traded = _volume_by_price(trades)
+        traded = _volume_by_price(tuple(t for t in trades if t.meta.event_time_ns <= as_of_ns))
 
         seen: set[tuple[str, Decimal]] = set()
         for side, levels in (("bid", bids), ("ask", asks)):
