@@ -23,11 +23,14 @@ literal, so the suite goes red by name rather than the gap widening quietly.
 
 from __future__ import annotations
 
+import inspect
 from collections.abc import Callable
 from decimal import Decimal
 
 import pytest
 
+import channelflow.features.instant
+import channelflow.volume.shape
 from channelflow.bars import Bar
 from channelflow.book import BookService
 from channelflow.channels import RollingOLSChannel
@@ -60,6 +63,11 @@ from channelflow.derivatives.positioning import (
 from channelflow.derivatives.state import state_at
 from channelflow.domain import BookDelta, DerivativesState, LiquidationEvent
 from channelflow.features import REGISTRY, exposed_feature_names
+from channelflow.features.dex import (
+    LiquidityReading,
+    active_liquidity_at,
+    swap_imbalance,
+)
 from channelflow.features.flow import FlowTracker
 from channelflow.features.ofi import OFITracker
 from channelflow.features.truncation import (
@@ -77,6 +85,10 @@ from tests.unit.derivatives.conftest import NOT_ABOUT_FRESHNESS, liquidation
 from tests.unit.derivatives.conftest import meta as dmeta
 from tests.unit.features.conftest import BASE_NS, SECOND_NS, levels, snapshot, trade
 from tests.unit.features.conftest import meta as bmeta
+from tests.unit.features.test_dex import MINUTE_NS as DEX_MINUTE_NS
+from tests.unit.features.test_dex import NOW as DEX_NOW
+from tests.unit.features.test_dex import SECOND_NS as DEX_SECOND_NS
+from tests.unit.features.test_dex import _swap as dex_swap
 from tests.unit.features.test_ofi import obs
 
 LOOKBACK = 30
@@ -415,8 +427,63 @@ def _order_book_cases() -> list[TruncationCase]:
     ]
 
 
+def _defi_cases() -> list[TruncationCase]:
+    """`defi`: both producers take a moment, so both get real cases.
+
+    `swap_imbalance(swaps, *, as_of_ns, window_ns)` and
+    `active_liquidity_at(readings, *, at_ns)` take the data and the moment
+    separately -- the shape that made the wall leak findable. The full run hands
+    each of them everything, including rows after `t`, and still names `t`.
+    """
+    at_ns = DEX_NOW
+    window_ns = 5 * DEX_MINUTE_NS
+    swaps = [
+        dex_swap(
+            amount0=str(1 if i % 3 else -2), at_ns=at_ns + (i - 10) * DEX_SECOND_NS, log_index=i
+        )
+        for i in range(20)
+    ]
+    readings = [
+        LiquidityReading(
+            state_time_ns=at_ns + (i - 10) * DEX_SECOND_NS,
+            active_liquidity=100.0 + i,
+            quality="replayed",
+        )
+        for i in range(20)
+    ]
+
+    def upto(rows: list, key: Callable[[object], int]) -> list:
+        return [r for r in rows if key(r) <= at_ns]
+
+    return [
+        TruncationCase(
+            feature="dex_swap_imbalance",
+            at_ns=at_ns,
+            truncated=lambda: (
+                swap_imbalance(
+                    upto(swaps, lambda r: r.meta.event_time_ns), as_of_ns=at_ns, window_ns=window_ns
+                ).value
+            ),
+            full=lambda: swap_imbalance(swaps, as_of_ns=at_ns, window_ns=window_ns).value,
+        ),
+        TruncationCase(
+            feature="dex_active_liquidity",
+            at_ns=at_ns,
+            truncated=lambda: active_liquidity_at(
+                upto(readings, lambda r: r.state_time_ns), at_ns=at_ns
+            ),
+            full=lambda: active_liquidity_at(readings, at_ns=at_ns),
+        ),
+    ]
+
+
 CASES: list[TruncationCase] = (
-    _channel_cases() + _flow_cases() + _ofi_cases() + _derivatives_cases() + _order_book_cases()
+    _channel_cases()
+    + _flow_cases()
+    + _ofi_cases()
+    + _derivatives_cases()
+    + _order_book_cases()
+    + _defi_cases()
 )
 
 #: The eleven `order_book` instant features. Their path holds no API that takes
@@ -428,7 +495,26 @@ _NO_MOMENT = (
     "driver's, and tests/unit/book/ owns it"
 )
 
+#: The five `volume_structure` features. `VolumeProfile` is built by a pure
+#: function over a trade list the caller scopes, and `channelflow.volume` holds
+#: no `as_of_ns` anywhere -- so the scoping, and therefore the point-in-time
+#: choice, is the caller's rather than the feature's.
+_NO_MOMENT_VOLUME = (
+    "reads a VolumeProfile built by a pure function over a caller-scoped trade "
+    "list; channelflow.volume names no moment at all, so asking for t on a full "
+    "dataset has no expression and the two runs would be one run"
+)
+
 REFUSALS: list[Refusal] = [
+    Refusal(feature=name, reason=_NO_MOMENT_VOLUME)
+    for name in (
+        "profile_entropy",
+        "profile_skew",
+        "distance_to_poc_bps",
+        "distance_to_vah_bps",
+        "distance_to_val_bps",
+    )
+] + [
     Refusal(feature=name, reason=_NO_MOMENT)
     for name in (
         "qi_l1",
@@ -448,8 +534,20 @@ REFUSALS: list[Refusal] = [
 #: Registered features with neither a case nor a refusal. This list is debt and
 #: must only shrink. REQ-NRT-LEAK cannot reach `implemented` while it is
 #: non-empty.
-COVERED_FAMILIES = frozenset({"channel", "trade_flow", "order_flow", "derivatives", "order_book"})
+COVERED_FAMILIES = frozenset(
+    {
+        "channel",
+        "trade_flow",
+        "order_flow",
+        "derivatives",
+        "order_book",
+        "volume_structure",
+        "defi",
+    }
+)
 
+#: Empty. Every registered feature has a case or a refusal, which is what
+#: [[REQ-NRT-LEAK]] needed in order to reach `implemented`.
 NOT_YET_COVERED: frozenset[str] = frozenset(
     name for name in exposed_feature_names() if REGISTRY[name].family not in COVERED_FAMILIES
 )
@@ -481,11 +579,56 @@ def test_every_registered_feature_is_covered_or_declared_outstanding() -> None:
 
 
 @pytest.mark.trace("REQ-NRT-LEAK")
-def test_the_debt_register_is_what_stops_this_requirement_completing() -> None:
-    assert len(NOT_YET_COVERED) == 7
-    assert len(CASES) == 37
-    assert len(REFUSALS) == 11
-    assert {REGISTRY[case.feature].family for case in CASES} == COVERED_FAMILIES
+def test_every_feature_is_accounted_for() -> None:
+    """The debt register is empty, which is what lets REQ-NRT-LEAK complete.
+
+    39 cases and 16 refusals. The refusals are not a shortfall: they are the
+    features whose producers name no moment, so §35.4's second run cannot be
+    expressed for them at all. `test_a_refusal_is_only_available_to_a_feature_
+    that_names_no_moment` is what stops that being a way out.
+    """
+    assert NOT_YET_COVERED == frozenset()
+    assert len(CASES) == 39
+    assert len(REFUSALS) == 16
+    assert len(CASES) + len(REFUSALS) == 55 == len(REGISTRY)
+    assert {case.feature for case in CASES} & {r.feature for r in REFUSALS} == set()
+
+
+@pytest.mark.trace("REQ-NRT-LEAK")
+def test_a_refusal_is_only_available_to_a_feature_that_names_no_moment() -> None:
+    """A refusal has to be earned by the producer's signature, not by assertion.
+
+    Every refused feature is refused for one reason: nothing in its path takes a
+    moment, so "ask for the feature at `t`" has no expression. That is checkable
+    rather than merely claimed -- these producers are inspected, and a parameter
+    named `at_ns` or `as_of_ns` on any of them means the feature could have had a
+    case and the refusal is a way out.
+
+    Sixteen of fifty-five is a large fraction, and larger than the spec expected.
+    This is what keeps it honest.
+    """
+    refused = {r.feature for r in REFUSALS}
+    producers = [
+        *_module_functions(channelflow.features.instant),
+        *_module_functions(channelflow.volume.shape),
+    ]
+    assert producers, "inspected no producers; the check would pass vacuously"
+    timed = [
+        name
+        for name, fn in producers
+        if {"at_ns", "as_of_ns"} & set(inspect.signature(fn).parameters)
+    ]
+    assert timed == [], f"{timed} name a moment, so their features cannot be refused"
+    assert len(refused) == 16
+    assert {REGISTRY[name].family for name in refused} == {"order_book", "volume_structure"}
+
+
+def _module_functions(module: object) -> list[tuple[str, object]]:
+    return [
+        (name, fn)
+        for name, fn in vars(module).items()
+        if inspect.isfunction(fn) and not name.startswith("_") and fn.__module__ == module.__name__  # type: ignore[attr-defined]
+    ]
 
 
 @pytest.mark.trace("REQ-NRT-LEAK")
@@ -528,11 +671,12 @@ def test_the_inputs_are_not_degenerate() -> None:
     At least one case per covered family has to move, or the series feeding it
     is flat and the parity it demonstrates is vacuous.
     """
+    with_cases = {REGISTRY[case.feature].family for case in CASES}
     moved: set[str] = set()
     for case in CASES:
         if case.truncated() not in (0, 0.0, None):
             moved.add(REGISTRY[case.feature].family)
-    assert moved == COVERED_FAMILIES, f"no moving value in {sorted(COVERED_FAMILIES - moved)}"
+    assert moved == with_cases, f"no moving value in {sorted(with_cases - moved)}"
 
 
 # --- the fault, introduced on purpose ---------------------------------------
@@ -683,8 +827,8 @@ def test_a_refusal_has_to_give_a_reason(blank: str) -> None:
 @pytest.mark.trace("REQ-NRT-LEAK")
 def test_a_refusal_covers_the_feature_it_names() -> None:
     """Otherwise the debt register and the refusals disagree about the same name."""
-    outstanding = sorted(NOT_YET_COVERED)[0]
-    refusal = Refusal(feature=outstanding, reason="a reason long enough to be one")
-    still_open = uncovered(REGISTRY, CASES, [*REFUSALS, refusal])
-    assert outstanding not in still_open
-    assert still_open == NOT_YET_COVERED - {outstanding}
+    dropped = sorted(case.feature for case in CASES)[0]
+    without = [case for case in CASES if case.feature != dropped]
+    assert uncovered(REGISTRY, without, REFUSALS) == frozenset({dropped})
+    refusal = Refusal(feature=dropped, reason="a reason long enough to be one")
+    assert uncovered(REGISTRY, without, [*REFUSALS, refusal]) == frozenset()
