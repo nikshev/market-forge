@@ -30,6 +30,14 @@ is a suite that grows a hole every time a feature is added.
 **The token is a word, not a letter**, for the reason [[REQ-NRT-REPAINT]] gives:
 `A`–`F` are §13A.28's own names, and this is §35.4.
 
+### 27 features promise this, and nothing checks
+
+`FeatureSpec` carries `point_in_time_safe: Literal[True]`. The type makes any
+other value unregisterable, so **every registered feature declares that it is
+point-in-time safe** — and the only test that touches the field asserts it is a
+`bool`, which `Literal[True]` guarantees before the test runs. The declaration is
+a promise the type extracts and nobody verifies. §35.4 is its verification.
+
 ### The surface this has to cover
 
 Measured: `channelflow.features.REGISTRY` holds **27** specifications once the
@@ -45,6 +53,13 @@ values that fail this one.
 
 Constitution Principle I is the same rule stated as a prohibition, and it is
 never waived. This is the mechanical test of it.
+
+**The registry holds no callable.** A `FeatureSpec` is metadata plus
+`test_fixture`, a string naming the test that pins the arithmetic. So the
+registry can say *which* features must have a truncation case; it cannot produce
+one. Each case therefore supplies its own callable and its own input, and the
+enumeration's job is the set difference: a registered name with no case is a
+failure that names the feature.
 
 ## Acceptance
 

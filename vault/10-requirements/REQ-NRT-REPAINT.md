@@ -33,17 +33,38 @@ fits `RollingOLSChannel` at one moment, appends future bars, **refits the same
 moment**, and demands the same answer. That proves the fit is a function of its
 prefix — a real property, and the one [[REQ-WP-006]] was written for.
 
-§35.3 asks for something a refit cannot catch. It says *store* the snapshots and
-assert the **stored** ones are unchanged. The failure that separates the two is a
-model that returns a correct value and then mutates what it already handed out:
-a snapshot holding a view into a rolling buffer, a cached array reused between
-calls, a field filled in later "once we know". A refit constructs a fresh answer
-every time and never looks at the old one, so it is blind to exactly this.
+It is **one model at one moment**, and four models exist: `RollingOLSChannel`,
+`HuberChannel`, `QuantileChannel`, `KalmanChannel`. That is the gap.
 
-It is also one model at one moment. Four models exist — `RollingOLSChannel`,
-`HuberChannel`, `QuantileChannel`, `KalmanChannel` — and `KalmanChannel` is the
-one where this matters most, because a filter carries state between bars by
-design.
+### Two hypotheses that did not survive measurement
+
+Both are recorded because each would have justified a stronger claim than the
+evidence supports, and because leaving them unwritten invites re-investigation.
+
+**"A model could mutate a snapshot it already handed out."** Measured:
+`ChannelSnapshot` is a frozen pydantic model whose every field is immutable by
+type — `int`, `str`, `float`, `tuple`, and a frozen `ChannelQuality`. There is no
+list and no dict to reach into. Plain assignment raises `ValidationError`. Only
+`object.__setattr__` gets through, which no ordinary code path does by accident.
+So storing the snapshots rather than refitting guards a route that is nearly
+closed already. Worth closing — it costs a deep copy — but it is not the reason
+this requirement exists.
+
+**"A stateful model answers differently warm than cold."** `KalmanChannel`
+carries filter state by design, so a model fed one bar at a time seemed likely to
+answer at `t` differently from one fitted cold at `t`, which a refit test could
+never see. Measured over 120 bars, feeding forty of them one at a time before
+asking: **all four models answer identically warm and cold**, `KalmanChannel`
+included. The hypothesis was wrong for every current implementation.
+
+### So what this requirement actually is
+
+A guard on future code, in the same sense as [[REQ-WP-072]]'s: the properties
+hold today and **nothing keeps them holding**. A fifth model, or a change that
+makes `KalmanChannel` genuinely incremental, would break §35.3 with only a
+one-model one-moment test watching. §35.3's procedure — every model, every moment
+in a stream, comparing what was stored rather than what can be refitted — is what
+notices.
 
 ## Acceptance
 

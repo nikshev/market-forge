@@ -20,24 +20,35 @@ requirements are the same shape.
 Both properties hold today in spot checks. Neither is enumerated, so both grow a
 hole every time something is added.
 
-**§35.3.** `test_appending_future_bars_does_not_change_a_past_snapshot` fits one
-model at one moment, appends future bars, **refits that moment** and compares.
-That proves the fit is a function of its prefix — real, and what it was written
-for. §35.3 asks for something else: *store* the snapshots and assert the
-**stored** ones are unchanged. A refit builds a fresh answer each time and never
-looks at the old one, so it cannot see a model that returns a correct value and
-then mutates what it already handed out — a snapshot holding a view into a
-rolling buffer, a cached array reused between calls, a field filled in later.
+**§35.3.** `test_appending_future_bars_does_not_change_a_past_snapshot` fits
+**one model at one moment**, appends future bars, refits that moment and
+compares. Four models exist — `RollingOLSChannel`, `HuberChannel`,
+`QuantileChannel`, `KalmanChannel`. That is the gap.
 
-Four models exist. `KalmanChannel` is where this matters most: a filter carries
-state between bars by design.
+Two richer hypotheses were measured during specification and **neither survived**,
+so neither is used to justify this work:
 
-**§35.4.** The feature registry holds **27** specifications exposing **55**
-names. `tests/unit/dataset/test_leakage.py` checks assembled *rows* — that a
-feature's availability is not after `t`. §35.4 checks the *computation*: run it
-over a truncated input and over a full one, and demand the same answer. A feature
-whose implementation peeks at a later row produces rows that pass the first check
-and values that fail this one.
+- *A model could mutate a snapshot it handed out.* `ChannelSnapshot` is frozen
+  and every field is immutable by type — no list, no dict. Plain assignment
+  raises; only `object.__setattr__` gets through. Nearly closed already.
+- *A stateful model answers differently warm than cold.* Feeding forty bars one
+  at a time before asking, **all four models answer identically warm and cold**,
+  `KalmanChannel` included.
+
+So this is a guard on future code: the property holds today and nothing keeps it
+holding. A fifth model, or a change making `KalmanChannel` genuinely
+incremental, would break §35.3 with a one-model one-moment test watching.
+
+**§35.4.** Every registered feature declares `point_in_time_safe: Literal[True]`
+— the type makes any other value unregisterable — and the only test touching that
+field asserts it is a `bool`, which the type guarantees before the test runs. **27
+features promise point-in-time safety and nothing verifies it.**
+`tests/unit/dataset/test_leakage.py` checks assembled *rows*; §35.4 checks the
+*computation*. A feature whose implementation peeks at a later row produces rows
+that pass the first check and values that fail this one.
+
+The registry holds no callable — a `FeatureSpec` is metadata — so each case
+supplies its own input, and the enumeration's job is the set difference.
 
 Both requirements are `hard_gated`, so rule R5 — the one this project never
 waives — forbids either advancing past `specified` without a linked test.
@@ -57,9 +68,11 @@ without this check is a red suite, naming the model.
 
 ### User Story 3 - A repainting model is caught and named (Priority: P1)
 
-**Acceptance**: a model written to mutate a snapshot it already returned makes
-the suite fail, and the failure names the model, the snapshot's moment and the
-field that changed.
+**Acceptance**: a model written to answer differently once later bars exist —
+the failure §35.3 describes — makes the suite fail, and the failure names the
+model, the snapshot's moment and the field that changed. A model that reaches
+into a snapshot it already returned via `object.__setattr__` is caught by the
+same comparison.
 
 ### User Story 4 - Every feature is computed twice (Priority: P1)
 
@@ -82,7 +95,9 @@ the failure names the feature and both values.
 - Comparing only a chosen field passes a model that repaints a different one. The
   comparison covers the whole snapshot.
 - A snapshot compared against a copy taken at storage time proves nothing if the
-  copy is shallow and the mutation is inside a nested value.
+  copy is shallow and the mutation is inside a nested value. Measured: today
+  every field is immutable by type, so the depth costs nothing and guards a field
+  somebody adds later.
 - A model that returns the *same object* every call trivially satisfies "all
   snapshots equal" if equality is identity. Equality must be by value.
 - A feature whose value legitimately differs — one that is a function of the
