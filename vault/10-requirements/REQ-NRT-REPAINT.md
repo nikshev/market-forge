@@ -5,7 +5,7 @@ type: constraint
 prd_ref: "§35.3"
 prd_lines: "4870-4877"
 phase: null
-status: draft
+status: specified
 depends_on: [REQ-WP-006]
 tags: []
 hard_gated: true
@@ -62,7 +62,8 @@ design.
 ## Trace
 
 <!-- trace:begin -->
-_No linked artifacts yet._
+- **Specs:** [[SPEC-114-repaint-and-leak-suites]]
+- **Outcomes:** [[OUT-2026-09-15-spec-repaint-and-leak-suites]]
 <!-- trace:end -->
 
 ## Notes

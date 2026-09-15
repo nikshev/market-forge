@@ -5,7 +5,7 @@ type: constraint
 prd_ref: "§35.4"
 prd_lines: "4879-4887"
 phase: null
-status: draft
+status: specified
 depends_on: [REQ-WP-019]
 tags: []
 hard_gated: true
@@ -65,7 +65,8 @@ never waived. This is the mechanical test of it.
 ## Trace
 
 <!-- trace:begin -->
-_No linked artifacts yet._
+- **Specs:** [[SPEC-114-repaint-and-leak-suites]]
+- **Outcomes:** [[OUT-2026-09-15-spec-repaint-and-leak-suites]]
 <!-- trace:end -->
 
 ## Notes
