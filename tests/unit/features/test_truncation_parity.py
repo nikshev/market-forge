@@ -23,6 +23,9 @@ literal, so the suite goes red by name rather than the gap widening quietly.
 
 from __future__ import annotations
 
+from collections.abc import Callable
+from decimal import Decimal
+
 import pytest
 
 from channelflow.bars import Bar
@@ -34,6 +37,8 @@ from channelflow.channels.features import (
     channel_width_pct,
 )
 from channelflow.features import REGISTRY, exposed_feature_names
+from channelflow.features.flow import FlowTracker
+from channelflow.features.ofi import OFITracker
 from channelflow.features.truncation import (
     RELATIVE_TOLERANCE,
     Refusal,
@@ -42,6 +47,8 @@ from channelflow.features.truncation import (
     uncovered,
 )
 from tests.unit.channels.conftest import log_linear_series
+from tests.unit.features.conftest import BASE_NS, SECOND_NS, trade
+from tests.unit.features.test_ofi import obs
 
 LOOKBACK = 30
 BARS = 90
@@ -91,15 +98,103 @@ def _channel_cases() -> list[TruncationCase]:
     return cases
 
 
-CASES: list[TruncationCase] = _channel_cases()
+def _flow_cases() -> list[TruncationCase]:
+    """`trade_flow`: a stateful tracker, fed trades, asked for a window at `t`.
+
+    The truncated side sees only trades at or before `t`; the full side sees the
+    whole day. `FlowTracker.window` filters `floor < event_time <= as_of_ns` and
+    `_cvd_at` stops at the first event past its argument, so the two should
+    agree -- and if either boundary were `<` or `<=` the wrong way, or the cursor
+    walked past `t`, this is what would notice.
+    """
+    trades = [
+        trade(f"t{i}", "100", "1", "buy" if i % 3 else "sell", at_ns=BASE_NS + i * SECOND_NS)
+        for i in range(1, 41)
+    ]
+    at_ns = BASE_NS + 20 * SECOND_NS
+    window_ns = 10 * SECOND_NS
+
+    def tracker(upto_t: bool) -> FlowTracker:
+        built = FlowTracker()
+        for event in trades:
+            if upto_t and event.meta.event_time_ns > at_ns:
+                continue
+            built.observe(event)
+        return built
+
+    readers: dict[str, Callable[[FlowTracker], object]] = {
+        "delta_notional": lambda t: t.window(window_ns, as_of_ns=at_ns).delta,
+        "normalized_delta": lambda t: t.window(window_ns, as_of_ns=at_ns).normalized_delta,
+        "cvd": lambda t: t.window(window_ns, as_of_ns=at_ns).cvd_end,
+        "cvd_slope": lambda t: t.window(window_ns, as_of_ns=at_ns).cvd_slope_per_second,
+        "cvd_acceleration": lambda t: t.acceleration(window_ns, as_of_ns=at_ns),
+    }
+    return [
+        TruncationCase(
+            feature=name,
+            at_ns=at_ns,
+            truncated=lambda reader=reader: reader(tracker(upto_t=True)),
+            full=lambda reader=reader: reader(tracker(upto_t=False)),
+        )
+        for name, reader in readers.items()
+    ]
+
+
+def _ofi_cases() -> list[TruncationCase]:
+    """`order_flow`: the same shape, over top-of-book observations.
+
+    `ofi_bar` is the bar-length window rather than a fixed one, so it gets the
+    signal timeframe -- a different number, not a different mechanism.
+    """
+    observations = [
+        obs(
+            str(100 + (i % 5)),
+            str(10 + (i % 3)),
+            str(101 + (i % 5)),
+            str(12 + (i % 4)),
+            at_ns=BASE_NS + i * SECOND_NS,
+        )
+        for i in range(1, 121)
+    ]
+    at_ns = BASE_NS + 90 * SECOND_NS
+
+    def tracker(upto_t: bool) -> OFITracker:
+        built = OFITracker()
+        for observation in observations:
+            if upto_t and observation.event_time_ns > at_ns:
+                continue
+            built.observe(observation)
+        return built
+
+    windows = {
+        "ofi_1s": SECOND_NS,
+        "ofi_5s": 5 * SECOND_NS,
+        "ofi_30s": 30 * SECOND_NS,
+        "ofi_1m": 60 * SECOND_NS,
+        "ofi_bar": 60 * SECOND_NS,
+    }
+    return [
+        TruncationCase(
+            feature=name,
+            at_ns=at_ns,
+            truncated=lambda w=window: tracker(upto_t=True).window(w, as_of_ns=at_ns).value,
+            full=lambda w=window: tracker(upto_t=False).window(w, as_of_ns=at_ns).value,
+        )
+        for name, window in windows.items()
+    ]
+
+
+CASES: list[TruncationCase] = _channel_cases() + _flow_cases() + _ofi_cases()
 
 REFUSALS: list[Refusal] = []
 
 #: Registered features with neither a case nor a refusal. This list is debt and
 #: must only shrink. REQ-NRT-LEAK cannot reach `implemented` while it is
 #: non-empty.
+COVERED_FAMILIES = frozenset({"channel", "trade_flow", "order_flow"})
+
 NOT_YET_COVERED: frozenset[str] = frozenset(
-    name for name in exposed_feature_names() if REGISTRY[name].family != "channel"
+    name for name in exposed_feature_names() if REGISTRY[name].family not in COVERED_FAMILIES
 )
 
 
@@ -130,14 +225,9 @@ def test_every_registered_feature_is_covered_or_declared_outstanding() -> None:
 
 @pytest.mark.trace("REQ-NRT-LEAK")
 def test_the_debt_register_is_what_stops_this_requirement_completing() -> None:
-    assert len(NOT_YET_COVERED) == 51
-    assert len(CASES) == 4
-    assert {case.feature for case in CASES} == {
-        "channel_position",
-        "channel_quality_score",
-        "channel_slope_normalized",
-        "channel_width_pct",
-    }
+    assert len(NOT_YET_COVERED) == 41
+    assert len(CASES) == 14
+    assert {REGISTRY[case.feature].family for case in CASES} == COVERED_FAMILIES
 
 
 @pytest.mark.trace("REQ-NRT-LEAK")
@@ -161,12 +251,26 @@ def test_the_truncated_and_full_runs_agree(case: TruncationCase) -> None:
 
 
 @pytest.mark.trace("REQ-NRT-LEAK")
-def test_the_case_actually_computes_something() -> None:
-    """A case whose two sides both raise, or both return None, proves nothing."""
+def test_every_case_computes_a_number() -> None:
+    """A case whose two sides both return nothing agrees with itself and proves nothing."""
     for case in CASES:
         value = case.truncated()
         assert value is not None, f"{case.feature} produced nothing to compare"
-        assert isinstance(value, float)
+        assert isinstance(value, float | int | Decimal), f"{case.feature} gave {value!r}"
+
+
+@pytest.mark.trace("REQ-NRT-LEAK")
+def test_the_inputs_are_not_degenerate() -> None:
+    """Zero on both sides is agreement about nothing happening.
+
+    At least one case per covered family has to move, or the series feeding it
+    is flat and the parity it demonstrates is vacuous.
+    """
+    moved: set[str] = set()
+    for case in CASES:
+        if case.truncated() not in (0, 0.0, None):
+            moved.add(REGISTRY[case.feature].family)
+    assert moved == COVERED_FAMILIES, f"no moving value in {sorted(COVERED_FAMILIES - moved)}"
 
 
 # --- the fault, introduced on purpose ---------------------------------------
