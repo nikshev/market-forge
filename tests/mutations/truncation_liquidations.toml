@@ -1,0 +1,18 @@
+# The liquidation window's boundary, for REQ-NRT-LEAK. See
+# truncation_derivatives.toml for why these exist.
+source = "src/channelflow/derivatives/liquidations.py"
+tests = [
+  "tests/unit/features/test_truncation_parity.py",
+]
+
+[[mutation]]
+name = "the liquidation window reaches past as_of"
+find = '''    inside = [e for e in events if floor < e.meta.event_time_ns <= as_of_ns]'''
+replace = '''    inside = [e for e in events if floor < e.meta.event_time_ns]'''
+
+[[mutation]]
+name = "time since spike looks at events after as_of"
+find = '''        if e.notional_usd >= spike_usd and e.meta.event_time_ns <= as_of_ns
+    ]'''
+replace = '''        if e.notional_usd >= spike_usd
+    ]'''

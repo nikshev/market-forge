@@ -36,6 +36,28 @@ from channelflow.channels.features import (
     channel_slope_normalized,
     channel_width_pct,
 )
+from channelflow.derivatives.funding import (
+    funding_acceleration,
+    funding_z,
+    settled_funding,
+)
+from channelflow.derivatives.liquidations import intensity, time_since_spike
+from channelflow.derivatives.liquidations import window as liq_window
+from channelflow.derivatives.openinterest import (
+    basis_bps,
+    mark_premium_bps,
+    oi_change,
+    oi_to_volume,
+    oi_z,
+    price_oi_regime,
+)
+from channelflow.derivatives.positioning import (
+    long_short_ratio,
+    long_short_z,
+    top_trader_ratio,
+)
+from channelflow.derivatives.state import state_at
+from channelflow.domain import DerivativesState, LiquidationEvent
 from channelflow.features import REGISTRY, exposed_feature_names
 from channelflow.features.flow import FlowTracker
 from channelflow.features.ofi import OFITracker
@@ -47,6 +69,10 @@ from channelflow.features.truncation import (
     uncovered,
 )
 from tests.unit.channels.conftest import log_linear_series
+from tests.unit.derivatives.conftest import BASE_NS as DBASE_NS
+from tests.unit.derivatives.conftest import MINUTE_NS as DMINUTE_NS
+from tests.unit.derivatives.conftest import NOT_ABOUT_FRESHNESS, liquidation
+from tests.unit.derivatives.conftest import meta as dmeta
 from tests.unit.features.conftest import BASE_NS, SECOND_NS, trade
 from tests.unit.features.test_ofi import obs
 
@@ -184,14 +210,121 @@ def _ofi_cases() -> list[TruncationCase]:
     ]
 
 
-CASES: list[TruncationCase] = _channel_cases() + _flow_cases() + _ofi_cases()
+def _derivatives_cases() -> list[TruncationCase]:
+    """`derivatives`: mostly `(states, *, at_ns, ...)`, and five pure scalars.
+
+    The scalars -- `basis_bps`, `mark_premium_bps`, `oi_to_volume`,
+    `price_oi_regime`, `liquidation_intensity_5m` -- have no dataset of their
+    own, so there is nothing in them to truncate. Their arguments are sourced
+    through `state_at`, which is the point-in-time seam and therefore the path
+    that can actually leak. A case that fed them two constants would agree with
+    itself and prove nothing.
+    """
+    states = [
+        DerivativesState(
+            meta=dmeta(minute),
+            mark_price=Decimal(112_000 + minute * 3),
+            index_price=Decimal(112_000 + minute * 2),
+            funding_rate=0.0001 * (1 + minute % 5),
+            next_funding_time_ns=DBASE_NS + (minute // 60 + 1) * 60 * DMINUTE_NS,
+            open_interest_usd=1_000_000.0 + minute * 2_000,
+            open_interest_base=10.0 + minute,
+            long_short_ratio=1.0 + 0.01 * (minute % 7),
+            top_trader_long_short_ratio=1.0 + 0.02 * (minute % 5),
+        )
+        for minute in range(0, 121)
+    ]
+    events = [
+        liquidation(
+            at=minute,
+            side="long_liquidated" if minute % 2 else "short_liquidated",
+            notional=str(5_000 + minute),
+        )
+        for minute in range(1, 121)
+    ]
+    at_minute = 60
+    at_ns = DBASE_NS + at_minute * DMINUTE_NS
+    fresh = {"staleness_ns": NOT_ABOUT_FRESHNESS}
+    five_m, one_h = 5 * DMINUTE_NS, 60 * DMINUTE_NS
+    #: Not point-in-time data: a constant denominator, so any disagreement the
+    #: case reports comes from the numerator's selection rather than from here.
+    TRADED_USD = Decimal("50000000")
+
+    def st(upto_t: bool) -> list[DerivativesState]:
+        return [s for s in states if not upto_t or s.meta.event_time_ns <= at_ns]
+
+    def ev(upto_t: bool) -> list[LiquidationEvent]:
+        return [e for e in events if not upto_t or e.meta.event_time_ns <= at_ns]
+
+    def price_change(rows: list[DerivativesState]) -> float:
+        now = state_at(rows, at_ns=at_ns, **fresh).mark_price
+        before = state_at(rows, at_ns=at_ns - one_h, **fresh).mark_price
+        assert now is not None and before is not None
+        return float(now - before)
+
+    readers: dict[str, Callable[[list[DerivativesState], list[LiquidationEvent]], object]] = {
+        "funding_rate_settled": lambda r, _e: settled_funding(r, at_ns=at_ns, **fresh)[-1].rate,
+        "funding_z": lambda r, _e: funding_z(r, at_ns=at_ns, **fresh).value,
+        "funding_acceleration": lambda r, _e: funding_acceleration(r, at_ns=at_ns, **fresh),
+        "open_interest_usd": lambda r, _e: state_at(r, at_ns=at_ns, **fresh).open_interest_usd,
+        "oi_change_5m": lambda r, _e: oi_change(r, at_ns=at_ns, window_ns=five_m, **fresh),
+        "oi_change_1h": lambda r, _e: oi_change(r, at_ns=at_ns, window_ns=one_h, **fresh),
+        "oi_z": lambda r, _e: oi_z(r, at_ns=at_ns, **fresh).value,
+        "oi_to_volume": lambda r, _e: oi_to_volume(
+            state_at(r, at_ns=at_ns, **fresh).open_interest_usd or 0.0, float(TRADED_USD)
+        ),
+        "price_oi_regime": lambda r, _e: (
+            price_oi_regime(
+                price_change=price_change(r),
+                oi_change_usd=oi_change(r, at_ns=at_ns, window_ns=one_h, **fresh) or 0.0,
+            ).value
+        ),
+        "basis_bps": lambda r, _e: basis_bps(
+            perp_price=state_at(r, at_ns=at_ns, **fresh).mark_price,
+            spot_price=state_at(r, at_ns=at_ns, **fresh).index_price,
+        ),
+        "mark_premium_bps": lambda r, _e: mark_premium_bps(
+            mark_price=state_at(r, at_ns=at_ns, **fresh).mark_price,
+            index_price=state_at(r, at_ns=at_ns, **fresh).index_price,
+        ),
+        "liquidation_long_usd_5m": lambda _r, e: (
+            liq_window(e, as_of_ns=at_ns, window_ns=five_m).long_usd
+        ),
+        "liquidation_short_usd_5m": lambda _r, e: (
+            liq_window(e, as_of_ns=at_ns, window_ns=five_m).short_usd
+        ),
+        "liquidation_imbalance_5m": lambda _r, e: (
+            liq_window(e, as_of_ns=at_ns, window_ns=five_m).imbalance
+        ),
+        "liquidation_intensity_5m": lambda _r, e: intensity(
+            liq_window(e, as_of_ns=at_ns, window_ns=five_m).total_usd, TRADED_USD
+        ),
+        "time_since_liquidation_spike": lambda _r, e: time_since_spike(
+            e, as_of_ns=at_ns, spike_usd=Decimal("5030")
+        ),
+        "long_short_ratio": lambda r, _e: long_short_ratio(r, at_ns=at_ns, **fresh),
+        "long_short_z": lambda r, _e: long_short_z(r, at_ns=at_ns, **fresh).value,
+        "top_trader_long_short_ratio": lambda r, _e: top_trader_ratio(r, at_ns=at_ns, **fresh),
+    }
+    return [
+        TruncationCase(
+            feature=name,
+            at_ns=at_ns,
+            truncated=lambda reader=reader: reader(st(upto_t=True), ev(upto_t=True)),
+            full=lambda reader=reader: reader(st(upto_t=False), ev(upto_t=False)),
+        )
+        for name, reader in readers.items()
+    ]
+
+
+CASES: list[TruncationCase] = _channel_cases() + _flow_cases() + _ofi_cases() + _derivatives_cases()
 
 REFUSALS: list[Refusal] = []
 
 #: Registered features with neither a case nor a refusal. This list is debt and
 #: must only shrink. REQ-NRT-LEAK cannot reach `implemented` while it is
 #: non-empty.
-COVERED_FAMILIES = frozenset({"channel", "trade_flow", "order_flow"})
+COVERED_FAMILIES = frozenset({"channel", "trade_flow", "order_flow", "derivatives"})
 
 NOT_YET_COVERED: frozenset[str] = frozenset(
     name for name in exposed_feature_names() if REGISTRY[name].family not in COVERED_FAMILIES
@@ -225,8 +358,8 @@ def test_every_registered_feature_is_covered_or_declared_outstanding() -> None:
 
 @pytest.mark.trace("REQ-NRT-LEAK")
 def test_the_debt_register_is_what_stops_this_requirement_completing() -> None:
-    assert len(NOT_YET_COVERED) == 41
-    assert len(CASES) == 14
+    assert len(NOT_YET_COVERED) == 22
+    assert len(CASES) == 33
     assert {REGISTRY[case.feature].family for case in CASES} == COVERED_FAMILIES
 
 
@@ -251,12 +384,16 @@ def test_the_truncated_and_full_runs_agree(case: TruncationCase) -> None:
 
 
 @pytest.mark.trace("REQ-NRT-LEAK")
-def test_every_case_computes_a_number() -> None:
-    """A case whose two sides both return nothing agrees with itself and proves nothing."""
+def test_every_case_computes_a_value() -> None:
+    """A case whose two sides both return nothing agrees with itself and proves nothing.
+
+    A string is a value: `price_oi_regime` is a classification, not a number, and
+    a leak in it would read as the wrong regime rather than the wrong magnitude.
+    """
     for case in CASES:
         value = case.truncated()
         assert value is not None, f"{case.feature} produced nothing to compare"
-        assert isinstance(value, float | int | Decimal), f"{case.feature} gave {value!r}"
+        assert isinstance(value, float | int | Decimal | str), f"{case.feature} gave {value!r}"
 
 
 @pytest.mark.trace("REQ-NRT-LEAK")
