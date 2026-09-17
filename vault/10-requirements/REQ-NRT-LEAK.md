@@ -96,12 +96,13 @@ failure that names the feature.
     - `tests/unit/features/test_truncation_parity.py::test_a_refusal_has_to_give_a_reason[\n  ]`
     - `tests/unit/features/test_truncation_parity.py::test_a_refusal_has_to_give_a_reason[\t]`
     - `tests/unit/features/test_truncation_parity.py::test_a_refusal_has_to_give_a_reason[]`
+    - `tests/unit/features/test_truncation_parity.py::test_a_refusal_is_only_available_to_a_feature_that_names_no_moment`
     - `tests/unit/features/test_truncation_parity.py::test_a_wall_ignores_trades_from_after_its_moment`
     - `tests/unit/features/test_truncation_parity.py::test_an_integer_and_an_equal_float_are_different_answers`
     - `tests/unit/features/test_truncation_parity.py::test_every_case_computes_a_value`
+    - `tests/unit/features/test_truncation_parity.py::test_every_feature_is_accounted_for`
     - `tests/unit/features/test_truncation_parity.py::test_every_registered_feature_is_covered_or_declared_outstanding`
     - `tests/unit/features/test_truncation_parity.py::test_integers_and_none_compare_exactly`
-    - `tests/unit/features/test_truncation_parity.py::test_the_debt_register_is_what_stops_this_requirement_completing`
     - `tests/unit/features/test_truncation_parity.py::test_the_inputs_are_not_degenerate`
     - `tests/unit/features/test_truncation_parity.py::test_the_registry_is_fully_imported_before_anything_is_counted`
     - `tests/unit/features/test_truncation_parity.py::test_the_truncated_and_full_runs_agree[basis_bps]`
@@ -113,6 +114,8 @@ failure that names the feature.
     - `tests/unit/features/test_truncation_parity.py::test_the_truncated_and_full_runs_agree[cvd_acceleration]`
     - `tests/unit/features/test_truncation_parity.py::test_the_truncated_and_full_runs_agree[cvd_slope]`
     - `tests/unit/features/test_truncation_parity.py::test_the_truncated_and_full_runs_agree[delta_notional]`
+    - `tests/unit/features/test_truncation_parity.py::test_the_truncated_and_full_runs_agree[dex_active_liquidity]`
+    - `tests/unit/features/test_truncation_parity.py::test_the_truncated_and_full_runs_agree[dex_swap_imbalance]`
     - `tests/unit/features/test_truncation_parity.py::test_the_truncated_and_full_runs_agree[funding_acceleration]`
     - `tests/unit/features/test_truncation_parity.py::test_the_truncated_and_full_runs_agree[funding_rate_settled]`
     - `tests/unit/features/test_truncation_parity.py::test_the_truncated_and_full_runs_agree[funding_z]`
@@ -145,7 +148,7 @@ failure that names the feature.
 - **Code:**
     - `src/channelflow/features/truncation.py`
     - `src/channelflow/features/walls.py`
-- **Outcomes:** [[OUT-2026-09-15-implement-truncation-channel-family]], [[OUT-2026-09-15-implement-truncation-derivatives]], [[OUT-2026-09-15-implement-truncation-flow-families]], [[OUT-2026-09-15-implement-truncation-order-book]], [[OUT-2026-09-15-spec-repaint-and-leak-suites]]
+- **Outcomes:** [[OUT-2026-09-15-implement-truncation-channel-family]], [[OUT-2026-09-15-implement-truncation-complete]], [[OUT-2026-09-15-implement-truncation-derivatives]], [[OUT-2026-09-15-implement-truncation-flow-families]], [[OUT-2026-09-15-implement-truncation-order-book]], [[OUT-2026-09-15-spec-repaint-and-leak-suites]]
 <!-- trace:end -->
 
 ## Notes

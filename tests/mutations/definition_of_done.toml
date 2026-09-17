@@ -1,0 +1,64 @@
+# Reproduces the mutation sweep recorded for REQ-DOD-001.
+#
+# §47 is the definition of done, so a check that passed whatever the note said
+# would be worse than no check: it would answer "is this finished" with "the
+# frontmatter says so". These mutations remove each thing the module charges for.
+#
+# Patterns are TOML *literal* strings on purpose: the basic form treats a
+# trailing backslash as a line continuation and eats the next line's indentation.
+source = "tools/trace/definition_of_done.py"
+tests = [
+  "tests/tools/trace/test_definition_of_done.py",
+]
+
+[[mutation]]
+name = "a reworded condition passes"
+find = '''        if _normalise(str(entry["text"])) != _normalise(expected)'''
+replace = '''        if False'''
+
+[[mutation]]
+name = "the note and the prd may state different numbers of conditions"
+find = '''    if len(conditions) != len(prd):'''
+replace = '''    if False:'''
+
+[[mutation]]
+name = "a condition with no covering requirement passes"
+find = '''for entry in conditions if not entry.get("covers")'''
+replace = '''for entry in conditions if False'''
+
+[[mutation]]
+name = "an unfinished covering requirement passes"
+find = '''            if LADDER.index(status) < DELIVERED:'''
+replace = '''            if False:'''
+
+[[mutation]]
+name = "`tested` counts as delivered"
+find = '''DELIVERED = LADDER.index("implemented")'''
+replace = '''DELIVERED = LADDER.index("tested")'''
+
+[[mutation]]
+name = "a covering requirement that does not exist is accepted"
+find = '''            if status is None:'''
+replace = '''            if False:'''
+
+[[mutation]]
+name = "the two lists are compared in one direction only"
+find = '''    return sorted(declared - union), sorted(union - declared)'''
+replace = '''    return sorted(declared - union), []'''
+
+[[mutation]]
+name = "a prd stating no conditions is accepted"
+find = '''    if not found:'''
+replace = '''    if False:'''
+
+[[mutation]]
+name = "the section range runs to the end of the file"
+find = '''    if not after:
+        raise DishonestMapping("§47 has no following section; the range is unbounded")'''
+replace = '''    if not after:
+        after = [len(lines)]'''
+
+[[mutation]]
+name = "markdown stripping becomes a general rewrite"
+find = '''    return text.replace("`", "").replace("**", "").strip()'''
+replace = '''    return text.replace("`", "").replace("**", "").strip().lower()[:20]'''
