@@ -78,15 +78,19 @@ missing is the second and third.
 <!-- trace:begin -->
 - **Specs:** [[SPEC-116-live-replay-parity]]
 - **Tests:**
+    - `tests/unit/parity/test_live_replay_parity.py::test_every_archived_minute_is_whole`
     - `tests/unit/parity/test_live_replay_parity.py::test_every_archived_object_is_still_gzip`
-    - `tests/unit/parity/test_live_replay_parity.py::test_the_captured_segment_is_short_because_the_archive_was_losing_frames`
+    - `tests/unit/parity/test_live_replay_parity.py::test_the_channels_fitted_over_each_are_identical`
     - `tests/unit/parity/test_live_replay_parity.py::test_the_frames_are_what_the_archive_wrote`
+    - `tests/unit/parity/test_live_replay_parity.py::test_the_replayed_bars_are_the_live_bars`
     - `tests/unit/parity/test_live_replay_parity.py::test_the_segment_is_the_length_the_section_asks_for`
+    - `tests/unit/parity/test_live_replay_parity.py::test_the_signals_are_the_same_in_the_same_order`
     - `tests/unit/pipeline/test_ingest.py::test_a_mid_minute_flush_does_not_replace_the_minute_with_its_tail`
     - `tests/unit/pipeline/test_ingest.py::test_a_minute_that_has_rolled_is_not_held_for_ever`
 - **Code:**
     - `src/channelflow/pipeline/archive.py`
-- **Outcomes:** [[OUT-2026-09-17-spec-live-replay-parity]]
+    - `tools/record/parity_capture.py`
+- **Outcomes:** [[OUT-2026-09-17-implement-live-replay-parity]], [[OUT-2026-09-17-spec-live-replay-parity]]
 <!-- trace:end -->
 
 ## Notes
