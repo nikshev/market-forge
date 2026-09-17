@@ -70,9 +70,13 @@ Two catch people out most:
   were extracted on 2026-09-15 and are both `hard_gated`. Their tokens are
   words rather than letters because `REQ-NRT-A` through `-F` are §13A.28's own
   six named tests, and lettering these `G` and `H` would claim that section has
-  a seventh. `REQ-NRT-REPAINT` is `implemented`; `REQ-NRT-LEAK` is `specified`
-  and will stay short of `implemented` until all **55** registered features have
-  a truncation case — they share no interface, so each is written by hand.
+  a seventh. Both are `implemented` as of 2026-09-15. §35.4 landed as **39
+  truncation cases and 16 refusals** across all 55 registered features. A refusal
+  is not a gap: it marks a feature whose producers name no moment, so "ask for
+  the feature at `t`" has no expression — and it is *checkable* rather than
+  claimed, because `test_a_refusal_is_only_available_to_a_feature_that_names_no_moment`
+  inspects every such producer and fails if one takes `at_ns` or `as_of_ns`. That
+  test is what stops the mechanism becoming the requirement.
   §35.5 (live/replay parity) is the remaining section of this family with no
   note; `REQ-NRT-E` covers replay parity for extrema only.
 

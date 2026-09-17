@@ -5,7 +5,7 @@ type: constraint
 prd_ref: "§35.4"
 prd_lines: "4879-4887"
 phase: null
-status: tested
+status: implemented
 depends_on: [REQ-WP-019]
 tags: []
 hard_gated: true
