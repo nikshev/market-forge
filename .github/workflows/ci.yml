@@ -15,10 +15,18 @@ name: CI
 # with a PR open -- measured over forty runs at a mean of 30.5 minutes each,
 # that was half the bill. A branch is now covered by its pull request, and
 # `main` by its push, so nothing is unguarded and nothing runs twice.
+#
+# **A documentation-only change does not need any of this.** It took the whole
+# gate -- PostgreSQL, MinIO, Redpanda, npm, 2732 tests, 514 mutations and two
+# image builds -- for 122 added lines of Markdown. `docs/**` is filtered out
+# here and covered by `docs.yml`, whose job carries the same name so a branch
+# protection rule requiring `gate` is satisfied by whichever one ran.
 on:
   push:
     branches: [main]
+    paths-ignore: ["docs/**"]
   pull_request:
+    paths-ignore: ["docs/**"]
 
 # A superseded run is cancelled. Two pushes a minute apart both ran to
 # completion, and only the second one's answer was ever wanted. `main` is

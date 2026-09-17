@@ -1,0 +1,55 @@
+# The light gate, for changes that touch only `docs/**` (REQ-INFRA-002).
+# @trace: REQ-INFRA-002
+#
+# `ci.yml` filters `docs/**` out, and this covers it. The job is called `gate`
+# in both files on purpose: a branch protection rule requiring `gate` is
+# satisfied by whichever workflow the change's paths selected, and a change
+# touching both runs both.
+#
+# **What this deliberately does not run, and why that is safe.** No services, no
+# integration tests, no mutation sweep, no images, and no `make validate` --
+# `validate` needs `markers`, which needs the full suite and a running stack,
+# which is the half-hour this file exists to avoid.
+#
+# The one thing a documentation edit *can* break is the traceability graph:
+# `docs/deployment.md` carries `<!-- @trace: REQ-WP-056 -->`, so R8 counts it as
+# the code implementing that requirement. That risk is covered by
+# `test_every_trace_marker_in_docs_names_a_real_requirement`, which is part of
+# `make test-fast` and therefore runs below.
+
+name: Docs
+
+on:
+  push:
+    branches: [main]
+    paths: ["docs/**"]
+  pull_request:
+    paths: ["docs/**"]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.5.11"
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      - name: Set up the environment
+        run: make install
+
+      - name: Lint
+        run: make lint
+
+      - name: Tests (no services)
+        run: make test-fast

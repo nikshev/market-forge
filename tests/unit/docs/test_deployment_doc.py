@@ -177,3 +177,33 @@ def test_the_document_says_what_it_does_not_cover(doc: str) -> None:
     # §36's targets and REQ-PHASE-8 reached `implemented` on that acceptance
     # line. The document says where they went rather than dropping the subject.
     assert "Load tests are **no longer** on this list" in doc
+
+
+# --- what the light docs gate has to stand in for (REQ-INFRA-002) ------------
+
+
+@pytest.mark.trace("REQ-INFRA-002")
+def test_every_trace_marker_in_docs_names_a_real_requirement() -> None:
+    """A documentation page can be a traced source file, and this one is.
+
+    `docs/deployment.md` carries `<!-- @trace: REQ-WP-056 -->` and
+    `<!-- @trace: REQ-WP-072 -->`, so R8 counts it as the code that implements
+    them. A docs-only change now takes a lighter CI gate that does not run
+    `make validate` -- it cannot, because `validate` needs `markers`, which
+    needs the full suite and a running stack.
+
+    The only way a docs edit can break the graph is by altering one of those
+    markers, so that is what this checks, and it runs in the fast gate where the
+    light workflow will reach it.
+    """
+    requirements = {path.stem for path in (ROOT / "vault" / "10-requirements").glob("*.md")}
+    assert requirements, "found no requirement notes; this check would pass vacuously"
+
+    found = 0
+    for path in sorted((ROOT / "docs").rglob("*.md")):
+        for marker in re.findall(r"@trace:\s*(REQ-[A-Z0-9-]+)", path.read_text()):
+            assert marker in requirements, (
+                f"{path.relative_to(ROOT)} traces {marker}, which has no requirement note"
+            )
+            found += 1
+    assert found >= 2, f"only {found} trace markers across docs/; expected at least two"
