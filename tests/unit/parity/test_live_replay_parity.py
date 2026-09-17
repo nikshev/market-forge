@@ -30,10 +30,12 @@ from pathlib import Path
 import pytest
 
 from channelflow.bars import BarBuilder
+from channelflow.channels import RollingOLSChannel
 from channelflow.connectors.session import BINANCE, StreamSession
 from channelflow.connectors.websocket import ReplayTransport
 from channelflow.pipeline.archive import FrameArchive, LocalObjectStore, read_frames
 from channelflow.pipeline.ingest import IngestDaemon, streams_for
+from channelflow.signals import SignalMachine
 
 FIXTURES = Path(__file__).resolve().parents[2] / "fixtures" / "parity"
 MINUTE_NS = 60_000_000_000
@@ -137,7 +139,10 @@ def test_the_segment_is_the_length_the_section_asks_for() -> None:
     assert 30 <= manifest["minutes"] <= 60
     span = manifest["window_end_ns"] - manifest["window_start_ns"]
     assert span == manifest["minutes"] * MINUTE_NS
-    assert len(list((FIXTURES / "frames").glob("*.jsonl.gz"))) == manifest["minutes"]
+    # One object more than compared minutes: the trailing one closes the last
+    # bar, because the builder finalizes a minute when a trade arrives after it.
+    assert len(list((FIXTURES / "frames").glob("*.jsonl.gz"))) == manifest["objects"]
+    assert manifest["objects"] == manifest["minutes"] + 1
 
 
 @pytest.mark.trace("REQ-NRT-PARITY")
@@ -162,44 +167,134 @@ def test_every_archived_object_is_still_gzip() -> None:
 
 
 @pytest.mark.trace("REQ-NRT-PARITY")
-def test_the_captured_segment_is_short_because_the_archive_was_losing_frames() -> None:
-    """The fixture is evidence, and this names what of.
+def test_every_archived_minute_is_whole() -> None:
+    """The archive keeps all of a minute, and this is how we know.
 
-    §35.5's parity assertion cannot run on it. The segment was captured from a
-    deployment whose `FrameArchive.flush` replaced a minute with its own tail --
-    a mid-minute flush wrote what it had, `store.put` replaced the object, and
-    the frames that arrived afterwards were written alone when the minute
-    closed. `test_a_mid_minute_flush_does_not_replace_the_minute_with_its_tail`
-    proves the mechanism and guards the fix.
+    Before [[REQ-NRT-PARITY]], `FrameArchive.flush` replaced a minute with its
+    own tail: a mid-minute flush wrote what it had, `store.put` replaced the
+    object, and the frames arriving afterwards were written alone when the
+    minute closed. Measured then, on a segment captured from the deployment:
+    **45 of 45** minutes short, between 19 and 465 frames missing from the start
+    of each, the worst holding 274 of 744.
 
-    So every one of these forty-five minutes holds a clean *suffix*: the
-    aggregate trade ids inside each object are contiguous and end where the live
-    bar ends, and begin later than it begins. This test pins that shape, because
-    it is the only thing this fixture can honestly demonstrate -- and because a
-    later capture that still looks like this would mean the fix did not take.
+    This segment was captured after the fix, from the same deployment. Every
+    minute now begins where its bar begins.
+
+    The end is allowed to be one short. That is the ordinary skew between
+    receipt and event time at a boundary -- a trade at `:59.99` can be received
+    at `:00.01` and archived under the next minute -- and it is a measured
+    distribution rather than a chosen tolerance.
     """
     live = {int(row["open_time_ns"]) // MINUTE_NS: row for row in _live_bars()}
-    short = 0
+    checked = 0
     for path in sorted((FIXTURES / "frames").glob("*.jsonl.gz")):
         frames = read_frames(path.read_bytes())
         ids = [json.loads(frame)["data"]["a"] for _at, frame in frames]
-        assert ids == list(range(ids[0], ids[0] + len(ids))), (
-            f"{path.name} has gaps inside it; this fixture's loss is a lost prefix, "
-            "not scattered frames"
-        )
-        minute = frames[0][0] // MINUTE_NS
-        row = live.get(minute)
+        assert ids == list(range(ids[0], ids[0] + len(ids))), f"{path.name} has gaps inside it"
+        row = live.get(frames[0][0] // MINUTE_NS)
         if row is None:
             continue
-        # Measured across all forty-five: 19 to 465 frames missing at the start,
-        # and nought or one at the end. The end is the ordinary skew between
-        # receipt and event time at a minute boundary -- a trade at :59.99 can
-        # be received at :00.01 and archived under the next minute. The start is
-        # the overwrite.
-        assert int(row["last_trade_id"]) - ids[-1] <= 1, (
-            f"{path.name} is short at its END by "
-            f"{int(row['last_trade_id']) - ids[-1]}; the loss here was a prefix"
+        # Measured across all thirty minutes of this segment: the start offset
+        # is -1 or 0 and the end offset 0 or 1. At most one trade either side,
+        # in either direction, which is the receipt/event skew at a boundary and
+        # not a loss. Before the fix the start offset ran from 19 to 465, always
+        # positive -- the archive beginning late is the whole signature.
+        start_offset = ids[0] - int(row["first_trade_id"])
+        end_offset = int(row["last_trade_id"]) - ids[-1]
+        assert -1 <= start_offset <= 1, (
+            f"{path.name} starts {start_offset} trades from its bar; the archive is "
+            "losing the beginning of the minute again"
         )
-        assert ids[0] > int(row["first_trade_id"]), f"{path.name} is not short at its start"
-        short += 1
-    assert short == 45, f"{short} of 45 minutes are short; the fixture is pre-fix evidence"
+        assert -1 <= end_offset <= 1, f"{path.name} ends {end_offset} trades from its bar"
+        checked += 1
+    assert checked == _manifest()["minutes"], f"only {checked} minutes were checked"
+
+
+# --- §35.5's own assertion: feature, channel and signal parity ---------------
+#
+# These run against the whole chain: frames -> bars -> channels -> signals. They
+# cannot pass on a fixture captured from the broken archive, which is why
+# REQ-NRT-PARITY waits for a segment taken after the fix.
+
+LOOKBACK = 20
+
+
+def _live_as_bars() -> list:
+    """The live rows rebuilt as `Bar`s, so both sides feed the same code.
+
+    Every field the plane stores comes straight from the row. `is_final` is the
+    one it does not: the canonical plane holds finalized bars only, so a stored
+    bar is final by definition and reconstructing it as anything else would be
+    inventing a state the row never had.
+    """
+    from channelflow.bars import Bar
+
+    return [Bar(is_final=True, **row) for row in _live_bars()]
+
+
+def _inside(bars: list) -> list:
+    manifest = _manifest()
+    return sorted(
+        (
+            bar
+            for bar in bars
+            if manifest["window_start_ns"] <= bar.open_time_ns
+            and bar.close_time_ns <= manifest["window_end_ns"]
+        ),
+        key=lambda bar: bar.open_time_ns,
+    )
+
+
+def _channels(bars: list) -> list:
+    """One snapshot per moment the model can answer about."""
+    return [
+        RollingOLSChannel(lookback=LOOKBACK).fit(
+            bars[: index + 1], as_of_ns=bars[index].close_time_ns
+        )
+        for index in range(LOOKBACK - 1, len(bars))
+    ]
+
+
+def _signals(bars: list, snapshots: list) -> list:
+    machine = SignalMachine()
+    seen = []
+    for bar, snapshot in zip(bars[LOOKBACK - 1 :], snapshots, strict=True):
+        candidate = machine.on_bar(bar, snapshot)
+        if candidate is not None:
+            seen.append((bar.close_time_ns, candidate.state, candidate.side))
+    return seen
+
+
+@pytest.mark.trace("REQ-NRT-PARITY")
+def test_the_replayed_bars_are_the_live_bars(replayed: list) -> None:
+    """§35.5 step three, on the bars themselves."""
+    live = _live_as_bars()
+    mine = _inside(replayed)
+    assert len(live) == len(mine) > 0, f"live {len(live)}, replay {len(mine)}"
+    differences = []
+    for theirs, ours in zip(live, mine, strict=True):
+        for field in ("open_time_ns", "open", "high", "low", "close", "volume_base", "trade_count"):
+            if getattr(theirs, field) != getattr(ours, field):
+                differences.append(
+                    f"minute {theirs.open_time_ns}, {field}: "
+                    f"live {getattr(theirs, field)!r}, replay {getattr(ours, field)!r}"
+                )
+    assert differences == [], "\n".join(differences[:8])
+
+
+@pytest.mark.trace("REQ-NRT-PARITY")
+def test_the_channels_fitted_over_each_are_identical(replayed: list) -> None:
+    live = _channels(_live_as_bars())
+    mine = _channels(_inside(replayed))
+    assert len(live) == len(mine) > 0
+    for theirs, ours in zip(live, mine, strict=True):
+        assert theirs == ours, f"at {theirs.as_of_ns}: live {theirs}, replay {ours}"
+
+
+@pytest.mark.trace("REQ-NRT-PARITY")
+def test_the_signals_are_the_same_in_the_same_order(replayed: list) -> None:
+    """Fewer fails, and so does more."""
+    live_bars, mine_bars = _live_as_bars(), _inside(replayed)
+    live = _signals(live_bars, _channels(live_bars))
+    mine = _signals(mine_bars, _channels(mine_bars))
+    assert live == mine, f"live {live}\nreplay {mine}"

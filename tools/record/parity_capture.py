@@ -98,14 +98,35 @@ def main() -> None:
         if not token:
             break
     keys.sort()
-    if len(keys) < args.minutes + 2:
-        raise SystemExit(f"only {len(keys)} archived minutes; need {args.minutes + 2}")
+    if len(keys) < args.minutes + 22:
+        raise SystemExit(f"only {len(keys)} archived minutes; need {args.minutes + 22}")
 
-    # One minute of margin at each end: the first and last are where a bar can
-    # span the boundary, and a fixture that included them would be asking the
-    # replay to reproduce trades it was never given.
-    chosen = keys[-(args.minutes + 1) : -1]
-    print(f"{len(keys)} archived minutes; taking {len(chosen)}: {chosen[0]} .. {chosen[-1]}")
+    # Margin at both ends, for two different reasons.
+    #
+    # At the start, because a bar can span the boundary and a fixture beginning
+    # mid-bar would ask the replay to reproduce trades it was never given.
+    #
+    # At the end, because the bar builder finalizes a minute when a trade
+    # arrives after it -- so the last compared minute needs a successor whose
+    # frames close it. Without one the replay produces one bar fewer than the
+    # live run, which looks like a parity failure and is a fixture that stops
+    # one minute too soon.
+    # And a third margin, at the newest end. The bar sink commits on a cadence
+    # (`FLUSH_EVERY_BARS`), so the most recent minutes have frames in the
+    # archive and no bar in the plane yet -- measured: the last three of a
+    # window taken up to the present. Backing off by the cadence plus a little
+    # means every compared minute has both halves.
+    from channelflow.pipeline.ingest import FLUSH_EVERY_BARS  # noqa: PLC0415
+
+    settle = FLUSH_EVERY_BARS + 3
+    end = -(settle + 1)
+    chosen = keys[end - (args.minutes + 1) : end]
+    compared = chosen[:-1]
+    print(
+        f"{len(keys)} archived minutes; taking {len(chosen)} "
+        f"({len(compared)} compared, one trailing to close the last bar): "
+        f"{chosen[0]} .. {chosen[-1]}"
+    )
 
     FIXTURES.mkdir(parents=True, exist_ok=True)
     frames_dir = FIXTURES / "frames"
@@ -122,8 +143,8 @@ def main() -> None:
     store = open_catalog(uri=settings.catalog_uri, warehouse=settings.warehouse, **storage)
     rows = store.load_table("channelflow.bars").scan().to_arrow().to_pylist()
 
-    first_ns = _minute_ns(chosen[0])
-    last_ns = _minute_ns(chosen[-1]) + MINUTE_NS
+    first_ns = _minute_ns(compared[0])
+    last_ns = _minute_ns(compared[-1]) + MINUTE_NS
     inside = [
         row
         for row in rows
@@ -136,6 +157,18 @@ def main() -> None:
     if not inside:
         raise SystemExit("no live bars inside the window; the plane holds none for it")
 
+    # Refuse a fixture that cannot be compared. A window missing a bar would
+    # fail the parity test for a reason that is about the capture rather than
+    # about the replay, and somebody would spend a morning on it.
+    have = {int(row["open_time_ns"]) // MINUTE_NS for row in inside}
+    want = set(range(first_ns // MINUTE_NS, last_ns // MINUTE_NS))
+    if have != want:
+        raise SystemExit(
+            f"{len(want - have)} of {len(want)} window minutes have no live bar: "
+            f"{sorted(want - have)[:5]}. The sink commits on a cadence; capture "
+            "further back from the present"
+        )
+
     (FIXTURES / "bars.jsonl").write_text(
         "".join(json.dumps(_plain(row), sort_keys=True) + "\n" for row in inside)
     )
@@ -144,13 +177,15 @@ def main() -> None:
             {
                 "venue": args.venue,
                 "symbol": args.symbol,
-                "minutes": len(chosen),
+                "minutes": len(compared),
+                "objects": len(chosen),
                 "window_start_ns": first_ns,
                 "window_end_ns": last_ns,
                 "frames_bytes": total,
                 "live_bars": len(inside),
                 "first_object": Path(chosen[0]).name,
                 "last_object": Path(chosen[-1]).name,
+                "last_compared_object": Path(compared[-1]).name,
             },
             indent=2,
             sort_keys=True,

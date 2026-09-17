@@ -5,7 +5,7 @@ type: constraint
 prd_ref: "§35.5"
 prd_lines: "4889-4895"
 phase: null
-status: specified
+status: implemented
 depends_on: [REQ-WP-066, REQ-NRT-LEAK]
 tags: []
 hard_gated: true
