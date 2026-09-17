@@ -10,13 +10,30 @@
 
 name: CI
 
+# **One run per commit, not two.** `push` with no branch filter and
+# `pull_request` together ran the whole gate twice for every commit on a branch
+# with a PR open -- measured over forty runs at a mean of 30.5 minutes each,
+# that was half the bill. A branch is now covered by its pull request, and
+# `main` by its push, so nothing is unguarded and nothing runs twice.
 on:
   push:
+    branches: [main]
   pull_request:
+
+# A superseded run is cancelled. Two pushes a minute apart both ran to
+# completion, and only the second one's answer was ever wanted. `main` is
+# exempt: its runs are what a merge is recorded against, and cancelling one
+# would leave the claim "CI green: run N" pointing at nothing.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   gate:
     runs-on: ubuntu-latest
+    # The mean run is half an hour. A job that reaches this is stuck, and the
+    # default six hours would spend twelve times a normal run finding that out.
+    timeout-minutes: 45
 
     services:
       # Image tags match docker-compose.yml, pinned for the same reason:
@@ -47,6 +64,11 @@ jobs:
         uses: astral-sh/setup-uv@v5
         with:
           version: "0.5.11"
+          # The dependency download, kept between runs. Keyed on the lockfile,
+          # so a run that changes nothing resolves nothing. Node's half was
+          # already cached below; this is the other half.
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
 
       # The frontend gate. ADR-021 keeps these out of the pre-commit hook --
       # `npm ci` on every commit would break the property REQ-INFRA-002 exists

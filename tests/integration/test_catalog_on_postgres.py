@@ -15,12 +15,15 @@ from __future__ import annotations
 
 import os
 import uuid
+from collections.abc import Iterator
+from contextlib import suppress
 from pathlib import Path
 
 import pytest
 
 from channelflow.lakehouse import Column, IcebergTable, Schema
 from channelflow.lakehouse import catalog as open_catalog
+from channelflow.lakehouse.iceberg import NAMESPACE
 
 SECOND = 1_000_000_000
 
@@ -77,6 +80,27 @@ def stack_catalog() -> object:
         pytest.fail(f"The stack's PostgreSQL is not answering: {exc}. Run `make up`.")
 
 
+@pytest.fixture
+def table_name(stack_catalog: object) -> Iterator[str]:
+    """A fresh table per test, **dropped afterwards**.
+
+    Fresh, so one run cannot read another's rows and pass for the wrong reason.
+    Dropped, because a catalog outlives a test run: this leaked one table per
+    test for months, and the development catalog was carrying **≈300** of them
+    before anybody counted. Each is Iceberg metadata in PostgreSQL and files in
+    the bucket, and [[REQ-WP-070]] already measured what metadata costs when
+    nobody collects it -- 304.9 MB against 2.6 MB of data, in a single table.
+
+    CI never saw it and never could: its catalog is new every run. The same
+    shape as the topics `test_transport_on_redpanda.py` leaked, found the same
+    way -- by using a long-lived environment rather than a disposable one.
+    """
+    name = f"cex_trades_{uuid.uuid4().hex[:8]}"
+    yield name
+    with suppress(Exception):  # the test may never have created it
+        stack_catalog.drop_table(f"{NAMESPACE}.{name}")  # type: ignore[attr-defined]
+
+
 def _schema() -> Schema:
     return Schema(
         columns=(
@@ -95,11 +119,11 @@ def _row(index: int) -> dict[str, object]:
 @pytest.mark.integration
 @pytest.mark.trace("REQ-WP-041")
 def test_a_table_commits_reads_and_time_travels_through_the_stack_catalog(
-    stack_catalog: object,
+    stack_catalog: object, table_name: str
 ) -> None:
     """The whole claim, against the database it was made about."""
     table = IcebergTable(
-        name=f"cex_trades_{uuid.uuid4().hex[:8]}",
+        name=table_name,
         schema=_schema(),
         catalog=stack_catalog,  # type: ignore[arg-type]
     )
@@ -116,11 +140,13 @@ def test_a_table_commits_reads_and_time_travels_through_the_stack_catalog(
 
 @pytest.mark.integration
 @pytest.mark.trace("REQ-WP-041")
-def test_an_earlier_read_is_unchanged_by_a_later_commit(stack_catalog: object) -> None:
+def test_an_earlier_read_is_unchanged_by_a_later_commit(
+    stack_catalog: object, table_name: str
+) -> None:
     """Point-in-time safety is why the plane exists, so it is checked wherever
     the plane is asked to live."""
     table = IcebergTable(
-        name=f"cex_trades_{uuid.uuid4().hex[:8]}",
+        name=table_name,
         schema=_schema(),
         catalog=stack_catalog,  # type: ignore[arg-type]
     )

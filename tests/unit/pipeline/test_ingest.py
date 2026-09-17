@@ -46,6 +46,7 @@ FIXTURE = (
 RECORDED: list[str] = FIXTURE.read_text().splitlines()
 
 SECOND_NS = 1_000_000_000
+MINUTE_NS = 60 * SECOND_NS
 BASE_NS = 1789000000_000_000_000
 
 
@@ -554,3 +555,63 @@ def test_a_written_object_is_not_written_again(tmp_path: Path) -> None:
     assert len(objects) == 2
     contents = [[frame for _, frame in read_frames(o.read_bytes())] for o in objects]
     assert sorted(contents) == [["first"], ["second"]]
+
+
+# --- the archive keeps a whole minute, not its tail (REQ-NRT-PARITY) ---------
+
+
+@pytest.mark.trace("REQ-NRT-PARITY")
+def test_a_mid_minute_flush_does_not_replace_the_minute_with_its_tail(
+    tmp_path: Path,
+) -> None:
+    """PRD §35.5 found this, and it is what §35.5 was written to find.
+
+    `flush` writes what is buffered under the minute's key, and `store.put`
+    replaces an object. So a flush in the middle of a minute, followed by more
+    frames in that same minute, used to leave the minute holding only what
+    arrived after the flush -- the earlier frames written, then overwritten.
+
+    Measured on a live deployment before the fix: **45 of 45** archived minutes
+    held fewer frames than the bars built from them, one of them 274 where the
+    bar counted 744. The aggregate trade ids inside each object were contiguous
+    and ended where the bar ended, so each object was a clean *suffix* of its
+    minute.
+
+    That matters more than a count. §6.4.4's raw tier exists so a later build can
+    re-normalize what this one could not read ([[REQ-WP-066]] archives before it
+    decides anything), and a tier that silently holds a third of each minute
+    cannot do that.
+    """
+    archive = FrameArchive(store=LocalObjectStore(root=tmp_path), venue="binance")
+    minute = BASE_NS - BASE_NS % MINUTE_NS
+
+    for index in range(5):
+        archive.add(received_at_ns=minute + index, frame=f'{{"n":{index}}}')
+    archive.flush()
+    for index in range(5, 10):
+        archive.add(received_at_ns=minute + index, frame=f'{{"n":{index}}}')
+    archive.flush()
+    for index in range(10, 13):
+        archive.add(received_at_ns=minute + index, frame=f'{{"n":{index}}}')
+    archive.add(received_at_ns=minute + MINUTE_NS, frame='{"n":"next minute"}')
+
+    key = archive.key_for(minute)
+    kept = read_frames((tmp_path / key).read_bytes())
+    assert [frame for _at, frame in kept] == [f'{{"n":{i}}}' for i in range(13)]
+
+
+@pytest.mark.trace("REQ-NRT-PARITY")
+def test_a_minute_that_has_rolled_is_not_held_for_ever(tmp_path: Path) -> None:
+    """The held copy is released when the minute closes.
+
+    Otherwise a daemon that runs for days accumulates every frame it ever saw.
+    """
+    archive = FrameArchive(store=LocalObjectStore(root=tmp_path), venue="binance")
+    minute = BASE_NS - BASE_NS % MINUTE_NS
+    for step in range(4):
+        at = minute + step * MINUTE_NS
+        archive.add(received_at_ns=at, frame=f'{{"m":{step}}}')
+        archive.flush()
+        archive.add(received_at_ns=at + 1, frame=f'{{"m":{step}b}}')
+    archive.add(received_at_ns=minute + 9 * MINUTE_NS, frame='{"m":"last"}')
+    assert len(archive._held) <= 1, f"holding {len(archive._held)} minutes at once"

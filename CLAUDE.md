@@ -77,8 +77,13 @@ Two catch people out most:
   claimed, because `test_a_refusal_is_only_available_to_a_feature_that_names_no_moment`
   inspects every such producer and fails if one takes `at_ns` or `as_of_ns`. That
   test is what stops the mechanism becoming the requirement.
-  §35.5 (live/replay parity) is the remaining section of this family with no
-  note; `REQ-NRT-E` covers replay parity for extrema only.
+  §35.5 followed on 2026-09-17 as `REQ-NRT-PARITY`, so every section of this
+  family now has a requirement and a test: §13A.28's A-F, §35.3, §35.4 and
+  §35.5. It is not `REQ-NRT-E` restated — that runs `detector().run(history)`
+  twice in one process over extrema only, which proves determinism; §35.5
+  replays a segment captured from a live socket, and on its first capture found
+  that `FrameArchive.flush` had been replacing each archived minute with its own
+  tail (45 of 45 minutes short, one holding 274 frames of 744).
 
 ## Traceability
 

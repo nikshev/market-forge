@@ -1,0 +1,13 @@
+{
+  "first_object": "0653.jsonl.gz",
+  "frames_bytes": 228345,
+  "last_compared_object": "0722.jsonl.gz",
+  "last_object": "0723.jsonl.gz",
+  "live_bars": 30,
+  "minutes": 30,
+  "objects": 31,
+  "symbol": "BTCUSDT",
+  "venue": "binance",
+  "window_end_ns": 1789629780000000000,
+  "window_start_ns": 1789627980000000000
+}
