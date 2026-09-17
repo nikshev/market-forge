@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "§5.1, §31, §29.4, §28.2"
 prd_lines: "289-313, 4698-4711, 4647-4651, 4475-4487"
 phase: null
-status: specified
+status: planned
 depends_on: [REQ-TBL-001, REQ-WP-066]
 tags: [timeframes]
 ---
@@ -95,7 +95,7 @@ that is also the UTC boundary, because each divides a day evenly.
 
 <!-- trace:begin -->
 - **Specs:** [[SPEC-117-timeframe-resampling]]
-- **Outcomes:** [[OUT-2026-09-17-spec-timeframe-resampling]]
+- **Outcomes:** [[OUT-2026-09-17-plan-timeframe-resampling]], [[OUT-2026-09-17-spec-timeframe-resampling]]
 <!-- trace:end -->
 
 ## Notes
