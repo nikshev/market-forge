@@ -92,6 +92,128 @@ Measured before any of this existed: a table holding **2.6 MB of bar data and
 304.9 MB of metadata**, with 933 data files where its current snapshot used
 one.
 
+## On a remote host, from `git clone`
+
+Written for a fresh Linux host. Every command is one you can paste; the two
+that need `sudo` say so.
+
+### 1. What the host needs
+
+```sh
+docker --version          # 24+ ; the compose plugin comes with it
+docker compose version
+git --version
+curl -LsSf https://astral.sh/uv/install.sh | sh    # uv, for `make data-dirs`
+```
+
+Only `make data-dirs` needs Python on the host — it reads each image's uid and
+chowns the directories to match. Everything else runs in containers.
+
+### 2. Clone and configure
+
+```sh
+git clone git@github.com:nikshev/market-forge.git
+cd market-forge
+cp .env.example .env
+```
+
+**Edit `.env` before going further.** Three things matter, and the stack will
+stop and tell you about the third:
+
+| variable | change it to |
+|---|---|
+| `POSTGRES_PASSWORD`, `MINIO_ROOT_PASSWORD` | anything that is not `channelflow_dev_only` |
+| `GRAFANA_ADMIN_PASSWORD` | a password. Compose refuses to start without one — blank makes Grafana fall back to `admin` |
+| `CHANNELFLOW_DATA_DIR` | the mounted disk, e.g. `/srv/channelflow/data`. Everything stateful lives there |
+
+Leave `CHANNELFLOW_BIND_ADDRESS=127.0.0.1` alone unless you have decided a
+service should be reachable from outside the host. See "What is exposed".
+
+### 3. Prepare the data directory
+
+```sh
+make install              # a virtualenv; needed only for the next command
+sudo -E make data-dirs    # creates each directory and gives it to its service
+```
+
+`sudo` because it chowns. The five images run as five different users —
+`postgres` and `minio` as root, `redpanda` as 101, `prometheus` as 65534,
+`grafana` as 472 — and a bind mount keeps whatever the host directory already
+has. A directory one of them cannot write is a container that starts and never
+persists, or one that does not start at all.
+
+It verifies each directory **as the user the service is**, which is the only
+check that means anything: a check run as the operator would pass everywhere.
+
+### 4. Start it
+
+```sh
+make up                              # postgres and minio, waiting until healthy
+docker compose up -d --build         # everything else, built from this checkout
+docker compose ps                    # all healthy?
+```
+
+`make up` deliberately starts only the two stateful services the test suite
+needs. The second command brings up the API, the web app, the ingest daemon,
+maintenance, Prometheus and Grafana, building the four application images from
+this checkout rather than pulling a tag nobody here can reproduce.
+
+First build takes a few minutes. After it, the ingest daemon connects to Binance
+and the first bar appears about a minute later.
+
+### 5. Reach it
+
+Nothing listens on an external interface. Open an SSH tunnel from your own
+machine:
+
+```sh
+ssh -N -L 8080:127.0.0.1:8080 -L 3000:127.0.0.1:3000 user@your-host
+```
+
+| | |
+|---|---|
+| `http://localhost:8080` | the chart |
+| `http://localhost:3000` | Grafana |
+
+Add `-L 9001:127.0.0.1:9001` for the MinIO console if you want to see the
+objects.
+
+### 6. Check that it is actually working
+
+```sh
+docker compose logs --tail 20 ingest-binance     # frames arriving
+curl -s localhost:8000/readyz                    # {"ready": true, ...}
+docker compose exec -T minio sh -c 'ls /data/*/raw/cex/binance/*/*/*/ | tail -3'
+```
+
+The third is the raw archive — one gzip object per minute. If it is growing, the
+socket is connected and the frames are being kept.
+
+### Everyday commands
+
+```sh
+docker compose logs -f ingest-binance    # follow the connector
+docker compose restart api               # after a config change
+git pull && docker compose up -d --build # after an update
+make down                                # stop, keeping the data
+```
+
+**To back it up:** stop the stack and copy `CHANNELFLOW_DATA_DIR`. To move it to
+another machine, copy that directory. That is the whole procedure, and it is why
+nothing here uses a Docker named volume.
+
+**`make reset` deletes the data.** It is the only destructive command in this
+file.
+
+### If something does not start
+
+| symptom | cause |
+|---|---|
+| `required variable GRAFANA_ADMIN_PASSWORD is missing a value` | `.env` predates that variable. Add it — this is the intended refusal |
+| a container restarts forever | its data directory is not writable by its uid. Re-run `sudo -E make data-dirs` |
+| `/readyz` answers 503 | the API started and cannot read its warehouse. Check `minio` is healthy and the bucket exists |
+| the chart is empty | give it a minute. The first bar needs a minute of trades |
+
 ## Starting it
 
 ```
