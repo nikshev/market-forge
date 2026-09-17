@@ -34,7 +34,7 @@ replace = '''        self.store.put(key, gzip.compress(body.encode(), 0))'''
 
 [[mutation]]
 name = "every minute lands in one object"
-find = '''        key = self.key_for(self._minute_ns * MINUTE_NS)'''
+find = '''        key = self.key_for(minute * MINUTE_NS)'''
 replace = '''        key = self.key_for(0)'''
 
 [[mutation]]
@@ -47,3 +47,18 @@ name = "the buffer is not cleared after a write"
 find = '''        self._frames.clear()
         self._minute_ns = None'''
 replace = '''        self._minute_ns = None'''
+
+[[mutation]]
+name = "a mid-minute flush replaces the minute with its tail again"
+find = '''        whole = self._held.get(minute, []) + self._frames'''
+replace = '''        whole = list(self._frames)'''
+
+[[mutation]]
+name = "the held copy is never recorded, so the next write loses it"
+find = '''        self._held[minute] = whole'''
+replace = '''        pass'''
+
+[[mutation]]
+name = "a closed minute is held for the life of the process"
+find = '''            self._held.pop(closing, None)'''
+replace = '''            pass'''

@@ -1,6 +1,7 @@
 """PRD §6.4.4's raw zone: what the venue actually sent, kept.
 
 # @trace: REQ-WP-066
+# @trace: REQ-NRT-PARITY
 
 §6.4.4 lays out `s3://channel-flow/raw/cex/...` and line 642 says plainly that
 raw immutable payloads "may remain plain compressed objects/Parquet when Iceberg
@@ -98,6 +99,11 @@ class FrameArchive:
     _minute_ns: int | None = None
     _frames: list[tuple[int, str]] = field(default_factory=list)
     _written: list[str] = field(default_factory=list)
+    #: What a partial write already put under each minute's key. A `flush` in
+    #: the middle of a minute writes what it has; the frames that arrive after
+    #: it belong to the same object, and writing only those would replace the
+    #: minute with its own tail ([[REQ-NRT-PARITY]]).
+    _held: dict[int, list[tuple[int, str]]] = field(default_factory=dict)
 
     @property
     def pending(self) -> int:
@@ -120,7 +126,11 @@ class FrameArchive:
             )
         written = None
         if self._minute_ns is not None and minute != self._minute_ns:
+            closing = self._minute_ns
             written = self.flush()
+            # The minute is over; nothing can be appended to it again, so its
+            # held copy is released rather than kept for the life of the process.
+            self._held.pop(closing, None)
         self._minute_ns = minute
         self._frames.append((received_at_ns, frame))
         return written
@@ -134,12 +144,20 @@ class FrameArchive:
         """
         if not self._frames or self._minute_ns is None:
             return None
-        key = self.key_for(self._minute_ns * MINUTE_NS)
+        minute = self._minute_ns
+        key = self.key_for(minute * MINUTE_NS)
+        # Everything this minute has had, not only what arrived since the last
+        # write. `store.put` replaces an object, so a mid-minute flush followed
+        # by more frames in the same minute used to leave the minute holding its
+        # own tail -- measured on a live deployment at 45 of 45 minutes short,
+        # one of them by 465 frames of 744 ([[REQ-NRT-PARITY]], PRD §35.5).
+        whole = self._held.get(minute, []) + self._frames
         body = "\n".join(
             json.dumps({"received_at_ns": at, "frame": frame}, separators=(",", ":"))
-            for at, frame in self._frames
+            for at, frame in whole
         )
         self.store.put(key, gzip.compress(body.encode(), GZIP_LEVEL))
+        self._held[minute] = whole
         self._frames.clear()
         self._minute_ns = None
         self._written.append(key)
