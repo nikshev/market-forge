@@ -106,3 +106,80 @@ def test_the_fast_gate_deselects_exactly_the_integration_tests() -> None:
         f"the fast gate drops non-integration tests: "
         f"{sorted(n for n in dropped if 'tests/integration/' not in n)}"
     )
+
+
+# --- the light docs gate, and what keeps it honest (REQ-INFRA-002) -----------
+
+CI_WORKFLOW = REPO / ".github/workflows/ci.yml"
+DOCS_WORKFLOW = REPO / ".github/workflows/docs.yml"
+
+
+def _triggers(path: Path) -> dict:
+    parsed = yaml.safe_load(path.read_text())
+    # PyYAML reads a bare `on:` key as the boolean True.
+    return parsed[True] if True in parsed else parsed["on"]
+
+
+@pytest.mark.trace("REQ-INFRA-002")
+def test_the_two_workflows_carve_the_repository_in_two() -> None:
+    """Complementary filters, checked rather than maintained in parallel.
+
+    `ci.yml` ignores `docs/**` and `docs.yml` takes exactly it. Two filters that
+    can disagree will: widen one and a path runs twice, narrow it and a path
+    runs nowhere. The second is the dangerous direction, and it is silent.
+    """
+    heavy = _triggers(CI_WORKFLOW)
+    light = _triggers(DOCS_WORKFLOW)
+    for event in ("push", "pull_request"):
+        ignored = heavy[event]["paths-ignore"]
+        taken = light[event]["paths"]
+        assert ignored == taken, (
+            f"{event}: ci.yml ignores {ignored} and docs.yml takes {taken}; "
+            "a path in neither runs in no gate at all"
+        )
+
+
+@pytest.mark.trace("REQ-INFRA-002")
+def test_both_workflows_name_their_job_the_same() -> None:
+    """A branch protection rule requires a check by name, and one change runs
+    only one of these two. Different names would block every docs-only PR."""
+    heavy = yaml.safe_load(CI_WORKFLOW.read_text())["jobs"]
+    light = yaml.safe_load(DOCS_WORKFLOW.read_text())["jobs"]
+    assert list(heavy) == list(light) == ["gate"]
+
+
+@pytest.mark.trace("REQ-INFRA-002")
+def test_the_light_gate_runs_the_checks_that_need_no_services() -> None:
+    """It may skip the stack. It may not skip what costs nothing to run."""
+    light = yaml.safe_load(DOCS_WORKFLOW.read_text())
+    targets: set[str] = set()
+    for job in light["jobs"].values():
+        for step in job.get("steps", []):
+            targets.update(re.findall(r"\bmake ([a-z-]+)", str(step.get("run", ""))))
+    assert {"lint", "test-fast"} <= targets, f"the docs gate runs only {sorted(targets)}"
+
+
+@pytest.mark.trace("REQ-INFRA-002")
+def test_the_light_gate_does_not_pretend_to_run_the_full_one() -> None:
+    """`make validate` needs `markers`, which needs the suite and a stack.
+
+    Claiming it here would make the docs gate the half-hour it exists to avoid,
+    and skipping it quietly would leave R8 unchecked for a file that carries a
+    trace marker. The honest arrangement is the one in place: the graph's
+    exposure to a docs edit is covered by a fast test, and that is asserted
+    where somebody changing this file will read it.
+    """
+    parsed = yaml.safe_load(DOCS_WORKFLOW.read_text())
+    targets: set[str] = set()
+    for job in parsed["jobs"].values():
+        for step in job.get("steps", []):
+            targets.update(re.findall(r"\bmake ([a-z-]+)", str(step.get("run", ""))))
+    # Read from the steps, not the file: the comment above them explains why
+    # `validate` is absent, and a check on the raw text would trip on its own
+    # explanation.
+    assert "validate" not in targets
+    assert "test" not in targets, "the full suite needs services this job has none of"
+    stands_in = "test_every_trace_marker_in_docs_names_a_real_requirement"
+    assert stands_in in DOCS_WORKFLOW.read_text(), (
+        "the docs gate must name the fast test that stands in for `make validate`"
+    )
