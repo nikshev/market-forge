@@ -139,7 +139,10 @@ the table before and after.
   assembled from the one-minute series for the same venue and symbol.
 - **FR-002**: The set of timeframes MUST come from configuration. No component
   may carry the set as a constant — not the producer, not the read API, not the
-  frontend.
+  frontend. **The frontend's half is out of scope here**: §28 lists no endpoint
+  carrying the set, and deciding that API surface belongs with [[REQ-WP-075]],
+  the view that needs it. This feature must not make that harder, and must not
+  quietly satisfy it with a second list.
 - **FR-003**: A resampled bar's fields MUST equal the aggregation of its source
   minutes as stated in User Story 2.
 - **FR-004**: A higher-timeframe bar MUST be produced only when every source
@@ -179,8 +182,16 @@ the table before and after.
 - **SC-003**: Adding a timeframe requires changing configuration only, measured
   by the diff needed to add 4h: no source file changes.
 - **SC-004**: A second resampling pass over unchanged input changes zero rows.
-- **SC-005**: A chart opened at each configured timeframe shows candles rather
-  than a failed load — the outcome a reader of this system actually sees.
+- **SC-005**: `GET /api/v1/bars` answers with a series for each configured
+  timeframe on the running deployment, where before this feature only the
+  one-minute request did.
+
+**What SC-005 deliberately does not say.** An earlier draft asked that "a chart
+opened at each configured timeframe shows candles". That cannot be satisfied
+here: the chart builds its request from a constant rather than from the link's
+`tf`, which is [[REQ-WP-074]]. Leaving it as a success criterion would have made
+this feature's completion depend on another requirement's code, and the honest
+place for that outcome is the requirement that fixes it.
 
 ## Assumptions
 

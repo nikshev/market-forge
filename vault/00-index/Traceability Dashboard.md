@@ -872,6 +872,7 @@ graph LR
   OUT_2026_09_17_plan_timeframe_resampling["OUT-2026-09-17-plan-timeframe-resampling"]
   OUT_2026_09_17_spec_live_replay_parity["OUT-2026-09-17-spec-live-replay-parity"]
   OUT_2026_09_17_spec_timeframe_resampling["OUT-2026-09-17-spec-timeframe-resampling"]
+  OUT_2026_09_17_tasks_timeframe_resampling["OUT-2026-09-17-tasks-timeframe-resampling"]
   PRD["PRD: ChannelFlow PRD"]
   REQ_API_001["REQ-API-001: Read API for bars, channel snapshots, signals and live updates"]
   REQ_ASSET_001["REQ-ASSET-001: Asset identity and cross-venue instrument registry"]
@@ -5042,6 +5043,7 @@ graph LR
   OUT_2026_09_17_plan_timeframe_resampling -.->|RECORDS| REQ_WP_073
   OUT_2026_09_17_spec_live_replay_parity -.->|RECORDS| REQ_NRT_PARITY
   OUT_2026_09_17_spec_timeframe_resampling -.->|RECORDS| REQ_WP_073
+  OUT_2026_09_17_tasks_timeframe_resampling -.->|RECORDS| REQ_WP_073
   SPEC_001_traceability_tooling ==>|SPECIFIES| REQ_INFRA_001
   SPEC_002_project_bootstrap ==>|SPECIFIES| REQ_WP_001
   SPEC_003_ci_full_gate ==>|SPECIFIES| REQ_INFRA_002

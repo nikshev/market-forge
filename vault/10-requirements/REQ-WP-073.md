@@ -95,7 +95,7 @@ that is also the UTC boundary, because each divides a day evenly.
 
 <!-- trace:begin -->
 - **Specs:** [[SPEC-117-timeframe-resampling]]
-- **Outcomes:** [[OUT-2026-09-17-plan-timeframe-resampling]], [[OUT-2026-09-17-spec-timeframe-resampling]]
+- **Outcomes:** [[OUT-2026-09-17-plan-timeframe-resampling]], [[OUT-2026-09-17-spec-timeframe-resampling]], [[OUT-2026-09-17-tasks-timeframe-resampling]]
 <!-- trace:end -->
 
 ## Notes

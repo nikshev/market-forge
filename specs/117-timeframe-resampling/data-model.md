@@ -82,9 +82,23 @@ A refusal is produced **only** for a window that is closed and incomplete. A
 window still in progress is not refused, because nothing about it is wrong yet;
 it is simply not this pass's business.
 
+## `ResampleResult`
+
+What `resample` returns. Pure: it knows nothing about a table.
+
+| field | type | meaning |
+|---|---|---|
+| `bars` | `tuple[Bar, ...]` | complete, closed windows not already present, in `open_time_ns` order |
+| `refusals` | `tuple[Refusal, ...]` | closed windows that could not be built |
+| `skipped` | `int` | closed, complete windows already present |
+
 ## `ResampleReport`
 
-What one pass did, for one `(venue, symbol, timeframe)`.
+What one pass did, for one `(venue, symbol, timeframe)`. **Distinct from
+`ResampleResult` above**, and named closely enough to be worth stating why: the
+result is what the pure function computed, the report is what the process
+actually committed and printed. A pass can compute ten bars and commit them, or
+compute ten and fail to append — one type cannot honestly carry both.
 
 | field | type | meaning |
 |---|---|---|
