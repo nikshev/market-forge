@@ -2,7 +2,7 @@
 id: OUT-2026-09-23-implement-chart-timeframe-control
 step: implement
 records: [REQ-WP-074]
-commit: null
+commit: d8edd11b36c97fd02c6e8b84a72b34138ba76648
 ---
 
 ## What was done
