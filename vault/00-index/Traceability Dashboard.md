@@ -896,6 +896,7 @@ graph LR
   OUT_2026_09_23_spec_markets_route["OUT-2026-09-23-spec-markets-route"]
   OUT_2026_09_23_spec_opencode_agent_workflow["OUT-2026-09-23-spec-opencode-agent-workflow"]
   OUT_2026_09_23_tasks_chart_timeframe_control["OUT-2026-09-23-tasks-chart-timeframe-control"]
+  OUT_2026_09_23_tasks_markets_route["OUT-2026-09-23-tasks-markets-route"]
   PRD["PRD: ChannelFlow PRD"]
   REQ_API_001["REQ-API-001: Read API for bars, channel snapshots, signals and live updates"]
   REQ_ASSET_001["REQ-ASSET-001: Asset identity and cross-venue instrument registry"]
@@ -5163,6 +5164,7 @@ graph LR
   OUT_2026_09_23_spec_markets_route -.->|RECORDS| REQ_WP_075
   OUT_2026_09_23_spec_opencode_agent_workflow -.->|RECORDS| REQ_INFRA_005
   OUT_2026_09_23_tasks_chart_timeframe_control -.->|RECORDS| REQ_WP_074
+  OUT_2026_09_23_tasks_markets_route -.->|RECORDS| REQ_WP_075
   SPEC_001_traceability_tooling ==>|SPECIFIES| REQ_INFRA_001
   SPEC_002_project_bootstrap ==>|SPECIFIES| REQ_WP_001
   SPEC_003_ci_full_gate ==>|SPECIFIES| REQ_INFRA_002

@@ -4,7 +4,7 @@ Two new modules and one changed function. No backend interface changes: the
 view consumes `GET /api/v1/markets` (already served) and
 `GET /api/v1/timeframes` ([[REQ-WP-074]]).
 
-## `src/markets.ts` (new)
+## `src/types.ts` (changed)
 
 ```ts
 export interface MarketOut {
@@ -15,7 +15,13 @@ export interface MarketOut {
   rank_score: number | null;
   confidence: number | null;
 }
+```
 
+The existing home for wire shapes (`BarOut`, `ChannelOut`, …).
+
+## `src/markets.ts` (new)
+
+```ts
 export function marketHref(venue: string, symbol: string, token: string): string;
 export function scoreLabel(value: number | null): string;
 ```

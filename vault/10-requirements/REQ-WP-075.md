@@ -69,7 +69,7 @@ found weak"; a view that renders a null as `0.00` undoes that at the last step.
 
 <!-- trace:begin -->
 - **Specs:** [[SPEC-120-markets-route]]
-- **Outcomes:** [[OUT-2026-09-23-plan-markets-route]], [[OUT-2026-09-23-spec-markets-route]]
+- **Outcomes:** [[OUT-2026-09-23-plan-markets-route]], [[OUT-2026-09-23-spec-markets-route]], [[OUT-2026-09-23-tasks-markets-route]]
 <!-- trace:end -->
 
 ## Notes
