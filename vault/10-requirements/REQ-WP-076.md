@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "§5.2, §6.2"
 prd_lines: "315-319, 405-420"
 phase: null
-status: draft
+status: specified
 depends_on: [REQ-WP-066]
 tags: []
 ---
@@ -65,7 +65,8 @@ and connection rules come from. They are not assumed to match Binance's.
 ## Trace
 
 <!-- trace:begin -->
-_No linked artifacts yet._
+- **Specs:** [[SPEC-121-multi-venue-ingest]]
+- **Outcomes:** [[OUT-2026-09-23-spec-multi-venue-ingest]]
 <!-- trace:end -->
 
 ## Notes
