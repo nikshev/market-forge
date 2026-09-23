@@ -100,3 +100,58 @@ def test_object_store_lists_buckets() -> None:
         f"bucket {env['MINIO_BUCKET']!r} is missing; `make up` should create it."
         f" Found: {sorted(buckets)}"
     )
+
+
+def _get(url: str) -> tuple[int, str, str]:
+    """Status, content type and body, or a failure naming the stack."""
+    import urllib.error
+    import urllib.request
+
+    try:
+        with urllib.request.urlopen(url, timeout=5) as response:
+            return response.status, response.headers.get("content-type", ""), response.read().decode()
+    except OSError as exc:
+        pytest.fail(f"{url} did not answer: {exc}. Run `docker compose up -d --build`.")
+
+
+@pytest.mark.integration
+@pytest.mark.trace("REQ-WP-075")
+def test_the_markets_route_reaches_the_bundle() -> None:
+    """`/markets` is served the application, not a 404 (REQ-WP-075).
+
+    The view itself is exercised by the web suite; what only the deployment can
+    show is that the route is *reachable* -- nginx falls back to `index.html`,
+    and a static server that 404s `/markets` would make the feature unreachable
+    however correct the bundle is.
+    """
+    env = _env()
+    base = f"http://127.0.0.1:{env['WEB_PORT']}"
+
+    for path in ("/", "/markets"):
+        status, content_type, body = _get(f"{base}{path}")
+        assert status == 200, f"{path} answered {status}"
+        assert "text/html" in content_type, f"{path} answered {content_type!r}"
+        assert '<div id="root">' in body, f"{path} did not serve the application shell"
+
+
+@pytest.mark.integration
+@pytest.mark.trace("REQ-WP-075")
+def test_the_markets_read_has_the_shape_the_view_consumes() -> None:
+    """§28.1's read, as the markets view reads it (REQ-WP-075).
+
+    The rows' field names are the contract between the bundle and the API. The
+    list may legitimately be empty -- this deployment's is -- and an empty list
+    is asserted as a valid answer rather than treated as a failure.
+    """
+    import json
+
+    env = _env()
+    status, content_type, body = _get(f"http://127.0.0.1:{env['API_PORT']}/api/v1/markets")
+
+    assert status == 200
+    assert "application/json" in content_type
+    markets = json.loads(body)["markets"]
+    for row in markets:
+        assert {"venue", "symbol", "market_type", "setup_score", "rank_score", "confidence"} <= set(row)
+        for field in ("setup_score", "rank_score", "confidence"):
+            assert row[field] is None or isinstance(row[field], (int, float)), (field, row[field])

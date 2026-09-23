@@ -1,5 +1,6 @@
 // @trace: REQ-WP-009
 // @trace: REQ-WP-074
+// @trace: REQ-WP-075
 //
 // A typed client for PRD section 28. Every call reports a failure as a value
 // rather than throwing into a render: FR-016 says a failed load must never be
@@ -9,6 +10,7 @@
 
 import type {
   BarOut,
+  MarketOut,
   DexDepthResponse,
   ChannelMode,
   ChannelOut,
@@ -109,6 +111,15 @@ export function fetchTimeframes(): Promise<
   Result<{ timeframes: { token: string; timeframe_ns: number }[] }>
 > {
   return get("/api/v1/timeframes", {});
+}
+
+/** PRD §28.1's list, in §43's rank order (REQ-WP-075).
+ *
+ * The rows arrive in the order the view must render them; null scores stay
+ * null, because "unscored" and "scored zero" are different claims.
+ */
+export function fetchMarkets(): Promise<Result<{ markets: MarketOut[] }>> {
+  return get("/api/v1/markets", {});
 }
 
 export function fetchChannel(params: {

@@ -201,8 +201,15 @@ ssh -N -L 8080:127.0.0.1:8080 -L 3000:127.0.0.1:3000 user@your-host
 
 | | |
 |---|---|
-| `http://localhost:8080` | the chart |
+| `http://localhost:8080` | the markets overview (also `/markets`) |
+| `http://localhost:8080/chart/binance/BTCUSDT?tf=15m` | a chart at a timeframe; PRD §27.1's deep link |
 | `http://localhost:3000` | Grafana |
+
+Every other path serves the same bundle and shows where a chart can be opened
+(`nginx.conf` falls back to `index.html`), so a mistyped URL says so rather
+than 404ing. The overview is one row per market from `GET /api/v1/markets`,
+in §43's rank order ([[REQ-WP-075]]), with unscored markets shown as
+unscored rather than as zero.
 
 Add `-L 9001:127.0.0.1:9001` for the MinIO console if you want to see the
 objects.

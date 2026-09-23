@@ -1,4 +1,5 @@
 // @trace: REQ-WP-009
+// @trace: REQ-WP-075
 //
 // The wire shapes of PRD section 28, mirrored. Prices arrive as strings --
 // the API sends Decimals that way on purpose, because a price round-tripped
@@ -7,6 +8,21 @@
 export const AS_SEEN_THEN = "AS-SEEN-THEN";
 export const CURRENT_REFIT = "CURRENT REFIT";
 export type ChannelMode = typeof AS_SEEN_THEN | typeof CURRENT_REFIT;
+
+/** One market from `GET /api/v1/markets` (REQ-WP-075).
+ *
+ * The three scores are `number | null`: the API sends `null` for a market
+ * nobody has scored, and that is a different claim from zero — see
+ * `scoreLabel`, which is the one place the difference is rendered.
+ */
+export interface MarketOut {
+  venue: string;
+  symbol: string;
+  market_type: string;
+  setup_score: number | null;
+  rank_score: number | null;
+  confidence: number | null;
+}
 
 export interface BarOut {
   open_time_ns: bigint;

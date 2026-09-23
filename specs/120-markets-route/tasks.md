@@ -20,7 +20,7 @@ Frontend: `apps/web/src/`. No backend work is planned.
 
 ## Phase 1: Setup
 
-- [ ] T001 Record the baseline in the implement outcome note: visiting `/markets` on the running stack shows the placeholder ("Open a chart at /chart/&lt;venue&gt;/&lt;symbol&gt;"), because `parseDeepLink` returns `null` and `App` has no other branch; `GET /api/v1/markets` already answers
+- [x] T001 Record the baseline in the implement outcome note: visiting `/markets` on the running stack shows the placeholder ("Open a chart at /chart/&lt;venue&gt;/&lt;symbol&gt;"), because `parseDeepLink` returns `null` and `App` has no other branch; `GET /api/v1/markets` already answers
 
 ---
 
@@ -29,11 +29,11 @@ Frontend: `apps/web/src/`. No backend work is planned.
 **Purpose**: the wire shape, the client call and the two pure helpers every
 story reads.
 
-- [ ] T002 Add `MarketOut` to `apps/web/src/types.ts` with `// @trace: REQ-WP-075`: `venue`, `symbol`, `market_type` as strings and the three scores as `number | null`
-- [ ] T003 [P] Write the failing test in `apps/web/src/__tests__/api.test.ts` that `fetchMarkets` requests `/api/v1/markets` with no parameters and returns the rows unchanged — including a `null` score staying `null`, not becoming `0`
-- [ ] T004 Add `fetchMarkets` to `apps/web/src/api.ts` with `// @trace: REQ-WP-075`
-- [ ] T005 Add `apps/web/src/markets.ts` (new) with `// @trace: REQ-WP-075`: `marketHref(venue, symbol, token)` and `scoreLabel(value)`
-- [ ] T006 [P] Write the failing tests in `apps/web/src/__tests__/markets.test.ts` (new): `marketHref("binance", "BTCUSDT", "15m")` is exactly `/chart/binance/BTCUSDT?tf=15m`; a symbol needing encoding is encoded and `parseDeepLink` decodes it back; `scoreLabel(null)` is `"unscored"`; `scoreLabel(0)` is `"0.00"`; `scoreLabel(0.834)` is `"0.83"`
+- [x] T002 Add `MarketOut` to `apps/web/src/types.ts` with `// @trace: REQ-WP-075`: `venue`, `symbol`, `market_type` as strings and the three scores as `number | null`
+- [x] T003 [P] Write the failing test in `apps/web/src/__tests__/api.test.ts` that `fetchMarkets` requests `/api/v1/markets` with no parameters and returns the rows unchanged — including a `null` score staying `null`, not becoming `0`
+- [x] T004 Add `fetchMarkets` to `apps/web/src/api.ts` with `// @trace: REQ-WP-075`
+- [x] T005 Add `apps/web/src/markets.ts` (new) with `// @trace: REQ-WP-075`: `marketHref(venue, symbol, token)` and `scoreLabel(value)`
+- [x] T006 [P] Write the failing tests in `apps/web/src/__tests__/markets.test.ts` (new): `marketHref("binance", "BTCUSDT", "15m")` is exactly `/chart/binance/BTCUSDT?tf=15m`; a symbol needing encoding is encoded and `parseDeepLink` decodes it back; `scoreLabel(null)` is `"unscored"`; `scoreLabel(0)` is `"0.00"`; `scoreLabel(0.834)` is `"0.83"`
 
 **Checkpoint**: the bytes of the destination and the null rule exist and are proven.
 
@@ -48,8 +48,8 @@ markets plainly unscored.
 differs from its array order and whose middle row is unscored; assert the row
 order and the unscored text.
 
-- [ ] T007 [US1] Write the failing tests in `apps/web/src/__tests__/Markets.test.tsx` (new): rows render in the array's order, not alphabetically; an unscored row contains `"unscored"` and no numeric score; a scored row shows `scoreLabel`'s value; a failed read renders a `role="alert"` with the detail and **zero rows**; an empty list renders a `role="status"` saying there are no markets and **no alert**
-- [ ] T008 [US1] Add `apps/web/src/Markets.tsx` (new) with `// @trace: REQ-WP-075`: fetch markets and the offered set on mount, no request depending on the other; render rows in order; the four states of `data-model.md`
+- [x] T007 [US1] Write the failing tests in `apps/web/src/__tests__/Markets.test.tsx` (new): rows render in the array's order, not alphabetically; an unscored row contains `"unscored"` and no numeric score; a scored row shows `scoreLabel`'s value; a failed read renders a `role="alert"` with the detail and **zero rows**; an empty list renders a `role="status"` saying there are no markets and **no alert**
+- [x] T008 [US1] Add `apps/web/src/Markets.tsx` (new) with `// @trace: REQ-WP-075`: fetch markets and the offered set on mount, no request depending on the other; render rows in order; the four states of `data-model.md`
 
 **Checkpoint**: the view exists and cannot be mistaken for a failure; empty and failed are distinct.
 
@@ -63,8 +63,8 @@ the destination equals a pasted link.
 **Independent Test**: read a row's `href` at the default, choose another
 timeframe, read it again, and compare each with `marketHref`'s own result.
 
-- [ ] T009 [US2] Write the failing tests in `Markets.test.tsx`: the first row's `href` is `/chart/<venue>/<symbol>?tf=<default>`; after choosing `1h` it is `/chart/<venue>/<symbol>?tf=1h`; the `href` is an `<a>`'s, so middle-click and copy work without JavaScript; a market activated after a choice lands where a hand-written link would
-- [ ] T010 [US2] Render each row as `<a href={marketHref(...)}>` and hold the chosen token in the view's state, updating it from `TimeframeControl`'s `onSelect`
+- [x] T009 [US2] Write the failing tests in `Markets.test.tsx`: the first row's `href` is `/chart/<venue>/<symbol>?tf=<default>`; after choosing `1h` it is `/chart/<venue>/<symbol>?tf=1h`; the `href` is an `<a>`'s, so middle-click and copy work without JavaScript; a market activated after a choice lands where a hand-written link would
+- [x] T010 [US2] Render each row as `<a href={marketHref(...)}>` and hold the chosen token in the view's state, updating it from `TimeframeControl`'s `onSelect`
 
 **Checkpoint**: overview → detail works, and the detail link is pasteable.
 
@@ -78,8 +78,8 @@ the placeholder.
 **Independent Test**: render `App` at the three paths and assert which view
 appears.
 
-- [ ] T011 [US3] Write the failing tests in `apps/web/src/__tests__/routing.test.tsx` (new): pathname `/` renders the markets view; `/markets` the same; `/nonsense` keeps the placeholder naming where a chart opens; `/chart/binance/BTCUSDT` still renders the chart route (FR-007)
-- [ ] T012 [US3] Add the mount-stable pathname and the branch order to `apps/web/src/App.tsx` with `// @trace: REQ-WP-075`: markets first, then the deep link, then the placeholder
+- [x] T011 [US3] Write the failing tests in `apps/web/src/__tests__/routing.test.tsx` (new): pathname `/` renders the markets view; `/markets` the same; `/nonsense` keeps the placeholder naming where a chart opens; `/chart/binance/BTCUSDT` still renders the chart route (FR-007)
+- [x] T012 [US3] Add the mount-stable pathname and the branch order to `apps/web/src/App.tsx` with `// @trace: REQ-WP-075`: markets first, then the deep link, then the placeholder
 
 **Checkpoint**: the reader arriving at the host sees the product.
 
@@ -94,8 +94,8 @@ the rows down.
 options; fail the set and find the rows still rendered with default-timeframe
 links.
 
-- [ ] T013 [US4] Write the failing tests in `Markets.test.tsx`: a set of unseen tokens renders as options **exactly** — the option list equals what the API served, so a hard-coded fallback would fail as an extra; choosing one changes every row's `href`; a failed offered-set read states the failure, offers **no options at all** (a fallback list would appear here), still renders the rows, and their `href`s carry `DEFAULT_TIMEFRAME`
-- [ ] T014 [US4] Wire `TimeframeControl` from the fetched set, with the failure branch, in `Markets.tsx`
+- [x] T013 [US4] Write the failing tests in `Markets.test.tsx`: a set of unseen tokens renders as options **exactly** — the option list equals what the API served, so a hard-coded fallback would fail as an extra; choosing one changes every row's `href`; a failed offered-set read states the failure, offers **no options at all** (a fallback list would appear here), still renders the rows, and their `href`s carry `DEFAULT_TIMEFRAME`
+- [x] T014 [US4] Wire `TimeframeControl` from the fetched set, with the failure branch, in `Markets.tsx`
 
 **Checkpoint**: adding a timeframe to configuration changes this view with no frontend edit.
 
@@ -103,9 +103,9 @@ links.
 
 ## Phase 7: Polish & Cross-Cutting
 
-- [ ] T015 Update `docs/deployment.md`'s "Reach it" section to name `/markets` and `/` beside the chart
-- [ ] T016 Run `quickstart.md` section 2 against the running stack after rebuilding the web image: `/`, `/markets` and `/nonsense` render as specified; record the measured output in the implement outcome note
-- [ ] T017 Run the gates: `make lint`, `make typecheck`, `make test-fast`; `cd apps/web && npx tsc --noEmit && npx vitest run && npx vite build`; then `make graph && make validate`
+- [x] T015 Update `docs/deployment.md`'s "Reach it" section to name `/markets` and `/` beside the chart
+- [x] T016 Run `quickstart.md` section 2 against the running stack after rebuilding the web image: `/`, `/markets` and `/nonsense` render as specified; record the measured output in the implement outcome note
+- [x] T017 Run the gates: `make lint`, `make typecheck`, `make test-fast`; `cd apps/web && npx tsc --noEmit && npx vitest run && npx vite build`; then `make graph && make validate`
 
 ---
 

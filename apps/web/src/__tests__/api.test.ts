@@ -11,6 +11,7 @@ import {
   fetchChannel,
   fetchDexDepth,
   fetchFeatureSeries,
+  fetchMarkets,
   fetchTimeframes,
 } from "../api";
 
@@ -176,5 +177,31 @@ describe("the offered set", () => {
     const value = result.ok ? result.value.timeframes[0]?.timeframe_ns : null;
     expect(value).toBe(900_000_000_000);
     expect(typeof value).toBe("number");
+  });
+});
+
+describe("the markets list", () => {
+  it("is read from its own route, rows unchanged", async () => {
+    respondWith({
+      markets: [
+        {
+          venue: "binance",
+          symbol: "BTCUSDT",
+          market_type: "perp",
+          setup_score: null,
+          rank_score: 0.5,
+          confidence: null,
+        },
+      ],
+    });
+
+    const result = await fetchMarkets();
+
+    expect(lastUrl()).toContain("/api/v1/markets");
+    const row = result.ok ? result.value.markets[0] : null;
+    // Nullability is a claim: an unscored market must not arrive as zero.
+    expect(row?.setup_score).toBeNull();
+    expect(row?.confidence).toBeNull();
+    expect(row?.rank_score).toBe(0.5);
   });
 });

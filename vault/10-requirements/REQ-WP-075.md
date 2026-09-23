@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "§27.1, §28.1"
 prd_lines: "4390-4405, 4463-4474"
 phase: null
-status: planned
+status: implemented
 depends_on: [REQ-US-001, REQ-WP-074]
 tags: []
 ---
@@ -69,7 +69,18 @@ found weak"; a view that renders a null as `0.00` undoes that at the last step.
 
 <!-- trace:begin -->
 - **Specs:** [[SPEC-120-markets-route]]
-- **Outcomes:** [[OUT-2026-09-23-plan-markets-route]], [[OUT-2026-09-23-spec-markets-route]], [[OUT-2026-09-23-tasks-markets-route]]
+- **Tests:**
+    - `tests/integration/test_dev_stack.py::test_the_markets_read_has_the_shape_the_view_consumes`
+    - `tests/integration/test_dev_stack.py::test_the_markets_route_reaches_the_bundle`
+- **Code:**
+    - `apps/web/src/Markets.tsx`
+    - `apps/web/src/__tests__/Markets.test.tsx`
+    - `apps/web/src/__tests__/markets.test.ts`
+    - `apps/web/src/__tests__/routing.test.tsx`
+    - `apps/web/src/api.ts`
+    - `apps/web/src/markets.ts`
+    - `apps/web/src/types.ts`
+- **Outcomes:** [[OUT-2026-09-23-implement-markets-route]], [[OUT-2026-09-23-plan-markets-route]], [[OUT-2026-09-23-spec-markets-route]], [[OUT-2026-09-23-tasks-markets-route]]
 <!-- trace:end -->
 
 ## Notes

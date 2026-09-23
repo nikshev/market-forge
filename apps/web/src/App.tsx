@@ -26,6 +26,7 @@ import { DexBands } from "./DexBands";
 import { ChannelModeControl } from "./ChannelMode";
 import { FlowPane } from "./FlowPane";
 import { LoadState, type LoadStateKind } from "./LoadState";
+import { Markets } from "./Markets";
 import { PANES } from "./panes";
 import { parseDeepLink, withMode, withTimeframe } from "./deepLink";
 import { depthOverlay, type DepthOverlay } from "./dexDepth";
@@ -82,6 +83,12 @@ export function App(): JSX.Element {
       ? null
       : parseDeepLink(window.location.pathname, window.location.search),
   );
+
+  // Which view this page is. Read once, like the link and for the same reason:
+  // an identity that changed per render would let a fetch completion flip the
+  // view, and a route is not something that changes while a page is open --
+  // every navigation here is a full load (REQ-WP-075).
+  const [path] = useState(() => (typeof window === "undefined" ? "" : window.location.pathname));
 
   const [timeframe, setTimeframe] = useState<string>(() => link?.timeframe ?? DEFAULT_TIMEFRAME);
   const [offered, setOffered] = useState<TimeframeOption[] | null>(null);
@@ -231,6 +238,13 @@ export function App(): JSX.Element {
       loadId.current += 1;
     };
   }, [load]);
+
+  if (path === "/" || path === "/markets") {
+    // The overview route (PRD §27.1). The PRD names no `/` route; serving the
+    // same view there is this deployment's decision, recorded in
+    // [[REQ-WP-075]] rather than left as an undocumented redirect.
+    return <Markets />;
+  }
 
   if (link === null) {
     return (
