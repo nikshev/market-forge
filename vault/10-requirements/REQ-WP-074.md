@@ -122,7 +122,7 @@ implemented, without reopening it.
 
 <!-- trace:begin -->
 - **Specs:** [[SPEC-119-chart-timeframe-control]]
-- **Outcomes:** [[OUT-2026-09-23-plan-chart-timeframe-control]], [[OUT-2026-09-23-spec-chart-timeframe-control]]
+- **Outcomes:** [[OUT-2026-09-23-plan-chart-timeframe-control]], [[OUT-2026-09-23-spec-chart-timeframe-control]], [[OUT-2026-09-23-tasks-chart-timeframe-control]]
 <!-- trace:end -->
 
 ## Notes
