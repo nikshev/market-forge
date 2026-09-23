@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "§27.1, §28.1"
 prd_lines: "4390-4405, 4463-4474"
 phase: null
-status: specified
+status: planned
 depends_on: [REQ-US-001, REQ-WP-074]
 tags: []
 ---
@@ -69,7 +69,7 @@ found weak"; a view that renders a null as `0.00` undoes that at the last step.
 
 <!-- trace:begin -->
 - **Specs:** [[SPEC-120-markets-route]]
-- **Outcomes:** [[OUT-2026-09-23-spec-markets-route]]
+- **Outcomes:** [[OUT-2026-09-23-plan-markets-route]], [[OUT-2026-09-23-spec-markets-route]]
 <!-- trace:end -->
 
 ## Notes
