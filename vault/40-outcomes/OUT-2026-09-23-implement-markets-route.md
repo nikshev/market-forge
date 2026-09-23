@@ -2,7 +2,7 @@
 id: OUT-2026-09-23-implement-markets-route
 step: implement
 records: [REQ-WP-075]
-commit: null
+commit: 414821ba2ab072972532c269e334cf3726ad9f52
 ---
 
 ## What was done
