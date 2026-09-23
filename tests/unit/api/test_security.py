@@ -29,8 +29,9 @@ from channelflow.api.security import (
 )
 from channelflow.settings import RateLimit
 
-#: Twelve API routes, four documentation routes, one websocket.
-EXPECTED_ROUTES = 17
+#: Thirteen API routes, four documentation routes, one websocket.
+#: `timeframes` joined the API routes with REQ-WP-074.
+EXPECTED_ROUTES = 18
 
 
 @pytest.fixture

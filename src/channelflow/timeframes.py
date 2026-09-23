@@ -1,6 +1,7 @@
 """The timeframe vocabulary every producer, read and view shares.
 
 # @trace: REQ-WP-073
+# @trace: REQ-WP-074
 
 A `Timeframe` is a duration **and the instant its windows are aligned to**:
 
@@ -24,6 +25,7 @@ always builds one.
 from __future__ import annotations
 
 import re
+from collections.abc import Sequence
 from dataclasses import dataclass
 
 #: A token that names a calendar period rather than a duration. `m` lower-case
@@ -107,4 +109,17 @@ def parse_list(text: str) -> tuple[Timeframe, ...]:
     if not tokens:
         raise ValueError("timeframe list is empty")
     unique = {tf.token: tf for tf in (parse(token) for token in tokens)}
+    return tuple(sorted(unique.values(), key=lambda tf: tf.ns))
+
+
+def offered(configured: Sequence[Timeframe]) -> tuple[Timeframe, ...]:
+    """What a deployment can serve: the source plus its configured targets.
+
+    The source joins unconditionally. `CHANNELFLOW_TIMEFRAMES` names what
+    *resampling* builds and excludes `1m` by design, but §5.1 names `1m` among
+    the Phase 1 timeframes and the ingest daemon always produces it -- so a
+    view of the set that omitted it would hide the one series guaranteed to
+    exist. Listing it again is harmless: the union de-duplicates by token.
+    """
+    unique = {tf.token: tf for tf in (*configured, TIMEFRAMES[SOURCE_TOKEN])}
     return tuple(sorted(unique.values(), key=lambda tf: tf.ns))

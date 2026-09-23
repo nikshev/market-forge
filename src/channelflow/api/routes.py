@@ -4,6 +4,7 @@
 # @trace: REQ-US-001
 # @trace: REQ-US-004
 # @trace: REQ-US-003
+# @trace: REQ-WP-074
 
 Read-only, every one of them: Principle IX says phases 1-3 form signals and
 alerts and the system does not open positions, and an API with no write path
@@ -44,15 +45,35 @@ from channelflow.api.schemas import (
     SignalDetailOut,
     SignalOut,
     SignalsResponse,
+    TimeframeOut,
+    TimeframesResponse,
     TransitionOut,
 )
 from channelflow.scoring import explain
+from channelflow.timeframes import offered
 
 router = APIRouter(prefix="/api/v1")
 
 
 def _repository(request: Request) -> Repository:
     return request.app.state.repository  # type: ignore[no-any-return]
+
+
+@router.get("/timeframes", response_model=TimeframesResponse)
+def get_timeframes(request: Request) -> TimeframesResponse:
+    """The timeframes this deployment can serve (REQ-WP-074).
+
+    Computed from the same configuration the resampler reads, plus the source
+    timeframe the ingest daemon always writes. The union lives in
+    `timeframes.offered` rather than here, so a second view of the set cannot
+    disagree with this one.
+    """
+    configured = request.app.state.timeframes
+    return TimeframesResponse(
+        timeframes=tuple(
+            TimeframeOut(token=tf.token, timeframe_ns=tf.ns) for tf in offered(configured)
+        )
+    )
 
 
 @router.get("/markets", response_model=MarketsResponse)

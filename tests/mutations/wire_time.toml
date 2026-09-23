@@ -48,8 +48,12 @@ replace = '''            close_time_ns=bar.close_time_ns,'''
 
 [[mutation]]
 name = "a duration is converted too"
-find = '''    timeframe_ns: int'''
-replace = '''    timeframe_ns: WireTime'''
+# Anchored on the following field: REQ-WP-074's TimeframeOut carries a
+# `timeframe_ns: int` of its own, and an unanchored pattern would be ambiguous.
+find = '''    timeframe_ns: int
+    direction: str'''
+replace = '''    timeframe_ns: WireTime
+    direction: str'''
 
 [[mutation]]
 name = "the snapshot's instant loses its conversion"

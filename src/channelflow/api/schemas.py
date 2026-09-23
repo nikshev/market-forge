@@ -394,6 +394,30 @@ class BarsResponse(BaseModel):
     bars: tuple[BarOut, ...]
 
 
+class TimeframeOut(BaseModel):
+    """One timeframe a deployment can serve (REQ-WP-074).
+
+    Both the token and its duration travel. The token is what a link carries;
+    the duration is what §28.2's `timeframe_ns` parameter takes. A client given
+    only the token would need a token→duration table of its own -- the second
+    list [[REQ-WP-073]]'s FR-002 forbids.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    token: str
+    timeframe_ns: int
+
+
+class TimeframesResponse(BaseModel):
+    """The offered set, ascending by duration.
+
+    Never empty: `timeframes.offered` always includes the source.
+    """
+
+    timeframes: tuple[TimeframeOut, ...]
+
+
 class SignalsResponse(BaseModel):
     signals: tuple[SignalOut, ...]
 

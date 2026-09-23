@@ -273,7 +273,7 @@ secret; `.env` is not committed and never should be.
 | `CHANNELFLOW_CORS_ORIGINS`, `CHANNELFLOW_RATE_LIMIT`, `CHANNELFLOW_RATE_WINDOW_SECONDS` | what the read API allows and refuses |
 | `GRAFANA_ADMIN_PASSWORD`, `GRAFANA_ANONYMOUS` | Grafana's credential; anonymous access is off unless enabled |
 | `CHANNELFLOW_INGEST_SYMBOLS`, `CHANNELFLOW_INGEST_SYMBOLS_ETH`, `CHANNELFLOW_INGEST_SYMBOLS_SOL`, `CHANNELFLOW_INGEST_TIMEFRAME_NS` | what each ingest daemon reads, and at what bar size — one symbol per process |
-| `CHANNELFLOW_TIMEFRAMES`, `CHANNELFLOW_RESAMPLE_INTERVAL` | which timeframes the resampler builds from the one-minute series, and how often it runs ([[REQ-WP-073]]); `1M` is refused |
+| `CHANNELFLOW_TIMEFRAMES`, `CHANNELFLOW_RESAMPLE_INTERVAL` | which timeframes the resampler builds from the one-minute series, and how often it runs ([[REQ-WP-073]]); `1M` is refused. The read API reads the same variable and reports the set at `GET /api/v1/timeframes` ([[REQ-WP-074]]) — one value for both processes, so what a chart offers cannot disagree with what exists |
 | `CHANNELFLOW_MAINTENANCE_INTERVAL`, `CHANNELFLOW_KEEP_DAYS` | how often maintenance runs, and what it may expire |
 | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` | alert delivery, empty unless alerting is wanted |
 | `CHANNELFLOW_CHART_BASE_URL` | where an alert's chart link points |
@@ -341,6 +341,29 @@ boundary — the last requests of one window and the first of the next.
 `/readyz` and `/metrics` are never limited. Throttling a readiness probe makes an
 orchestrator declare the service unhealthy, which is the outage the limiter
 exists to prevent.
+
+## What timeframes a chart may offer
+
+`GET /api/v1/timeframes` reports what this deployment can serve
+([[REQ-WP-074]]):
+
+```json
+{"timeframes":[
+  {"token":"1m","timeframe_ns":60000000000},
+  {"token":"5m","timeframe_ns":300000000000}
+]}
+```
+
+The set is `CHANNELFLOW_TIMEFRAMES` plus `1m`. The source joins unconditionally:
+the ingest daemon always writes it and §5.1 lists it, while the variable names
+only what *resampling* builds ([[REQ-WP-073]]). A token the parser refuses — a
+typo, or a calendar period like `1M` — refuses the API at startup exactly as it
+refuses the resampler, so a misconfiguration is loud in both processes rather
+than quiet in one.
+
+The chart spends this read on its timeframe control: the options are what the
+API reported, and a link naming anything else is refused on screen rather than
+silently shown at a substituted timeframe.
 
 ## Observability
 

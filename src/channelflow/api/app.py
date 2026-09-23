@@ -2,6 +2,7 @@
 
 # @trace: REQ-API-001
 # @trace: REQ-WP-072
+# @trace: REQ-WP-074
 """
 
 from __future__ import annotations
@@ -21,6 +22,7 @@ from channelflow.api.security import FixedWindowLimiter, RateLimitMiddleware
 from channelflow.api.ws import register_websocket
 from channelflow.metrics import MetricRegistry
 from channelflow.settings import RateLimit
+from channelflow.timeframes import Timeframe
 
 
 def create_app(
@@ -30,6 +32,7 @@ def create_app(
     readiness: Probe | None = None,
     allowed_origins: tuple[str, ...] = (),
     rate_limit: RateLimit | None = None,
+    timeframes: tuple[Timeframe, ...] = (),
     clock: Callable[[], float] = time.monotonic,
 ) -> FastAPI:
     """Build the app over a repository (ADR-019).
@@ -46,6 +49,10 @@ def create_app(
     So is the readiness probe ([[REQ-WP-064]]). An app over an in-memory
     repository has no store to be unreachable, and says that rather than
     claiming one answered.
+
+    `timeframes` is the same shape again: the set this deployment produces,
+    reported by `/api/v1/timeframes` ([[REQ-WP-074]]). Empty means a process
+    configured to resample nothing, which still serves the source.
     """
     app = FastAPI(title="ChannelFlow read API", version="1.0.0")
     if rate_limit is not None:
@@ -63,6 +70,7 @@ def create_app(
         )
     app.state.repository = repository
     app.state.metrics = metrics or MetricRegistry()
+    app.state.timeframes = timeframes
     app.include_router(router)
     app.state.readiness = readiness or always_ready()
     app.include_router(metrics_router)

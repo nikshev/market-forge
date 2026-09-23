@@ -1,4 +1,5 @@
 # @trace: REQ-WP-073
+# @trace: REQ-WP-074
 import pytest
 
 from channelflow.timeframes import (
@@ -6,6 +7,7 @@ from channelflow.timeframes import (
     CalendarPeriod,
     Timeframe,
     UnknownTimeframe,
+    offered,
     parse,
     parse_list,
 )
@@ -126,3 +128,24 @@ class TestParse:
 
         result = parse_list("1d,1w,5m,1h")
         assert tuple(tf.token for tf in result) == ("5m", "1h", "1d", "1w")
+
+
+class TestOffered:
+    @pytest.mark.trace("REQ-WP-074")
+    def test_unset_configuration_offers_the_source_alone(self):
+        assert offered(()) == (TIMEFRAMES["1m"],)
+
+    @pytest.mark.trace("REQ-WP-074")
+    def test_source_joins_the_configured_targets_in_duration_order(self):
+        configured = parse_list("5m,15m,1h")
+        assert offered(configured) == (
+            TIMEFRAMES["1m"],
+            TIMEFRAMES["5m"],
+            TIMEFRAMES["15m"],
+            TIMEFRAMES["1h"],
+        )
+
+    @pytest.mark.trace("REQ-WP-074")
+    def test_a_configured_source_yields_it_once(self):
+        configured = parse_list("1m,5m")
+        assert offered(configured) == (TIMEFRAMES["1m"], TIMEFRAMES["5m"])

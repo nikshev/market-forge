@@ -1,4 +1,5 @@
 // @trace: REQ-WP-009
+// @trace: REQ-WP-074
 //
 // A typed client for PRD section 28. Every call reports a failure as a value
 // rather than throwing into a render: FR-016 says a failed load must never be
@@ -97,6 +98,17 @@ export function fetchBars(params: {
     timeframe_ns: params.timeframeNs,
     ...(params.limit === undefined ? {} : { limit: params.limit }),
   });
+}
+
+/** What this deployment can serve (REQ-WP-074).
+ *
+ * `timeframe_ns` is a duration and stays a `number`; the token is what a link
+ * carries. Both travel so the caller needs no token→duration table of its own.
+ */
+export function fetchTimeframes(): Promise<
+  Result<{ timeframes: { token: string; timeframe_ns: number }[] }>
+> {
+  return get("/api/v1/timeframes", {});
 }
 
 export function fetchChannel(params: {

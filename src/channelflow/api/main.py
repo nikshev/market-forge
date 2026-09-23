@@ -2,6 +2,7 @@
 
 # @trace: REQ-WP-064
 # @trace: REQ-WP-072
+# @trace: REQ-WP-074
 
 PRD §6.2's MVP deployment names an `api` service. There was no way to run one:
 `create_app` takes an already-built repository, `LakehouseRepository` takes a
@@ -49,6 +50,7 @@ def build_app(settings: Settings) -> FastAPI:
         readiness=catalog_probe(lambda: store.list_tables(NAMESPACE)),
         allowed_origins=settings.allowed_origins,
         rate_limit=settings.rate_limit,
+        timeframes=settings.timeframes,
     )
 
 

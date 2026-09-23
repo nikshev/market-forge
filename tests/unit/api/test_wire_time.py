@@ -44,6 +44,9 @@ TIMESTAMP_FIELDS = {
 DURATION_FIELDS = {
     ("SignalOut", "timeframe_ns"),
     ("ChannelComparisonOut", "hindsight_ns"),
+    # REQ-WP-074: the reported timeframe, matching the `timeframe_ns`
+    # parameter §28.2's reads already take. A duration, not a moment.
+    ("TimeframeOut", "timeframe_ns"),
 }
 
 

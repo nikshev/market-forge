@@ -1,4 +1,5 @@
 // @trace: REQ-WP-009
+// @trace: REQ-WP-074
 //
 // PRD section 27.1's deep link, read back:
 //   /chart/:venue/:symbol?tf=15m&at=<iso>&signal=<uuid>
@@ -8,10 +9,15 @@
 // system has ever sent carries such a link -- a value mangled in transit must
 // not silently become a refit, or old signals start looking better than they
 // were and nothing says why.
+//
+// REQ-WP-074: `tf` is read here but not validated -- whether a token can be
+// honoured is a question about the deployment's offered set, which only the
+// API knows. The default is DEFAULT_TIMEFRAME, written once.
 
 import { overlaysFromQuery } from "./overlays";
 import { nanosecondsFromIso } from "./time";
 import type { OverlaySelection } from "./overlays";
+import { DEFAULT_TIMEFRAME } from "./timeframes";
 import { AS_SEEN_THEN, CURRENT_REFIT } from "./types";
 import type { ChannelMode } from "./types";
 
@@ -50,6 +56,36 @@ export function modeFromQuery(params: URLSearchParams): ChannelMode {
   return params.get("as_seen_then") === "false" ? CURRENT_REFIT : AS_SEEN_THEN;
 }
 
+/**
+ * `search` with its `tf` set, every other key untouched (REQ-WP-074).
+ *
+ * Pure string→string: the caller performs the `history.replaceState`. Editing
+ * only this key is what keeps `at`, `signal`, `chain`, `pool` and the overlay
+ * parameters in a link the reader copies.
+ */
+export function withTimeframe(search: string, token: string): string {
+  const params = new URLSearchParams(search);
+  params.set("tf", token);
+  return params.toString();
+}
+
+/**
+ * `search` describing `mode`, every other key untouched (REQ-WP-074).
+ *
+ * The refit is written as `as_seen_then=false`; AS-SEEN-THEN **removes** the
+ * key, because absence is the default `modeFromQuery` already reads (ADR-020).
+ * Writing `true` would put a value in every copied link that means nothing.
+ */
+export function withMode(search: string, mode: ChannelMode): string {
+  const params = new URLSearchParams(search);
+  if (mode === CURRENT_REFIT) {
+    params.set("as_seen_then", "false");
+  } else {
+    params.delete("as_seen_then");
+  }
+  return params.toString();
+}
+
 export function parseDeepLink(pathname: string, search: string): DeepLink | null {
   const match = /^\/chart\/([^/]+)\/([^/]+)\/?$/.exec(pathname);
   if (match === null) {
@@ -60,7 +96,7 @@ export function parseDeepLink(pathname: string, search: string): DeepLink | null
   return {
     venue: decodeURIComponent(match[1]),
     symbol: decodeURIComponent(match[2]),
-    timeframe: params.get("tf") ?? "15m",
+    timeframe: params.get("tf") ?? DEFAULT_TIMEFRAME,
     // `Date.parse` gives milliseconds and the multiplication is done in
     // `bigint`: `ms * 1e6` in floating point lands above the safe range and
     // rounds the instant the link was built to name (REQ-WP-061).

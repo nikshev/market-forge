@@ -178,3 +178,36 @@ def test_a_wildcard_is_refused_where_configuration_is_read(origins: str) -> None
     """A wildcard among others is still a wildcard."""
     with pytest.raises(WildcardOrigin):
         _settings(CHANNELFLOW_CORS_ORIGINS=origins)
+
+
+# --- the offered set (REQ-WP-074) -------------------------------------------
+
+
+@pytest.mark.trace("REQ-WP-074")
+def test_timeframes_unset_is_an_empty_configuration() -> None:
+    """Not an error: a deployment that resamples nothing still has its source."""
+    assert _settings().timeframes == ()
+
+
+@pytest.mark.trace("REQ-WP-074")
+def test_timeframes_are_read_through_the_shared_parser() -> None:
+    from channelflow.timeframes import TIMEFRAMES
+
+    settings = _settings(CHANNELFLOW_TIMEFRAMES="1h,5m")
+    assert settings.timeframes == (TIMEFRAMES["5m"], TIMEFRAMES["1h"])
+
+
+@pytest.mark.trace("REQ-WP-074")
+def test_an_unknown_timeframe_refuses_at_startup() -> None:
+    from channelflow.timeframes import UnknownTimeframe
+
+    with pytest.raises(UnknownTimeframe):
+        _settings(CHANNELFLOW_TIMEFRAMES="7m")
+
+
+@pytest.mark.trace("REQ-WP-074")
+def test_a_calendar_period_refuses_at_startup() -> None:
+    from channelflow.timeframes import CalendarPeriod
+
+    with pytest.raises(CalendarPeriod):
+        _settings(CHANNELFLOW_TIMEFRAMES="1M")

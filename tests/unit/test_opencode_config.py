@@ -3,6 +3,7 @@
 
 import json
 import subprocess
+
 import pytest
 
 
@@ -153,10 +154,10 @@ def test_no_foreign_terminology():
     """Created files must not contain Parts Search Orchestrator or FR-* references."""
     import glob
 
-    files = (
-        glob.glob("/opt/market-forge/.opencode/**/*.md", recursive=True)
-        + ["/opt/market-forge/AGENTS.md", "/opt/market-forge/opencode.json"]
-    )
+    files = glob.glob("/opt/market-forge/.opencode/**/*.md", recursive=True) + [
+        "/opt/market-forge/AGENTS.md",
+        "/opt/market-forge/opencode.json",
+    ]
     forbidden = ["parts-agent", "Parts Search", "FR-"]
     for path in files:
         with open(path) as f:

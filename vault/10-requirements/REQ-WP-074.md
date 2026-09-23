@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "§27.1, §27.2, §27.3, §5.1, §28.2"
 prd_lines: "4390-4405, 4406-4422, 4423-4436, 289-313, 4475-4487"
 phase: null
-status: planned
+status: implemented
 depends_on: [REQ-WP-009, REQ-WP-073]
 tags: [timeframes]
 ---
@@ -122,7 +122,35 @@ implemented, without reopening it.
 
 <!-- trace:begin -->
 - **Specs:** [[SPEC-119-chart-timeframe-control]]
-- **Outcomes:** [[OUT-2026-09-23-plan-chart-timeframe-control]], [[OUT-2026-09-23-spec-chart-timeframe-control]], [[OUT-2026-09-23-tasks-chart-timeframe-control]]
+- **Tests:**
+    - `tests/unit/api/test_timeframes_route.py::test_a_configured_source_appears_once`
+    - `tests/unit/api/test_timeframes_route.py::test_ascending_by_duration_is_not_the_configuration_order`
+    - `tests/unit/api/test_timeframes_route.py::test_the_durations_are_the_producers_durations`
+    - `tests/unit/api/test_timeframes_route.py::test_the_response_is_the_source_plus_the_configured_targets`
+    - `tests/unit/api/test_timeframes_route.py::test_the_source_is_offered_when_nothing_is_configured`
+    - `tests/unit/test_settings.py::test_a_calendar_period_refuses_at_startup`
+    - `tests/unit/test_settings.py::test_an_unknown_timeframe_refuses_at_startup`
+    - `tests/unit/test_settings.py::test_timeframes_are_read_through_the_shared_parser`
+    - `tests/unit/test_settings.py::test_timeframes_unset_is_an_empty_configuration`
+    - `tests/unit/test_timeframes.py::TestOffered::test_a_configured_source_yields_it_once`
+    - `tests/unit/test_timeframes.py::TestOffered::test_source_joins_the_configured_targets_in_duration_order`
+    - `tests/unit/test_timeframes.py::TestOffered::test_unset_configuration_offers_the_source_alone`
+- **Code:**
+    - `apps/web/src/App.tsx`
+    - `apps/web/src/TimeframeControl.tsx`
+    - `apps/web/src/__tests__/TimeframeControl.test.tsx`
+    - `apps/web/src/__tests__/chartTimeframeControl.test.tsx`
+    - `apps/web/src/__tests__/deepLinkQuery.test.ts`
+    - `apps/web/src/__tests__/timeframes.test.ts`
+    - `apps/web/src/api.ts`
+    - `apps/web/src/deepLink.ts`
+    - `apps/web/src/timeframes.ts`
+    - `src/channelflow/api/app.py`
+    - `src/channelflow/api/main.py`
+    - `src/channelflow/api/routes.py`
+    - `src/channelflow/settings.py`
+    - `src/channelflow/timeframes.py`
+- **Outcomes:** [[OUT-2026-09-23-implement-chart-timeframe-control]], [[OUT-2026-09-23-plan-chart-timeframe-control]], [[OUT-2026-09-23-spec-chart-timeframe-control]], [[OUT-2026-09-23-tasks-chart-timeframe-control]]
 <!-- trace:end -->
 
 ## Notes

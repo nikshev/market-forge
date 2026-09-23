@@ -6,7 +6,13 @@
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { fetchBars, fetchChannel, fetchDexDepth, fetchFeatureSeries } from "../api";
+import {
+  fetchBars,
+  fetchChannel,
+  fetchDexDepth,
+  fetchFeatureSeries,
+  fetchTimeframes,
+} from "../api";
 
 const EXACT = "1789000000123456789";
 
@@ -149,5 +155,26 @@ describe("times going out", () => {
     // than the chart is showing -- which for `as_of_ns` is the look-ahead rule.
     expect(lastUrl()).toContain("at_ns=1789000000123456789");
     expect(lastUrl()).not.toContain("1789000000123456800");
+  });
+});
+
+describe("the offered set", () => {
+  it("is read from its own route", async () => {
+    respondWith({ timeframes: [{ token: "1m", timeframe_ns: 60_000_000_000 }] });
+
+    const result = await fetchTimeframes();
+
+    expect(lastUrl()).toContain("/api/v1/timeframes");
+    expect(result.ok && result.value.timeframes[0]?.token).toBe("1m");
+  });
+
+  it("leaves each duration a number, not a bigint", async () => {
+    respondWith({ timeframes: [{ token: "15m", timeframe_ns: 900_000_000_000 }] });
+
+    const result = await fetchTimeframes();
+
+    const value = result.ok ? result.value.timeframes[0]?.timeframe_ns : null;
+    expect(value).toBe(900_000_000_000);
+    expect(typeof value).toBe("number");
   });
 });

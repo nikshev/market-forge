@@ -3,6 +3,7 @@
 # @trace: REQ-WP-064
 # @trace: REQ-WP-066
 # @trace: REQ-WP-072
+# @trace: REQ-WP-074
 
 Shared by every process that reaches the canonical plane -- the read API and the
 ingest daemon -- because they reach the same plane and a second reader of the
@@ -30,6 +31,8 @@ import os
 from collections.abc import Mapping
 from dataclasses import dataclass
 
+from channelflow.timeframes import Timeframe, parse_list
+
 #: Where the Iceberg catalog lives, and where its data does. Both required:
 #: either one alone describes half a lakehouse.
 CATALOG_URI = "CHANNELFLOW_CATALOG_URI"
@@ -52,6 +55,12 @@ _STORAGE = {
 CORS_ORIGINS = "CHANNELFLOW_CORS_ORIGINS"
 RATE_LIMIT = "CHANNELFLOW_RATE_LIMIT"
 RATE_WINDOW_SECONDS = "CHANNELFLOW_RATE_WINDOW_SECONDS"
+
+#: What the deployment produces ([[REQ-WP-073]]) and therefore what the read
+#: API reports it can serve ([[REQ-WP-074]]). One variable, read by both
+#: processes through one parser, so the offered set and the built set cannot
+#: disagree. Unset is valid: the source timeframe is always offered.
+TIMEFRAMES = "CHANNELFLOW_TIMEFRAMES"
 
 #: The window a limit gets when only the count is configured. One minute is the
 #: unit rate limits are usually quoted in, and it is overridable like everything
@@ -150,6 +159,10 @@ class Settings:
     #: `None` means unlimited -- a state that is chosen by leaving the variable
     #: unset, never arrived at by a parse failure.
     rate_limit: RateLimit | None = None
+    #: The configured resampling targets ([[REQ-WP-073]]). Empty when the
+    #: variable is unset, which is honest: such a deployment produces only the
+    #: source, and `timeframes.offered` adds it unconditionally.
+    timeframes: tuple[Timeframe, ...] = ()
 
     def _rendered(self) -> str:
         storage = {
@@ -159,7 +172,8 @@ class Settings:
         return (
             f"Settings(catalog_uri={mask_password(self.catalog_uri)!r}, "
             f"warehouse={self.warehouse!r}, storage={storage!r}, "
-            f"allowed_origins={self.allowed_origins!r}, rate_limit={self.rate_limit!r})"
+            f"allowed_origins={self.allowed_origins!r}, rate_limit={self.rate_limit!r}, "
+            f"timeframes={tuple(tf.token for tf in self.timeframes)!r})"
         )
 
     def __repr__(self) -> str:
@@ -190,12 +204,14 @@ def settings_from_env(environ: Mapping[str, str] | None = None) -> Settings:
         for name, prop in _STORAGE.items()
         if values.get(name, "").strip()
     }
+    raw_timeframes = values.get(TIMEFRAMES, "").strip()
     return Settings(
         catalog_uri=values[CATALOG_URI].strip(),
         warehouse=values[WAREHOUSE].strip(),
         storage=storage,
         allowed_origins=_origins(values.get(CORS_ORIGINS, "")),
         rate_limit=_rate_limit(values),
+        timeframes=parse_list(raw_timeframes) if raw_timeframes else (),
     )
 
 
