@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "§27.1, §27.2, §27.3, §5.1, §28.2"
 prd_lines: "4390-4405, 4406-4422, 4423-4436, 289-313, 4475-4487"
 phase: null
-status: specified
+status: planned
 depends_on: [REQ-WP-009, REQ-WP-073]
 tags: [timeframes]
 ---
@@ -122,7 +122,7 @@ implemented, without reopening it.
 
 <!-- trace:begin -->
 - **Specs:** [[SPEC-119-chart-timeframe-control]]
-- **Outcomes:** [[OUT-2026-09-23-spec-chart-timeframe-control]]
+- **Outcomes:** [[OUT-2026-09-23-plan-chart-timeframe-control]], [[OUT-2026-09-23-spec-chart-timeframe-control]]
 <!-- trace:end -->
 
 ## Notes
