@@ -11,7 +11,7 @@ rather than leaving prose that is confident, plausible and wrong.
 
 ## What the stack is
 
-Eleven services, started together:
+Twelve services, started together:
 
 | service | what it is for |
 |---|---|
@@ -25,18 +25,31 @@ Eleven services, started together:
 | `ingest-binance` | the live connector: one symbol, socket to bars ([[REQ-WP-066]]) |
 | `ingest-binance-eth` | the same, for ETHUSDT |
 | `ingest-binance-sol` | the same, for SOLUSDT |
+| `resample` | builds every configured timeframe from the one-minute series, on a loop ([[REQ-WP-073]]) |
 | `maintenance` | prunes metadata, compacts and optionally expires, on a loop ([[REQ-WP-070]]) |
 
-All six application services build from this repository ([[REQ-WP-064]],
-[[REQ-WP-066]], [[REQ-WP-070]]) rather than pulling a tag naming a build nobody
-in this checkout can reproduce. `worker` is the one §6.2 service with no
-container, because it has no code: [[REQ-PIPE-001]] chose a replay over a daemon.
+All seven application services build from this repository ([[REQ-WP-064]],
+[[REQ-WP-066]], [[REQ-WP-070]], [[REQ-WP-073]]) rather than pulling a tag naming
+a build nobody in this checkout can reproduce. `worker` is the one §6.2 service
+with no container, because it has no code: [[REQ-PIPE-001]] chose a replay over
+a daemon.
 
 **Three ingest services, not one taking three symbols.** §5.1's Phase 1 universe
 is BTCUSDT, ETHUSDT and SOLUSDT, and `ingest_main` refuses a configuration
 naming more than one symbol: a daemon multiplexing several would share one
 socket's failure across all of them, so one stalled symbol would stop the others
 without saying so. The first keeps §6.2's bare spelling `ingest-binance`.
+
+**Higher timeframes are produced by `resample`, not by more sockets.**
+`CHANNELFLOW_TIMEFRAMES` names what the pass builds from the stored one-minute
+series — `5m,15m,30m,1h,4h,1d,1w` by default. It is a service of its own rather
+than a corner of `maintenance`, because that one removes and a producer hidden
+inside it would be found by whoever read the compose file last. Every pass is
+idempotent: it reads the open times already written and produces only what is
+missing, so the loop interval is a freshness knob and never a correctness one.
+`1M` is refused by the token parser rather than approximated as 30 days: a
+calendar month has no fixed nanosecond duration, and a monthly boundary that
+drifts against the calendar is wrong in a way a reader of a chart cannot see.
 
 **What still has no producer.** Nothing in this stack fits a channel. The live
 path is bars only, and `channel_snapshots` stays empty until [[REQ-WP-077]]
@@ -170,8 +183,9 @@ docker compose ps                    # all healthy?
 
 `make up` deliberately starts only the two stateful services the test suite
 needs. The second command brings up the API, the web app, the three ingest
-daemons, maintenance, Prometheus and Grafana, building the six application images from
-this checkout rather than pulling a tag nobody here can reproduce.
+daemons, the resampler, maintenance, Prometheus and Grafana, building the seven
+application images from this checkout rather than pulling a tag nobody here can
+reproduce.
 
 First build takes a few minutes. After it, the ingest daemon connects to Binance
 and the first bar appears about a minute later.
@@ -259,6 +273,7 @@ secret; `.env` is not committed and never should be.
 | `CHANNELFLOW_CORS_ORIGINS`, `CHANNELFLOW_RATE_LIMIT`, `CHANNELFLOW_RATE_WINDOW_SECONDS` | what the read API allows and refuses |
 | `GRAFANA_ADMIN_PASSWORD`, `GRAFANA_ANONYMOUS` | Grafana's credential; anonymous access is off unless enabled |
 | `CHANNELFLOW_INGEST_SYMBOLS`, `CHANNELFLOW_INGEST_SYMBOLS_ETH`, `CHANNELFLOW_INGEST_SYMBOLS_SOL`, `CHANNELFLOW_INGEST_TIMEFRAME_NS` | what each ingest daemon reads, and at what bar size — one symbol per process |
+| `CHANNELFLOW_TIMEFRAMES`, `CHANNELFLOW_RESAMPLE_INTERVAL` | which timeframes the resampler builds from the one-minute series, and how often it runs ([[REQ-WP-073]]); `1M` is refused |
 | `CHANNELFLOW_MAINTENANCE_INTERVAL`, `CHANNELFLOW_KEEP_DAYS` | how often maintenance runs, and what it may expire |
 | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` | alert delivery, empty unless alerting is wanted |
 | `CHANNELFLOW_CHART_BASE_URL` | where an alert's chart link points |

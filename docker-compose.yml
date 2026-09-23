@@ -265,6 +265,43 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  # Higher timeframes from the one-minute series ([[REQ-WP-073]]). §5.1 names
+  # four and §31 makes the list configuration; without this service the
+  # deployment writes one series and a chart at any other timeframe renders an
+  # empty series over data that is fine.
+  #
+  # A service of its own rather than a corner of `maintenance`: that one
+  # *removes* -- prunes, compacts, expires -- and a producer of canonical rows
+  # hidden inside it would be found by whoever reads this file last.
+  #
+  # Every pass is idempotent: it reads the open times already written and
+  # produces only what is missing, so the loop interval is a freshness knob and
+  # never a correctness one.
+  resample:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command:
+      - python
+      - -m
+      - channelflow.pipeline.resample_main
+      - --loop
+      - ${CHANNELFLOW_RESAMPLE_INTERVAL}
+    environment:
+      CHANNELFLOW_CATALOG_URI: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      CHANNELFLOW_WAREHOUSE: s3://${MINIO_BUCKET}/warehouse
+      CHANNELFLOW_S3_ENDPOINT: http://minio:9000
+      CHANNELFLOW_S3_ACCESS_KEY_ID: ${MINIO_ROOT_USER}
+      CHANNELFLOW_S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
+      CHANNELFLOW_S3_REGION: us-east-1
+      CHANNELFLOW_TIMEFRAMES: ${CHANNELFLOW_TIMEFRAMES}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    restart: unless-stopped
+
   # The plane degrades in two directions without this ([[REQ-WP-070]]): reads get
   # slower as files accumulate, and storage grows because nothing collects what
   # a compaction unreferenced. Measured before it existed: 2.6 MB of bar data

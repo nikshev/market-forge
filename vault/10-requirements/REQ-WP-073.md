@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "§5.1, §31, §29.4, §28.2"
 prd_lines: "289-313, 4698-4711, 4647-4651, 4475-4487"
 phase: null
-status: planned
+status: implemented
 depends_on: [REQ-TBL-001, REQ-WP-066]
 tags: [timeframes]
 ---
@@ -95,7 +95,46 @@ that is also the UTC boundary, because each divides a day evenly.
 
 <!-- trace:begin -->
 - **Specs:** [[SPEC-117-timeframe-resampling]]
-- **Outcomes:** [[OUT-2026-09-17-plan-timeframe-resampling]], [[OUT-2026-09-17-spec-timeframe-resampling]], [[OUT-2026-09-17-tasks-timeframe-resampling]]
+- **Tests:**
+    - `tests/unit/pipeline/test_resample_main.py::TestMain::test_four_hour_comes_from_configuration_alone`
+    - `tests/unit/pipeline/test_resample_main.py::TestMain::test_once_exits_zero_when_everything_already_existed`
+    - `tests/unit/pipeline/test_resample_main.py::TestMain::test_once_writes_the_configured_timeframe`
+    - `tests/unit/pipeline/test_resample_main.py::TestResampleReport::test_line_counts_refusals`
+    - `tests/unit/pipeline/test_resample_main.py::TestResampleReport::test_line_names_written_and_skipped`
+    - `tests/unit/pipeline/test_resample_main.py::TestResampleReport::test_report_carries_what_was_committed_not_what_was_computed`
+    - `tests/unit/test_resample.py::TestFold::test_delta_base_is_summed_sides`
+    - `tests/unit/test_resample.py::TestFold::test_extreme_times_come_from_minutes_holding_them`
+    - `tests/unit/test_resample.py::TestFold::test_fold_is_field_by_field_aggregation`
+    - `tests/unit/test_resample.py::TestFold::test_folded_bar_carries_window_bounds_and_is_final`
+    - `tests/unit/test_resample.py::TestFold::test_vwap_falls_back_to_close_when_volume_base_is_zero`
+    - `tests/unit/test_resample.py::TestFold::test_vwap_of_unequal_volumes_is_quote_over_base_not_mean_of_vwaps`
+    - `tests/unit/test_resample.py::TestIdempotence::test_incomplete_window_already_present_is_not_refused`
+    - `tests/unit/test_resample.py::TestIdempotence::test_second_pass_skips_everything_already_present`
+    - `tests/unit/test_resample.py::TestResample::test_empty_source_gives_empty_result`
+    - `tests/unit/test_resample.py::TestResample::test_one_day_target_over_1440_minutes_opens_utc_midnight`
+    - `tests/unit/test_resample.py::TestResample::test_shuffling_source_changes_nothing`
+    - `tests/unit/test_resample.py::TestResample::test_target_not_whole_multiple_raises`
+    - `tests/unit/test_resample.py::TestResample::test_window_in_progress_produces_neither_bar_nor_refusal`
+    - `tests/unit/test_resample.py::TestResample::test_window_missing_one_minute_produces_refusal`
+    - `tests/unit/test_timeframes.py::TestParse::test_a_typo_is_unknown_not_a_calendar_period`
+    - `tests/unit/test_timeframes.py::TestParse::test_parse_1m_raises_calendar_period`
+    - `tests/unit/test_timeframes.py::TestParse::test_parse_list_dedup_and_sort`
+    - `tests/unit/test_timeframes.py::TestParse::test_parse_list_empty_raises`
+    - `tests/unit/test_timeframes.py::TestParse::test_parse_other_calendar_periods_raise_too`
+    - `tests/unit/test_timeframes.py::TestParse::test_parse_unknown_raises`
+    - `tests/unit/test_timeframes.py::TestTimeframeConstants::test_ns_multiple_of_one_minute`
+    - `tests/unit/test_timeframes.py::TestTimeframeConstants::test_token_matches_key`
+    - `tests/unit/test_timeframes.py::TestTimeframeCreation::test_timeframe_origin_within_bounds`
+    - `tests/unit/test_timeframes.py::TestTimeframeCreation::test_timeframe_requires_positive_ns`
+    - `tests/unit/test_timeframes.py::TestTimeframeCreation::test_weekly_with_origin_equal_ns_is_refused`
+    - `tests/unit/test_timeframes.py::TestWindowStart::test_weekly_containing_thursday_opens_monday`
+    - `tests/unit/test_timeframes.py::TestWindowStart::test_weekly_floor_division_not_truncation`
+    - `tests/unit/test_timeframes.py::TestWindowStart::test_window_start_idempotent`
+- **Code:**
+    - `src/channelflow/pipeline/resample.py`
+    - `src/channelflow/pipeline/resample_main.py`
+    - `src/channelflow/timeframes.py`
+- **Outcomes:** [[OUT-2026-09-17-plan-timeframe-resampling]], [[OUT-2026-09-17-spec-timeframe-resampling]], [[OUT-2026-09-17-tasks-timeframe-resampling]], [[OUT-2026-09-23-implement-timeframe-resampling]]
 <!-- trace:end -->
 
 ## Notes

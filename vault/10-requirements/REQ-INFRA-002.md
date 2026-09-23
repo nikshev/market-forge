@@ -53,12 +53,18 @@ requirement whose verification needs a network or a service.
 <!-- trace:begin -->
 - **Specs:** [[SPEC-003-ci-full-gate]]
 - **Tests:**
+    - `tests/tools/gates/test_two_gates.py::test_both_workflows_name_their_job_the_same`
     - `tests/tools/gates/test_two_gates.py::test_no_check_is_absent_from_both_gates`
     - `tests/tools/gates/test_two_gates.py::test_the_fast_gate_deselects_exactly_the_integration_tests`
+    - `tests/tools/gates/test_two_gates.py::test_the_light_gate_does_not_pretend_to_run_the_full_one`
+    - `tests/tools/gates/test_two_gates.py::test_the_light_gate_runs_the_checks_that_need_no_services`
+    - `tests/tools/gates/test_two_gates.py::test_the_two_workflows_carve_the_repository_in_two`
     - `tests/tools/gates/test_two_gates.py::test_the_workflow_runs_every_check_of_the_full_gate`
     - `tests/tools/gates/test_two_gates.py::test_the_workflow_runs_the_full_suite_not_the_fast_one`
+    - `tests/unit/docs/test_deployment_doc.py::test_every_trace_marker_in_docs_names_a_real_requirement`
 - **Code:**
     - `.github/workflows/ci.yml`
+    - `.github/workflows/docs.yml`
 - **Outcomes:** [[OUT-2026-09-07-implement-ci-full-gate]], [[OUT-2026-09-07-plan-ci-full-gate]], [[OUT-2026-09-07-spec-ci-full-gate]], [[OUT-2026-09-07-tasks-ci-full-gate]], [[OUT-2026-09-08-implement-trace-rule-r8]]
 <!-- trace:end -->
 
