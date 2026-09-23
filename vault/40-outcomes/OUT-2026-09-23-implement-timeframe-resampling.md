@@ -2,7 +2,7 @@
 id: OUT-2026-09-23-implement-timeframe-resampling
 step: implement
 records: [REQ-WP-073]
-commit: null
+commit: c614adff7e32f256bdc64f7a022404abef10bf07
 ---
 
 ## What was done
