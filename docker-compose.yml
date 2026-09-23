@@ -204,6 +204,67 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  # §5.1's Phase 1 universe is three symbols -- BTCUSDT, ETHUSDT, SOLUSDT -- and
+  # until 2026-09-17 this stack ingested one. These are the other two.
+  #
+  # Three services rather than one variable holding three names, because
+  # `ingest_main` refuses a configuration naming more than one symbol: a daemon
+  # multiplexing several would share one socket's failure across all of them,
+  # and one stalled symbol would stop the others silently.
+  #
+  # The first keeps the bare name `ingest-binance` because §6.2 spells it that
+  # way and `docs/deployment.md` names it in commands a reader pastes. The
+  # asymmetry is the PRD's spelling preserved, not an oversight.
+  ingest-binance-eth:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command:
+      - python
+      - -m
+      - channelflow.pipeline.ingest_main
+    environment:
+      CHANNELFLOW_CATALOG_URI: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      CHANNELFLOW_WAREHOUSE: s3://${MINIO_BUCKET}/warehouse
+      CHANNELFLOW_S3_ENDPOINT: http://minio:9000
+      CHANNELFLOW_S3_ACCESS_KEY_ID: ${MINIO_ROOT_USER}
+      CHANNELFLOW_S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
+      CHANNELFLOW_S3_REGION: us-east-1
+      CHANNELFLOW_INGEST_SYMBOLS: ${CHANNELFLOW_INGEST_SYMBOLS_ETH}
+      CHANNELFLOW_INGEST_TIMEFRAME_NS: ${CHANNELFLOW_INGEST_TIMEFRAME_NS}
+      CHANNELFLOW_ARCHIVE_URI: s3://${MINIO_BUCKET}/raw/cex
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    restart: unless-stopped
+
+  ingest-binance-sol:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command:
+      - python
+      - -m
+      - channelflow.pipeline.ingest_main
+    environment:
+      CHANNELFLOW_CATALOG_URI: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      CHANNELFLOW_WAREHOUSE: s3://${MINIO_BUCKET}/warehouse
+      CHANNELFLOW_S3_ENDPOINT: http://minio:9000
+      CHANNELFLOW_S3_ACCESS_KEY_ID: ${MINIO_ROOT_USER}
+      CHANNELFLOW_S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
+      CHANNELFLOW_S3_REGION: us-east-1
+      CHANNELFLOW_INGEST_SYMBOLS: ${CHANNELFLOW_INGEST_SYMBOLS_SOL}
+      CHANNELFLOW_INGEST_TIMEFRAME_NS: ${CHANNELFLOW_INGEST_TIMEFRAME_NS}
+      CHANNELFLOW_ARCHIVE_URI: s3://${MINIO_BUCKET}/raw/cex
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    restart: unless-stopped
+
   # The plane degrades in two directions without this ([[REQ-WP-070]]): reads get
   # slower as files accumulate, and storage grows because nothing collects what
   # a compaction unreferenced. Measured before it existed: 2.6 MB of bar data

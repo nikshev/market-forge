@@ -11,7 +11,7 @@ rather than leaving prose that is confident, plausible and wrong.
 
 ## What the stack is
 
-Nine services, started together:
+Eleven services, started together:
 
 | service | what it is for |
 |---|---|
@@ -23,12 +23,27 @@ Nine services, started together:
 | `api` | the read API of PRD §28, built from this repository ([[REQ-WP-064]]) |
 | `web` | the chart application, static files behind nginx, which proxies `/api` to `api` |
 | `ingest-binance` | the live connector: one symbol, socket to bars ([[REQ-WP-066]]) |
+| `ingest-binance-eth` | the same, for ETHUSDT |
+| `ingest-binance-sol` | the same, for SOLUSDT |
 | `maintenance` | prunes metadata, compacts and optionally expires, on a loop ([[REQ-WP-070]]) |
 
-All four application services build from this repository ([[REQ-WP-064]],
+All six application services build from this repository ([[REQ-WP-064]],
 [[REQ-WP-066]], [[REQ-WP-070]]) rather than pulling a tag naming a build nobody
 in this checkout can reproduce. `worker` is the one §6.2 service with no
 container, because it has no code: [[REQ-PIPE-001]] chose a replay over a daemon.
+
+**Three ingest services, not one taking three symbols.** §5.1's Phase 1 universe
+is BTCUSDT, ETHUSDT and SOLUSDT, and `ingest_main` refuses a configuration
+naming more than one symbol: a daemon multiplexing several would share one
+socket's failure across all of them, so one stalled symbol would stop the others
+without saying so. The first keeps §6.2's bare spelling `ingest-binance`.
+
+**What still has no producer.** Nothing in this stack fits a channel. The live
+path is bars only, and `channel_snapshots` stays empty until [[REQ-WP-077]]
+gives `record_replay` a process to run in. Measured 2026-09-17: 133 bars, zero
+channel snapshots. Written here because a stack that looks complete and produces
+no channels is the kind of thing a reader should learn from a document rather
+than from an empty chart.
 
 *(This paragraph said the opposite until 2026-09-14 — that the API and web app
 were not containerised. `tests/unit/docs/test_deployment_doc.py` checks that
@@ -154,8 +169,8 @@ docker compose ps                    # all healthy?
 ```
 
 `make up` deliberately starts only the two stateful services the test suite
-needs. The second command brings up the API, the web app, the ingest daemon,
-maintenance, Prometheus and Grafana, building the four application images from
+needs. The second command brings up the API, the web app, the three ingest
+daemons, maintenance, Prometheus and Grafana, building the six application images from
 this checkout rather than pulling a tag nobody here can reproduce.
 
 First build takes a few minutes. After it, the ingest daemon connects to Binance
@@ -243,7 +258,7 @@ secret; `.env` is not committed and never should be.
 | `CHANNELFLOW_BIND_ADDRESS` | what every published port binds to; `127.0.0.1` by default ([[REQ-WP-072]]) |
 | `CHANNELFLOW_CORS_ORIGINS`, `CHANNELFLOW_RATE_LIMIT`, `CHANNELFLOW_RATE_WINDOW_SECONDS` | what the read API allows and refuses |
 | `GRAFANA_ADMIN_PASSWORD`, `GRAFANA_ANONYMOUS` | Grafana's credential; anonymous access is off unless enabled |
-| `CHANNELFLOW_INGEST_SYMBOLS`, `CHANNELFLOW_INGEST_TIMEFRAME_NS` | what the ingest daemon reads, and at what bar size |
+| `CHANNELFLOW_INGEST_SYMBOLS`, `CHANNELFLOW_INGEST_SYMBOLS_ETH`, `CHANNELFLOW_INGEST_SYMBOLS_SOL`, `CHANNELFLOW_INGEST_TIMEFRAME_NS` | what each ingest daemon reads, and at what bar size — one symbol per process |
 | `CHANNELFLOW_MAINTENANCE_INTERVAL`, `CHANNELFLOW_KEEP_DAYS` | how often maintenance runs, and what it may expire |
 | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` | alert delivery, empty unless alerting is wanted |
 | `CHANNELFLOW_CHART_BASE_URL` | where an alert's chart link points |

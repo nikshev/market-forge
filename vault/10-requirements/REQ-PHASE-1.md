@@ -103,5 +103,44 @@ boundary is deliberate: rounding a fill to a valid tick, refusing a size under
 the minimum and skipping a halted instrument each change the backtest's
 execution model and each wants its own requirement.
 
+### 2026-09-17: "live BTC/ETH/SOL channels update" does not hold on a deployment
+
+This phase is `implemented` and its first acceptance criterion is not met by any
+running instance. Recorded here rather than by moving the status, because every
+requirement in `covers:` genuinely is implemented and rewriting that would
+misreport the work; and rather than left unwritten, because an unrecorded gap in
+a phase marked delivered is worse than a status nobody likes.
+
+Measured on the stack brought up on 2026-09-17, after 133 minutes of live
+ingest:
+
+    bars table:              133 rows, one series (binance BTCUSDT, 60000000000)
+    channel_snapshots table: 0 rows
+    services running:        api grafana ingest-binance maintenance minio
+                             postgres prometheus redpanda web
+
+All three parts of the criterion fail. Channels do not update, because nothing
+fits one: the live path is `BarBuilder → BarSink` and no process calls
+`record_replay`. There is no ETH and no SOL, because §6.2's one ingest service
+carries one symbol.
+
+**The capability is built.** `src/channelflow/channels/` holds five models,
+`BacktestRunner` fits them, `record_replay` records the snapshots, and ten test
+files cover it. What is missing is a process that runs any of it against live
+data — the work [[REQ-PIPE-001]] named "deployment work" and deliberately put
+outside itself. [[REQ-WP-077]] is that process.
+
+**Nothing could have caught this.** `assert_phase_is_honest` in
+`tests/tools/trace/test_phase_coverage.py` checks that every requirement in
+`covers:` reached `implemented`, that a delivered phase lists no
+`not_delivered`, and that `blocked` and `deferred` name their costs. A phase's
+own acceptance criteria are prose, and no test reads them. So "every covering
+requirement is implemented" and "the phase's acceptance holds" are different
+claims, and this is where they came apart.
+
+The symbols half was closed the same day: `ingest-binance-eth` and
+`ingest-binance-sol` joined the compose file. The channels half waits on
+[[REQ-WP-077]], and until it lands this criterion is unmet and known to be.
+
 Generated from the PRD by `tools/extract_prd.py`. This section is human
 territory and is never machine-rewritten.
