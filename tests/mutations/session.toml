@@ -73,7 +73,7 @@ replace = '''        pass'''
 
 [[mutation]]
 name = "a server ping is not answered"
-find = '''        self.transport.pong()
+find = '''        self.connector.pong()
         self.on_frame()'''
 replace = '''        self.on_frame()'''
 

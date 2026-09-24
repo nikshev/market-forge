@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "§6.2, §25.1, §29.6"
 prd_lines: "405-420, 4200-4210, 4653-4668"
 phase: null
-status: draft
+status: specified
 depends_on: [REQ-PIPE-001, REQ-WP-073]
 tags: []
 ---
@@ -83,7 +83,8 @@ a fixture — not a property to inherit on trust.
 ## Trace
 
 <!-- trace:begin -->
-_No linked artifacts yet._
+- **Specs:** [[SPEC-122-channel-production]]
+- **Outcomes:** [[OUT-2026-09-24-spec-channel-production]]
 <!-- trace:end -->
 
 ## Notes

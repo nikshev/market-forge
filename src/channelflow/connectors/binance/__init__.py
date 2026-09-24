@@ -1,5 +1,6 @@
 """Binance connector exports.
 
+# @trace: REQ-WP-003
 # @trace: REQ-WP-076
 """
 

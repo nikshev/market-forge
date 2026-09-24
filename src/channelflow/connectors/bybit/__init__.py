@@ -1,5 +1,6 @@
 """Bybit connector exports.
 
+# @trace: REQ-WP-043
 # @trace: REQ-WP-076
 """
 

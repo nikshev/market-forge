@@ -55,8 +55,8 @@ replace = '''            pass'''
 name = "stopping closes before it commits"
 find = '''        flushed = self.flush_bars()
         archived = self.archive.flush()
-        self.session.transport.close()'''
-replace = '''        self.session.transport.close()
+        self.session.connector.close()'''
+replace = '''        self.session.connector.close()
         flushed = self.flush_bars()
         archived = self.archive.flush()'''
 

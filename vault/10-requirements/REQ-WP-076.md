@@ -66,7 +66,18 @@ and connection rules come from. They are not assumed to match Binance's.
 
 <!-- trace:begin -->
 - **Specs:** [[SPEC-121-multi-venue-ingest]]
-- **Outcomes:** [[OUT-2026-09-23-plan-multi-venue-ingest]], [[OUT-2026-09-23-spec-multi-venue-ingest]]
+- **Code:**
+    - `src/channelflow/connectors/__init__.py`
+    - `src/channelflow/connectors/binance/__init__.py`
+    - `src/channelflow/connectors/binance/connector.py`
+    - `src/channelflow/connectors/bybit/__init__.py`
+    - `src/channelflow/connectors/bybit/connector.py`
+    - `src/channelflow/connectors/okx/__init__.py`
+    - `src/channelflow/connectors/okx/connector.py`
+    - `src/channelflow/connectors/venue.py`
+    - `src/channelflow/pipeline/ingest.py`
+    - `src/channelflow/pipeline/ingest_main.py`
+- **Outcomes:** [[OUT-2026-09-23-plan-multi-venue-ingest]], [[OUT-2026-09-23-spec-multi-venue-ingest]], [[OUT-2026-09-23-tasks-multi-venue-ingest]]
 <!-- trace:end -->
 
 ## Notes

@@ -1,5 +1,6 @@
 """OKX connector exports.
 
+# @trace: REQ-WP-044
 # @trace: REQ-WP-076
 """
 
