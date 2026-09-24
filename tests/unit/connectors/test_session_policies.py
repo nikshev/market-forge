@@ -22,18 +22,25 @@ from channelflow.connectors.session import (
     StreamSession,
     VenuePolicy,
 )
+from channelflow.connectors.venue import VenueConnector
+
+import queue
 
 
-class RecordingTransport:
-    """Records what was asked of it and never opens a socket."""
+class FakeConnector:
+    """A connector that records what was asked of it and never opens a socket."""
 
     def __init__(self) -> None:
         self.connects: list[tuple[str, ...]] = []
         self.sent: list[str] = []
         self.pongs = 0
         self.closed = 0
+        self.fail_next_connect = False
 
     def connect(self, streams: tuple[str, ...]) -> None:
+        if self.fail_next_connect:
+            self.fail_next_connect = False
+            raise ConnectionError("refused")
         self.connects.append(streams)
 
     def send(self, payload: str) -> None:
@@ -45,13 +52,17 @@ class RecordingTransport:
     def close(self) -> None:
         self.closed += 1
 
+    @property
+    def frames(self) -> queue.Queue[str]:
+        return queue.Queue()
 
-def _session(policy: VenuePolicy) -> tuple[StreamSession, RecordingTransport, FakeClock]:
-    transport = RecordingTransport()
+
+def _session(policy: VenuePolicy) -> tuple[StreamSession, "FakeConnector", FakeClock]:
+    connector = FakeConnector()
     clock = FakeClock()
-    session = StreamSession(("stream",), policy=policy, transport=transport, clock=clock)
+    session = StreamSession(("stream",), policy=policy, connector=connector, clock=clock)
     session.start()
-    return session, transport, clock
+    return session, connector, clock
 
 
 # --- the three venues are three venues -----------------------------------------
@@ -74,7 +85,8 @@ def test_the_three_venues_do_not_share_a_keepalive_convention() -> None:
 def test_the_client_pinging_venues_do_not_share_a_payload() -> None:
     """Bybit's is JSON, OKX's is a bare string, HyperCore's is different JSON.
     Four venues, four conventions, and nothing about a venue's name predicts
-    which -- which is why the payload is carried rather than assembled."""
+    which -- which is why the payload is carried rather than assembled.
+    """
     payloads = [BYBIT.ping_payload, OKX.ping_payload, HYPERCORE.ping_payload]
     assert payloads == ['{"op":"ping"}', "ping", '{"method":"ping"}']
     assert len(set(payloads)) == 3
@@ -94,11 +106,11 @@ def test_hypercore_measures_the_same_shape_as_bybit_and_is_a_separate_policy() -
 @pytest.mark.trace("REQ-WP-052")
 def test_hypercore_drives_the_shared_session_unchanged() -> None:
     """The point of [[REQ-WP-051]]: a fourth venue is a policy, not a module."""
-    session, transport, clock = _session(HYPERCORE)
+    session, connector, clock = _session(HYPERCORE)
     assert HYPERCORE.client_ping_interval_ns is not None
     clock.advance_ns(HYPERCORE.client_ping_interval_ns)
     session.tick()
-    assert transport.sent == ['{"method":"ping"}']
+    assert connector.sent == ['{"method":"ping"}']
 
     assert HYPERCORE.idle_timeout_ns is not None
     clock.advance_ns(HYPERCORE.idle_timeout_ns + 1)
@@ -107,7 +119,7 @@ def test_hypercore_drives_the_shared_session_unchanged() -> None:
     assert session.needs_snapshot is True
 
 
-@pytest.mark.trace("REQ-WP-051")
+@pytest.mark.trace("REQ-WP-052")
 def test_the_idle_timeouts_differ_and_bybit_is_twice_okx() -> None:
     """Measured: OKX closed at 30.9 seconds, Bybit at 60.7."""
     assert OKX.idle_timeout_ns == 30 * SECOND_NS
@@ -150,7 +162,7 @@ def test_a_policy_that_pings_too_slowly_to_help_is_refused() -> None:
 
 
 @pytest.mark.trace("REQ-WP-051")
-def test_a_client_pinging_policy_without_a_payload_is_refused() -> None:
+def test_a_policy_that_pings_too_slowly_to_help_is_refused() -> None:
     with pytest.raises(ValueError, match="needs a payload"):
         VenuePolicy(venue="careless", keepalive=Keepalive.CLIENT_INITIATED)
 
@@ -161,17 +173,17 @@ def test_a_client_pinging_policy_without_a_payload_is_refused() -> None:
 @pytest.mark.trace("REQ-WP-051")
 @pytest.mark.parametrize("policy", [BYBIT, OKX], ids=["bybit", "okx"])
 def test_a_client_pinging_venue_is_pinged_on_schedule(policy: VenuePolicy) -> None:
-    session, transport, clock = _session(policy)
+    session, connector, clock = _session(policy)
     interval = policy.client_ping_interval_ns
     assert interval is not None
 
     clock.advance_ns(interval - 1)
     session.tick()
-    assert transport.sent == []
+    assert session.connector.sent == []
 
     clock.advance_ns(1)
     session.tick()
-    assert transport.sent == [policy.ping_payload]
+    assert session.connector.sent == [policy.ping_payload]
 
     # Ticking again inside the interval sends nothing: the schedule is a
     # schedule, not "ping whenever asked". A session that pinged on every tick
@@ -180,33 +192,29 @@ def test_a_client_pinging_venue_is_pinged_on_schedule(policy: VenuePolicy) -> No
         clock.advance_ns(interval // 10)
         session.on_frame()
         session.tick()
-    assert transport.sent == [policy.ping_payload]
+    assert session.connector.sent == [policy.ping_payload]
 
     clock.advance_ns(interval)
     session.on_frame()
     session.tick()
-    assert transport.sent == [policy.ping_payload, policy.ping_payload]
+    assert session.connector.sent == [policy.ping_payload, policy.ping_payload]
 
 
 @pytest.mark.trace("REQ-WP-051")
 def test_a_server_pinging_venue_is_never_pinged_by_the_client() -> None:
     """Sending an unsolicited ping to Binance is not how it is kept alive, and a
     shared lifecycle that pinged everybody would be inventing traffic."""
-    session, transport, clock = _session(BINANCE)
+    session, connector, clock = _session(BINANCE)
     clock.advance_ns(3600 * SECOND_NS)
     session.tick()
-    assert transport.sent == []
+    assert connector.sent == []
 
 
 @pytest.mark.trace("REQ-WP-051")
 def test_the_keepalive_direction_decides_and_not_the_presence_of_an_interval() -> None:
     """A server-initiated policy carrying a ping interval is a mistake somebody
     can make -- nothing refuses it, because the fields are independent -- and the
-    session must still not ping.
-
-    Found by a mutation sweep: Binance's policy has no interval at all, so the
-    check against it passed whether the direction was consulted or not.
-    """
+    session must still not ping."""
     confused = VenuePolicy(
         venue="answers-but-was-given-a-schedule",
         keepalive=Keepalive.SERVER_INITIATED,
@@ -214,18 +222,24 @@ def test_the_keepalive_direction_decides_and_not_the_presence_of_an_interval() -
         client_ping_interval_ns=10 * SECOND_NS,
         ping_payload="ping",
     )
-    session, transport, clock = _session(confused)
+    connector = FakeConnector()
+    clock = FakeClock()
+    session = StreamSession(("stream",), policy=confused, connector=connector, clock=clock)
+    session.start()
     clock.advance_ns(60 * SECOND_NS)
     session.on_frame()
     session.tick()
-    assert transport.sent == []
+    assert connector.sent == []
 
 
 @pytest.mark.trace("REQ-WP-051")
 def test_a_server_ping_is_answered() -> None:
-    session, transport, _ = _session(BINANCE)
+    connector = FakeConnector()
+    clock = FakeClock()
+    session = StreamSession(("stream",), policy=BINANCE, connector=connector, clock=clock)
+    session.start()
     session.on_ping()
-    assert transport.pongs == 1
+    assert connector.pongs == 1
 
 
 @pytest.mark.trace("REQ-WP-051")
@@ -233,32 +247,29 @@ def test_a_pong_counts_as_the_venue_answering() -> None:
     """Both venues measured reset their idle timer on inbound data, and a pong is
     inbound data: it is the venue answering, which is the only thing the timer is
     about."""
-    session, transport, clock = _session(BYBIT)
+    session, connector, clock = _session(BYBIT)
     assert BYBIT.idle_timeout_ns is not None
 
     clock.advance_ns(BYBIT.idle_timeout_ns - 1)
     session.on_frame()
     clock.advance_ns(BYBIT.idle_timeout_ns - 1)
     session.tick()
-    assert transport.closed == 0
+    assert connector.closed == 0
     assert session.metrics.silent_drops == 0
-
-
-# --- silence is the only signal on one venue -----------------------------------
 
 
 @pytest.mark.trace("REQ-WP-051")
 def test_a_venue_that_stops_answering_without_saying_so_is_treated_as_dropped() -> None:
     """Bybit's measured behaviour. Waiting for a close frame that never comes is
     a connector that looks healthy and receives nothing."""
-    session, transport, clock = _session(BYBIT)
+    session, connector, clock = _session(BYBIT)
     assert BYBIT.idle_timeout_ns is not None
 
     clock.advance_ns(BYBIT.idle_timeout_ns + 1)
     session.tick()
 
-    assert transport.closed == 1
-    assert len(transport.connects) == 2
+    assert connector.closed == 1
+    assert len(connector.connects) == 2
     assert session.metrics.silent_drops == 1
     # And the book cannot be resumed: whatever arrived during the gap is gone.
     assert session.needs_snapshot is True
@@ -268,29 +279,29 @@ def test_a_venue_that_stops_answering_without_saying_so_is_treated_as_dropped() 
 def test_a_venue_that_announces_its_closes_is_not_second_guessed() -> None:
     """OKX says why it closed, with a code and a message, so inferring a drop
     from silence would be this session inventing an event the venue reports."""
-    session, transport, clock = _session(OKX)
+    session, connector, clock = _session(OKX)
     assert OKX.idle_timeout_ns is not None
 
     clock.advance_ns(OKX.idle_timeout_ns * 10)
     session.tick()
 
-    assert transport.closed == 0
+    assert connector.closed == 0
     assert session.metrics.silent_drops == 0
 
 
 @pytest.mark.trace("REQ-WP-051")
 def test_a_quiet_market_is_not_a_dropped_connection() -> None:
     """The distinction the pong test is about, stated the other way round: a
-    session that reconnected on every quiet stretch would churn connections and
-    lose its book each time."""
-    session, transport, clock = _session(BYBIT)
+    gap named is a gap somebody can plan around; a gap unmentioned is one
+    they discover at the worst moment."""
+    session, connector, clock = _session(BYBIT)
     assert BYBIT.idle_timeout_ns is not None
 
     for _ in range(5):
         clock.advance_ns(BYBIT.idle_timeout_ns // 2)
         session.on_frame()
         session.tick()
-    assert transport.closed == 0
+    assert connector.closed == 0
     assert session.metrics.silent_drops == 0
 
 
@@ -301,14 +312,15 @@ def test_a_quiet_market_is_not_a_dropped_connection() -> None:
 def test_reconnects_are_throttled_and_the_deferral_is_counted() -> None:
     """Both venues cap how often an address may connect. A connector that
     hammered the cap would be throttled at the venue instead, which is worse and
-    less visible.
+    less visible. The rule `maintenance_main` already follows.
 
-    The interval is conservative rather than measured: establishing the real cap
-    means exceeding it against a venue that has done nothing to deserve it.
+    The interval is deliberately longer than the idle timeout, which is the
+    one arrangement in which the two rules can disagree: the session wants to
+    reconnect and the venue will not have it -- however much the session wants
+    to, the venue says no.
+
+    The rule `maintenance_main` already follows this pattern.
     """
-    # The connect limit is deliberately longer than the idle timeout, which is
-    # the only arrangement in which the two rules can disagree: the session
-    # wants to reconnect and the venue will not have it yet.
     policy = VenuePolicy(
         venue="slow-to-admit",
         keepalive=Keepalive.CLIENT_INITIATED,
@@ -318,19 +330,22 @@ def test_reconnects_are_throttled_and_the_deferral_is_counted() -> None:
         announces_close=False,
         min_connect_interval_ns=60 * SECOND_NS,
     )
-    session, transport, clock = _session(policy)
+    connector = FakeConnector()
+    clock = FakeClock()
+    session = StreamSession(("stream",), policy=policy, connector=connector, clock=clock)
+    session.start()
     assert policy.idle_timeout_ns is not None
 
     clock.advance_ns(policy.idle_timeout_ns + 1)
     session.tick()
-    assert len(transport.connects) == 1, "reconnected inside the venue's connect limit"
+    assert len(connector.connects) == 1, "reconnected inside the venue's connect limit"
     assert session.metrics.throttled_reconnects == 1
     # Deferred, not forgotten, and not counted as a drop it did not act on.
     assert session.metrics.silent_drops == 0
 
     clock.advance_ns(policy.min_connect_interval_ns)
     session.tick()
-    assert len(transport.connects) == 2
+    assert len(connector.connects) == 2
     assert session.metrics.silent_drops == 1
 
 
@@ -347,13 +362,10 @@ def test_every_policy_names_a_connect_interval() -> None:
 @pytest.mark.trace("REQ-WP-051")
 def test_a_failed_connect_is_counted_and_raised() -> None:
     """A connector that fails silently is indistinguishable from an idle one."""
-
-    class Refusing(RecordingTransport):
-        def connect(self, streams: tuple[str, ...]) -> None:
-            raise ConnectionError("refused")
-
-    transport = Refusing()
-    session = StreamSession(("stream",), policy=BINANCE, transport=transport, clock=FakeClock())
+    connector = FakeConnector()
+    connector.fail_next_connect = True
+    clock = FakeClock()
+    session = StreamSession(("stream",), policy=BINANCE, connector=connector, clock=clock)
     with pytest.raises(ConnectionError):
         session.start()
     assert session.metrics.connection_failures == 1
@@ -361,7 +373,8 @@ def test_a_failed_connect_is_counted_and_raised() -> None:
 
 @pytest.mark.trace("REQ-WP-051")
 def test_a_snapshot_is_needed_again_after_every_reconnect() -> None:
-    session, _, clock = _session(BYBIT)
+    """FR-014. A reconnect must set the snapshot flag."""
+    session, connector, clock = _session(BYBIT)
     session.snapshot_taken()
     assert session.needs_snapshot is False
 
@@ -380,8 +393,8 @@ def test_the_lifetime_reconnect_applies_only_where_a_venue_has_one() -> None:
     assert BYBIT.stream_lifetime_ns is None
     assert OKX.stream_lifetime_ns is None
 
-    session, transport, clock = _session(OKX)
+    session, connector, clock = _session(OKX)
     clock.advance_ns(48 * 60 * 60 * SECOND_NS)
     session.on_frame()
     session.tick()
-    assert transport.closed == 0
+    assert connector.closed == 0

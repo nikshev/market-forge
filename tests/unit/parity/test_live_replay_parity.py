@@ -36,6 +36,7 @@ from channelflow.connectors.websocket import ReplayTransport
 from channelflow.pipeline.archive import FrameArchive, LocalObjectStore, read_frames
 from channelflow.pipeline.ingest import IngestDaemon, streams_for
 from channelflow.signals import SignalMachine
+from channelflow.connectors.venue import VENUE_REGISTRY, VenueConnector
 
 FIXTURES = Path(__file__).resolve().parents[2] / "fixtures" / "parity"
 MINUTE_NS = 60_000_000_000
@@ -103,15 +104,39 @@ def _replayed_bars(tmp_path: Path) -> list:
     produced: list = []
     transport = ReplayTransport(recorded=[frame for _at, frame in frames])
     builder = BarBuilder(timeframe_ns=MINUTE_NS, grace_ns=5_000_000_000, on_final=produced.append)
+    
+    # Wrap ReplayTransport in a VenueConnector for the new interface
+    class ReplayConnector:
+        def __init__(self, transport):
+            self._transport = transport
+            
+        def connect(self, streams: tuple[str, ...]) -> None:
+            self._transport.connect(streams)
+            
+        def send(self, payload: str) -> None:
+            self._transport.send(payload)
+            
+        def pong(self) -> None:
+            self._transport.pong()
+            
+        def close(self) -> None:
+            self._transport.close()
+            
+        @property
+        def frames(self):
+            return self._transport
+    
+    config = VENUE_REGISTRY["binance"]
+    connector = ReplayConnector(transport)
     daemon = IngestDaemon(
         session=StreamSession(
-            streams=streams_for(["BTCUSDT"]), policy=BINANCE, transport=transport, clock=clock
+            streams=streams_for(["BTCUSDT"]), policy=BINANCE, connector=connector, clock=clock
         ),
-        transport=transport,
+        connector=connector,
         archive=FrameArchive(store=LocalObjectStore(root=tmp_path), venue="binance"),
         builder=builder,
         venue="binance",
-        now_ns=clock,
+        now_ns=clock.now_ns,
     )
     # Received-at drives the archive, so it advances with the frames rather than
     # sitting still: a clock that never moved would write one object and mask

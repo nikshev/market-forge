@@ -1,12 +1,24 @@
-"""Binance connector (REQ-WP-003).
+"""Binance connector exports.
 
-# @trace: REQ-WP-003
-
-Native rather than a library, per ADR-004: PRD section 8.1 forbids hiding
-sequence gaps and order-book reconstruction, which are the things a feed library
-exists to abstract away.
+# @trace: REQ-WP-076
 """
 
+from channelflow.connectors.binance.connector import BinanceConnector
+from channelflow.connectors.binance.normalize import (
+    NormalizationError,
+    agg_trade,
+    trade,
+    depth_update,
+    depth_snapshot,
+)
 from channelflow.connectors.binance.instruments import instruments_from
 
-__all__ = ["instruments_from"]
+__all__ = [
+    "BinanceConnector",
+    "NormalizationError",
+    "agg_trade",
+    "trade",
+    "depth_update",
+    "depth_snapshot",
+    "instruments_from",
+]

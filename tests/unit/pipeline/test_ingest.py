@@ -18,6 +18,7 @@ import pytest
 
 from channelflow.bars.builder import BarBuilder
 from channelflow.connectors.session import BINANCE, FakeClock, StreamSession
+from channelflow.connectors.venue import VenueConnector
 from channelflow.connectors.websocket import ReplayTransport, binance_stream_url
 from channelflow.pipeline.archive import (
     ClockWentBackwards,
@@ -50,6 +51,30 @@ MINUTE_NS = 60 * SECOND_NS
 BASE_NS = 1789000000_000_000_000
 
 
+class FakeReplayConnector:
+    """A fake VenueConnector that replays recorded frames."""
+
+    def __init__(self, transport):
+        self._transport = transport
+        self.closed = False
+
+    def connect(self, streams):
+        self._transport.connect([])
+
+    @property
+    def frames(self):
+        return self._transport
+
+    def send(self, payload):
+        pass
+
+    def pong(self):
+        pass
+
+    def close(self):
+        self.closed = True
+
+
 def _daemon(
     tmp_path: Path,
     frames: list[str] | None = None,
@@ -61,17 +86,23 @@ def _daemon(
     transport = ReplayTransport(recorded=frames if frames is not None else RECORDED)
     clock = FakeClock(BASE_NS)
     builder = BarBuilder(timeframe_ns=timeframe_ns, grace_ns=grace_ns, on_final=written.append)
+    connector = FakeReplayConnector(transport)
     daemon = IngestDaemon(
         session=StreamSession(
-            streams=streams_for(["BTCUSDT"]), policy=BINANCE, transport=transport, clock=clock
+            streams=streams_for(["BTCUSDT"]), policy=BINANCE, connector=connector, clock=clock
         ),
-        transport=transport,
+        connector=connector,
         archive=FrameArchive(store=LocalObjectStore(root=tmp_path), venue="binance"),
         builder=builder,
         venue="binance",
         now_ns=clock.now_ns,
     )
     return daemon, written, clock
+
+
+# --------------------------------------------------------------------------
+# Recorded frames become trades
+# --------------------------------------------------------------------------
 
 
 # --------------------------------------------------------------------------
@@ -181,7 +212,7 @@ def test_stopping_commits_before_it_closes(tmp_path: Path) -> None:
 
     assert flushed == ["committed"]
     assert report is not None and report.archived is not None
-    assert daemon.session.transport.closed is True  # type: ignore[union-attr]
+    assert daemon.session.connector.closed is True  # type: ignore[union-attr]
 
 
 # --------------------------------------------------------------------------
@@ -527,13 +558,13 @@ def test_the_order_of_shutdown_is_commit_then_close(tmp_path: Path) -> None:
     order: list[str] = []
     daemon, _, _ = _daemon(tmp_path)
     daemon.flush_bars = lambda: order.append("bars") or None  # type: ignore[func-returns-value]
-    original_close = daemon.session.transport.close
+    original_close = daemon.session.connector.close
 
     def close() -> None:
         order.append("close")
         original_close()
 
-    daemon.session.transport.close = close  # type: ignore[method-assign]
+    daemon.session.connector.close = close  # type: ignore[method-assign]
     daemon.start()
     daemon.step()
     daemon.stop()

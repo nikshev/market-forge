@@ -1,6 +1,7 @@
 """How the ingest daemon starts.
 
 # @trace: REQ-WP-066
+# @trace: REQ-WP-076
 
 The same shape as the read API's composition root, and for the same reasons: the
 environment is the only input, nothing defaults, and a missing variable refuses
@@ -15,7 +16,13 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from channelflow.bars.builder import BarBuilder
-from channelflow.connectors.session import BINANCE, StreamSession
+from channelflow.connectors.venue import (
+    VENUE_REGISTRY,
+    binance_subscribe_message,
+    bybit_subscribe_message,
+    okx_subscribe_message,
+)
+from channelflow.connectors.session import BINANCE, FakeClock, StreamSession
 from channelflow.connectors.websocket import WebsocketTransport, binance_stream_url
 from channelflow.lakehouse import catalog as open_catalog
 from channelflow.pipeline.archive import FrameArchive, LocalObjectStore, ObjectStore, S3ObjectStore
@@ -26,13 +33,15 @@ from channelflow.tables import bars as bars_table
 SYMBOLS = "CHANNELFLOW_INGEST_SYMBOLS"
 ARCHIVE_URI = "CHANNELFLOW_ARCHIVE_URI"
 TIMEFRAME = "CHANNELFLOW_INGEST_TIMEFRAME_NS"
+INGEST_VENUE = "CHANNELFLOW_INGEST_VENUE"
 
 #: One minute. A chart shows its first candle a minute after the daemon starts
 #: rather than fifteen, which is the difference between believing it works and
 #: waiting to find out.
 DEFAULT_TIMEFRAME_NS = 60_000_000_000
 
-VENUE = "binance"
+SYMBOLS_BYBIT = "CHANNELFLOW_INGEST_SYMBOLS_BYBIT"
+SYMBOLS_OKX = "CHANNELFLOW_INGEST_SYMBOLS_OKX"
 
 
 class SystemClock:
@@ -97,6 +106,19 @@ def object_store_for(uri: str, storage: Mapping[str, str]) -> ObjectStore:
     return S3ObjectStore(bucket=bucket, client=client)
 
 
+def _connector_for_venue(venue: str) -> tuple[str, str]:
+    """Build the connector and subscribe message for a venue."""
+    config = VENUE_REGISTRY[venue]
+    streams = config.stream_builder(["placeholder"])  # will be replaced with actual symbols
+    subscribe_msg = ""
+    if venue == "bybit":
+        subscribe_msg = bybit_subscribe_message(streams)
+    elif venue == "okx":
+        subscribe_msg = okx_subscribe_message(streams)
+    # For binance, subscribe_msg is empty (uses URL params)
+    return config.connector.__module__ + "." + config.connector.__name__, subscribe_msg
+
+
 def build_daemon(
     *,
     symbol: str,
@@ -105,24 +127,52 @@ def build_daemon(
     catalog_uri: str,
     warehouse: str,
     storage: Mapping[str, str],
+    venue: str,
 ) -> IngestDaemon:
     """One symbol's daemon, wired from configuration."""
+    if venue not in VENUE_REGISTRY:
+        raise MissingConfiguration(f"Unknown venue: {venue}. Known: {list(VENUE_REGISTRY.keys())}")
+
+    config = VENUE_REGISTRY[venue]
     catalog = open_catalog(uri=catalog_uri, warehouse=warehouse, **dict(storage))
     sink = bars_table.BarSink(table=bars_table.table_for(catalog))
     builder = BarBuilder(timeframe_ns=settings.timeframe_ns, on_final=sink)
-    transport = WebsocketTransport(url_for=binance_stream_url)
+
+    streams = config.stream_builder([symbol])
+    subscribe_msg = ""
+    if venue == "bybit":
+        subscribe_msg = bybit_subscribe_message(streams)
+    elif venue == "okx":
+        subscribe_msg = okx_subscribe_message(streams)
+
+    if venue == "binance":
+        transport = WebsocketTransport(url_for=binance_stream_url)
+        connector = config.connector(url_for=binance_stream_url)
+    elif venue == "bybit":
+        connector = config.connector(
+            url="wss://stream.bybit.com/v5/public/linear",
+            subscribe_msg=bybit_subscribe_message(streams),
+        )
+    elif venue == "okx":
+        connector = config.connector(
+            url="wss://ws.okx.com:8443/api/v5/market",
+            subscribe_msg=okx_subscribe_message(streams),
+        )
+    else:
+        raise MissingConfiguration(f"Unsupported venue: {venue}")
+
     session = StreamSession(
-        streams=streams_for([symbol]), policy=BINANCE, transport=transport, clock=SystemClock()
+        streams=streams, policy=config.policy, connector=connector, clock=SystemClock()
     )
     prefix = settings.archive_uri.removeprefix("s3://").split("/", 1)
     return IngestDaemon(
         session=session,
-        transport=transport,
+        connector=connector,
         archive=FrameArchive(
-            store=store, venue=VENUE, prefix=prefix[1] if len(prefix) > 1 else "raw/cex"
+            store=store, venue=venue, prefix=f"{venue}/{prefix[1] if len(prefix) > 1 else 'raw/cex'}"
         ),
         builder=builder,
-        venue=VENUE,
+        venue=venue,
         flush_bars=sink.flush,
         bars_pending=lambda: sink.pending,
     )
@@ -131,7 +181,11 @@ def build_daemon(
 def main(argv: list[str] | None = None) -> int:
     plane = settings_from_env()
     ingest = ingest_settings_from_env()
-    store = object_store_for(ingest.archive_uri, plane.storage)
+
+    if not os.environ.get(INGEST_VENUE, "").strip():
+        raise MissingConfiguration(f"{INGEST_VENUE} must be set (binance, bybit, or okx)")
+
+    venue = os.environ[INGEST_VENUE].strip().lower()
 
     if len(ingest.symbols) > 1:
         # One process per symbol, deliberately. `BarBuilder` is one symbol and
@@ -142,6 +196,7 @@ def main(argv: list[str] | None = None) -> int:
             f"{SYMBOLS} names {len(ingest.symbols)} symbols; run one process each"
         )
 
+    store = object_store_for(ingest.archive_uri, plane.storage)
     daemon = build_daemon(
         symbol=ingest.symbols[0],
         settings=ingest,
@@ -149,9 +204,10 @@ def main(argv: list[str] | None = None) -> int:
         catalog_uri=plane.catalog_uri,
         warehouse=plane.warehouse,
         storage=plane.storage,
+        venue=venue,
     )
     print(
-        f"ingesting {ingest.symbols[0]} at {ingest.timeframe_ns / 1e9:g}s bars, "
+        f"ingesting {ingest.symbols[0]} at {ingest.timeframe_ns / 1e9:g}s bars for {venue}, "
         f"archiving to {ingest.archive_uri}"
     )
     daemon.run()

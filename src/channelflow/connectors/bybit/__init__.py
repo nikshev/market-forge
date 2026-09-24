@@ -1,18 +1,22 @@
-"""Bybit v5 public market data (REQ-WP-043).
+"""Bybit connector exports.
 
-# @trace: REQ-WP-043
+# @trace: REQ-WP-076
 """
 
+from channelflow.connectors.bybit.connector import BybitConnector
 from channelflow.connectors.bybit.normalize import (
     NormalizationError,
-    order_book_message,
     public_trade,
+    order_book_message,
     rest_order_book,
+    derivatives_state,
 )
 
 __all__ = [
+    "BybitConnector",
     "NormalizationError",
-    "order_book_message",
     "public_trade",
+    "order_book_message",
     "rest_order_book",
+    "derivatives_state",
 ]

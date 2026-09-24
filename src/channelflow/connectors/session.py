@@ -43,9 +43,11 @@ conservative rather than discovered, and is marked as such.
 
 from __future__ import annotations
 
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from enum import StrEnum
-from typing import Protocol
+from typing import Any, Protocol
+import queue
 
 SECOND_NS = 1_000_000_000
 
@@ -66,6 +68,22 @@ class Transport(Protocol):
     def send(self, payload: str) -> None: ...
     def pong(self) -> None: ...
     def close(self) -> None: ...
+
+
+class VenueConnector(Protocol):
+    """Full connection lifecycle for one venue.
+
+    Unlike `Transport`, this owns the full connection lifecycle including
+    post-connect subscription (Bybit, OKX send a subscribe message after connect).
+    """
+
+    def connect(self, streams: tuple[str, ...]) -> None:
+        """Open socket, send subscription if needed, start reader thread."""
+    def send(self, payload: str) -> None: ...
+    def pong(self) -> None: ...
+    def close(self) -> None: ...
+    @property
+    def frames(self) -> queue.Queue[str]: ...
 
 
 class Clock(Protocol):
@@ -212,7 +230,7 @@ class StreamSession:
 
     streams: tuple[str, ...]
     policy: VenuePolicy
-    transport: Transport
+    connector: Any
     clock: Clock
     metrics: ConnectorMetrics = field(default_factory=ConnectorMetrics)
 
@@ -234,7 +252,7 @@ class StreamSession:
 
     def _connect(self) -> None:
         try:
-            self.transport.connect(self.streams)
+            self.connector.connect(self.streams)
         except Exception:
             self.metrics.connection_failures += 1
             raise
@@ -252,7 +270,7 @@ class StreamSession:
         if since < self.policy.min_connect_interval_ns:
             self.metrics.throttled_reconnects += 1
             return False
-        self.transport.close()
+        self.connector.close()
         self._connect()
         return True
 
@@ -267,7 +285,7 @@ class StreamSession:
 
     def on_ping(self) -> None:
         """The venue pinged us. Binance disconnects a client that does not answer."""
-        self.transport.pong()
+        self.connector.pong()
         self.on_frame()
 
     def tick(self) -> None:
@@ -297,7 +315,7 @@ class StreamSession:
             and interval is not None
             and now - self._last_ping_ns >= interval
         ):
-            self.transport.send(self.policy.ping_payload or "")
+            self.connector.send(self.policy.ping_payload or "")
             self._last_ping_ns = now
 
     def record_sequence_gap(self) -> None:

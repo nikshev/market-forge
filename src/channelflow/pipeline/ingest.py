@@ -1,6 +1,7 @@
 """PRD §6.2's `ingest-binance`, as a process that can be run.
 
 # @trace: REQ-WP-066
+# @trace: REQ-WP-076
 
 [[REQ-PIPE-001]] deferred this deliberately: "a live process attaching the same
 sinks to a running connector is deployment work and adds nothing this cannot
@@ -35,6 +36,7 @@ from typing import Any, Protocol
 from channelflow.bars.builder import BarBuilder
 from channelflow.connectors.binance import normalize
 from channelflow.connectors.session import StreamSession
+from channelflow.connectors.venue import VenueConnector
 from channelflow.pipeline.archive import FrameArchive
 
 #: How many bars a commit holds, at least.
@@ -91,7 +93,7 @@ class IngestDaemon:
     """
 
     session: StreamSession
-    transport: Drainable
+    connector: VenueConnector
     archive: FrameArchive
     builder: BarBuilder
     venue: str
@@ -130,7 +132,7 @@ class IngestDaemon:
 
     def step(self) -> StepReport:
         """Take what has arrived, archive it, and turn what is a trade into one."""
-        frames = self.transport.drain()
+        frames = self.session.connector.frames.drain()
         received_at = self.now_ns()
         archived = None
         trades = 0
@@ -226,7 +228,7 @@ class IngestDaemon:
         """
         flushed = self.flush_bars()
         archived = self.archive.flush()
-        self.session.transport.close()
+        self.session.connector.close()
         return StepReport(
             frames=0, trades=0, archived=archived, unparsed=0, ignored=0, flushed=flushed
         )

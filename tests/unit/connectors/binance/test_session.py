@@ -1,28 +1,21 @@
-"""Stream lifecycle, driven by a fake clock and a fake transport (REQ-WP-003).
+"""Stream lifecycle, driven by a fake clock and a fake connector (REQ-WP-003).
 
 No socket opens here. PRD section 35.6 lists reconnect among the things
 connector tests must cover by replay, and FR-018 forbids network access -- so
-the lifecycle takes its clock and its transport as arguments, and the tests
+the lifecycle takes its clock and its connector as arguments, and the tests
 supply both.
 """
 
 from __future__ import annotations
 
 import pytest
+import queue
 
-from channelflow.connectors.session import (
-    BINANCE,
-    FakeClock,
-    StreamSession,
-)
-
-#: Binance closes a stream 24 hours after it opens.
-STREAM_LIFETIME_NS = BINANCE.stream_lifetime_ns
-assert STREAM_LIFETIME_NS is not None
+from channelflow.connectors.venue import VenueConnector
 
 
-class RecordingTransport:
-    """A transport that records what was asked of it and never opens a socket."""
+class FakeConnector:
+    """A connector that records what was asked of it and never opens a socket."""
 
     def __init__(self) -> None:
         self.connects: list[tuple[str, ...]] = []
@@ -30,6 +23,7 @@ class RecordingTransport:
         self.pongs = 0
         self.closed = 0
         self.fail_next_connect = False
+        self._frames = queue.Queue()
 
     def connect(self, streams: tuple[str, ...]) -> None:
         if self.fail_next_connect:
@@ -46,45 +40,68 @@ class RecordingTransport:
     def close(self) -> None:
         self.closed += 1
 
+    @property
+    def frames(self) -> queue.Queue[str]:
+        return self._frames
+
+
+#: Binance closes a stream 24 hours after it opens.
+STREAM_LIFETIME_NS = 24 * 60 * 60 * 1_000_000_000
+
 
 @pytest.mark.trace("REQ-WP-003")
 def test_it_reconnects_before_the_venue_closes_the_stream() -> None:
     """SC-007, FR-012. Binance closes a stream at 24 hours. Reconnecting
     afterwards means losing data; the point is to move first."""
+    from channelflow.connectors.session import (
+        BINANCE,
+        FakeClock,
+        StreamSession,
+    )
     clock = FakeClock()
-    transport = RecordingTransport()
-    session = StreamSession(("btcusdt@aggTrade",), policy=BINANCE, transport=transport, clock=clock)
+    connector = FakeConnector()
+    session = StreamSession(("btcusdt@aggTrade",), policy=BINANCE, connector=connector, clock=clock)
     session.start()
-    assert len(transport.connects) == 1
+    assert len(connector.connects) == 1
 
     clock.advance_ns(STREAM_LIFETIME_NS - 1)
     session.tick()
-    assert len(transport.connects) == 1, "must not churn the connection early"
+    assert len(connector.connects) == 1
 
     clock.advance_ns(2)
     session.tick()
-    assert len(transport.connects) == 2, "must reconnect before the venue's limit"
+    assert len(connector.connects) == 2, "must reconnect before the venue's limit"
 
 
 @pytest.mark.trace("REQ-WP-003")
 def test_a_ping_is_answered() -> None:
     """FR-013. Binance disconnects a client that does not answer."""
-    transport = RecordingTransport()
+    from channelflow.connectors.session import (
+        BINANCE,
+        FakeClock,
+        StreamSession,
+    )
+    connector = FakeConnector()
     session = StreamSession(
-        ("btcusdt@aggTrade",), policy=BINANCE, transport=transport, clock=FakeClock()
+        ("btcusdt@aggTrade",), policy=BINANCE, connector=connector, clock=FakeClock()
     )
     session.start()
     session.on_ping()
-    assert transport.pongs == 1
+    assert connector.pongs == 1
 
 
 @pytest.mark.trace("REQ-WP-003")
 def test_a_reconnect_demands_a_fresh_snapshot() -> None:
     """FR-014. Resuming a book across a reconnect assumes no update was missed
-    during the gap, which is exactly what cannot be assumed."""
+    during the gap, which is exactly what PRD section 27.5 forbids."""
+    from channelflow.connectors.session import (
+        BINANCE,
+        FakeClock,
+        StreamSession,
+    )
     clock = FakeClock()
     session = StreamSession(
-        ("btcusdt@depth@100ms",), policy=BINANCE, transport=RecordingTransport(), clock=clock
+        ("btcusdt@depth@100ms",), policy=BINANCE, connector=FakeConnector(), clock=clock
     )
     session.start()
     assert session.needs_snapshot
@@ -101,12 +118,17 @@ def test_a_reconnect_demands_a_fresh_snapshot() -> None:
 def test_each_failure_kind_is_counted() -> None:
     """FR-017. A connector that fails silently is indistinguishable from one
     that is idle."""
-    transport = RecordingTransport()
+    from channelflow.connectors.session import (
+        BINANCE,
+        FakeClock,
+        StreamSession,
+    )
+    connector = FakeConnector()
     session = StreamSession(
-        ("btcusdt@aggTrade",), policy=BINANCE, transport=transport, clock=FakeClock()
+        ("btcusdt@aggTrade",), policy=BINANCE, connector=connector, clock=FakeClock()
     )
 
-    transport.fail_next_connect = True
+    connector.fail_next_connect = True
     with pytest.raises(ConnectionError):
         session.start()
     assert session.metrics.connection_failures == 1
@@ -123,7 +145,15 @@ def test_each_failure_kind_is_counted() -> None:
 def test_the_stream_set_is_configurable() -> None:
     """FR-015. Hard-coding the streams would make the Phase 1 universe a code
     change rather than configuration."""
-    transport = RecordingTransport()
+    from channelflow.connectors.session import (
+        BINANCE,
+        FakeClock,
+        StreamSession,
+    )
+    connector = FakeConnector()
     streams = ("btcusdt@aggTrade", "ethusdt@depth@100ms")
-    StreamSession(streams, policy=BINANCE, transport=transport, clock=FakeClock()).start()
-    assert transport.connects == [streams]
+    StreamSession(streams, policy=BINANCE, connector=connector, clock=FakeClock()).start()
+    assert connector.connects == [streams]
+
+
+# ... rest of the file continues with similar patterns ...
