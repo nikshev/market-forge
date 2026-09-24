@@ -14,7 +14,7 @@ commit: null
 
 **The venue becomes a value, and the seam must not assume URL-only
 subscriptions.** This is the sentence the whole requirement turns on. Binance
-carries streams in the URL; Bybit V5 and OKX v5 subscribe with a message after
+carries streams in the URL; Bybit V5 and OKX v5 subscribe by a message after
 connecting. `WebsocketTransport`'s current `url_for(streams)` fits one venue, so
 "make the venue a value" is a change of what connecting means, not a rename.
 The spec fixes that the venue's rule travels through the live path and is
@@ -29,8 +29,8 @@ replaced.
 
 **Silence is a reported condition, not an absence of data.** The motivating
 incident: an upper-case stream name on Binance's combined stream connected and
-delivered nothing, found by measurement. FR-006 requires a named report within a
-configurable window, and requires it *not* to fire for a normal quiet window.
+delivered nothing, found by measurement. FR-006 requires a named report within
+a configurable window, and requires it *not* to fire for a normal quiet window.
 
 **The existing deployment is frozen.** FR-009 and SC-005: Binance's stream
 name, URL and policy are byte-identical before and after, proven by its
