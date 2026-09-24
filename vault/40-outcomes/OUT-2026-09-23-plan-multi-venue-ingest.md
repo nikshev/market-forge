@@ -2,7 +2,7 @@
 id: OUT-2026-09-23-plan-multi-venue-ingest
 step: plan
 records: [REQ-WP-076]
-commit: null
+commit: 4486f291e2ad38d1aa1f41a38099820cdb1f41ad
 ---
 
 ## What was done
