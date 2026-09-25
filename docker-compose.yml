@@ -269,6 +269,47 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  # PRD §6.2's `worker`. §6.2 lists it alongside `api` and `ingest-binance` and
+  # it exists as code now ([[REQ-WP-077]]): a periodic pass that reads the bars
+  # table for each configured timeframe, calls `record_replay`, and writes the
+  # channel snapshots, signals, confirmed extrema and extremum candidates that
+  # [[REQ-PIPE-001]] deliberately excluded from the replay.
+  #
+  # The same image as the API with a different command: one Python image, and a
+  # second would be a second dependency tree to keep in step ([[REQ-WP-066]]).
+  #
+  # One process per pass, deliberately. A pass over every series is not a
+  # multiplexed daemon: it reads what the bars table holds and writes what is
+  # missing, and the watermarks in `record_replay` make the interval a
+  # freshness knob rather than a correctness one.
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command:
+      - python
+      - -m
+      - channelflow.pipeline.channel_main
+      - --loop
+      - ${CHANNELFLOW_CHANNEL_INTERVAL}
+    environment:
+      CHANNELFLOW_CATALOG_URI: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      CHANNELFLOW_WAREHOUSE: s3://${MINIO_BUCKET}/warehouse
+      CHANNELFLOW_S3_ENDPOINT: http://minio:9000
+      CHANNELFLOW_S3_ACCESS_KEY_ID: ${MINIO_ROOT_USER}
+      CHANNELFLOW_S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
+      CHANNELFLOW_S3_REGION: us-east-1
+      CHANNELFLOW_TIMEFRAMES: ${CHANNELFLOW_TIMEFRAMES}
+      CHANNELFLOW_CHANNEL_INTERVAL: ${CHANNELFLOW_CHANNEL_INTERVAL}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
   # Higher timeframes from the one-minute series ([[REQ-WP-073]]). §5.1 names
   # four and §31 makes the list configuration; without this service the
   # deployment writes one series and a chart at any other timeframe renders an
