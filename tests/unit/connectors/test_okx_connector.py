@@ -6,11 +6,14 @@
 import json
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from channelflow.connectors.okx.connector import OkxConnector
 from channelflow.connectors.venue import okx_subscribe_message
 
 
 class TestOkxConnector:
+    @pytest.mark.trace("REQ-WP-076")
     def test_subscribe_message_format(self):
         msg = okx_subscribe_message(["trades.BTC-USDT-SWAP"])
         data = json.loads(msg)
@@ -18,6 +21,7 @@ class TestOkxConnector:
         assert data["args"][0]["channel"] == "trades"
         assert data["args"][0]["instId"] == "trades.BTC-USDT-SWAP"
 
+    @pytest.mark.trace("REQ-WP-076")
     def test_connect_sends_subscribe_message(self):
         with patch("websockets.sync.client.connect") as mock_connect:
             mock_ws = MagicMock()
@@ -39,6 +43,7 @@ class TestOkxConnector:
             assert data["args"][0]["channel"] == "trades"
             assert data["args"][0]["instId"] == "BTC-USDT-SWAP"
 
+    @pytest.mark.trace("REQ-WP-076")
     def test_pong_sends_bare_ping(self):
         with patch("websockets.sync.client.connect"):
             connector = OkxConnector(url="wss://test", subscribe_msg="{}")
@@ -46,6 +51,7 @@ class TestOkxConnector:
             connector.pong()
             connector._ws.send.assert_called_once_with("ping")
 
+    @pytest.mark.trace("REQ-WP-076")
     def test_close_closes_ws(self):
         with patch("websockets.sync.client.connect") as mock_connect:
             mock_ws = MagicMock()

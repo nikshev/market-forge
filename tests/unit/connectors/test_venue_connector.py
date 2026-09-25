@@ -5,6 +5,8 @@
 
 import queue
 
+import pytest
+
 from channelflow.connectors.venue import (
     BINANCE_POLICY,
     BYBIT_POLICY,
@@ -50,6 +52,7 @@ class FakeConnector:
 class TestVenueConnectorProtocol:
     """Tests that the VenueConnector protocol is well-defined."""
 
+    @pytest.mark.trace("REQ-WP-076")
     def test_protocol_has_required_methods(self):
         """VenueConnector defines the required interface."""
         # The protocol itself is an abstract definition; we test that a
@@ -61,6 +64,7 @@ class TestVenueConnectorProtocol:
         assert hasattr(fake, "close")
         assert hasattr(fake, "frames")
 
+    @pytest.mark.trace("REQ-WP-076")
     def test_fake_implementation_satisfies_protocol(self):
         """A minimal fake implementation satisfies the protocol."""
         fake = FakeConnector()
@@ -76,9 +80,11 @@ class TestVenueConnectorProtocol:
 class TestVenueRegistry:
     """Tests for the venue configuration registry."""
 
+    @pytest.mark.trace("REQ-WP-076")
     def test_registry_contains_three_venues(self):
         assert set(VENUE_REGISTRY.keys()) == {"binance", "bybit", "okx"}
 
+    @pytest.mark.trace("REQ-WP-076")
     def test_each_venue_has_required_fields(self):
         for name, config in VENUE_REGISTRY.items():
             assert hasattr(config, "connector")
@@ -87,6 +93,7 @@ class TestVenueRegistry:
             assert hasattr(config, "archive_prefix")
             assert config.archive_prefix == name
 
+    @pytest.mark.trace("REQ-WP-076")
     def test_binance_config(self):
         config = VENUE_REGISTRY["binance"]
         assert config.connector.endswith("BinanceConnector")
@@ -94,6 +101,7 @@ class TestVenueRegistry:
         assert config.policy.venue == "binance"
         assert config.archive_prefix == "binance"
 
+    @pytest.mark.trace("REQ-WP-076")
     def test_bybit_config(self):
         config = VENUE_REGISTRY["bybit"]
         assert config.connector.endswith("BybitConnector")
@@ -101,6 +109,7 @@ class TestVenueRegistry:
         assert config.policy.venue == "bybit"
         assert config.archive_prefix == "bybit"
 
+    @pytest.mark.trace("REQ-WP-076")
     def test_okx_config(self):
         config = VENUE_REGISTRY["okx"]
         assert config.connector.endswith("OkxConnector")
@@ -112,18 +121,22 @@ class TestVenueRegistry:
 class TestStreamBuilders:
     """Tests for venue-specific stream name builders."""
 
+    @pytest.mark.trace("REQ-WP-076")
     def test_binance_streams(self):
         streams = binance_streams(["BTCUSDT", "ETHUSDT"])
         assert streams == ("btcusdt@aggTrade", "ethusdt@aggTrade")
 
+    @pytest.mark.trace("REQ-WP-076")
     def test_bybit_streams(self):
         streams = bybit_streams(["BTCUSDT", "ETHUSDT"])
         assert streams == ("publicTrade.BTCUSDT", "publicTrade.ETHUSDT")
 
+    @pytest.mark.trace("REQ-WP-076")
     def test_okx_streams(self):
         streams = okx_streams(["BTC-USDT-SWAP", "ETH-USDT-SWAP"])
         assert streams == ("trades.BTC-USDT-SWAP", "trades.ETH-USDT-SWAP")
 
+    @pytest.mark.trace("REQ-WP-076")
     def test_stream_builders_return_tuples(self):
         for builder in (binance_streams, bybit_streams, okx_streams):
             result = builder(["BTCUSDT"])
@@ -134,16 +147,19 @@ class TestStreamBuilders:
 class TestSubscribeMessages:
     """Tests for venue-specific subscription messages."""
 
+    @pytest.mark.trace("REQ-WP-076")
     def test_binance_subscribe_message_returns_none(self):
         """Binance uses URL params; no post-connect message."""
         assert binance_subscribe_message(["btcusdt@aggTrade"]) is None
 
+    @pytest.mark.trace("REQ-WP-076")
     def test_bybit_subscribe_message_format(self):
         msg = bybit_subscribe_message(["publicTrade.BTCUSDT"])
         assert '"op":"subscribe"' in msg
         assert '"args"' in msg
         assert "publicTrade.BTCUSDT" in msg
 
+    @pytest.mark.trace("REQ-WP-076")
     def test_okx_subscribe_message_format(self):
         msg = okx_subscribe_message(["trades.BTC-USDT-SWAP"])
         assert '"op":"subscribe"' in msg
@@ -155,11 +171,13 @@ class TestSubscribeMessages:
 class TestVenuePolicies:
     """Tests for venue-specific connection policies."""
 
+    @pytest.mark.trace("REQ-WP-076")
     def test_binance_policy(self):
         p = BINANCE_POLICY
         assert p.venue == "binance"
         assert p.idle_timeout_ns == 24 * 60 * 60 * 1_000_000_000
 
+    @pytest.mark.trace("REQ-WP-076")
     def test_bybit_policy(self):
         p = BYBIT_POLICY
         assert p.venue == "bybit"
@@ -167,6 +185,7 @@ class TestVenuePolicies:
         assert p.ping_payload == '{"op":"ping"}'
         assert p.announces_close is False
 
+    @pytest.mark.trace("REQ-WP-076")
     def test_okx_policy(self):
         p = OKX_POLICY
         assert p.venue == "okx"
@@ -174,12 +193,14 @@ class TestVenuePolicies:
         assert p.ping_payload == "ping"
         assert p.announces_close is True
 
+    @pytest.mark.trace("REQ-WP-076")
     def test_all_policies_have_min_connect_interval(self):
         for p in (BINANCE_POLICY, BYBIT_POLICY, OKX_POLICY):
             assert p.min_connect_interval_ns == 1_000_000_000
 
 
 class TestUnknownVenue:
+    @pytest.mark.trace("REQ-WP-076")
     def test_unknown_venue_not_in_registry(self):
         assert "unknown" not in VENUE_REGISTRY
         assert "hyperliquid" not in VENUE_REGISTRY
