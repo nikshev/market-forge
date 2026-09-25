@@ -645,3 +645,22 @@ def test_a_minute_that_has_rolled_is_not_held_for_ever(tmp_path: Path) -> None:
         archive.add(received_at_ns=at + 1, frame=f'{{"m":{step}b}}')
     archive.add(received_at_ns=minute + 9 * MINUTE_NS, frame='{"m":"last"}')
     assert len(archive._held) <= 1, f"holding {len(archive._held)} minutes at once"
+
+
+@pytest.mark.trace("REQ-WP-076")
+def test_registry_connector_paths_resolve_to_importable_classes() -> None:
+    """The registry stores dotted paths; the daemon resolves them at startup.
+
+    Before the resolver existed, `build_daemon` called the path itself --
+    a string is not callable, so starting a daemon from the registry was a
+    crash that no test exercised, because the tests build the daemon directly.
+    """
+    from channelflow.connectors.binance.connector import BinanceConnector
+    from channelflow.connectors.bybit.connector import BybitConnector
+    from channelflow.connectors.okx.connector import OkxConnector
+    from channelflow.connectors.venue import VENUE_REGISTRY
+    from channelflow.pipeline.ingest_main import _resolve_connector
+
+    assert _resolve_connector(VENUE_REGISTRY["binance"].connector) is BinanceConnector
+    assert _resolve_connector(VENUE_REGISTRY["bybit"].connector) is BybitConnector
+    assert _resolve_connector(VENUE_REGISTRY["okx"].connector) is OkxConnector

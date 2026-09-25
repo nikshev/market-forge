@@ -47,7 +47,11 @@ class VenueConnector(Protocol):
 class VenueConfig:
     """Configuration for one venue's live ingest."""
 
-    connector: type
+    # The dotted path of the connector class, not the class itself: importing
+    # every venue's connector here would couple this registry to each venue's
+    # heaviest dependency (in the limit, an SDK). The daemon resolves the path
+    # where it builds the connector (`ingest_main._resolve_connector`).
+    connector: str
     stream_builder: Callable[[Sequence[str]], tuple[str, ...]]
     policy: VenuePolicy
     archive_prefix: str

@@ -13,7 +13,9 @@ from __future__ import annotations
 import os
 from collections.abc import Mapping
 from dataclasses import dataclass
+from importlib import import_module
 from pathlib import Path
+from typing import Any
 
 from channelflow.bars.builder import BarBuilder
 from channelflow.connectors.session import StreamSession
@@ -105,6 +107,19 @@ def object_store_for(uri: str, storage: Mapping[str, str]) -> ObjectStore:
     return S3ObjectStore(bucket=bucket, client=client)
 
 
+def _resolve_connector(dotted: str) -> Any:
+    """Import the connector class the registry names.
+
+    The registry stores a dotted path rather than the class so importing the
+    registry does not import every venue's dependencies. The return is `Any`
+    deliberately: the three venues take different constructor arguments, so no
+    single signature describes them, and a path that names something else fails
+    loudly at startup, where a refusal to start is the documented behaviour.
+    """
+    module_name, _, class_name = dotted.rpartition(".")
+    return getattr(import_module(module_name), class_name)
+
+
 def _connector_for_venue(venue: str) -> tuple[str, str]:
     """Build the connector and subscribe message for a venue."""
     config = VENUE_REGISTRY[venue]
@@ -114,8 +129,9 @@ def _connector_for_venue(venue: str) -> tuple[str, str]:
         subscribe_msg = bybit_subscribe_message(streams)
     elif venue == "okx":
         subscribe_msg = okx_subscribe_message(streams)
-    # For binance, subscribe_msg is empty (uses URL params)
-    return config.connector.__module__ + "." + config.connector.__name__, subscribe_msg
+    # For binance, subscribe_msg is empty (uses URL params).
+    # The registry already holds the dotted path; nothing to compose.
+    return config.connector, subscribe_msg
 
 
 def build_daemon(
@@ -138,16 +154,17 @@ def build_daemon(
     builder = BarBuilder(timeframe_ns=settings.timeframe_ns, on_final=sink)
 
     streams = config.stream_builder([symbol])
+    connector_cls = _resolve_connector(config.connector)
 
     if venue == "binance":
-        connector = config.connector(url_for=binance_stream_url)
+        connector = connector_cls(url_for=binance_stream_url)
     elif venue == "bybit":
-        connector = config.connector(
+        connector = connector_cls(
             url="wss://stream.bybit.com/v5/public/linear",
             subscribe_msg=bybit_subscribe_message(streams),
         )
     elif venue == "okx":
-        connector = config.connector(
+        connector = connector_cls(
             url="wss://ws.okx.com:8443/api/v5/market",
             subscribe_msg=okx_subscribe_message(streams),
         )

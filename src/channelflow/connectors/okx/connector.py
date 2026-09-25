@@ -14,7 +14,7 @@ from __future__ import annotations
 import queue
 import threading
 
-import websockets
+from websockets.sync import client
 
 
 class OkxConnector:
@@ -23,28 +23,28 @@ class OkxConnector:
     def __init__(self, url: str, subscribe_msg: str) -> None:
         self._url = url
         self._subscribe_msg = subscribe_msg
-        self._ws = None
-        self._frames = queue.Queue()
-        self._thread = None
+        self._ws: client.ClientConnection | None = None
+        self._frames: queue.Queue[str] = queue.Queue()
+        self._thread: threading.Thread | None = None
         self._stopping = False
         self._connected = False
 
     def connect(self, streams: tuple[str, ...]) -> None:
 
-        def run():
+        def run() -> None:
             try:
-                ws = websockets.sync.client.connect(self._url)
-                self._ws = ws.__enter__()
-                self._ws.send(self._subscribe_msg)
-                self._connected = True
-                while not self._stopping:
-                    try:
-                        frame = self._ws.recv()
-                        if frame is None:
+                with client.connect(self._url) as ws:
+                    self._ws = ws
+                    self._ws.send(self._subscribe_msg)
+                    self._connected = True
+                    while not self._stopping:
+                        try:
+                            frame = self._ws.recv()
+                            if isinstance(frame, bytes):
+                                frame = frame.decode()
+                            self._frames.put(frame)
+                        except Exception:
                             break
-                        self._frames.put(frame)
-                    except Exception:
-                        break
             finally:
                 self._connected = False
 

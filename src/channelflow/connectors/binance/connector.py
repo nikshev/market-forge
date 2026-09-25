@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import queue
 from collections.abc import Callable, Sequence
 
 from channelflow.connectors.websocket import WebsocketTransport
@@ -20,7 +21,7 @@ class BinanceConnector:
         self._transport.connect(streams)
 
     @property
-    def frames(self):
+    def frames(self) -> queue.Queue[str]:
         return self._transport.frames
 
     def send(self, payload: str) -> None:
