@@ -84,6 +84,19 @@ a fixture — not a property to inherit on trust.
 
 <!-- trace:begin -->
 - **Specs:** [[SPEC-122-channel-production]]
+- **Tests:**
+    - `tests/unit/pipeline/test_channel_main.py::TestIntervalSeconds::test_days`
+    - `tests/unit/pipeline/test_channel_main.py::TestIntervalSeconds::test_hours`
+    - `tests/unit/pipeline/test_channel_main.py::TestIntervalSeconds::test_minutes`
+    - `tests/unit/pipeline/test_channel_main.py::TestIntervalSeconds::test_plain_number`
+    - `tests/unit/pipeline/test_channel_main.py::TestIntervalSeconds::test_seconds`
+    - `tests/unit/pipeline/test_channel_main.py::TestMain::test_missing_timeframes_raises`
+    - `tests/unit/pipeline/test_channel_main.py::TestMain::test_once_exits_zero`
+    - `tests/unit/pipeline/test_channel_main.py::TestRunPass::test_discovers_series_from_bars_table`
+    - `tests/unit/pipeline/test_channel_main.py::TestRunPass::test_failure_does_not_stop_pass`
+    - `tests/unit/pipeline/test_channel_main.py::TestRunPass::test_skips_timeframe_with_no_bars`
+    - `tests/unit/pipeline/test_channel_main.py::TestRunSeries::test_calls_record_replay_with_bars`
+    - `tests/unit/pipeline/test_channel_main.py::TestRunSeries::test_returns_none_when_no_bars`
 - **Code:**
     - `src/channelflow/pipeline/channel_main.py`
 - **Outcomes:** [[OUT-2026-09-24-spec-channel-production]]
