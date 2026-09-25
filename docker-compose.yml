@@ -201,6 +201,7 @@ services:
       # The raw tier of §6.4.4, in the same bucket as the warehouse and beside
       # it rather than inside it: `raw/` and `warehouse/` are different zones.
       CHANNELFLOW_ARCHIVE_URI: s3://${MINIO_BUCKET}/raw/cex
+      CHANNELFLOW_INGEST_VENUE: binance
     depends_on:
       postgres:
         condition: service_healthy
@@ -237,6 +238,7 @@ services:
       CHANNELFLOW_INGEST_SYMBOLS: ${CHANNELFLOW_INGEST_SYMBOLS_ETH}
       CHANNELFLOW_INGEST_TIMEFRAME_NS: ${CHANNELFLOW_INGEST_TIMEFRAME_NS}
       CHANNELFLOW_ARCHIVE_URI: s3://${MINIO_BUCKET}/raw/cex
+      CHANNELFLOW_INGEST_VENUE: binance
     depends_on:
       postgres:
         condition: service_healthy
@@ -262,6 +264,62 @@ services:
       CHANNELFLOW_INGEST_SYMBOLS: ${CHANNELFLOW_INGEST_SYMBOLS_SOL}
       CHANNELFLOW_INGEST_TIMEFRAME_NS: ${CHANNELFLOW_INGEST_TIMEFRAME_NS}
       CHANNELFLOW_ARCHIVE_URI: s3://${MINIO_BUCKET}/raw/cex
+      CHANNELFLOW_INGEST_VENUE: binance
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Phase 2 venues (REQ-WP-076): Bybit and OKX. One service per symbol per
+  # venue, same pattern as Binance. Each process runs `ingest_main` with its
+  # own `CHANNELFLOW_INGEST_VENUE` and symbol.
+  ingest-bybit:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command:
+      - python
+      - -m
+      - channelflow.pipeline.ingest_main
+    environment:
+      CHANNELFLOW_CATALOG_URI: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      CHANNELFLOW_WAREHOUSE: s3://${MINIO_BUCKET}/warehouse
+      CHANNELFLOW_S3_ENDPOINT: http://minio:9000
+      CHANNELFLOW_S3_ACCESS_KEY_ID: ${MINIO_ROOT_USER}
+      CHANNELFLOW_S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
+      CHANNELFLOW_S3_REGION: us-east-1
+      CHANNELFLOW_INGEST_SYMBOLS: ${CHANNELFLOW_INGEST_SYMBOLS_BYBIT}
+      CHANNELFLOW_INGEST_TIMEFRAME_NS: ${CHANNELFLOW_INGEST_TIMEFRAME_NS}
+      CHANNELFLOW_ARCHIVE_URI: s3://${MINIO_BUCKET}/raw/cex
+      CHANNELFLOW_INGEST_VENUE: bybit
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    restart: unless-stopped
+
+  ingest-okx:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command:
+      - python
+      - -m
+      - channelflow.pipeline.ingest_main
+    environment:
+      CHANNELFLOW_CATALOG_URI: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      CHANNELFLOW_WAREHOUSE: s3://${MINIO_BUCKET}/warehouse
+      CHANNELFLOW_S3_ENDPOINT: http://minio:9000
+      CHANNELFLOW_S3_ACCESS_KEY_ID: ${MINIO_ROOT_USER}
+      CHANNELFLOW_S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
+      CHANNELFLOW_S3_REGION: us-east-1
+      CHANNELFLOW_INGEST_SYMBOLS: ${CHANNELFLOW_INGEST_SYMBOLS_OKX}
+      CHANNELFLOW_INGEST_TIMEFRAME_NS: ${CHANNELFLOW_INGEST_TIMEFRAME_NS}
+      CHANNELFLOW_ARCHIVE_URI: s3://${MINIO_BUCKET}/raw/cex
+      CHANNELFLOW_INGEST_VENUE: okx
     depends_on:
       postgres:
         condition: service_healthy

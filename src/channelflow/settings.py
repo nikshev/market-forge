@@ -62,6 +62,14 @@ RATE_WINDOW_SECONDS = "CHANNELFLOW_RATE_WINDOW_SECONDS"
 #: disagree. Unset is valid: the source timeframe is always offered.
 TIMEFRAMES = "CHANNELFLOW_TIMEFRAMES"
 
+#: Ingest daemon configuration (REQ-WP-076).
+INGEST_VENUE = "CHANNELFLOW_INGEST_VENUE"
+INGEST_SYMBOLS = "CHANNELFLOW_INGEST_SYMBOLS"
+INGEST_SYMBOLS_BYBIT = "CHANNELFLOW_INGEST_SYMBOLS_BYBIT"
+INGEST_SYMBOLS_OKX = "CHANNELFLOW_INGEST_SYMBOLS_OKX"
+INGEST_TIMEFRAME_NS = "CHANNELFLOW_INGEST_TIMEFRAME_NS"
+SILENCE_WINDOW_MULTIPLIER = "CHANNELFLOW_SILENCE_WINDOW_MULTIPLIER"
+
 #: The window a limit gets when only the count is configured. One minute is the
 #: unit rate limits are usually quoted in, and it is overridable like everything
 #: else here.
