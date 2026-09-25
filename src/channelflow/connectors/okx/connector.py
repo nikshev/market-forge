@@ -55,6 +55,14 @@ class OkxConnector:
     def frames(self) -> queue.Queue[str]:
         return self._frames
 
+    def drain_frames(self) -> list[str]:
+        out = []
+        while True:
+            try:
+                out.append(self._frames.get_nowait())
+            except queue.Empty:
+                return out
+
     def send(self, payload: str) -> None:
         if self._ws:
             self._ws.send(payload)

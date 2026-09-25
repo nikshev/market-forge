@@ -24,6 +24,9 @@ class BinanceConnector:
     def frames(self) -> queue.Queue[str]:
         return self._transport.frames
 
+    def drain_frames(self) -> list[str]:
+        return self._transport.drain()
+
     def send(self, payload: str) -> None:
         self._transport.send(payload)
 

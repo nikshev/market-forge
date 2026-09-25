@@ -38,9 +38,18 @@ class VenueConnector(Protocol):
     def close(self) -> None:
         """Close the connection cleanly."""
 
+    def drain_frames(self) -> list[str]:
+        """Return all frames that have arrived since the last call, without waiting.
+
+        This is the seam that allows both live and replay transports to be used
+        interchangeably: the live transport drains its internal queue, the replay
+        transport returns its pending recorded frames.
+        """
+
     @property
     def frames(self) -> queue.Queue[str]:
-        """Incoming frames queue."""
+        """Incoming frames queue (for backward compatibility with code that
+        inspects the queue directly)."""
 
 
 @dataclass(frozen=True)

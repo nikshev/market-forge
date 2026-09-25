@@ -67,7 +67,66 @@ and connection rules come from. They are not assumed to match Binance's.
 <!-- trace:begin -->
 - **Specs:** [[SPEC-121-multi-venue-ingest]]
 - **Tests:**
+    - `tests/unit/connectors/test_binance_connector.py::TestBinanceConnector::test_close_delegates_to_transport`
+    - `tests/unit/connectors/test_binance_connector.py::TestBinanceConnector::test_connect_calls_transport_with_correct_url`
+    - `tests/unit/connectors/test_binance_connector.py::TestBinanceConnector::test_frames_delegates_to_transport`
+    - `tests/unit/connectors/test_binance_connector.py::TestBinanceConnector::test_pong_delegates_to_transport`
+    - `tests/unit/connectors/test_binance_connector.py::TestBinanceConnector::test_send_delegates_to_transport`
+    - `tests/unit/connectors/test_bybit_connector.py::TestBybitConnector::test_close_closes_ws`
+    - `tests/unit/connectors/test_bybit_connector.py::TestBybitConnector::test_connect_sends_subscribe_message`
+    - `tests/unit/connectors/test_bybit_connector.py::TestBybitConnector::test_frames_delegates_to_internal_queue`
+    - `tests/unit/connectors/test_bybit_connector.py::TestBybitConnector::test_pong_noop`
+    - `tests/unit/connectors/test_bybit_connector.py::TestBybitConnector::test_send_delegates_to_ws`
+    - `tests/unit/connectors/test_bybit_connector.py::TestBybitConnector::test_subscribe_message_format`
+    - `tests/unit/connectors/test_okx_connector.py::TestOkxConnector::test_close_closes_ws`
+    - `tests/unit/connectors/test_okx_connector.py::TestOkxConnector::test_connect_sends_subscribe_message`
+    - `tests/unit/connectors/test_okx_connector.py::TestOkxConnector::test_pong_sends_bare_ping`
+    - `tests/unit/connectors/test_okx_connector.py::TestOkxConnector::test_subscribe_message_format`
+    - `tests/unit/connectors/test_venue_connector.py::TestStreamBuilders::test_binance_streams`
+    - `tests/unit/connectors/test_venue_connector.py::TestStreamBuilders::test_bybit_streams`
+    - `tests/unit/connectors/test_venue_connector.py::TestStreamBuilders::test_okx_streams`
+    - `tests/unit/connectors/test_venue_connector.py::TestStreamBuilders::test_stream_builders_return_tuples`
+    - `tests/unit/connectors/test_venue_connector.py::TestSubscribeMessages::test_binance_subscribe_message_returns_none`
+    - `tests/unit/connectors/test_venue_connector.py::TestSubscribeMessages::test_bybit_subscribe_message_format`
+    - `tests/unit/connectors/test_venue_connector.py::TestSubscribeMessages::test_okx_subscribe_message_format`
+    - `tests/unit/connectors/test_venue_connector.py::TestUnknownVenue::test_unknown_venue_not_in_registry`
+    - `tests/unit/connectors/test_venue_connector.py::TestVenueConnectorProtocol::test_fake_implementation_satisfies_protocol`
+    - `tests/unit/connectors/test_venue_connector.py::TestVenueConnectorProtocol::test_protocol_has_required_methods`
+    - `tests/unit/connectors/test_venue_connector.py::TestVenuePolicies::test_all_policies_have_min_connect_interval`
+    - `tests/unit/connectors/test_venue_connector.py::TestVenuePolicies::test_binance_policy`
+    - `tests/unit/connectors/test_venue_connector.py::TestVenuePolicies::test_bybit_policy`
+    - `tests/unit/connectors/test_venue_connector.py::TestVenuePolicies::test_okx_policy`
+    - `tests/unit/connectors/test_venue_connector.py::TestVenueRegistry::test_binance_config`
+    - `tests/unit/connectors/test_venue_connector.py::TestVenueRegistry::test_bybit_config`
+    - `tests/unit/connectors/test_venue_connector.py::TestVenueRegistry::test_each_venue_has_required_fields`
+    - `tests/unit/connectors/test_venue_connector.py::TestVenueRegistry::test_okx_config`
+    - `tests/unit/connectors/test_venue_connector.py::TestVenueRegistry::test_registry_contains_three_venues`
+    - `tests/unit/connectors/test_websocket_builders.py::TestStreamBuilders::test_binance_streams`
+    - `tests/unit/connectors/test_websocket_builders.py::TestStreamBuilders::test_bybit_streams`
+    - `tests/unit/connectors/test_websocket_builders.py::TestStreamBuilders::test_okx_streams`
+    - `tests/unit/connectors/test_websocket_builders.py::TestStreamBuilders::test_stream_builders_return_tuples`
+    - `tests/unit/connectors/test_websocket_builders.py::TestSubscribeMessages::test_binance_subscribe_message_returns_none`
+    - `tests/unit/connectors/test_websocket_builders.py::TestSubscribeMessages::test_bybit_subscribe_message_format`
+    - `tests/unit/connectors/test_websocket_builders.py::TestSubscribeMessages::test_no_builder_is_another_with_string_replaced`
+    - `tests/unit/connectors/test_websocket_builders.py::TestSubscribeMessages::test_okx_subscribe_message_format`
+    - `tests/unit/pipeline/test_archive_prefix.py::TestFrameArchivePrefix::test_binance_venue_prefix`
+    - `tests/unit/pipeline/test_archive_prefix.py::TestFrameArchivePrefix::test_bybit_venue_prefix`
+    - `tests/unit/pipeline/test_archive_prefix.py::TestFrameArchivePrefix::test_okx_venue_prefix`
     - `tests/unit/pipeline/test_ingest.py::test_registry_connector_paths_resolve_to_importable_classes`
+    - `tests/unit/pipeline/test_ingest_daemon.py::TestIngestDaemonWithVenue::test_archive_prefix_contains_venue`
+    - `tests/unit/pipeline/test_ingest_daemon.py::TestIngestDaemonWithVenue::test_daemon_connect_called_with_correct_streams`
+    - `tests/unit/pipeline/test_ingest_daemon.py::TestIngestDaemonWithVenue::test_daemon_venue_attribute`
+    - `tests/unit/pipeline/test_ingest_session.py::TestStreamSessionWithVenueConnector::test_session_accepts_fake_connector`
+    - `tests/unit/pipeline/test_ingest_session.py::TestStreamSessionWithVenueConnector::test_session_calls_connect_on_start`
+    - `tests/unit/pipeline/test_ingest_session.py::TestStreamSessionWithVenueConnector::test_session_close_delegates_to_connector`
+    - `tests/unit/pipeline/test_ingest_session.py::TestStreamSessionWithVenueConnector::test_session_reads_frames_from_connector`
+    - `tests/unit/pipeline/test_silence_detector.py::TestSilenceDetector::test_normal_frame_resets_silence_timer`
+    - `tests/unit/pipeline/test_silence_detector.py::TestSilenceDetector::test_silent_connection_reported`
+    - `tests/unit/pipeline/test_stream_session_policies.py::TestStreamSessionPolicies::test_binance_policy_uses_websocket_ping`
+    - `tests/unit/pipeline/test_stream_session_policies.py::TestStreamSessionPolicies::test_bybit_policy_pings_with_payload`
+    - `tests/unit/pipeline/test_stream_session_policies.py::TestStreamSessionPolicies::test_bybit_reconnects_on_silence_no_close_frame`
+    - `tests/unit/pipeline/test_stream_session_policies.py::TestStreamSessionPolicies::test_okx_policy_pings_bare_string`
+    - `tests/unit/pipeline/test_stream_session_policies.py::TestStreamSessionPolicies::test_okx_reconnects_on_close_frame`
 - **Code:**
     - `src/channelflow/connectors/__init__.py`
     - `src/channelflow/connectors/binance/__init__.py`

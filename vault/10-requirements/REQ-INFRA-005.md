@@ -52,7 +52,6 @@ incremental work with correctness before performance; Constitution XIV and
     - `tests/unit/test_opencode_config.py::test_implementer_senior_fallback_chain`
     - `tests/unit/test_opencode_config.py::test_no_foreign_terminology`
     - `tests/unit/test_opencode_config.py::test_opencode_config_validates`
-    - `tests/unit/test_opencode_config.py::test_opencode_has_four_custom_agents`
     - `tests/unit/test_opencode_config.py::test_opencode_has_six_sdd_commands`
     - `tests/unit/test_opencode_config.py::test_reviewer_is_read_only`
 - **Code:**

@@ -11,6 +11,7 @@ to start rather than filling an empty warehouse that reads as a quiet market.
 from __future__ import annotations
 
 import os
+import time
 from collections.abc import Mapping
 from dataclasses import dataclass
 from importlib import import_module
@@ -35,11 +36,13 @@ SYMBOLS = "CHANNELFLOW_INGEST_SYMBOLS"
 ARCHIVE_URI = "CHANNELFLOW_ARCHIVE_URI"
 TIMEFRAME = "CHANNELFLOW_INGEST_TIMEFRAME_NS"
 INGEST_VENUE = "CHANNELFLOW_INGEST_VENUE"
+SILENCE_WINDOW_MULTIPLIER = "CHANNELFLOW_SILENCE_WINDOW_MULTIPLIER"
 
 #: One minute. A chart shows its first candle a minute after the daemon starts
 #: rather than fifteen, which is the difference between believing it works and
 #: waiting to find out.
 DEFAULT_TIMEFRAME_NS = 60_000_000_000
+DEFAULT_SILENCE_WINDOW_MULTIPLIER = 2.0
 
 SYMBOLS_BYBIT = "CHANNELFLOW_INGEST_SYMBOLS_BYBIT"
 SYMBOLS_OKX = "CHANNELFLOW_INGEST_SYMBOLS_OKX"
@@ -59,6 +62,7 @@ class IngestSettings:
     symbols: tuple[str, ...]
     archive_uri: str
     timeframe_ns: int
+    silence_window_multiplier: float
 
 
 def ingest_settings_from_env(environ: Mapping[str, str] | None = None) -> IngestSettings:
@@ -80,8 +84,18 @@ def ingest_settings_from_env(environ: Mapping[str, str] | None = None) -> Ingest
     if timeframe <= 0:
         raise MissingConfiguration(f"{TIMEFRAME} must be positive, got {timeframe}")
 
+    raw_silence = values.get(SILENCE_WINDOW_MULTIPLIER, "").strip()
+    silence_window = float(raw_silence) if raw_silence else DEFAULT_SILENCE_WINDOW_MULTIPLIER
+    if silence_window <= 0:
+        raise MissingConfiguration(
+            f"{SILENCE_WINDOW_MULTIPLIER} must be positive, got {silence_window}"
+        )
+
     return IngestSettings(
-        symbols=symbols, archive_uri=values[ARCHIVE_URI].strip(), timeframe_ns=timeframe
+        symbols=symbols,
+        archive_uri=values[ARCHIVE_URI].strip(),
+        timeframe_ns=timeframe,
+        silence_window_multiplier=silence_window,
     )
 
 
@@ -187,6 +201,8 @@ def build_daemon(
         venue=venue,
         flush_bars=sink.flush,
         bars_pending=lambda: sink.pending,
+        now_ns=lambda: time.time_ns(),
+        silence_window_multiplier=settings.silence_window_multiplier,
     )
 
 

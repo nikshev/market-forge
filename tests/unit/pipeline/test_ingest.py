@@ -64,6 +64,9 @@ class FakeReplayConnector:
     def frames(self):
         return self._transport
 
+    def drain_frames(self) -> list[str]:
+        return self._transport.drain()
+
     def send(self, payload):
         pass
 

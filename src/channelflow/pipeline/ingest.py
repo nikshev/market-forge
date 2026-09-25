@@ -114,6 +114,12 @@ class IngestDaemon:
     #: must not end an ingest -- and never invisible.
     unparsed: int = 0
     _last_flush_ns: int = 0
+    #: Silence detection: nanoseconds since last frame arrived.
+    #: None means no frame has arrived yet.
+    _last_frame_ns: int | None = None
+    #: Multiplier applied to the venue's idle_timeout_ns to form the silence window.
+    #: A value of 2.0 means "warn if no frames for 2x the venue's idle timeout".
+    silence_window_multiplier: float = 2.0
 
     def _should_flush(self, now_ns: int) -> bool:
         """Enough bars, or too long since the last commit.
@@ -126,17 +132,64 @@ class IngestDaemon:
             return True
         return now_ns - self._last_flush_ns >= FLUSH_CEILING_NS
 
+    def _check_silence(self, now_ns: int) -> None:
+        """Warn if no frames have arrived for longer than the configured window.
+
+        The silence window is derived from the venue's idle timeout multiplied by
+        ``silence_window_multiplier``. A value of 2.0 means we warn after twice
+        the venue's configured idle timeout.
+
+        The warning is logged (not raised) because a silent connection is a
+        condition, not a failure -- the connection may recover, and the daemon
+        must continue running.
+        """
+        import logging
+
+        logger = logging.getLogger(__name__)
+
+        if self._last_frame_ns is None:
+            return
+
+        # Get the venue's idle timeout from the session's policy
+        idle_timeout = self.session.policy.idle_timeout_ns
+        if idle_timeout is None:
+            return
+
+        silence_window = idle_timeout * self.silence_window_multiplier
+        elapsed = now_ns - self._last_frame_ns
+
+        if elapsed > silence_window:
+            symbol = (
+                getattr(self.session, "streams", ["?"])[0]
+                if getattr(self.session, "streams", None)
+                else "?"
+            )
+            logger.warning(
+                "silent connection: venue=%s symbol=%s silence_ns=%d "
+                "(idle_timeout_ns=%d multiplier=%.1f)",
+                self.venue,
+                symbol,
+                elapsed,
+                idle_timeout,
+                self.silence_window_multiplier,
+            )
+
     def start(self) -> None:
         self.session.start()
-        self._last_flush_ns = self.now_ns()
+        now = self.now_ns()
+        self._last_flush_ns = now
+        self._last_frame_ns = now
 
     def step(self) -> StepReport:
         """Take what has arrived, archive it, and turn what is a trade into one."""
-        frames = self.session.connector.frames.drain()
+        frames = self.session.connector.drain_frames()
         received_at = self.now_ns()
         archived = None
         trades = 0
         unparsed_before, ignored_before = self.unparsed, self.ignored
+
+        if frames:
+            self._last_frame_ns = received_at
 
         for frame in frames:
             # The archive first, and unconditionally. A frame this build cannot
@@ -156,6 +209,8 @@ class IngestDaemon:
             flushed = self.flush_bars()
             self.archive.flush()
             self._last_flush_ns = received_at
+
+        self._check_silence(received_at)
 
         return StepReport(
             frames=len(frames),

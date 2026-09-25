@@ -121,6 +121,9 @@ def _replayed_bars(tmp_path: Path) -> list:
         def close(self) -> None:
             self._transport.close()
 
+        def drain_frames(self) -> list[str]:
+            return self._transport.drain()
+
         @property
         def frames(self):
             return self._transport
