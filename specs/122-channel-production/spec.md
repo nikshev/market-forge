@@ -1,6 +1,6 @@
 ---
 traces: [REQ-WP-077]
-status: specified
+status: implemented
 ---
 
 # Feature Specification: Channels, signals and extrema produced for the running deployment
