@@ -11,10 +11,8 @@ Idle timeout ~30s, closes with code 4004.
 
 from __future__ import annotations
 
-import json
 import queue
 import threading
-from typing import Any, Sequence
 
 import websockets
 
@@ -32,7 +30,6 @@ class OkxConnector:
         self._connected = False
 
     def connect(self, streams: tuple[str, ...]) -> None:
-        import websockets
 
         def run():
             try:

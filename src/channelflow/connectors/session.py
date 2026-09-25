@@ -43,11 +43,10 @@ conservative rather than discovered, and is marked as such.
 
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
+import queue
 from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Any, Protocol
-import queue
 
 SECOND_NS = 1_000_000_000
 

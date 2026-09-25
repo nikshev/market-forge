@@ -8,6 +8,8 @@ another.
 
 from __future__ import annotations
 
+import queue
+
 import pytest
 
 from channelflow.connectors.session import (
@@ -22,9 +24,6 @@ from channelflow.connectors.session import (
     StreamSession,
     VenuePolicy,
 )
-from channelflow.connectors.venue import VenueConnector
-
-import queue
 
 
 class FakeConnector:
@@ -57,7 +56,7 @@ class FakeConnector:
         return queue.Queue()
 
 
-def _session(policy: VenuePolicy) -> tuple[StreamSession, "FakeConnector", FakeClock]:
+def _session(policy: VenuePolicy) -> tuple[StreamSession, FakeConnector, FakeClock]:
     connector = FakeConnector()
     clock = FakeClock()
     session = StreamSession(("stream",), policy=policy, connector=connector, clock=clock)
@@ -162,7 +161,7 @@ def test_a_policy_that_pings_too_slowly_to_help_is_refused() -> None:
 
 
 @pytest.mark.trace("REQ-WP-051")
-def test_a_policy_that_pings_too_slowly_to_help_is_refused() -> None:
+def test_a_policy_with_no_payload_is_refused() -> None:
     with pytest.raises(ValueError, match="needs a payload"):
         VenuePolicy(venue="careless", keepalive=Keepalive.CLIENT_INITIATED)
 

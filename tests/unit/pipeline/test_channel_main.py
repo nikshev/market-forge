@@ -7,6 +7,7 @@ import pytest
 
 from channelflow.bars.models import Bar
 from channelflow.pipeline import channel_main
+from channelflow.settings import MissingConfiguration
 from channelflow.timeframes import TIMEFRAMES
 
 MINUTE_NS = 60_000_000_000
@@ -178,7 +179,8 @@ class TestRunPass:
             if kwargs.get("symbol") == "BTCUSDT":
                 raise ValueError("test error")
             return (
-                MagicMock(channel_snapshots=0, signals=0, confirmed_extrema=0, extremum_candidates=0),
+                MagicMock(channel_snapshots=0, signals=0,
+                          confirmed_extrema=0, extremum_candidates=0),
                 MagicMock(),
             )
 
@@ -204,5 +206,5 @@ class TestMain:
         monkeypatch.setenv("CHANNELFLOW_CATALOG_URI", "sqlite:///test")
         monkeypatch.setenv("CHANNELFLOW_WAREHOUSE", "/tmp")
 
-        with pytest.raises(Exception):
+        with pytest.raises(MissingConfiguration):
             channel_main.main(["--once"])

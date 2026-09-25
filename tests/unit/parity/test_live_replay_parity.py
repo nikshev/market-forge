@@ -36,7 +36,6 @@ from channelflow.connectors.websocket import ReplayTransport
 from channelflow.pipeline.archive import FrameArchive, LocalObjectStore, read_frames
 from channelflow.pipeline.ingest import IngestDaemon, streams_for
 from channelflow.signals import SignalMachine
-from channelflow.connectors.venue import VENUE_REGISTRY, VenueConnector
 
 FIXTURES = Path(__file__).resolve().parents[2] / "fixtures" / "parity"
 MINUTE_NS = 60_000_000_000
@@ -126,7 +125,6 @@ def _replayed_bars(tmp_path: Path) -> list:
         def frames(self):
             return self._transport
     
-    config = VENUE_REGISTRY["binance"]
     connector = ReplayConnector(transport)
     daemon = IngestDaemon(
         session=StreamSession(

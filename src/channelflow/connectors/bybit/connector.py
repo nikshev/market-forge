@@ -11,10 +11,8 @@ No close frame on idle disconnect.
 
 from __future__ import annotations
 
-import json
 import queue
 import threading
-from typing import Any, Sequence
 
 import websockets
 
@@ -32,7 +30,6 @@ class BybitConnector:
         self._connected = False
 
     def connect(self, streams: tuple[str, ...]) -> None:
-        import websockets
 
         def run():
             try:

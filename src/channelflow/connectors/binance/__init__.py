@@ -5,14 +5,14 @@
 """
 
 from channelflow.connectors.binance.connector import BinanceConnector
+from channelflow.connectors.binance.instruments import instruments_from
 from channelflow.connectors.binance.normalize import (
     NormalizationError,
     agg_trade,
-    trade,
-    depth_update,
     depth_snapshot,
+    depth_update,
+    trade,
 )
-from channelflow.connectors.binance.instruments import instruments_from
 
 __all__ = [
     "BinanceConnector",

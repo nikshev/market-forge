@@ -4,7 +4,6 @@
 """
 
 import json
-import pytest
 from unittest.mock import MagicMock, patch
 
 from channelflow.connectors.bybit.connector import BybitConnector

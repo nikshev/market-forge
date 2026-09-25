@@ -8,10 +8,9 @@ supply both.
 
 from __future__ import annotations
 
-import pytest
 import queue
 
-from channelflow.connectors.venue import VenueConnector
+import pytest
 
 
 class FakeConnector:

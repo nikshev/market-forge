@@ -16,17 +16,16 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from channelflow.bars.builder import BarBuilder
+from channelflow.connectors.session import StreamSession
 from channelflow.connectors.venue import (
     VENUE_REGISTRY,
-    binance_subscribe_message,
     bybit_subscribe_message,
     okx_subscribe_message,
 )
-from channelflow.connectors.session import BINANCE, FakeClock, StreamSession
-from channelflow.connectors.websocket import WebsocketTransport, binance_stream_url
+from channelflow.connectors.websocket import binance_stream_url
 from channelflow.lakehouse import catalog as open_catalog
 from channelflow.pipeline.archive import FrameArchive, LocalObjectStore, ObjectStore, S3ObjectStore
-from channelflow.pipeline.ingest import IngestDaemon, streams_for
+from channelflow.pipeline.ingest import IngestDaemon
 from channelflow.settings import MissingConfiguration, settings_from_env
 from channelflow.tables import bars as bars_table
 
@@ -139,14 +138,8 @@ def build_daemon(
     builder = BarBuilder(timeframe_ns=settings.timeframe_ns, on_final=sink)
 
     streams = config.stream_builder([symbol])
-    subscribe_msg = ""
-    if venue == "bybit":
-        subscribe_msg = bybit_subscribe_message(streams)
-    elif venue == "okx":
-        subscribe_msg = okx_subscribe_message(streams)
 
     if venue == "binance":
-        transport = WebsocketTransport(url_for=binance_stream_url)
         connector = config.connector(url_for=binance_stream_url)
     elif venue == "bybit":
         connector = config.connector(
@@ -169,7 +162,9 @@ def build_daemon(
         session=session,
         connector=connector,
         archive=FrameArchive(
-            store=store, venue=venue, prefix=f"{venue}/{prefix[1] if len(prefix) > 1 else 'raw/cex'}"
+            store=store,
+            venue=venue,
+            prefix=f"{venue}/{prefix[1] if len(prefix) > 1 else 'raw/cex'}",
         ),
         builder=builder,
         venue=venue,

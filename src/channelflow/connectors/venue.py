@@ -15,12 +15,12 @@ Each venue has its own:
 
 from __future__ import annotations
 
+import queue
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
-import queue
 from typing import Protocol
 
-from channelflow.connectors.session import VenuePolicy, Keepalive
+from channelflow.connectors.session import Keepalive, VenuePolicy
 
 
 class VenueConnector(Protocol):
@@ -111,7 +111,6 @@ def binance_subscribe_message(streams: Sequence[str]) -> str | None:
 
 def bybit_subscribe_message(streams: Sequence[str]) -> str:
     """Bybit V5 subscribe message after connect."""
-    import json
     return '{"op":"subscribe","args":' + str(list(streams)).replace("'", '"') + "}"
 
 

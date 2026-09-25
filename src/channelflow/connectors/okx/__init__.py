@@ -7,11 +7,11 @@
 from channelflow.connectors.okx.connector import OkxConnector
 from channelflow.connectors.okx.normalize import (
     NormalizationError,
-    UnknownContractValue,
     StaleAssembly,
-    public_trade,
-    order_book_message,
+    UnknownContractValue,
     contract_value,
+    order_book_message,
+    public_trade,
 )
 
 __all__ = [

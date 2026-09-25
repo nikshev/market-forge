@@ -18,7 +18,6 @@ import pytest
 
 from channelflow.bars.builder import BarBuilder
 from channelflow.connectors.session import BINANCE, FakeClock, StreamSession
-from channelflow.connectors.venue import VenueConnector
 from channelflow.connectors.websocket import ReplayTransport, binance_stream_url
 from channelflow.pipeline.archive import (
     ClockWentBackwards,
