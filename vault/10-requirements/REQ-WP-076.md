@@ -66,6 +66,8 @@ and connection rules come from. They are not assumed to match Binance's.
 
 <!-- trace:begin -->
 - **Specs:** [[SPEC-121-multi-venue-ingest]]
+- **Tests:**
+    - `tests/unit/pipeline/test_ingest.py::test_registry_connector_paths_resolve_to_importable_classes`
 - **Code:**
     - `src/channelflow/connectors/__init__.py`
     - `src/channelflow/connectors/binance/__init__.py`
