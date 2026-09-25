@@ -83,10 +83,14 @@ class TestRunSeries:
         mock_table.catalog = MagicMock()
         mock_table.catalog.current.return_value = None
 
-        record_replay = MagicMock(return_value=(
-            MagicMock(channel_snapshots=1, signals=2, confirmed_extrema=0, extremum_candidates=0),
-            MagicMock(),
-        ))
+        record_replay = MagicMock(
+            return_value=(
+                MagicMock(
+                    channel_snapshots=1, signals=2, confirmed_extrema=0, extremum_candidates=0
+                ),
+                MagicMock(),
+            )
+        )
         channel_main.record_replay = record_replay
 
         bars = [minute(BASE_NS)]
@@ -120,10 +124,14 @@ class TestRunPass:
         channel_main.bars_table = bars_table_mock
 
         target = TIMEFRAMES["1h"]
-        record_replay = MagicMock(return_value=(
-            MagicMock(channel_snapshots=0, signals=0, confirmed_extrema=0, extremum_candidates=0),
-            MagicMock(),
-        ))
+        record_replay = MagicMock(
+            return_value=(
+                MagicMock(
+                    channel_snapshots=0, signals=0, confirmed_extrema=0, extremum_candidates=0
+                ),
+                MagicMock(),
+            )
+        )
         channel_main.record_replay = record_replay
 
         results = channel_main.run_pass(catalog, targets=(target,))
@@ -145,10 +153,14 @@ class TestRunPass:
         target_1h = TIMEFRAMES["1h"]
         target_4h = TIMEFRAMES["4h"]
 
-        record_replay = MagicMock(return_value=(
-            MagicMock(channel_snapshots=0, signals=0, confirmed_extrema=0, extremum_candidates=0),
-            MagicMock(),
-        ))
+        record_replay = MagicMock(
+            return_value=(
+                MagicMock(
+                    channel_snapshots=0, signals=0, confirmed_extrema=0, extremum_candidates=0
+                ),
+                MagicMock(),
+            )
+        )
         channel_main.record_replay = record_replay
 
         # When read_bars is called with timeframe_ns=4h, return empty
@@ -179,8 +191,9 @@ class TestRunPass:
             if kwargs.get("symbol") == "BTCUSDT":
                 raise ValueError("test error")
             return (
-                MagicMock(channel_snapshots=0, signals=0,
-                          confirmed_extrema=0, extremum_candidates=0),
+                MagicMock(
+                    channel_snapshots=0, signals=0, confirmed_extrema=0, extremum_candidates=0
+                ),
                 MagicMock(),
             )
 

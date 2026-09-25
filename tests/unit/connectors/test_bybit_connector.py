@@ -21,13 +21,13 @@ class TestBybitConnector:
         with patch("websockets.sync.client.connect") as mock_connect:
             mock_ws = MagicMock()
             mock_connect.return_value.__enter__.return_value = mock_ws
-            
+
             connector = BybitConnector(
                 url="wss://stream.bybit.com/v5/public/linear",
-                subscribe_msg='{"op":"subscribe","args":["publicTrade.BTCUSDT"]}'
+                subscribe_msg='{"op":"subscribe","args":["publicTrade.BTCUSDT"]}',
             )
             connector.connect(("publicTrade.BTCUSDT",))
-            
+
             # Verify connect was called
             mock_connect.assert_called_once_with("wss://stream.bybit.com/v5/public/linear")
             # Verify subscribe message was sent
@@ -60,9 +60,9 @@ class TestBybitConnector:
         with patch("websockets.sync.client.connect") as mock_connect:
             mock_ws = MagicMock()
             mock_connect.return_value.__enter__.return_value = mock_ws
-            
+
             connector = BybitConnector(url="wss://test", subscribe_msg="{}")
             connector.connect(("test",))
             connector.close()
-            
+
             mock_ws.close.assert_called_once()

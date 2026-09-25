@@ -57,6 +57,7 @@ def test_it_reconnects_before_the_venue_closes_the_stream() -> None:
         FakeClock,
         StreamSession,
     )
+
     clock = FakeClock()
     connector = FakeConnector()
     session = StreamSession(("btcusdt@aggTrade",), policy=BINANCE, connector=connector, clock=clock)
@@ -80,6 +81,7 @@ def test_a_ping_is_answered() -> None:
         FakeClock,
         StreamSession,
     )
+
     connector = FakeConnector()
     session = StreamSession(
         ("btcusdt@aggTrade",), policy=BINANCE, connector=connector, clock=FakeClock()
@@ -98,6 +100,7 @@ def test_a_reconnect_demands_a_fresh_snapshot() -> None:
         FakeClock,
         StreamSession,
     )
+
     clock = FakeClock()
     session = StreamSession(
         ("btcusdt@depth@100ms",), policy=BINANCE, connector=FakeConnector(), clock=clock
@@ -122,6 +125,7 @@ def test_each_failure_kind_is_counted() -> None:
         FakeClock,
         StreamSession,
     )
+
     connector = FakeConnector()
     session = StreamSession(
         ("btcusdt@aggTrade",), policy=BINANCE, connector=connector, clock=FakeClock()
@@ -149,6 +153,7 @@ def test_the_stream_set_is_configurable() -> None:
         FakeClock,
         StreamSession,
     )
+
     connector = FakeConnector()
     streams = ("btcusdt@aggTrade", "ethusdt@depth@100ms")
     StreamSession(streams, policy=BINANCE, connector=connector, clock=FakeClock()).start()

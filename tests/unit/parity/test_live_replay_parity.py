@@ -103,28 +103,28 @@ def _replayed_bars(tmp_path: Path) -> list:
     produced: list = []
     transport = ReplayTransport(recorded=[frame for _at, frame in frames])
     builder = BarBuilder(timeframe_ns=MINUTE_NS, grace_ns=5_000_000_000, on_final=produced.append)
-    
+
     # Wrap ReplayTransport in a VenueConnector for the new interface
     class ReplayConnector:
         def __init__(self, transport):
             self._transport = transport
-            
+
         def connect(self, streams: tuple[str, ...]) -> None:
             self._transport.connect(streams)
-            
+
         def send(self, payload: str) -> None:
             self._transport.send(payload)
-            
+
         def pong(self) -> None:
             self._transport.pong()
-            
+
         def close(self) -> None:
             self._transport.close()
-            
+
         @property
         def frames(self):
             return self._transport
-    
+
     connector = ReplayConnector(transport)
     daemon = IngestDaemon(
         session=StreamSession(

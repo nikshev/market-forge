@@ -217,9 +217,10 @@ def test_the_compose_file_declares_the_services_that_exist() -> None:
     # `ingest-binance` joined them in [[REQ-WP-066]]; this assertion read the
     # other way until the daemon existed.
     assert re.search(r"^  ingest-binance:$", compose, re.M)
-    # §6.2 names `worker` too, and it does not exist as code. A container
-    # running nothing is worse than an absent one: it reports healthy.
-    assert not re.search(r"^  worker:$", compose, re.M)
+    # §6.2 names `worker` too. This assertion read the other way until the
+    # daemon existed: a container running nothing reports healthy. [[REQ-WP-077]]
+    # gave it code (`channelflow.pipeline.channel_main`), so now it must be here.
+    assert re.search(r"^  worker:$", compose, re.M)
 
 
 @pytest.mark.trace("REQ-WP-064")

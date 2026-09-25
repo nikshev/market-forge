@@ -117,6 +117,7 @@ def bybit_subscribe_message(streams: Sequence[str]) -> str:
 def okx_subscribe_message(streams: Sequence[str]) -> str:
     """OKX v5 subscribe message after connect."""
     import json
+
     args = [{"channel": "trades", "instId": s} for s in streams]
     return '{"op":"subscribe","args":' + json.dumps(args) + "}"
 

@@ -22,16 +22,15 @@ class TestOkxConnector:
         with patch("websockets.sync.client.connect") as mock_connect:
             mock_ws = MagicMock()
             mock_connect.return_value.__enter__.return_value = mock_ws
-            
+
             connector = OkxConnector(
                 url="wss://ws.okx.com:8443/api/v5/market",
-                subscribe_msg=json.dumps({
-                    "op": "subscribe",
-                    "args": [{"channel": "trades", "instId": "BTC-USDT-SWAP"}]
-                })
+                subscribe_msg=json.dumps(
+                    {"op": "subscribe", "args": [{"channel": "trades", "instId": "BTC-USDT-SWAP"}]}
+                ),
             )
             connector.connect(("trades.BTC-USDT-SWAP",))
-            
+
             mock_connect.assert_called_once_with("wss://ws.okx.com:8443/api/v5/market")
             mock_ws.send.assert_called_once()
             sent = mock_ws.send.call_args[0][0]
@@ -51,9 +50,9 @@ class TestOkxConnector:
         with patch("websockets.sync.client.connect") as mock_connect:
             mock_ws = MagicMock()
             mock_connect.return_value.__enter__.return_value = mock_ws
-            
+
             connector = OkxConnector(url="wss://test", subscribe_msg="{}")
             connector.connect(("trades.BTC-USDT-SWAP",))
             connector.close()
-            
+
             mock_ws.close.assert_called_once()

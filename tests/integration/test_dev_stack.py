@@ -109,7 +109,11 @@ def _get(url: str) -> tuple[int, str, str]:
 
     try:
         with urllib.request.urlopen(url, timeout=5) as response:
-            return response.status, response.headers.get("content-type", ""), response.read().decode()
+            return (
+                response.status,
+                response.headers.get("content-type", ""),
+                response.read().decode(),
+            )
     except OSError as exc:
         pytest.fail(f"{url} did not answer: {exc}. Run `docker compose up -d --build`.")
 
@@ -152,6 +156,8 @@ def test_the_markets_read_has_the_shape_the_view_consumes() -> None:
     assert "application/json" in content_type
     markets = json.loads(body)["markets"]
     for row in markets:
-        assert {"venue", "symbol", "market_type", "setup_score", "rank_score", "confidence"} <= set(row)
+        assert {"venue", "symbol", "market_type", "setup_score", "rank_score", "confidence"} <= set(
+            row
+        )
         for field in ("setup_score", "rank_score", "confidence"):
             assert row[field] is None or isinstance(row[field], (int, float)), (field, row[field])

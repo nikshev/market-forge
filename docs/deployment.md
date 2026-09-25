@@ -11,7 +11,7 @@ rather than leaving prose that is confident, plausible and wrong.
 
 ## What the stack is
 
-Twelve services, started together:
+Thirteen services, started together:
 
 | service | what it is for |
 |---|---|
@@ -27,12 +27,14 @@ Twelve services, started together:
 | `ingest-binance-sol` | the same, for SOLUSDT |
 | `resample` | builds every configured timeframe from the one-minute series, on a loop ([[REQ-WP-073]]) |
 | `maintenance` | prunes metadata, compacts and optionally expires, on a loop ([[REQ-WP-070]]) |
+| `worker` | fits channels, signals and extrema over the stored bars, on a loop ([[REQ-WP-077]]) |
 
-All seven application services build from this repository ([[REQ-WP-064]],
-[[REQ-WP-066]], [[REQ-WP-070]], [[REQ-WP-073]]) rather than pulling a tag naming
-a build nobody in this checkout can reproduce. `worker` is the one §6.2 service
-with no container, because it has no code: [[REQ-PIPE-001]] chose a replay over
-a daemon.
+All eight application services build from this repository ([[REQ-WP-064]],
+[[REQ-WP-066]], [[REQ-WP-070]], [[REQ-WP-073]], [[REQ-WP-077]]) rather than pulling a tag naming
+a build nobody in this checkout can reproduce. `worker` is the §6.2 service
+that had no container until [[REQ-WP-077]] gave `record_replay` a process to
+run in: it reads the bars each configured timeframe holds and writes the
+channel snapshots, signals and extrema.
 
 **Three ingest services, not one taking three symbols.** §5.1's Phase 1 universe
 is BTCUSDT, ETHUSDT and SOLUSDT, and `ingest_main` refuses a configuration
@@ -51,12 +53,13 @@ missing, so the loop interval is a freshness knob and never a correctness one.
 calendar month has no fixed nanosecond duration, and a monthly boundary that
 drifts against the calendar is wrong in a way a reader of a chart cannot see.
 
-**What still has no producer.** Nothing in this stack fits a channel. The live
-path is bars only, and `channel_snapshots` stays empty until [[REQ-WP-077]]
-gives `record_replay` a process to run in. Measured 2026-09-17: 133 bars, zero
-channel snapshots. Written here because a stack that looks complete and produces
-no channels is the kind of thing a reader should learn from a document rather
-than from an empty chart.
+**Channels have a producer now.** `worker` reads the bars each configured
+timeframe holds and calls `record_replay`, which writes the channel snapshots,
+signals, confirmed extrema and extremum candidates. A pass over unchanged bars
+writes nothing — proven by counting rows before and after, not by trusting the
+watermarks — and one timeframe failing does not end the pass. Measured
+2026-09-17: 133 bars, zero channel snapshots; that reading is what [[REQ-WP-077]]
+closed.
 
 *(This paragraph said the opposite until 2026-09-14 — that the API and web app
 were not containerised. `tests/unit/docs/test_deployment_doc.py` checks that
@@ -282,6 +285,7 @@ secret; `.env` is not committed and never should be.
 | `CHANNELFLOW_INGEST_SYMBOLS`, `CHANNELFLOW_INGEST_SYMBOLS_ETH`, `CHANNELFLOW_INGEST_SYMBOLS_SOL`, `CHANNELFLOW_INGEST_TIMEFRAME_NS` | what each ingest daemon reads, and at what bar size — one symbol per process |
 | `CHANNELFLOW_TIMEFRAMES`, `CHANNELFLOW_RESAMPLE_INTERVAL` | which timeframes the resampler builds from the one-minute series, and how often it runs ([[REQ-WP-073]]); `1M` is refused. The read API reads the same variable and reports the set at `GET /api/v1/timeframes` ([[REQ-WP-074]]) — one value for both processes, so what a chart offers cannot disagree with what exists |
 | `CHANNELFLOW_MAINTENANCE_INTERVAL`, `CHANNELFLOW_KEEP_DAYS` | how often maintenance runs, and what it may expire |
+| `CHANNELFLOW_CHANNEL_INTERVAL` | how often the channel worker re-fits over the stored bars ([[REQ-WP-077]]) |
 | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` | alert delivery, empty unless alerting is wanted |
 | `CHANNELFLOW_CHART_BASE_URL` | where an alert's chart link points |
 
@@ -401,7 +405,6 @@ recorded reason:
 |---|---|
 | `clickhouse` | [[ADR-002]] dropped it before any of it was built; the canonical plane is Iceberg |
 | `redis` | listed as optional; nothing needs a cache, and [[ADR-018]] made alert delivery synchronous |
-| `worker` | does not exist as code: [[REQ-PIPE-001]] chose a replay over a daemon deliberately, and a container running nothing reports healthy |
 
 Pinot is in the target profile and not here: [[ADR-002]] defers it until a HOT
 serving requirement exists, which is a gap Phase 4 still records rather than an
