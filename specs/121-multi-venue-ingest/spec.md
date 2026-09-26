@@ -1,6 +1,6 @@
 ---
 traces: [REQ-WP-076]
-status: draft
+status: implemented
 ---
 
 # Feature Specification: The ingest daemon runs for Bybit and OKX
