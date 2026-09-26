@@ -23,12 +23,15 @@ repainting PRD §0.5 forbids one level below the domain.
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from decimal import Decimal
 
 from channelflow.bars import Bar
 from channelflow.lakehouse import Catalog, Column, IcebergTable, Schema
+
+logger = logging.getLogger(__name__)
 
 #: PRD §29.B's name for it.
 TABLE_NAME = "bars"
@@ -162,6 +165,7 @@ class BarSink:
         snapshot identical to its parent under a new id would make every
         consumer keyed by snapshot see a change that did not happen.
         """
+        logger.info("BarSink.flush called, pending=%d", self.pending)
         if not self._buffer:
             return None
         snapshot = self.table.append(self._buffer)

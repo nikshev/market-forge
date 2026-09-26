@@ -11,10 +11,13 @@ No close frame on idle disconnect.
 
 from __future__ import annotations
 
+import logging
 import queue
 import threading
 
 from websockets.sync import client
+
+logger = logging.getLogger(__name__)
 
 
 class BybitConnector:
@@ -33,20 +36,33 @@ class BybitConnector:
 
         def run() -> None:
             try:
+                logger.info("Connecting to Bybit WebSocket at %s", self._url)
                 with client.connect(self._url) as ws:
                     self._ws = ws
+                    logger.info(
+                        "Connected to Bybit WebSocket, sending subscribe message: %s",
+                        self._subscribe_msg,
+                    )
                     self._ws.send(self._subscribe_msg)
                     self._connected = True
+                    logger.info("Starting frame receive loop")
                     while not self._stopping:
                         try:
+                            logger.debug("Waiting for frame...")
                             frame = self._ws.recv()
+                            logger.info("Received raw frame: %s", frame[:200] if frame else "None")
                             if isinstance(frame, bytes):
                                 frame = frame.decode()
+                            logger.info("Received frame: %s", frame[:200])
                             self._frames.put(frame)
-                        except Exception:
+                        except Exception as e:
+                            logger.warning("Error receiving frame: %s", e)
                             break
+            except Exception as e:
+                logger.error("Bybit WebSocket connection error: %s", e)
             finally:
                 self._connected = False
+                logger.info("Bybit WebSocket connection closed")
 
         self._thread = threading.Thread(target=run, name="bybit-ws", daemon=True)
         self._thread.start()

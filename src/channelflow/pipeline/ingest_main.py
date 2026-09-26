@@ -10,6 +10,7 @@ to start rather than filling an empty warehouse that reads as a quiet market.
 
 from __future__ import annotations
 
+import logging
 import os
 import time
 from collections.abc import Mapping
@@ -31,6 +32,8 @@ from channelflow.pipeline.archive import FrameArchive, LocalObjectStore, ObjectS
 from channelflow.pipeline.ingest import IngestDaemon
 from channelflow.settings import MissingConfiguration, settings_from_env
 from channelflow.tables import bars as bars_table
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
 SYMBOLS = "CHANNELFLOW_INGEST_SYMBOLS"
 ARCHIVE_URI = "CHANNELFLOW_ARCHIVE_URI"
@@ -179,7 +182,7 @@ def build_daemon(
         )
     elif venue == "okx":
         connector = connector_cls(
-            url="wss://ws.okx.com:8443/api/v5/market",
+            url="wss://ws.okx.com/api/v5/market",
             subscribe_msg=okx_subscribe_message(streams),
         )
     else:

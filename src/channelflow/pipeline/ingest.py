@@ -27,24 +27,25 @@ whose behaviour lived in its loop could be tested only by running it.
 
 from __future__ import annotations
 
-import json
+import logging
 import time
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
-from typing import Any, Protocol
+from typing import Protocol
 
 from channelflow.bars.builder import BarBuilder
-from channelflow.connectors.binance import normalize
 from channelflow.connectors.session import StreamSession
 from channelflow.connectors.venue import VenueConnector
 from channelflow.pipeline.archive import FrameArchive
+from channelflow.pipeline.venue_normalize import normalize_frames
 
-#: How many bars a commit holds, at least.
-#:
-#: **Not an interval.** The first version flushed every sixty seconds while
-#: producing a bar every sixty seconds, so every bar became its own file --
-#: measured after eleven hours: 685 files holding 689 rows, and a read that took
-#: 4.4 seconds against §36's two-second budget ([[REQ-WP-067]]).
+logger = logging.getLogger(__name__)
+
+#: How many bars a commit holds, at least. **Not an interval.**
+#: The first version flushed every sixty seconds while producing a bar
+#: every sixty seconds, so every bar became its own file -- measured after
+#: eleven hours: 685 files holding 689 rows, and a read that took 4.4
+#: seconds against §36's two-second budget ([[REQ-WP-067]]).
 #:
 #: `BarSink`'s docstring states the rule that broke: "a commit per bar would
 #: make the snapshot chain as long as the series". An interval cannot keep it,
@@ -223,36 +224,26 @@ class IngestDaemon:
 
     def _consume(self, frame: str, received_at_ns: int) -> bool:
         try:
-            envelope = json.loads(frame)
-        except ValueError:
-            self.unparsed += 1
-            return False
-
-        stream = envelope.get("stream")
-        payload: Any = envelope.get("data")
-        if not isinstance(stream, str) or not isinstance(payload, dict):
-            self.unparsed += 1
-            return False
-
-        if not stream.endswith("@aggTrade"):
-            # Depth and the rest are archived and not turned into events yet:
-            # bars need trades, and a book this build does not maintain would be
-            # a half-built one. They are counted so the gap is visible.
-            self.ignored += 1
-            return False
-
-        try:
-            trade = normalize.agg_trade(
-                payload,
+            trades, unparsed, ignored, parse_errors = normalize_frames(
                 venue=self.venue,
                 market_type=self.market_type,
+                frames=[frame],
                 ingest_time_ns=received_at_ns,
             )
         except Exception:  # noqa: BLE001 -- a bad frame is not a reason to stop
             self.unparsed += 1
             return False
 
-        self.builder.add(trade)
+        self.unparsed += unparsed
+        self.unparsed += parse_errors
+        self.ignored += ignored
+
+        if not trades:
+            return False
+
+        logger.info("Normalized %d trade(s) for venue %s", len(trades), self.venue)
+        for trade in trades:
+            self.builder.add(trade)
         return True
 
     def run(self, *, steps: int | None = None, pause_seconds: float = 0.2) -> list[StepReport]:

@@ -29,9 +29,12 @@ from __future__ import annotations
 
 import gzip
 import json
+import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Protocol
+
+logger = logging.getLogger(__name__)
 
 #: One object per minute. At the measured rate that is about 48 KiB compressed:
 #: large enough that per-object overhead is noise, small enough that a reader
@@ -71,7 +74,19 @@ class S3ObjectStore:
     client: object
 
     def put(self, key: str, payload: bytes) -> None:
-        self.client.put_object(Bucket=self.bucket, Key=key, Body=payload)  # type: ignore[attr-defined]
+        logger.info(
+            "S3ObjectStore.put: bucket=%s, key=%s, size=%d, client=%s",
+            self.bucket,
+            key,
+            len(payload),
+            type(self.client),
+        )
+        try:
+            self.client.put_object(Bucket=self.bucket, Key=key, Body=payload)  # type: ignore[attr-defined]
+            logger.info("S3ObjectStore.put succeeded: key=%s", key)
+        except Exception as e:
+            logger.error("S3ObjectStore.put failed: key=%s, error=%s", key, e)
+            raise
 
 
 class ClockWentBackwards(ValueError):
@@ -142,6 +157,12 @@ class FrameArchive:
         about the venue, and an empty object would be indistinguishable from a
         minute nobody recorded.
         """
+        logger.info(
+            "FrameArchive.flush called for venue %s, frames=%d, minute_ns=%s",
+            self.venue,
+            len(self._frames),
+            self._minute_ns,
+        )
         if not self._frames or self._minute_ns is None:
             return None
         minute = self._minute_ns
