@@ -2,7 +2,7 @@
 id: OUT-2026-10-02-implement-ingest-resilience
 step: implement
 records: [REQ-WP-078]
-commit: null
+commit: ceb6e97
 ---
 
 ## What was done
