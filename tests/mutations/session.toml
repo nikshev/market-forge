@@ -205,3 +205,18 @@ find = '''    if policy.max_silence_ns is not None:
         return policy.max_silence_ns'''
 replace = '''    if False:
         return policy.max_silence_ns'''
+
+# Found by the first live reconnect proof: a ping to a socket that had just gone raised out
+# of `tick` and ended the daemon.
+[[mutation]]
+name = "a ping that cannot be sent ends the loop"
+find = '''            except Exception as error:  # noqa: BLE001 -- any failure to write is the same fact'''
+replace = '''            except KeyboardInterrupt as error:'''
+
+[[mutation]]
+name = "a failed ping is retried on every tick"
+find = '''            self._last_ping_ns = now
+            try:
+                self.connector.send(self.policy.ping_payload or "")'''
+replace = '''            try:
+                self.connector.send(self.policy.ping_payload or "")'''

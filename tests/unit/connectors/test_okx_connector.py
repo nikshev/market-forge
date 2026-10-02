@@ -4,6 +4,7 @@
 """
 
 import json
+import threading
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -55,6 +56,11 @@ class TestOkxConnector:
     def test_close_closes_ws(self):
         with patch("websockets.sync.client.connect") as mock_connect:
             mock_ws = MagicMock()
+            # A real `recv` blocks; a mock that returns at once ends the reader, which
+            # now forgets its socket before `close` can reach it.
+            release = threading.Event()
+            mock_ws.recv.side_effect = lambda: release.wait(5) and ""
+            mock_ws.close.side_effect = lambda: release.set()
             mock_connect.return_value.__enter__.return_value = mock_ws
 
             connector = OkxConnector(url="wss://test", subscribe_msg="{}")

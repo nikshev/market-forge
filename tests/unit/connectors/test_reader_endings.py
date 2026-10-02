@@ -18,6 +18,7 @@ import asyncio
 import json
 import logging
 import threading
+import time
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -278,4 +279,109 @@ def test_alive_is_false_as_soon_as_a_stop_is_asked_for_not_when_the_reader_retur
         assert connector._thread is not None and connector._thread.is_alive()
         assert connector.alive is False
         release.set()
+        connector._thread.join(timeout=3)
+
+
+# --- found live: a write to the socket the last connection left behind ---------------
+
+
+@pytest.mark.trace("REQ-WP-078")
+@pytest.mark.parametrize(("venue", "cls"), SUBSCRIBERS)
+def test_a_send_after_the_reader_ended_does_not_write_to_the_dead_socket(
+    venue: str, cls: type
+) -> None:
+    """The reader ended; `self._ws` still pointed at the closed socket. The next client
+    ping went there and raised `ConnectionClosedError` out of `StreamSession.tick`, and the
+    process died. The first send (the subscription) works and every later one raises, as a
+    closed socket does."""
+    closed = ConnectionClosedError(Close(1011, "keepalive ping timeout"), None)
+    with patch("websockets.sync.client.connect") as connect:
+        ws = MagicMock()
+        ws.send.side_effect = [None, closed, closed]
+        ws.recv.side_effect = [ConnectionError("the link went")]
+        connect.return_value.__enter__.return_value = ws
+        connector = cls(url="wss://test", subscribe_msg="{}")
+        connector.connect(("stream",))
+        assert connector._thread is not None
+        connector._thread.join(timeout=3)
+
+    connector.send("ping")  # must not raise, and must not reach the closed socket
+
+    assert ws.send.call_count == 1, "only the subscription was ever sent on that socket"
+
+
+@pytest.mark.trace("REQ-WP-078")
+@pytest.mark.parametrize(("venue", "cls"), SUBSCRIBERS)
+def test_a_new_connect_forgets_the_previous_socket_before_the_new_one_opens(
+    venue: str, cls: type
+) -> None:
+    """Between `connect()` returning and the new socket opening -- up to ten seconds while a
+    venue is unreachable -- the connector must not offer the old socket to `send`."""
+    release = threading.Event()
+
+    def opens_slowly(*a: object, **k: object) -> object:
+        release.wait(timeout=5)
+        raise OSError("never opened")
+
+    connector = cls(url="wss://test", subscribe_msg="{}")
+    connector._ws = MagicMock(name="the previous connection's socket")
+
+    with patch("websockets.sync.client.connect", side_effect=opens_slowly):
+        connector.connect(("stream",))
+
+        assert connector._ws is None
+        connector.send("ping")  # a no-op with no socket, not a write to the old one
+        release.set()
+        assert connector._thread is not None
+        connector._thread.join(timeout=3)
+
+
+@pytest.mark.trace("REQ-WP-078")
+@pytest.mark.parametrize(("venue", "cls"), SUBSCRIBERS)
+def test_an_old_reader_ending_does_not_forget_its_replacements_socket(
+    venue: str, cls: type
+) -> None:
+    """A reconnect starts a new reader while the old one may still be finishing. When the old
+    one ends it must clear only its own socket: clearing the new one's would leave the new
+    connection alive and unpingable."""
+    old_may_end = threading.Event()
+    new_may_end = threading.Event()
+
+    def blocking(gate: threading.Event) -> MagicMock:
+        ws = MagicMock()
+
+        def recv() -> str:
+            gate.wait(5)
+            raise ConnectionError("the link went")
+
+        ws.recv.side_effect = recv
+        return ws
+
+    old_ws, new_ws = blocking(old_may_end), blocking(new_may_end)
+    contexts = [MagicMock(), MagicMock()]
+    contexts[0].__enter__.return_value = old_ws
+    contexts[1].__enter__.return_value = new_ws
+
+    with patch("websockets.sync.client.connect", side_effect=contexts):
+        connector = cls(url="wss://test", subscribe_msg="{}")
+        connector.connect(("stream",))
+        old_thread = connector._thread
+        deadline = time.monotonic() + 3
+        while connector._ws is not old_ws and time.monotonic() < deadline:
+            time.sleep(0.01)
+        assert connector._ws is old_ws
+
+        connector.connect(("stream",))
+        while connector._ws is not new_ws and time.monotonic() < deadline:
+            time.sleep(0.01)
+        assert connector._ws is new_ws
+
+        old_may_end.set()
+        assert old_thread is not None
+        old_thread.join(timeout=3)
+        assert not old_thread.is_alive()
+
+        assert connector._ws is new_ws, "the old reader cleared the new connection's socket"
+        new_may_end.set()
+        assert connector._thread is not None
         connector._thread.join(timeout=3)

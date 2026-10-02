@@ -23,6 +23,10 @@ class ControllableConnector:
         self.attempts: list[int] = []
         self.connects: list[tuple[str, ...]] = []
         self.sent: list[str] = []
+        #: Every `send` that was tried, whether or not it succeeded.
+        self.send_attempts: list[str] = []
+        #: When true, `send` raises, as a write to a socket that has gone does.
+        self.fail_send = False
         self.closed = 0
         self.pongs = 0
         #: How many of the next `connect()` calls raise, as Binance's does when the
@@ -47,6 +51,9 @@ class ControllableConnector:
         self._alive = not self.die_after_connect
 
     def send(self, payload: str) -> None:
+        self.send_attempts.append(payload)
+        if self.fail_send:
+            raise ConnectionError("the socket has gone")
         self.sent.append(payload)
 
     def pong(self) -> None:

@@ -60,3 +60,24 @@ replace = '''        return not self._stop.is_set()'''
 name = "the subscription message is never sent"
 find = '''                    ws.send(self._subscribe_msg)'''
 replace = '''                    pass'''
+
+# Found by the first live reconnect proof: the reader ended, `_ws` still pointed at the closed
+# socket, and the next client ping wrote to it and killed the process.
+[[mutation]]
+name = "a new connect keeps offering the previous socket to send"
+find = '''        self._ws = None
+
+        def run() -> None:'''
+replace = '''
+        def run() -> None:'''
+
+[[mutation]]
+name = "a reader that ends leaves its closed socket in place"
+find = '''                if ws is not None and self._ws is ws:
+                    self._ws = None'''
+replace = '''                pass'''
+
+[[mutation]]
+name = "a reader that ends clears a replacement's socket too"
+find = '''                if ws is not None and self._ws is ws:'''
+replace = '''                if ws is not None:'''

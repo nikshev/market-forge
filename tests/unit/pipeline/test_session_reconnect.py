@@ -310,3 +310,47 @@ def test_a_reconnect_in_the_middle_of_a_minute_loses_nothing_the_daemon_holds(
     assert len(objects) == 1, [p.name for p in objects]
     held = [frame for _, frame in read_frames(objects[0].read_bytes())]
     assert held == before + after
+
+
+# --- found live, not by any test above -----------------------------------------------
+#
+# The first live proof of the reconnect (dropping only a daemon's websocket traffic) killed
+# the process. The reader ended, the session began to reconnect, and before the new socket
+# had opened the client ping went to the *old*, closed one and raised
+# `ConnectionClosedError` out of `tick` and out of the whole loop. Every fake in this file
+# has a `send` that works, which is why none of it saw this.
+
+
+@pytest.mark.trace("REQ-WP-078")
+def test_a_ping_that_cannot_be_sent_does_not_end_the_loop() -> None:
+    session, connector, clock = _session(OKX)
+    connector.fail_send = True
+
+    for _ in range(300):  # sixty seconds of 200 ms ticks, the feed alive throughout
+        clock.advance_ns(SECOND_NS // 5)
+        session.on_frame()
+        session.tick()  # raising here fails the test: that is the crash
+
+    assert connector.send_attempts, "the ping was never tried, so nothing was tested"
+
+
+@pytest.mark.trace("REQ-WP-078")
+def test_a_failing_ping_is_tried_once_an_interval_and_not_on_every_tick(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """If a failed ping did not advance the ping clock it would be retried at 5 Hz, which is
+    the log volume this requirement exists to remove."""
+    session, connector, clock = _session(OKX)
+    connector.fail_send = True
+    caplog.set_level(logging.INFO)
+
+    for _ in range(300):
+        clock.advance_ns(SECOND_NS // 5)
+        session.on_frame()
+        session.tick()
+
+    interval = OKX.client_ping_interval_ns
+    assert interval is not None
+    expected = (60 * SECOND_NS) // interval
+    assert len(connector.send_attempts) <= expected + 1, len(connector.send_attempts)
+    assert len(_records(caplog, at_least=logging.WARNING)) <= expected + 1

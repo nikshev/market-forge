@@ -54,9 +54,14 @@ class SubscribingConnector:
         stop = threading.Event()
         self._stop = stop
         venue = self.venue
+        # The previous connection's socket is closed or closing. Until the new one opens,
+        # which is up to ten seconds while a venue is unreachable, `send` has nothing to
+        # write to rather than a socket that raises.
+        self._ws = None
 
         def run() -> None:
             opened = False
+            ws: Any = None
             try:
                 logger.info("%s: connecting to %s", venue, self._url)
                 with client.connect(self._url) as ws:
@@ -90,6 +95,10 @@ class SubscribingConnector:
                     )
             finally:
                 self._connected = False
+                # Only this connection's own socket: a replacement may already have
+                # published its own.
+                if ws is not None and self._ws is ws:
+                    self._ws = None
 
         self._thread = threading.Thread(target=run, name=f"{venue}-ws", daemon=True)
         self._thread.start()

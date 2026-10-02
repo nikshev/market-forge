@@ -461,8 +461,17 @@ class StreamSession:
             and interval is not None
             and now - self._last_ping_ns >= interval
         ):
-            self.connector.send(self.policy.ping_payload or "")
+            # Stamped first: a ping that fails is not retried on the next tick, which at the
+            # daemon's step rate would be five warnings a second.
             self._last_ping_ns = now
+            try:
+                self.connector.send(self.policy.ping_payload or "")
+            except Exception as error:  # noqa: BLE001 -- any failure to write is the same fact
+                # The socket went between the reader's last look and this write. The
+                # reader ending is what reconnects; a ping must not end the loop.
+                logger.warning(
+                    "%s: ping not sent: %s: %s", self.policy.venue, type(error).__name__, error
+                )
 
     def record_sequence_gap(self) -> None:
         self.metrics.sequence_gaps += 1
