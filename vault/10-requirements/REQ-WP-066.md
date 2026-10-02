@@ -81,6 +81,7 @@ makes the tier affordable.
     - `tests/unit/pipeline/test_ingest.py::test_a_bad_frame_does_not_stop_the_ingest`
     - `tests/unit/pipeline/test_ingest.py::test_a_frame_survives_the_round_trip_byte_for_byte`
     - `tests/unit/pipeline/test_ingest.py::test_a_frame_that_cannot_be_normalized_is_counted`
+    - `tests/unit/pipeline/test_ingest.py::test_a_normalizer_that_raises_does_not_stop_the_ingest`
     - `tests/unit/pipeline/test_ingest.py::test_a_quiet_minute_writes_no_object`
     - `tests/unit/pipeline/test_ingest.py::test_a_send_before_connect_is_refused`
     - `tests/unit/pipeline/test_ingest.py::test_a_step_reports_what_it_did`

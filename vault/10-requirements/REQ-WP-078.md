@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "§6.2, §6.4.4, §32, §33, §35.6"
 prd_lines: "405-420, 600-642, 4752-4781, 4783-4799, 4897-4905"
 phase: null
-status: draft
+status: specified
 depends_on: [REQ-WP-076]
 tags: [ingest, reliability]
 ---
@@ -188,7 +188,8 @@ has recorded more than once and decided against each time.
 ## Trace
 
 <!-- trace:begin -->
-_Not yet generated. Run `make graph`._
+- **Specs:** [[SPEC-123-ingest-resilience]]
+- **Outcomes:** [[OUT-2026-10-02-spec-ingest-resilience]]
 <!-- trace:end -->
 
 ## Notes

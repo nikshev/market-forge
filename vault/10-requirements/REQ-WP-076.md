@@ -109,6 +109,10 @@ and connection rules come from. They are not assumed to match Binance's.
     - `tests/unit/connectors/test_websocket_builders.py::TestSubscribeMessages::test_bybit_subscribe_message_format`
     - `tests/unit/connectors/test_websocket_builders.py::TestSubscribeMessages::test_no_builder_is_another_with_string_replaced`
     - `tests/unit/connectors/test_websocket_builders.py::TestSubscribeMessages::test_okx_subscribe_message_format`
+    - `tests/unit/deploy/test_compose_names.py::test_a_comment_mentioning_an_address_is_not_a_finding`
+    - `tests/unit/deploy/test_compose_names.py::test_loopback_and_the_any_address_are_not_findings`
+    - `tests/unit/deploy/test_compose_names.py::test_the_check_sees_the_address_it_exists_to_catch`
+    - `tests/unit/deploy/test_compose_names.py::test_the_compose_file_names_no_container_by_address`
     - `tests/unit/pipeline/test_archive_prefix.py::TestFrameArchivePrefix::test_binance_venue_prefix`
     - `tests/unit/pipeline/test_archive_prefix.py::TestFrameArchivePrefix::test_bybit_venue_prefix`
     - `tests/unit/pipeline/test_archive_prefix.py::TestFrameArchivePrefix::test_okx_venue_prefix`
@@ -127,6 +131,10 @@ and connection rules come from. They are not assumed to match Binance's.
     - `tests/unit/pipeline/test_stream_session_policies.py::TestStreamSessionPolicies::test_bybit_reconnects_on_silence_no_close_frame`
     - `tests/unit/pipeline/test_stream_session_policies.py::TestStreamSessionPolicies::test_okx_policy_pings_bare_string`
     - `tests/unit/pipeline/test_stream_session_policies.py::TestStreamSessionPolicies::test_okx_reconnects_on_close_frame`
+    - `tests/unit/test_settings_ingest.py::TestIngestSettingsEnv::test_silence_window_multiplier_custom`
+    - `tests/unit/test_settings_ingest.py::TestIngestSettingsEnv::test_silence_window_multiplier_default`
+    - `tests/unit/test_settings_ingest.py::TestIngestSettingsEnv::test_silence_window_multiplier_refuses_negative`
+    - `tests/unit/test_settings_ingest.py::TestIngestSettingsEnv::test_silence_window_multiplier_refuses_zero`
 - **Code:**
     - `src/channelflow/connectors/__init__.py`
     - `src/channelflow/connectors/binance/__init__.py`
@@ -138,6 +146,7 @@ and connection rules come from. They are not assumed to match Binance's.
     - `src/channelflow/connectors/venue.py`
     - `src/channelflow/pipeline/ingest.py`
     - `src/channelflow/pipeline/ingest_main.py`
+    - `src/channelflow/pipeline/venue_normalize.py`
 - **Outcomes:** [[OUT-2026-09-23-plan-multi-venue-ingest]], [[OUT-2026-09-23-spec-multi-venue-ingest]], [[OUT-2026-09-23-tasks-multi-venue-ingest]]
 <!-- trace:end -->
 
