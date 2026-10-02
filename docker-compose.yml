@@ -85,7 +85,7 @@ services:
       MINIO_BUCKET: ${MINIO_BUCKET}
     entrypoint: >
       /bin/sh -c "
-      mc alias set local http://172.24.0.12:9000 $${MINIO_ROOT_USER} $${MINIO_ROOT_PASSWORD} &&
+      mc alias set local http://minio:9000 $${MINIO_ROOT_USER} $${MINIO_ROOT_PASSWORD} &&
       mc mb --ignore-existing local/$${MINIO_BUCKET} &&
       echo 'bucket ready: '$${MINIO_BUCKET}
       "
@@ -141,11 +141,11 @@ services:
       context: .
       dockerfile: Dockerfile
     environment:
-      CHANNELFLOW_CATALOG_URI: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@172.24.0.8:5432/${POSTGRES_DB}
+      CHANNELFLOW_CATALOG_URI: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       CHANNELFLOW_WAREHOUSE: s3://${MINIO_BUCKET}/warehouse
       # The object store is reached by service name inside the network, not by
       # the host port .env publishes for a developer's browser.
-      CHANNELFLOW_S3_ENDPOINT: http://172.24.0.12:9000
+      CHANNELFLOW_S3_ENDPOINT: http://minio:9000
       CHANNELFLOW_S3_ACCESS_KEY_ID: ${MINIO_ROOT_USER}
       CHANNELFLOW_S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
       CHANNELFLOW_S3_REGION: us-east-1
@@ -190,9 +190,9 @@ services:
       - -m
       - channelflow.pipeline.ingest_main
     environment:
-      CHANNELFLOW_CATALOG_URI: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@172.24.0.8:5432/${POSTGRES_DB}
+      CHANNELFLOW_CATALOG_URI: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       CHANNELFLOW_WAREHOUSE: s3://${MINIO_BUCKET}/warehouse
-      CHANNELFLOW_S3_ENDPOINT: http://172.24.0.12:9000
+      CHANNELFLOW_S3_ENDPOINT: http://minio:9000
       CHANNELFLOW_S3_ACCESS_KEY_ID: ${MINIO_ROOT_USER}
       CHANNELFLOW_S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
       CHANNELFLOW_S3_REGION: us-east-1
@@ -229,9 +229,9 @@ services:
       - -m
       - channelflow.pipeline.ingest_main
     environment:
-      CHANNELFLOW_CATALOG_URI: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@172.24.0.8:5432/${POSTGRES_DB}
+      CHANNELFLOW_CATALOG_URI: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       CHANNELFLOW_WAREHOUSE: s3://${MINIO_BUCKET}/warehouse
-      CHANNELFLOW_S3_ENDPOINT: http://172.24.0.12:9000
+      CHANNELFLOW_S3_ENDPOINT: http://minio:9000
       CHANNELFLOW_S3_ACCESS_KEY_ID: ${MINIO_ROOT_USER}
       CHANNELFLOW_S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
       CHANNELFLOW_S3_REGION: us-east-1
@@ -255,9 +255,9 @@ services:
       - -m
       - channelflow.pipeline.ingest_main
     environment:
-      CHANNELFLOW_CATALOG_URI: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@172.24.0.8:5432/${POSTGRES_DB}
+      CHANNELFLOW_CATALOG_URI: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       CHANNELFLOW_WAREHOUSE: s3://${MINIO_BUCKET}/warehouse
-      CHANNELFLOW_S3_ENDPOINT: http://172.24.0.12:9000
+      CHANNELFLOW_S3_ENDPOINT: http://minio:9000
       CHANNELFLOW_S3_ACCESS_KEY_ID: ${MINIO_ROOT_USER}
       CHANNELFLOW_S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
       CHANNELFLOW_S3_REGION: us-east-1
@@ -284,9 +284,9 @@ services:
       - -m
       - channelflow.pipeline.ingest_main
     environment:
-      CHANNELFLOW_CATALOG_URI: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@172.24.0.8:5432/${POSTGRES_DB}
+      CHANNELFLOW_CATALOG_URI: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       CHANNELFLOW_WAREHOUSE: s3://${MINIO_BUCKET}/warehouse
-      CHANNELFLOW_S3_ENDPOINT: http://172.24.0.12:9000
+      CHANNELFLOW_S3_ENDPOINT: http://minio:9000
       CHANNELFLOW_S3_ACCESS_KEY_ID: ${MINIO_ROOT_USER}
       CHANNELFLOW_S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
       CHANNELFLOW_S3_REGION: us-east-1
@@ -310,9 +310,9 @@ services:
       - -m
       - channelflow.pipeline.ingest_main
     environment:
-      CHANNELFLOW_CATALOG_URI: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@172.24.0.8:5432/${POSTGRES_DB}
+      CHANNELFLOW_CATALOG_URI: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       CHANNELFLOW_WAREHOUSE: s3://${MINIO_BUCKET}/warehouse
-      CHANNELFLOW_S3_ENDPOINT: http://172.24.0.12:9000
+      CHANNELFLOW_S3_ENDPOINT: http://minio:9000
       CHANNELFLOW_S3_ACCESS_KEY_ID: ${MINIO_ROOT_USER}
       CHANNELFLOW_S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
       CHANNELFLOW_S3_REGION: us-east-1
@@ -351,9 +351,9 @@ services:
       - --loop
       - ${CHANNELFLOW_CHANNEL_INTERVAL}
     environment:
-      CHANNELFLOW_CATALOG_URI: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@172.24.0.8:5432/${POSTGRES_DB}
+      CHANNELFLOW_CATALOG_URI: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       CHANNELFLOW_WAREHOUSE: s3://${MINIO_BUCKET}/warehouse
-      CHANNELFLOW_S3_ENDPOINT: http://172.24.0.12:9000
+      CHANNELFLOW_S3_ENDPOINT: http://minio:9000
       CHANNELFLOW_S3_ACCESS_KEY_ID: ${MINIO_ROOT_USER}
       CHANNELFLOW_S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
       CHANNELFLOW_S3_REGION: us-east-1
@@ -391,9 +391,9 @@ services:
       - --loop
       - ${CHANNELFLOW_RESAMPLE_INTERVAL}
     environment:
-      CHANNELFLOW_CATALOG_URI: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@172.24.0.8:5432/${POSTGRES_DB}
+      CHANNELFLOW_CATALOG_URI: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       CHANNELFLOW_WAREHOUSE: s3://${MINIO_BUCKET}/warehouse
-      CHANNELFLOW_S3_ENDPOINT: http://172.24.0.12:9000
+      CHANNELFLOW_S3_ENDPOINT: http://minio:9000
       CHANNELFLOW_S3_ACCESS_KEY_ID: ${MINIO_ROOT_USER}
       CHANNELFLOW_S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
       CHANNELFLOW_S3_REGION: us-east-1
@@ -424,9 +424,9 @@ services:
         --loop "$$CHANNELFLOW_MAINTENANCE_INTERVAL"
         $${CHANNELFLOW_KEEP_DAYS:+--keep-days "$$CHANNELFLOW_KEEP_DAYS"}
     environment:
-      CHANNELFLOW_CATALOG_URI: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@172.24.0.8:5432/${POSTGRES_DB}
+      CHANNELFLOW_CATALOG_URI: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       CHANNELFLOW_WAREHOUSE: s3://${MINIO_BUCKET}/warehouse
-      CHANNELFLOW_S3_ENDPOINT: http://172.24.0.12:9000
+      CHANNELFLOW_S3_ENDPOINT: http://minio:9000
       CHANNELFLOW_S3_ACCESS_KEY_ID: ${MINIO_ROOT_USER}
       CHANNELFLOW_S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
       CHANNELFLOW_S3_REGION: us-east-1
