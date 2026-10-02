@@ -124,17 +124,13 @@ and connection rules come from. They are not assumed to match Binance's.
     - `tests/unit/pipeline/test_ingest_session.py::TestStreamSessionWithVenueConnector::test_session_calls_connect_on_start`
     - `tests/unit/pipeline/test_ingest_session.py::TestStreamSessionWithVenueConnector::test_session_close_delegates_to_connector`
     - `tests/unit/pipeline/test_ingest_session.py::TestStreamSessionWithVenueConnector::test_session_reads_frames_from_connector`
-    - `tests/unit/pipeline/test_silence_detector.py::TestSilenceDetector::test_normal_frame_resets_silence_timer`
-    - `tests/unit/pipeline/test_silence_detector.py::TestSilenceDetector::test_silent_connection_reported`
+    - `tests/unit/pipeline/test_silence_detector.py::test_a_frame_arriving_resets_the_silence_timer`
+    - `tests/unit/pipeline/test_silence_detector.py::test_a_silent_connection_is_reported_with_the_venue_and_reconnected`
     - `tests/unit/pipeline/test_stream_session_policies.py::TestStreamSessionPolicies::test_binance_policy_uses_websocket_ping`
     - `tests/unit/pipeline/test_stream_session_policies.py::TestStreamSessionPolicies::test_bybit_policy_pings_with_payload`
     - `tests/unit/pipeline/test_stream_session_policies.py::TestStreamSessionPolicies::test_bybit_reconnects_on_silence_no_close_frame`
     - `tests/unit/pipeline/test_stream_session_policies.py::TestStreamSessionPolicies::test_okx_policy_pings_bare_string`
     - `tests/unit/pipeline/test_stream_session_policies.py::TestStreamSessionPolicies::test_okx_reconnects_on_close_frame`
-    - `tests/unit/test_settings_ingest.py::TestIngestSettingsEnv::test_silence_window_multiplier_custom`
-    - `tests/unit/test_settings_ingest.py::TestIngestSettingsEnv::test_silence_window_multiplier_default`
-    - `tests/unit/test_settings_ingest.py::TestIngestSettingsEnv::test_silence_window_multiplier_refuses_negative`
-    - `tests/unit/test_settings_ingest.py::TestIngestSettingsEnv::test_silence_window_multiplier_refuses_zero`
 - **Code:**
     - `src/channelflow/connectors/__init__.py`
     - `src/channelflow/connectors/binance/__init__.py`
@@ -153,3 +149,13 @@ and connection rules come from. They are not assumed to match Binance's.
 ## Notes
 
 Human territory. Never machine-rewritten.
+
+### 2026-10-02: six days after `implemented`, the deployment it was written for did not work
+
+This requirement is `implemented`, every test it names is green, and the OKX connector never
+delivered a frame, a Binance connection that ended was never reopened, and the raw archive was
+filed in the wrong place. Recorded here rather than by moving the status, for the reason
+[[REQ-PHASE-1]]'s 2026-09-17 note gives: the code did what its tests said, and the tests asked
+the wrong questions (a fake whose `send` always worked, a silence limit read from a field that
+held something else, an archive tested with its default prefix and never through the wiring).
+[[REQ-WP-078]] closes each of them and carries the measurements.

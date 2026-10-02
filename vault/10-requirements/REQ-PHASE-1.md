@@ -142,5 +142,16 @@ The symbols half was closed the same day: `ingest-binance-eth` and
 `ingest-binance-sol` joined the compose file. The channels half waits on
 [[REQ-WP-077]], and until it lands this criterion is unmet and known to be.
 
+### 2026-10-02: what held and what did not
+
+[[REQ-WP-077]] gave channels a producer, and [[REQ-WP-078]] is the work that made the criterion
+true on a running deployment rather than on the day it was written. Measured on 2026-10-02: the
+`worker` fits channels over stored bars; Binance BTC, ETH and SOL, Bybit BTC and OKX BTC-USDT-SWAP
+each deliver and are archived one object per minute per symbol; a connection that ends is reopened
+for every venue. Between 2026-09-17 and 2026-09-28 the symbols half was true on paper and not in
+practice: ETH and SOL crash-looped on a hostname that did not resolve, and Binance BTC sat silent
+for four days with its container `Up`. So the 2026-09-17 note's "closed the same day" was a
+compose file saying so, not a deployment doing it.
+
 Generated from the PRD by `tools/extract_prd.py`. This section is human
 territory and is never machine-rewritten.

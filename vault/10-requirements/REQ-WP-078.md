@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "§6.2, §6.4.4, §32, §33, §35.6"
 prd_lines: "405-420, 600-642, 4752-4781, 4783-4799, 4897-4905"
 phase: null
-status: planned
+status: implemented
 depends_on: [REQ-WP-076]
 tags: [ingest, reliability]
 ---
@@ -189,7 +189,199 @@ has recorded more than once and decided against each time.
 
 <!-- trace:begin -->
 - **Specs:** [[SPEC-123-ingest-resilience]]
-- **Outcomes:** [[OUT-2026-10-02-plan-ingest-resilience]], [[OUT-2026-10-02-spec-ingest-resilience]], [[OUT-2026-10-02-tasks-ingest-resilience]]
+- **Tests:**
+    - `tests/unit/connectors/test_policies_single_home.py::test_each_venue_has_one_policy_across_the_connectors_package`
+    - `tests/unit/connectors/test_policies_single_home.py::test_the_collector_sees_the_three_live_venues_and_hypercore`
+    - `tests/unit/connectors/test_policies_single_home.py::test_the_guard_can_fail`
+    - `tests/unit/connectors/test_reader_endings.py::test_a_close_from_the_venue_is_logged_with_its_code[bybit-BybitConnector]`
+    - `tests/unit/connectors/test_reader_endings.py::test_a_close_from_the_venue_is_logged_with_its_code[okx-OkxConnector]`
+    - `tests/unit/connectors/test_reader_endings.py::test_a_failure_mid_stream_keeps_what_arrived_and_says_why[bybit-BybitConnector]`
+    - `tests/unit/connectors/test_reader_endings.py::test_a_failure_mid_stream_keeps_what_arrived_and_says_why[okx-OkxConnector]`
+    - `tests/unit/connectors/test_reader_endings.py::test_a_new_connect_forgets_the_previous_socket_before_the_new_one_opens[bybit-BybitConnector]`
+    - `tests/unit/connectors/test_reader_endings.py::test_a_new_connect_forgets_the_previous_socket_before_the_new_one_opens[okx-OkxConnector]`
+    - `tests/unit/connectors/test_reader_endings.py::test_a_reader_that_is_running_is_alive_and_a_close_we_asked_for_is_not_an_error[bybit-BybitConnector]`
+    - `tests/unit/connectors/test_reader_endings.py::test_a_reader_that_is_running_is_alive_and_a_close_we_asked_for_is_not_an_error[okx-OkxConnector]`
+    - `tests/unit/connectors/test_reader_endings.py::test_a_refusal_is_queued_for_the_archive_and_warned_with_the_venues_words[bybit-BybitConnector-{"success": false, "ret_msg": "error:handler not found,topic:publicTrade.NOTASYMBOL", "conn_id": "x", "req_id": "", "op": "subscribe"}-handler not found]`
+    - `tests/unit/connectors/test_reader_endings.py::test_a_refusal_is_queued_for_the_archive_and_warned_with_the_venues_words[okx-OkxConnector-{"event": "error", "msg": "Subscribe failed, wrong URL or channel:trades,instId:trades.BTC-USDT-SWAP doesn't exist. Please use the correct URL, channel and parameters referring to API document.", "code": "60018", "connId": "b2b0944b"}-Subscribe failed]`
+    - `tests/unit/connectors/test_reader_endings.py::test_a_send_after_the_reader_ended_does_not_write_to_the_dead_socket[bybit-BybitConnector]`
+    - `tests/unit/connectors/test_reader_endings.py::test_a_send_after_the_reader_ended_does_not_write_to_the_dead_socket[okx-OkxConnector]`
+    - `tests/unit/connectors/test_reader_endings.py::test_a_socket_that_will_not_open_is_a_warning_and_a_dead_reader[bybit-BybitConnector]`
+    - `tests/unit/connectors/test_reader_endings.py::test_a_socket_that_will_not_open_is_a_warning_and_a_dead_reader[okx-OkxConnector]`
+    - `tests/unit/connectors/test_reader_endings.py::test_a_transport_that_was_never_connected_is_not_alive`
+    - `tests/unit/connectors/test_reader_endings.py::test_alive_is_false_as_soon_as_a_stop_is_asked_for_not_when_the_reader_returns[bybit-BybitConnector]`
+    - `tests/unit/connectors/test_reader_endings.py::test_alive_is_false_as_soon_as_a_stop_is_asked_for_not_when_the_reader_returns[okx-OkxConnector]`
+    - `tests/unit/connectors/test_reader_endings.py::test_an_old_reader_ending_does_not_forget_its_replacements_socket[bybit-BybitConnector]`
+    - `tests/unit/connectors/test_reader_endings.py::test_an_old_reader_ending_does_not_forget_its_replacements_socket[okx-OkxConnector]`
+    - `tests/unit/connectors/test_reader_endings.py::test_binances_transport_logs_a_failure_after_connect_and_stops_being_alive`
+    - `tests/unit/connectors/test_reader_endings.py::test_every_real_connector_answers_whether_its_reader_is_running[BinanceConnector]`
+    - `tests/unit/connectors/test_reader_endings.py::test_every_real_connector_answers_whether_its_reader_is_running[BybitConnector]`
+    - `tests/unit/connectors/test_reader_endings.py::test_every_real_connector_answers_whether_its_reader_is_running[OkxConnector]`
+    - `tests/unit/connectors/test_reader_endings.py::test_the_protocol_names_alive`
+    - `tests/unit/connectors/test_rejection_frames.py::test_a_frame_of_any_other_shape_is_none_and_never_raises[binance-"a string"]`
+    - `tests/unit/connectors/test_rejection_frames.py::test_a_frame_of_any_other_shape_is_none_and_never_raises[binance-42]`
+    - `tests/unit/connectors/test_rejection_frames.py::test_a_frame_of_any_other_shape_is_none_and_never_raises[binance-[]]`
+    - `tests/unit/connectors/test_rejection_frames.py::test_a_frame_of_any_other_shape_is_none_and_never_raises[binance-]`
+    - `tests/unit/connectors/test_rejection_frames.py::test_a_frame_of_any_other_shape_is_none_and_never_raises[binance-not json at all]`
+    - `tests/unit/connectors/test_rejection_frames.py::test_a_frame_of_any_other_shape_is_none_and_never_raises[binance-null]`
+    - `tests/unit/connectors/test_rejection_frames.py::test_a_frame_of_any_other_shape_is_none_and_never_raises[bybit-"a string"]`
+    - `tests/unit/connectors/test_rejection_frames.py::test_a_frame_of_any_other_shape_is_none_and_never_raises[bybit-42]`
+    - `tests/unit/connectors/test_rejection_frames.py::test_a_frame_of_any_other_shape_is_none_and_never_raises[bybit-[]]`
+    - `tests/unit/connectors/test_rejection_frames.py::test_a_frame_of_any_other_shape_is_none_and_never_raises[bybit-]`
+    - `tests/unit/connectors/test_rejection_frames.py::test_a_frame_of_any_other_shape_is_none_and_never_raises[bybit-not json at all]`
+    - `tests/unit/connectors/test_rejection_frames.py::test_a_frame_of_any_other_shape_is_none_and_never_raises[bybit-null]`
+    - `tests/unit/connectors/test_rejection_frames.py::test_a_frame_of_any_other_shape_is_none_and_never_raises[okx-"a string"]`
+    - `tests/unit/connectors/test_rejection_frames.py::test_a_frame_of_any_other_shape_is_none_and_never_raises[okx-42]`
+    - `tests/unit/connectors/test_rejection_frames.py::test_a_frame_of_any_other_shape_is_none_and_never_raises[okx-[]]`
+    - `tests/unit/connectors/test_rejection_frames.py::test_a_frame_of_any_other_shape_is_none_and_never_raises[okx-]`
+    - `tests/unit/connectors/test_rejection_frames.py::test_a_frame_of_any_other_shape_is_none_and_never_raises[okx-not json at all]`
+    - `tests/unit/connectors/test_rejection_frames.py::test_a_frame_of_any_other_shape_is_none_and_never_raises[okx-null]`
+    - `tests/unit/connectors/test_rejection_frames.py::test_a_frame_that_is_not_this_venues_refusal_is_none[binance-{"event":"error","msg":"Subscribe failed, wrong URL or channel:trades,instId:trades.BTC-USDT-SWAP doesn't exist. Please use the correct URL, channel and parameters referring to API document.","code":"60018","connId":"b2b0944b"}]`
+    - `tests/unit/connectors/test_rejection_frames.py::test_a_frame_that_is_not_this_venues_refusal_is_none[binance-{"stream": "btcusdt@aggTrade", "data": {}}]`
+    - `tests/unit/connectors/test_rejection_frames.py::test_a_frame_that_is_not_this_venues_refusal_is_none[bybit-{"success": true, "ret_msg": "", "op": "subscribe"}]`
+    - `tests/unit/connectors/test_rejection_frames.py::test_a_frame_that_is_not_this_venues_refusal_is_none[bybit-{"topic": "publicTrade.BTCUSDT", "data": []}]`
+    - `tests/unit/connectors/test_rejection_frames.py::test_a_frame_that_is_not_this_venues_refusal_is_none[okx-pong]`
+    - `tests/unit/connectors/test_rejection_frames.py::test_a_frame_that_is_not_this_venues_refusal_is_none[okx-{"arg": {"channel": "trades"}, "data": [{"px": "1"}]}]`
+    - `tests/unit/connectors/test_rejection_frames.py::test_a_frame_that_is_not_this_venues_refusal_is_none[okx-{"event": "subscribe", "arg": {"channel": "trades", "instId": "X"}}]`
+    - `tests/unit/connectors/test_rejection_frames.py::test_a_frame_that_is_not_this_venues_refusal_is_none[okx-{"success":false,"ret_msg":"error:handler not found,topic:publicTrade.NOTASYMBOL","conn_id":"da7tne17jutmkv5im010-bcdap","req_id":"","op":"subscribe"}]`
+    - `tests/unit/connectors/test_rejection_frames.py::test_an_unknown_venue_is_none`
+    - `tests/unit/connectors/test_rejection_frames.py::test_bybit_refusal_returns_the_venues_message`
+    - `tests/unit/connectors/test_rejection_frames.py::test_okx_refusal_returns_the_venues_message`
+    - `tests/unit/connectors/test_session_policies.py::test_a_venue_that_announces_its_closes_is_still_reconnected_when_it_goes_quiet`
+    - `tests/unit/connectors/test_silence_limit.py::test_a_venue_that_announces_close_and_names_no_limit_has_none`
+    - `tests/unit/connectors/test_silence_limit.py::test_a_venue_that_gives_up_silently_falls_back_to_its_idle_timeout`
+    - `tests/unit/connectors/test_silence_limit.py::test_an_explicit_limit_wins`
+    - `tests/unit/connectors/test_venue_connector.py::TestVenuePolicies::test_binance_policy`
+    - `tests/unit/connectors/test_venue_connector.py::TestVenuePolicies::test_bybit_policy`
+    - `tests/unit/connectors/test_venue_connector.py::TestVenuePolicies::test_okx_policy`
+    - `tests/unit/connectors/test_venue_policies_values.py::test_binance_has_a_lifetime_and_no_idle_timeout`
+    - `tests/unit/connectors/test_venue_policies_values.py::test_bybit_pings_every_twenty_seconds_against_a_sixty_second_limit`
+    - `tests/unit/connectors/test_venue_policies_values.py::test_each_live_venue_has_a_silence_limit_with_a_basis[binance]`
+    - `tests/unit/connectors/test_venue_policies_values.py::test_each_live_venue_has_a_silence_limit_with_a_basis[bybit]`
+    - `tests/unit/connectors/test_venue_policies_values.py::test_each_live_venue_has_a_silence_limit_with_a_basis[okx]`
+    - `tests/unit/connectors/test_venue_policies_values.py::test_okx_pings_every_fifteen_seconds_against_a_thirty_second_limit`
+    - `tests/unit/connectors/test_venue_policy_validation.py::test_a_silence_limit_longer_than_the_keepalive_is_accepted`
+    - `tests/unit/connectors/test_venue_policy_validation.py::test_a_silence_limit_must_be_positive[-1]`
+    - `tests/unit/connectors/test_venue_policy_validation.py::test_a_silence_limit_must_be_positive[0]`
+    - `tests/unit/connectors/test_venue_policy_validation.py::test_a_silence_limit_shorter_than_the_keepalive_is_refused`
+    - `tests/unit/connectors/test_venue_policy_validation.py::test_the_backoff_ceiling_cannot_be_below_the_minimum_interval`
+    - `tests/unit/connectors/test_venue_policy_validation.py::test_the_default_ceiling_is_a_minute`
+    - `tests/unit/deploy/test_compose_logging.py::test_every_ingest_service_is_handed_the_silence_limit_and_the_log_level`
+    - `tests/unit/deploy/test_compose_logging.py::test_every_service_has_a_log_size_cap`
+    - `tests/unit/deploy/test_compose_logging.py::test_the_cap_is_configuration_with_a_default_and_keeps_a_few_files`
+    - `tests/unit/deploy/test_compose_logging.py::test_the_check_fails_for_a_service_without_one`
+    - `tests/unit/parity/test_parity_capture_prefix.py::test_no_symbols_prefix_is_a_prefix_of_another_symbols_objects`
+    - `tests/unit/parity/test_parity_capture_prefix.py::test_the_prefix_names_venue_and_symbol`
+    - `tests/unit/pipeline/test_archive_rekey.py::test_a_copy_that_does_not_verify_leaves_the_source_and_removes_the_bad_copy`
+    - `tests/unit/pipeline/test_archive_rekey.py::test_a_destination_holding_different_bytes_is_never_overwritten`
+    - `tests/unit/pipeline/test_archive_rekey.py::test_a_destination_that_already_holds_the_same_bytes_lets_the_source_go`
+    - `tests/unit/pipeline/test_archive_rekey.py::test_a_dry_run_changes_nothing_and_says_what_it_would_do`
+    - `tests/unit/pipeline/test_archive_rekey.py::test_a_frame_names_its_symbol_in_the_configured_spelling[binance-{"stream": "btcusdt@aggTrade", "data": {"s": "BTCUSDT"}}-BTCUSDT]`
+    - `tests/unit/pipeline/test_archive_rekey.py::test_a_frame_names_its_symbol_in_the_configured_spelling[bybit-{"topic": "publicTrade.ETHUSDT", "type": "snapshot", "data": []}-ETHUSDT]`
+    - `tests/unit/pipeline/test_archive_rekey.py::test_a_frame_names_its_symbol_in_the_configured_spelling[okx-{"arg": {"channel": "trades", "instId": "BTC-USDT-SWAP"}, "data": [{"px": "1"}]}-BTC-USDT-SWAP]`
+    - `tests/unit/pipeline/test_archive_rekey.py::test_a_key_that_matches_no_layout_is_not_one[binance/raw/cex/bybit/2026/09/20/1200.jsonl.gz]`
+    - `tests/unit/pipeline/test_archive_rekey.py::test_a_key_that_matches_no_layout_is_not_one[raw/cex/binance/2026/09/20/12.jsonl.gz]`
+    - `tests/unit/pipeline/test_archive_rekey.py::test_a_key_that_matches_no_layout_is_not_one[raw/cex/binance/notes.txt]`
+    - `tests/unit/pipeline/test_archive_rekey.py::test_a_key_that_matches_no_layout_is_not_one[warehouse/bars/data/x.parquet]`
+    - `tests/unit/pipeline/test_archive_rekey.py::test_a_key_under_the_prefix_that_is_no_layout_is_refused`
+    - `tests/unit/pipeline/test_archive_rekey.py::test_a_pong_an_acknowledgement_or_an_error_names_no_symbol[binance-not json at all]`
+    - `tests/unit/pipeline/test_archive_rekey.py::test_a_pong_an_acknowledgement_or_an_error_names_no_symbol[binance-{"result": null, "id": 1}]`
+    - `tests/unit/pipeline/test_archive_rekey.py::test_a_pong_an_acknowledgement_or_an_error_names_no_symbol[bybit-{"success": true, "ret_msg": "", "conn_id": "x", "op": "subscribe"}]`
+    - `tests/unit/pipeline/test_archive_rekey.py::test_a_pong_an_acknowledgement_or_an_error_names_no_symbol[bybit-{"success": true, "ret_msg": "pong", "op": "ping"}]`
+    - `tests/unit/pipeline/test_archive_rekey.py::test_a_pong_an_acknowledgement_or_an_error_names_no_symbol[okx-pong]`
+    - `tests/unit/pipeline/test_archive_rekey.py::test_a_pong_an_acknowledgement_or_an_error_names_no_symbol[okx-{"event": "error", "msg": "Subscribe failed", "code": "60018"}]`
+    - `tests/unit/pipeline/test_archive_rekey.py::test_a_second_run_over_a_finished_migration_has_nothing_to_do`
+    - `tests/unit/pipeline/test_archive_rekey.py::test_a_stretch_with_no_object_is_empty_and_not_counted_as_overwritten`
+    - `tests/unit/pipeline/test_archive_rekey.py::test_an_interrupted_delete_loses_nothing_and_a_second_run_finishes`
+    - `tests/unit/pipeline/test_archive_rekey.py::test_an_object_naming_two_symbols_is_refused_and_left_where_it_is`
+    - `tests/unit/pipeline/test_archive_rekey.py::test_an_object_of_only_acknowledgements_is_refused_not_guessed_at`
+    - `tests/unit/pipeline/test_archive_rekey.py::test_layout_a_moves_to_the_symbol_directory_and_the_source_goes`
+    - `tests/unit/pipeline/test_archive_rekey.py::test_layout_b_moves_and_the_venue_appears_once`
+    - `tests/unit/pipeline/test_archive_rekey.py::test_the_command_is_a_dry_run_unless_told_otherwise`
+    - `tests/unit/pipeline/test_archive_rekey.py::test_the_report_states_the_overwrite_as_a_number_per_symbol`
+    - `tests/unit/pipeline/test_archive_rekey.py::test_the_three_layouts_are_recognised[bybit/raw/cex/bybit/2026/10/02/1059.jsonl.gz-bybit-B]`
+    - `tests/unit/pipeline/test_archive_rekey.py::test_the_three_layouts_are_recognised[raw/cex/binance/2026/09/20/1200.jsonl.gz-binance-A]`
+    - `tests/unit/pipeline/test_archive_rekey.py::test_the_three_layouts_are_recognised[raw/cex/okx/BTC-USDT-SWAP/2026/09/20/0001.jsonl.gz-okx-C]`
+    - `tests/unit/pipeline/test_archive_symbol.py::test_a_flush_that_writes_logs_once_even_through_s3`
+    - `tests/unit/pipeline/test_archive_symbol.py::test_a_flush_with_nothing_to_write_says_nothing`
+    - `tests/unit/pipeline/test_archive_symbol.py::test_an_empty_name_or_one_containing_a_slash_is_refused[-BTCUSDT]`
+    - `tests/unit/pipeline/test_archive_symbol.py::test_an_empty_name_or_one_containing_a_slash_is_refused[bin/ance-BTCUSDT]`
+    - `tests/unit/pipeline/test_archive_symbol.py::test_an_empty_name_or_one_containing_a_slash_is_refused[binance-BTC/USDT]`
+    - `tests/unit/pipeline/test_archive_symbol.py::test_an_empty_name_or_one_containing_a_slash_is_refused[binance-]`
+    - `tests/unit/pipeline/test_archive_symbol.py::test_the_key_names_venue_symbol_and_receipt_minute`
+    - `tests/unit/pipeline/test_archive_symbol.py::test_two_symbols_of_one_venue_in_one_minute_leave_two_objects`
+    - `tests/unit/pipeline/test_build_daemon_seams.py::test_a_lower_case_symbol_is_refused_where_the_spelling_would_split_an_instrument[binance]`
+    - `tests/unit/pipeline/test_build_daemon_seams.py::test_a_lower_case_symbol_is_refused_where_the_spelling_would_split_an_instrument[bybit]`
+    - `tests/unit/pipeline/test_build_daemon_seams.py::test_a_silence_limit_the_policy_cannot_hold_is_refused_naming_the_variable`
+    - `tests/unit/pipeline/test_build_daemon_seams.py::test_binance_subscribes_through_its_url_and_sends_nothing`
+    - `tests/unit/pipeline/test_build_daemon_seams.py::test_bybit_opens_its_linear_endpoint_and_subscribes_to_the_public_trade_topic`
+    - `tests/unit/pipeline/test_build_daemon_seams.py::test_okx_instruments_are_accepted_as_written`
+    - `tests/unit/pipeline/test_build_daemon_seams.py::test_okx_opens_the_public_endpoint_and_subscribes_with_the_instrument_as_okx_names_it`
+    - `tests/unit/pipeline/test_build_daemon_seams.py::test_the_key_the_wiring_builds_names_the_venue_once_under_raw_cex[binance-BTCUSDT]`
+    - `tests/unit/pipeline/test_build_daemon_seams.py::test_the_key_the_wiring_builds_names_the_venue_once_under_raw_cex[bybit-BTCUSDT]`
+    - `tests/unit/pipeline/test_build_daemon_seams.py::test_the_key_the_wiring_builds_names_the_venue_once_under_raw_cex[okx-BTC-USDT-SWAP]`
+    - `tests/unit/pipeline/test_build_daemon_seams.py::test_the_session_runs_the_registrys_policy_for_the_venue[binance-BTCUSDT]`
+    - `tests/unit/pipeline/test_build_daemon_seams.py::test_the_session_runs_the_registrys_policy_for_the_venue[bybit-BTCUSDT]`
+    - `tests/unit/pipeline/test_build_daemon_seams.py::test_the_session_runs_the_registrys_policy_for_the_venue[okx-BTC-USDT-SWAP]`
+    - `tests/unit/pipeline/test_build_daemon_seams.py::test_the_silence_limit_is_configuration_and_reaches_the_session`
+    - `tests/unit/pipeline/test_fake_s3.py::test_a_copy_has_the_sources_size_and_etag`
+    - `tests/unit/pipeline/test_fake_s3.py::test_a_corrupted_copy_does_not_match_the_source`
+    - `tests/unit/pipeline/test_fake_s3.py::test_a_delete_can_be_made_to_fail_and_leaves_the_object`
+    - `tests/unit/pipeline/test_fake_s3.py::test_listing_pages_and_a_missing_key_raises`
+    - `tests/unit/pipeline/test_ingest_logging.py::test_an_unknown_level_is_refused_naming_the_variable[10]`
+    - `tests/unit/pipeline/test_ingest_logging.py::test_an_unknown_level_is_refused_naming_the_variable[LOUD]`
+    - `tests/unit/pipeline/test_ingest_logging.py::test_an_unknown_level_is_refused_naming_the_variable[trace]`
+    - `tests/unit/pipeline/test_ingest_logging.py::test_configure_logging_honours_the_level_in_the_environment`
+    - `tests/unit/pipeline/test_ingest_logging.py::test_importing_the_daemons_module_does_not_reconfigure_the_root_logger`
+    - `tests/unit/pipeline/test_ingest_logging.py::test_main_configures_logging_before_it_reads_anything_else`
+    - `tests/unit/pipeline/test_ingest_logging.py::test_the_archive_says_one_line_per_object_it_writes_and_none_for_a_step`
+    - `tests/unit/pipeline/test_ingest_logging.py::test_the_level_defaults_to_info_and_is_not_case_sensitive[-20]`
+    - `tests/unit/pipeline/test_ingest_logging.py::test_the_level_defaults_to_info_and_is_not_case_sensitive[None-20]`
+    - `tests/unit/pipeline/test_ingest_logging.py::test_the_level_defaults_to_info_and_is_not_case_sensitive[WARNING-30]`
+    - `tests/unit/pipeline/test_ingest_logging.py::test_the_level_defaults_to_info_and_is_not_case_sensitive[debug-10]`
+    - `tests/unit/pipeline/test_ingest_logging.py::test_the_trade_frame_and_step_path_writes_nothing_at_info`
+    - `tests/unit/pipeline/test_ingest_logging.py::test_the_trade_lines_still_exist_at_debug_for_the_day_someone_needs_them`
+    - `tests/unit/pipeline/test_session_reconnect.py::test_a_connect_that_returns_and_a_reader_that_dies_again_keeps_its_backoff`
+    - `tests/unit/pipeline/test_session_reconnect.py::test_a_failing_ping_is_tried_once_an_interval_and_not_on_every_tick`
+    - `tests/unit/pipeline/test_session_reconnect.py::test_a_healthy_connection_is_left_alone`
+    - `tests/unit/pipeline/test_session_reconnect.py::test_a_persisting_silence_does_not_log_on_every_tick`
+    - `tests/unit/pipeline/test_session_reconnect.py::test_a_ping_that_cannot_be_sent_does_not_end_the_loop`
+    - `tests/unit/pipeline/test_session_reconnect.py::test_a_quiet_feed_is_reconnected_even_where_the_venue_announces_its_closes[binance]`
+    - `tests/unit/pipeline/test_session_reconnect.py::test_a_quiet_feed_is_reconnected_even_where_the_venue_announces_its_closes[okx]`
+    - `tests/unit/pipeline/test_session_reconnect.py::test_a_reader_that_ended_without_a_close_frame_is_reconnected`
+    - `tests/unit/pipeline/test_session_reconnect.py::test_a_reconnect_in_the_middle_of_a_minute_loses_nothing_the_daemon_holds`
+    - `tests/unit/pipeline/test_session_reconnect.py::test_attempts_back_off_and_a_refused_connect_does_not_escape_tick`
+    - `tests/unit/pipeline/test_session_reconnect.py::test_one_outage_is_one_warning_on_entry_and_one_info_on_recovery`
+    - `tests/unit/pipeline/test_session_reconnect.py::test_the_silence_limit_is_not_the_venues_idle_timeout`
+    - `tests/unit/pipeline/test_session_reconnect.py::test_the_stream_lifetime_reconnects_a_healthy_binance_connection`
+    - `tests/unit/pipeline/test_session_reconnect.py::test_two_hundred_refusals_are_a_handful_of_log_lines_and_one_recovery`
+    - `tests/unit/pipeline/test_silence_detector.py::test_a_frame_arriving_resets_the_silence_timer`
+    - `tests/unit/pipeline/test_silence_detector.py::test_a_silent_connection_is_reported_with_the_venue_and_reconnected`
+    - `tests/unit/test_settings_ingest.py::TestIngestSettingsEnv::test_a_blank_retired_multiplier_is_fine`
+    - `tests/unit/test_settings_ingest.py::TestIngestSettingsEnv::test_a_blank_silence_limit_is_unset_not_an_error`
+    - `tests/unit/test_settings_ingest.py::TestIngestSettingsEnv::test_a_silence_limit_is_seconds_converted_to_nanoseconds[1.5-1500000000]`
+    - `tests/unit/test_settings_ingest.py::TestIngestSettingsEnv::test_a_silence_limit_is_seconds_converted_to_nanoseconds[90-90000000000]`
+    - `tests/unit/test_settings_ingest.py::TestIngestSettingsEnv::test_a_silence_limit_that_cannot_be_meant_is_refused_naming_the_variable[-1]`
+    - `tests/unit/test_settings_ingest.py::TestIngestSettingsEnv::test_a_silence_limit_that_cannot_be_meant_is_refused_naming_the_variable[0]`
+    - `tests/unit/test_settings_ingest.py::TestIngestSettingsEnv::test_a_silence_limit_that_cannot_be_meant_is_refused_naming_the_variable[abc]`
+    - `tests/unit/test_settings_ingest.py::TestIngestSettingsEnv::test_a_silence_limit_that_cannot_be_meant_is_refused_naming_the_variable[inf]`
+    - `tests/unit/test_settings_ingest.py::TestIngestSettingsEnv::test_a_silence_limit_that_cannot_be_meant_is_refused_naming_the_variable[nan]`
+    - `tests/unit/test_settings_ingest.py::TestIngestSettingsEnv::test_an_unset_silence_limit_leaves_the_policys_own`
+    - `tests/unit/test_settings_ingest.py::TestIngestSettingsEnv::test_the_retired_multiplier_is_refused_and_not_quietly_ignored`
+- **Code:**
+    - `src/channelflow/bars/builder.py`
+    - `src/channelflow/connectors/binance/connector.py`
+    - `src/channelflow/connectors/bybit/connector.py`
+    - `src/channelflow/connectors/okx/connector.py`
+    - `src/channelflow/connectors/session.py`
+    - `src/channelflow/connectors/subscribing.py`
+    - `src/channelflow/connectors/venue.py`
+    - `src/channelflow/connectors/websocket.py`
+    - `src/channelflow/pipeline/archive.py`
+    - `src/channelflow/pipeline/archive_rekey.py`
+    - `src/channelflow/pipeline/ingest.py`
+    - `src/channelflow/pipeline/ingest_main.py`
+    - `tools/record/parity_capture.py`
+- **Outcomes:** [[OUT-2026-10-02-implement-ingest-resilience]], [[OUT-2026-10-02-plan-ingest-resilience]], [[OUT-2026-10-02-spec-ingest-resilience]], [[OUT-2026-10-02-tasks-ingest-resilience]]
 <!-- trace:end -->
 
 ## Notes
