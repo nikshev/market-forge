@@ -94,7 +94,9 @@ def _daemon(
             streams=streams_for(["BTCUSDT"]), policy=BINANCE, connector=connector, clock=clock
         ),
         connector=connector,
-        archive=FrameArchive(store=LocalObjectStore(root=tmp_path), venue="binance"),
+        archive=FrameArchive(
+            store=LocalObjectStore(root=tmp_path), venue="binance", symbol="BTCUSDT"
+        ),
         builder=builder,
         venue="binance",
         now_ns=clock.now_ns,
@@ -264,7 +266,7 @@ def test_stopping_commits_before_it_closes(tmp_path: Path) -> None:
 
 @pytest.mark.trace("REQ-WP-066")
 def test_one_object_per_minute(tmp_path: Path) -> None:
-    archive = FrameArchive(store=LocalObjectStore(root=tmp_path), venue="binance")
+    archive = FrameArchive(store=LocalObjectStore(root=tmp_path), venue="binance", symbol="BTCUSDT")
 
     for offset in (0, 30, 59, 61, 62):
         archive.add(received_at_ns=BASE_NS + offset * SECOND_NS, frame=f"f{offset}")
@@ -277,7 +279,7 @@ def test_one_object_per_minute(tmp_path: Path) -> None:
 @pytest.mark.trace("REQ-WP-066")
 def test_a_quiet_minute_writes_no_object(tmp_path: Path) -> None:
     """An empty object is indistinguishable from a minute nobody recorded."""
-    archive = FrameArchive(store=LocalObjectStore(root=tmp_path), venue="binance")
+    archive = FrameArchive(store=LocalObjectStore(root=tmp_path), venue="binance", symbol="BTCUSDT")
 
     assert archive.flush() is None
     assert list(tmp_path.rglob("*")) == []
@@ -287,7 +289,7 @@ def test_a_quiet_minute_writes_no_object(tmp_path: Path) -> None:
 def test_a_frame_survives_the_round_trip_byte_for_byte(tmp_path: Path) -> None:
     """The tier exists so a later build can re-normalise. A frame that came back
     changed would make that worthless."""
-    archive = FrameArchive(store=LocalObjectStore(root=tmp_path), venue="binance")
+    archive = FrameArchive(store=LocalObjectStore(root=tmp_path), venue="binance", symbol="BTCUSDT")
     awkward = json.dumps({"stream": "x", "data": {"p": "0.000000010000", "s": 'a"b\\c\nd'}})
 
     archive.add(received_at_ns=BASE_NS, frame=awkward)
@@ -302,7 +304,7 @@ def test_a_frame_survives_the_round_trip_byte_for_byte(tmp_path: Path) -> None:
 def test_the_archive_compresses(tmp_path: Path) -> None:
     """Measured on the venue: 12.3% of the raw bytes, which is what makes 556
     MiB a day per symbol affordable."""
-    archive = FrameArchive(store=LocalObjectStore(root=tmp_path), venue="binance")
+    archive = FrameArchive(store=LocalObjectStore(root=tmp_path), venue="binance", symbol="BTCUSDT")
     for index, frame in enumerate(RECORDED * 40):
         archive.add(received_at_ns=BASE_NS + index, frame=frame)
     key = archive.flush()
@@ -316,7 +318,7 @@ def test_the_archive_compresses(tmp_path: Path) -> None:
 def test_a_backwards_clock_is_refused(tmp_path: Path) -> None:
     """One socket cannot deliver backwards, and an archive quietly reordered to
     hide a broken clock is a worse record than none."""
-    archive = FrameArchive(store=LocalObjectStore(root=tmp_path), venue="binance")
+    archive = FrameArchive(store=LocalObjectStore(root=tmp_path), venue="binance", symbol="BTCUSDT")
     archive.add(received_at_ns=BASE_NS + SECOND_NS, frame="a")
 
     with pytest.raises(ClockWentBackwards, match="backwards"):
@@ -325,13 +327,13 @@ def test_a_backwards_clock_is_refused(tmp_path: Path) -> None:
 
 @pytest.mark.trace("REQ-WP-066")
 def test_the_key_is_dated_and_nested_by_day(tmp_path: Path) -> None:
-    archive = FrameArchive(store=LocalObjectStore(root=tmp_path), venue="binance")
+    archive = FrameArchive(store=LocalObjectStore(root=tmp_path), venue="binance", symbol="BTCUSDT")
 
     key = archive.key_for(1789000020_000_000_000)
 
-    assert key.startswith("raw/cex/binance/")
+    assert key.startswith("raw/cex/binance/BTCUSDT/")
     assert key.endswith(".jsonl.gz")
-    assert len(key.split("/")) == 7, "prefix, venue, year, month, day, file"
+    assert len(key.split("/")) == 8, "raw, cex, venue, symbol, year, month, day, file"
 
 
 # --------------------------------------------------------------------------
@@ -618,7 +620,7 @@ def test_the_order_of_shutdown_is_commit_then_close(tmp_path: Path) -> None:
 def test_a_written_object_is_not_written_again(tmp_path: Path) -> None:
     """A buffer kept after a write repeats every frame in the next object, and
     a re-normalisation over the archive would then count each trade twice."""
-    archive = FrameArchive(store=LocalObjectStore(root=tmp_path), venue="binance")
+    archive = FrameArchive(store=LocalObjectStore(root=tmp_path), venue="binance", symbol="BTCUSDT")
 
     archive.add(received_at_ns=BASE_NS, frame="first")
     archive.add(received_at_ns=BASE_NS + 61 * SECOND_NS, frame="second")
@@ -655,7 +657,7 @@ def test_a_mid_minute_flush_does_not_replace_the_minute_with_its_tail(
     decides anything), and a tier that silently holds a third of each minute
     cannot do that.
     """
-    archive = FrameArchive(store=LocalObjectStore(root=tmp_path), venue="binance")
+    archive = FrameArchive(store=LocalObjectStore(root=tmp_path), venue="binance", symbol="BTCUSDT")
     minute = BASE_NS - BASE_NS % MINUTE_NS
 
     for index in range(5):
@@ -679,7 +681,7 @@ def test_a_minute_that_has_rolled_is_not_held_for_ever(tmp_path: Path) -> None:
 
     Otherwise a daemon that runs for days accumulates every frame it ever saw.
     """
-    archive = FrameArchive(store=LocalObjectStore(root=tmp_path), venue="binance")
+    archive = FrameArchive(store=LocalObjectStore(root=tmp_path), venue="binance", symbol="BTCUSDT")
     minute = BASE_NS - BASE_NS % MINUTE_NS
     for step in range(4):
         at = minute + step * MINUTE_NS

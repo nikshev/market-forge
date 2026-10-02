@@ -134,7 +134,9 @@ def _replayed_bars(tmp_path: Path) -> list:
             streams=streams_for(["BTCUSDT"]), policy=BINANCE, connector=connector, clock=clock
         ),
         connector=connector,
-        archive=FrameArchive(store=LocalObjectStore(root=tmp_path), venue="binance"),
+        archive=FrameArchive(
+            store=LocalObjectStore(root=tmp_path), venue="binance", symbol="BTCUSDT"
+        ),
         builder=builder,
         venue="binance",
         now_ns=clock.now_ns,

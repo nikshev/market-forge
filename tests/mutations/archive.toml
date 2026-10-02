@@ -3,7 +3,7 @@
 # Patterns are TOML *literal* strings on purpose: the basic form treats a
 # trailing backslash as a line continuation and eats the next line's indentation.
 source = "src/channelflow/pipeline/archive.py"
-tests = ["tests/unit/pipeline/test_ingest.py"]
+tests = ["tests/unit/pipeline/test_ingest.py", "tests/unit/pipeline/test_archive_symbol.py"]
 
 [[mutation]]
 name = "a quiet minute writes an empty object"
@@ -39,8 +39,25 @@ replace = '''        key = self.key_for(0)'''
 
 [[mutation]]
 name = "the key loses its day"
-find = '''        return f"{self.prefix}/{self.venue}/{at:%Y}/{at:%m}/{at:%d}/{at:%H%M}.jsonl.gz"'''
-replace = '''        return f"{self.prefix}/{self.venue}/{at:%Y}/{at:%m}/{at:%H%M}.jsonl.gz"'''
+find = '''            f"{self.prefix}/{self.venue}/{self.symbol}/{at:%Y}/{at:%m}/{at:%d}/{at:%H%M}.jsonl.gz"'''
+replace = '''            f"{self.prefix}/{self.venue}/{self.symbol}/{at:%Y}/{at:%m}/{at:%H%M}.jsonl.gz"'''
+
+# REQ-WP-078: the symbol is in the key. Three Binance processes shared a key without it
+# and the last flush won, so this is the mutation the whole requirement is about.
+[[mutation]]
+name = "the key names no symbol"
+find = '''            f"{self.prefix}/{self.venue}/{self.symbol}/{at:%Y}/{at:%m}/{at:%d}/{at:%H%M}.jsonl.gz"'''
+replace = '''            f"{self.prefix}/{self.venue}/{at:%Y}/{at:%m}/{at:%d}/{at:%H%M}.jsonl.gz"'''
+
+[[mutation]]
+name = "a symbol containing a slash is accepted"
+find = '''            if not value or "/" in value:'''
+replace = '''            if not value:'''
+
+[[mutation]]
+name = "an empty venue or symbol is accepted"
+find = '''            if not value or "/" in value:'''
+replace = '''            if "/" in value:'''
 
 [[mutation]]
 name = "the buffer is not cleared after a write"

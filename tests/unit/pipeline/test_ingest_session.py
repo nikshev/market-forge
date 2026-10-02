@@ -107,7 +107,9 @@ class TestStreamSessionWithVenueConnector:
             catalog = open_catalog(uri="sqlite:///:memory:", warehouse=tmpdir)
             sink = bars_table.BarSink(table=bars_table.table_for(catalog))
             builder = BarBuilder(timeframe_ns=60_000_000_000, on_final=sink)
-            archive = FrameArchive(store=LocalObjectStore(root=tmpdir), venue="binance")
+            archive = FrameArchive(
+                store=LocalObjectStore(root=tmpdir), venue="binance", symbol="BTCUSDT"
+            )
 
             daemon = IngestDaemon(
                 session=StreamSession(

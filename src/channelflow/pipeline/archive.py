@@ -2,6 +2,7 @@
 
 # @trace: REQ-WP-066
 # @trace: REQ-NRT-PARITY
+# @trace: REQ-WP-078
 
 §6.4.4 lays out `s3://channel-flow/raw/cex/...` and line 642 says plainly that
 raw immutable payloads "may remain plain compressed objects/Parquet when Iceberg
@@ -74,16 +75,11 @@ class S3ObjectStore:
     client: object
 
     def put(self, key: str, payload: bytes) -> None:
-        logger.info(
-            "S3ObjectStore.put: bucket=%s, key=%s, size=%d, client=%s",
-            self.bucket,
-            key,
-            len(payload),
-            type(self.client),
-        )
         try:
             self.client.put_object(Bucket=self.bucket, Key=key, Body=payload)  # type: ignore[attr-defined]
-            logger.info("S3ObjectStore.put succeeded: key=%s", key)
+            logger.debug(
+                "S3ObjectStore.put: bucket=%s key=%s size=%d", self.bucket, key, len(payload)
+            )
         except Exception as e:
             logger.error("S3ObjectStore.put failed: key=%s, error=%s", key, e)
             raise
@@ -109,6 +105,11 @@ class FrameArchive:
 
     store: ObjectStore
     venue: str
+    #: Which instrument's frames these are, **as configured** -- `BTCUSDT` on
+    #: Binance and Bybit, `BTC-USDT-SWAP` on OKX. Required, with no default: a
+    #: default would let a second process quietly share a key with the first,
+    #: and three Binance processes did exactly that (REQ-WP-078).
+    symbol: str
     prefix: str = "raw/cex"
 
     _minute_ns: int | None = None
@@ -119,6 +120,16 @@ class FrameArchive:
     #: it belong to the same object, and writing only those would replace the
     #: minute with its own tail ([[REQ-NRT-PARITY]]).
     _held: dict[int, list[tuple[int, str]]] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        # Each is one path segment. A slash would nest, and the key would stop
+        # meaning what its parts say; an empty one would collapse two segments
+        # into one and put objects where a reader of the layout does not look.
+        for name, value in (("venue", self.venue), ("symbol", self.symbol)):
+            if not value or "/" in value:
+                raise ValueError(
+                    f"the archive {name} must be a single non-empty path segment, got {value!r}"
+                )
 
     @property
     def pending(self) -> int:
@@ -157,12 +168,6 @@ class FrameArchive:
         about the venue, and an empty object would be indistinguishable from a
         minute nobody recorded.
         """
-        logger.info(
-            "FrameArchive.flush called for venue %s, frames=%d, minute_ns=%s",
-            self.venue,
-            len(self._frames),
-            self._minute_ns,
-        )
         if not self._frames or self._minute_ns is None:
             return None
         minute = self._minute_ns
@@ -182,19 +187,24 @@ class FrameArchive:
         self._frames.clear()
         self._minute_ns = None
         self._written.append(key)
+        logger.info("archived %d frame(s) to %s", len(whole), key)
         return key
 
     def key_for(self, minute_start_ns: int) -> str:
-        """`raw/cex/<venue>/<YYYY>/<MM>/<DD>/<HH><MM>.jsonl.gz`.
+        """`raw/cex/<venue>/<symbol>/<YYYY>/<MM>/<DD>/<HH><MM>.jsonl.gz`.
 
         Dated from the receipt time in UTC, and nested by day so a reader can
-        list one day without listing a year.
+        list one day without listing a year. The symbol follows the venue so that
+        `raw/cex/<venue>/` stays a valid listing prefix and everything for one
+        instrument is a prefix of its own, not a scan.
         """
         seconds = minute_start_ns // 1_000_000_000
         from datetime import UTC, datetime
 
         at = datetime.fromtimestamp(seconds, tz=UTC)
-        return f"{self.prefix}/{self.venue}/{at:%Y}/{at:%m}/{at:%d}/{at:%H%M}.jsonl.gz"
+        return (
+            f"{self.prefix}/{self.venue}/{self.symbol}/{at:%Y}/{at:%m}/{at:%d}/{at:%H%M}.jsonl.gz"
+        )
 
 
 def read_frames(payload: bytes) -> list[tuple[int, str]]:

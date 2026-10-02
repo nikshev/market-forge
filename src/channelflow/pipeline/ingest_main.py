@@ -1,6 +1,7 @@
 """How the ingest daemon starts.
 
 # @trace: REQ-WP-066
+# @trace: REQ-WP-078
 # @trace: REQ-WP-076
 
 The same shape as the read API's composition root, and for the same reasons: the
@@ -165,6 +166,15 @@ def build_daemon(
     if venue not in VENUE_REGISTRY:
         raise MissingConfiguration(f"Unknown venue: {venue}. Known: {list(VENUE_REGISTRY.keys())}")
 
+    # Binance and Bybit name an instrument in upper case, and the archive key and the
+    # migration both use that spelling. A symbol configured as `btcusdt` would put one
+    # instrument in two directories. OKX's `BTC-USDT-SWAP` is already upper case.
+    if venue in ("binance", "bybit") and symbol != symbol.upper():
+        raise MissingConfiguration(
+            f"{SYMBOLS} names {symbol!r} for {venue}; write it in upper case "
+            f"({symbol.upper()!r}) so one instrument has one archive directory"
+        )
+
     config = VENUE_REGISTRY[venue]
     catalog = open_catalog(uri=catalog_uri, warehouse=warehouse, **dict(storage))
     sink = bars_table.BarSink(table=bars_table.table_for(catalog))
@@ -198,7 +208,11 @@ def build_daemon(
         archive=FrameArchive(
             store=store,
             venue=venue,
-            prefix=f"{venue}/{prefix[1] if len(prefix) > 1 else 'raw/cex'}",
+            symbol=symbol,
+            # The path of the archive URI, unchanged. The venue is added **once**,
+            # by `key_for`: prefixing it here as well filed every frame at the
+            # bucket root as `<venue>/raw/cex/<venue>/...`, where nothing reads.
+            prefix=prefix[1] if len(prefix) > 1 else "raw/cex",
         ),
         builder=builder,
         venue=venue,

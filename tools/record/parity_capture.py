@@ -1,6 +1,7 @@
 """One-shot recorder for PRD §35.5's live segment: frames in, bars out.
 
 # @trace: REQ-NRT-PARITY
+# @trace: REQ-WP-078
 
 §35.5 asks for a 30–60 minute live segment, replayed offline, with parity
 asserted. This captures both halves of that comparison from a running
@@ -45,6 +46,15 @@ MINIMUM_MINUTES = 30
 MAXIMUM_MINUTES = 60
 
 
+def archive_prefix(venue: str, symbol: str) -> str:
+    """Where one symbol's minutes are listed: `raw/cex/<venue>/<symbol>/`.
+
+    The trailing slash is the point. Without it `BTC-USDT` would be a prefix of
+    `BTC-USDT-SWAP`, and a listing of one instrument would return another's frames.
+    """
+    return f"raw/cex/{venue}/{symbol}/"
+
+
 def _settings() -> Any:
     from channelflow.settings import settings_from_env
 
@@ -87,7 +97,7 @@ def main() -> None:
     )
     bucket = settings.warehouse.removeprefix("s3://").split("/", 1)[0]
 
-    prefix = f"raw/cex/{args.venue}/"
+    prefix = archive_prefix(args.venue, args.symbol)
     keys: list[str] = []
     token: str | None = None
     while True:

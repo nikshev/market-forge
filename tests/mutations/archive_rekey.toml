@@ -1,0 +1,79 @@
+# The mutation sweep for the archive re-key tool (REQ-WP-078).
+#
+# A tool that moves 24,825 objects and cannot be undone by `git revert` is worth exactly
+# as much as the tests that would catch someone breaking its safety. Each mutation here
+# removes one of the things that make it safe, and each must be caught.
+#
+# Patterns are TOML *literal* strings on purpose: the basic form treats a trailing
+# backslash as a line continuation and eats the next line's indentation.
+source = "src/channelflow/pipeline/archive_rekey.py"
+tests = ["tests/unit/pipeline/test_archive_rekey.py"]
+
+[[mutation]]
+name = "the source is deleted without comparing the copy to it"
+find = '''            if _head(client, bucket, destination) != source_state:'''
+replace = '''            if False:'''
+
+[[mutation]]
+name = "a bad copy is left at the destination"
+find = '''                client.delete_object(Bucket=bucket, Key=destination)
+                report.refused.append((key, "copy did not verify"))'''
+replace = '''                report.refused.append((key, "copy did not verify"))'''
+
+[[mutation]]
+name = "a different object at the destination is overwritten"
+find = '''            if destination_state != source_state:
+                report.refused.append((key, "destination holds different bytes"))
+                return'''
+replace = '''            if False:
+                return'''
+
+[[mutation]]
+name = "an object naming two symbols is moved under one of them"
+find = '''    if len(symbols) > 1:
+        report.refused.append((key, f"several symbols: {sorted(symbols)}"))
+        return
+    (symbol,) = symbols'''
+replace = '''    symbol = sorted(symbols)[0]'''
+
+[[mutation]]
+name = "an object with no attributable frame is moved anyway"
+find = '''    if not symbols:
+        report.refused.append((key, "no attributable frame"))
+        return'''
+replace = '''    if not symbols:
+        symbols = {"UNKNOWN"}'''
+
+[[mutation]]
+name = "a dry-run copies"
+find = '''        if apply:
+            client.copy_object('''
+replace = '''        if True:
+            client.copy_object('''
+
+[[mutation]]
+name = "an identical destination does not release the source"
+find = '''            report.hold(parsed.venue, symbol, parsed)
+            if apply:
+                client.delete_object(Bucket=bucket, Key=key)
+            return'''
+replace = '''            report.hold(parsed.venue, symbol, parsed)
+            return'''
+
+[[mutation]]
+name = "an exception during a move ends the whole run"
+find = '''    except Exception as error:
+        # Whatever state this left is a duplicate and not a gap, and a second run converges.
+        report.refused.append((key, f"failed: {type(error).__name__}: {error}"))'''
+replace = '''    except KeyboardInterrupt as error:
+        report.refused.append((key, f"failed: {type(error).__name__}: {error}"))'''
+
+[[mutation]]
+name = "the symbol keeps the venue's lower-case stream spelling"
+find = '''            return stream.split("@", 1)[0].upper()'''
+replace = '''            return stream.split("@", 1)[0]'''
+
+[[mutation]]
+name = "the extent is measured from the symbol's own first object, not the venue's"
+find = '''        self._span[parsed.venue] = (min(low, minute), max(high, minute))'''
+replace = '''        self._span[parsed.venue] = (minute, minute)'''
