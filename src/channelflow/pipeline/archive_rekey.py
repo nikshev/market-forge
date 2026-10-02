@@ -130,6 +130,7 @@ class MigrationReport:
     already_there: int = 0
     refused: list[tuple[str, str]] = field(default_factory=list)
     _minutes: dict[tuple[str, str], set[int]] = field(default_factory=dict)
+    _occupied: dict[str, set[int]] = field(default_factory=dict)
     _span: dict[str, tuple[int, int]] = field(default_factory=dict)
 
     # -- the extent ---------------------------------------------------------
@@ -147,14 +148,32 @@ class MigrationReport:
             for (venue, symbol) in self._minutes
         }
 
-    def shortfall(self, venue: str, symbol: str) -> int:
-        """How many minutes in the span hold no frame of this symbol."""
-        return self.minutes_expected[(venue, symbol)] - self.minutes_present[(venue, symbol)]
+    def held_by_others(self, venue: str, symbol: str) -> int:
+        """Minutes whose object holds another symbol's frames and none of this one's.
+
+        **The most that can have been overwritten**, and not a count of what was. In such a
+        minute this symbol's frames were either overwritten or its process was not running,
+        and the archive alone cannot say which. A first version of this report called the
+        sum of both "the extent of the overwrite" and put ETH's at 17,526 minutes, a figure
+        that included six days in which ETH's process was crash-looping and had nothing to
+        lose.
+        """
+        return len(self._occupied[venue]) - self.minutes_present[(venue, symbol)]
+
+    def empty(self, venue: str) -> int:
+        """Minutes in the venue's span with no object at all.
+
+        Every process on the venue was down, or had not started. Nothing was overwritten
+        here: there was nothing to overwrite.
+        """
+        low, high = self._span[venue]
+        return (high - low + 1) - len(self._occupied[venue])
 
     # -- recording ----------------------------------------------------------
 
     def see(self, parsed: ParsedKey) -> None:
         minute = parsed.minute()
+        self._occupied.setdefault(parsed.venue, set()).add(minute)
         low, high = self._span.get(parsed.venue, (minute, minute))
         self._span[parsed.venue] = (min(low, minute), max(high, minute))
 
@@ -167,19 +186,27 @@ class MigrationReport:
             f"scanned {self.scanned} object(s); already in place {self.already_there}; "
             f"refused {len(self.refused)}",
             "",
-            f"{'venue':8} {'symbol':16} {'moved':>7} {'present':>8} {'expected':>9} {'missing':>8}",
+            f"{'venue':8} {'symbol':16} {'moved':>7} {'present':>8} "
+            f"{'held by others':>15} {'empty':>7} {'span':>7}",
         ]
-        for (venue, symbol), expected in sorted(self.minutes_expected.items()):
+        for (venue, symbol), span in sorted(self.minutes_expected.items()):
             lines.append(
                 f"{venue:8} {symbol:16} {self.moved.get((venue, symbol), 0):>7} "
-                f"{self.minutes_present[(venue, symbol)]:>8} {expected:>9} "
-                f"{self.shortfall(venue, symbol):>8}"
+                f"{self.minutes_present[(venue, symbol)]:>8} "
+                f"{self.held_by_others(venue, symbol):>15} {self.empty(venue):>7} {span:>7}"
             )
         lines += [
             "",
-            "'missing' is the extent of what was overwritten: minutes between the venue's first",
-            "and last archived object that hold no frame of that symbol. It is a lower bound --",
-            "it cannot see minutes before the first object or after the last.",
+            "span            minutes from the venue's first archived object to its last",
+            "present         minutes whose object holds this symbol",
+            "held by others  minutes whose object holds only another symbol's frames.",
+            "                The most that can have been overwritten: there, this symbol's",
+            "                frames were overwritten or its process was not running, and the",
+            "                archive cannot say which. Cross-check against the bars table,",
+            "                which has a bar for every minute a process ran.",
+            "empty           minutes with no object at all: every process on the venue was down.",
+            "                Nothing was overwritten there.",
+            "Nothing is said about minutes outside the span.",
         ]
         if self.refused:
             lines += ["", "refused, and left where they are:"]

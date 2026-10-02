@@ -308,8 +308,29 @@ def test_the_report_states_the_overwrite_as_a_number_per_symbol() -> None:
     for symbol in order:
         assert report.minutes_present[("binance", symbol)] == 3
         assert report.minutes_expected[("binance", symbol)] == 9
-        assert report.shortfall("binance", symbol) == 6
-    assert "lower bound" in report.render().lower()
+        assert report.held_by_others("binance", symbol) == 6
+    assert report.empty("binance") == 0
+    rendered = report.render().lower()
+    assert "the most that" in rendered and "cannot say" in rendered
+
+
+@pytest.mark.trace("REQ-WP-078")
+def test_a_stretch_with_no_object_is_empty_and_not_counted_as_overwritten() -> None:
+    """Minutes in which no process ran are not minutes in which anything was overwritten.
+
+    ETH's report once read 17,526 "missing" minutes, six days of which were a crash loop.
+    Here BTC holds minutes 0-1 and 6-7; minutes 2-5 have no object at all.
+    """
+    s3 = FakeS3()
+    for minute in (0, 1, 6, 7):
+        _seed(s3, _layout_a("binance", f"12{minute:02d}"), [_binance("BTCUSDT")])
+
+    report = rk.rekey(s3, B, venues=("binance",), apply=False)
+
+    assert report.minutes_expected[("binance", "BTCUSDT")] == 8
+    assert report.minutes_present[("binance", "BTCUSDT")] == 4
+    assert report.empty("binance") == 4
+    assert report.held_by_others("binance", "BTCUSDT") == 0
 
 
 # --- the command --------------------------------------------------------------

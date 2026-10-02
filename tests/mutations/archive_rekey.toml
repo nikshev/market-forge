@@ -77,3 +77,11 @@ replace = '''            return stream.split("@", 1)[0]'''
 name = "the extent is measured from the symbol's own first object, not the venue's"
 find = '''        self._span[parsed.venue] = (min(low, minute), max(high, minute))'''
 replace = '''        self._span[parsed.venue] = (minute, minute)'''
+
+# The first version of the report called every minute without this symbol "overwritten",
+# and put ETH's at 17,526, six days of which were a crash loop. This is that mistake.
+[[mutation]]
+name = "a minute with no object at all is counted as overwritten"
+find = '''        return len(self._occupied[venue]) - self.minutes_present[(venue, symbol)]'''
+replace = '''        low, high = self._span[venue]
+        return (high - low + 1) - self.minutes_present[(venue, symbol)]'''
