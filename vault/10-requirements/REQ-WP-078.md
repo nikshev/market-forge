@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "§6.2, §6.4.4, §32, §33, §35.6"
 prd_lines: "405-420, 600-642, 4752-4781, 4783-4799, 4897-4905"
 phase: null
-status: specified
+status: planned
 depends_on: [REQ-WP-076]
 tags: [ingest, reliability]
 ---
@@ -189,7 +189,7 @@ has recorded more than once and decided against each time.
 
 <!-- trace:begin -->
 - **Specs:** [[SPEC-123-ingest-resilience]]
-- **Outcomes:** [[OUT-2026-10-02-spec-ingest-resilience]]
+- **Outcomes:** [[OUT-2026-10-02-plan-ingest-resilience]], [[OUT-2026-10-02-spec-ingest-resilience]]
 <!-- trace:end -->
 
 ## Notes
