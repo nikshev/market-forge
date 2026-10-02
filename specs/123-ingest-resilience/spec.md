@@ -269,6 +269,10 @@ it logs at INFO; read the compose file for a cap on every service.
   a test MUST read the file and fail for a service without one.
 - **FR-017**: Log bytes per minute for each ingest service, before and after,
   MUST be recorded in the implement outcome note.
+- **FR-018**: The daemon MUST refuse, naming the variable, a Binance or Bybit symbol
+  that is not upper-case. The key uses the symbol as configured and the migration
+  writes the upper-case spelling; accepting `btcusdt` would split one instrument
+  across two directories.
 
 ### Key Entities
 
@@ -296,7 +300,8 @@ it logs at INFO; read the compose file for a cap on every service.
   objects, not 60, each holding a single symbol; and zero objects appear outside
   `raw/cex/`.
 - **SC-004**: An ingest service's log at steady state stays under 10 MB a day,
-  against a measured baseline of about 1.1 GB a day for the busiest.
+  against a measured baseline for the busiest of about 1.1 GB a day over six days
+  (830 MB a day in a 60-second steady-state window).
 - **SC-005**: Every service in the compose file is capped; none can fill the host
   disk with its own log.
 - **SC-006**: The count of archive minutes holding each symbol, for the period in
@@ -322,6 +327,11 @@ it logs at INFO; read the compose file for a cap on every service.
   prove is recorded in the implement outcome note, with the date.
 - **The raw-frame logging that exists today is debugging output**, not a feature.
   Nothing downstream reads the log for it.
+- **Binance has no rejection frame to read.** Of the three venues, OKX's and Bybit's
+  refusals were captured live. For Binance none was ever observed — the repository
+  records only that an upper-case stream name "connects and delivers nothing" — so its
+  refusal is treated as silence, and FR-003's "error event from a venue" applies to
+  the two venues that send one.
 - **One process per symbol per venue stays.** [[REQ-WP-066]]'s reason — one
   stalled symbol must not stop the others silently — is unchanged; the key now
   reflects the topology instead of contradicting it.

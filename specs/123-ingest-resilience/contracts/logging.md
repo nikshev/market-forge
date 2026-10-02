@@ -25,6 +25,9 @@ above. A persisting condition writes on entry and on exit.
 | `CHANNELFLOW_LOG_MAX_SIZE` | `20m` | compose `max-size`, every service |
 | `CHANNELFLOW_LOG_MAX_FILE` | `3` | compose `max-file`, every service |
 
+Compose forwards only the variables a service names, so the first two are listed in every
+ingest service's `environment` as `${…:-}`; an empty value means unset.
+
 `logging.basicConfig` moves from module import into `main()`. Importing
 `channelflow.pipeline.ingest_main` no longer reconfigures the root logger.
 

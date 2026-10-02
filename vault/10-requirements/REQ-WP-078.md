@@ -189,7 +189,7 @@ has recorded more than once and decided against each time.
 
 <!-- trace:begin -->
 - **Specs:** [[SPEC-123-ingest-resilience]]
-- **Outcomes:** [[OUT-2026-10-02-plan-ingest-resilience]], [[OUT-2026-10-02-spec-ingest-resilience]]
+- **Outcomes:** [[OUT-2026-10-02-plan-ingest-resilience]], [[OUT-2026-10-02-spec-ingest-resilience]], [[OUT-2026-10-02-tasks-ingest-resilience]]
 <!-- trace:end -->
 
 ## Notes

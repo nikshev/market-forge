@@ -130,7 +130,7 @@ to `StreamSession.tick` runs there and must not block.
 | **I. No look-ahead** | Untouched. Nothing here reads data by time. |
 | **II. Time is not one thing** | The archive key's minute is **receipt time**, as it is today and as `key_for`'s docstring says; the migration preserves it and does not re-derive a minute from an event time. |
 | **III. History is immutable** | Archive objects are replaced by `store.put`, which is how the earlier overwrite happened. Migration **copies, verifies and only then removes**, and refuses an object it cannot attribute, so no object is replaced by a different one. |
-| **VII. Live and replay are the same code** | `alive` is added to `ReplayTransport`'s connector as well; the session's reconnect path is the one a replay exercises with a fake. No live-only branch. |
+| **VII. Live and replay are the same code** | `alive` is part of the protocol every connector and every test fake implements, so the session's reconnect path is the one a replay exercises with a fake. No live-only branch. |
 | **VIII. Connectors share one interface** | The interface is *extended* (`alive`), on all three connectors and every fake at once, and `test_protocol_has_required_methods` is updated rather than bypassed. |
 | **X. Thresholds are configuration** | Silence limit, backoff ceiling and log caps are each configuration with a default and a written basis; none is a constant inside a method. |
 | **XII. Correctness precedes performance** | The log is bounded as an operational matter, after the connection and the archive are right. |
@@ -302,6 +302,6 @@ fails for a service without one.
 
 ## Phases
 
-- **Phase 0** — `research.md`: the eleven decisions above, each with what was rejected.
+- **Phase 0** — `research.md`: the ten decisions above, each with what was rejected.
 - **Phase 1** — `data-model.md`, three contracts, `quickstart.md`.
 - **Phase 2** — `/speckit-tasks`, not this command.

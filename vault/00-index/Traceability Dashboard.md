@@ -917,6 +917,7 @@ graph LR
   OUT_2026_09_24_spec_channel_production["OUT-2026-09-24-spec-channel-production"]
   OUT_2026_10_02_plan_ingest_resilience["OUT-2026-10-02-plan-ingest-resilience"]
   OUT_2026_10_02_spec_ingest_resilience["OUT-2026-10-02-spec-ingest-resilience"]
+  OUT_2026_10_02_tasks_ingest_resilience["OUT-2026-10-02-tasks-ingest-resilience"]
   PRD["PRD: ChannelFlow PRD"]
   REQ_API_001["REQ-API-001: Read API for bars, channel snapshots, signals and live updates"]
   REQ_ASSET_001["REQ-ASSET-001: Asset identity and cross-venue instrument registry"]
@@ -5299,6 +5300,7 @@ graph LR
   OUT_2026_09_24_spec_channel_production -.->|RECORDS| REQ_WP_077
   OUT_2026_10_02_plan_ingest_resilience -.->|RECORDS| REQ_WP_078
   OUT_2026_10_02_spec_ingest_resilience -.->|RECORDS| REQ_WP_078
+  OUT_2026_10_02_tasks_ingest_resilience -.->|RECORDS| REQ_WP_078
   SPEC_001_traceability_tooling ==>|SPECIFIES| REQ_INFRA_001
   SPEC_002_project_bootstrap ==>|SPECIFIES| REQ_WP_001
   SPEC_003_ci_full_gate ==>|SPECIFIES| REQ_INFRA_002
