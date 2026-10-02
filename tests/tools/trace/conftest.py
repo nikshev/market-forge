@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import textwrap
 from pathlib import Path
 
@@ -128,5 +129,21 @@ class VaultBuilder:
 
 
 @pytest.fixture
-def vault(tmp_path: Path) -> VaultBuilder:
+def vault(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> VaultBuilder:
+    """A temporary vault, in an environment that does not belong to the caller's git.
+
+    Several tests here run `git init` and `git add` in `tmp_path`, and the code under
+    test runs `git ls-files`. A subprocess inherits the environment, and git exports
+    `GIT_INDEX_FILE` to a pre-commit hook -- an absolute path to a temporary index when
+    the commit names paths. Inherited, it makes `git add` in the temporary repository
+    write into the *real* repository's index while the object goes into the temporary
+    one, which leaves the real index naming a blob that does not exist:
+    `invalid object ... for 'src/channelflow/café.py'`, "Error building trees", and a
+    rejected commit. Found on 2026-10-02 on a `git commit --only` run through the gate.
+
+    Every `GIT_*` variable is removed rather than only that one: `GIT_DIR`,
+    `GIT_WORK_TREE` and `GIT_PREFIX` redirect git in the same way.
+    """
+    for name in [name for name in os.environ if name.startswith("GIT_")]:
+        monkeypatch.delenv(name)
     return VaultBuilder(tmp_path)

@@ -1,4 +1,6 @@
+import os
 import subprocess
+from pathlib import Path
 
 import pytest
 
@@ -307,3 +309,30 @@ def test_a_built_bundle_is_not_collected(vault):
     nodes, _ = collect_code([vault.root / "apps"])
 
     assert nodes == []
+
+
+@pytest.fixture
+def handed_down_index(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """What git gives a pre-commit hook: an index file of its own, by absolute path."""
+    index = tmp_path.parent / f"{tmp_path.name}-handed-down-index"
+    monkeypatch.setenv("GIT_INDEX_FILE", str(index))
+    return index
+
+
+def test_the_vault_fixture_shields_git_from_the_callers_environment(
+    handed_down_index: Path, vault
+) -> None:
+    """A temporary repository must not write into an index its caller handed down.
+
+    `handed_down_index` is listed first, so it has set the variable by the time `vault`
+    runs: the test passes only if the fixture removed it. A run in an environment that
+    never carried the variable would pass a weaker test and prove nothing.
+    """
+    assert "GIT_INDEX_FILE" not in os.environ
+
+    subprocess.run(["git", "init", "-q"], cwd=vault.root, check=True)
+    vault.source("channelflow/shielded.py", ["REQ-WP-005"])
+    subprocess.run(["git", "add", "src/channelflow/shielded.py"], cwd=vault.root, check=True)
+
+    assert not handed_down_index.exists(), "git add wrote into the caller's index"
+    assert (vault.root / ".git" / "index").exists()

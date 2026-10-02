@@ -2,6 +2,7 @@
 """Test OpenCode configuration for ChannelFlow."""
 
 import json
+import re
 import subprocess
 
 import pytest
@@ -22,9 +23,20 @@ def test_opencode_config_validates():
     assert config.get("$schema") == "https://opencode.ai/config.json"
 
 
-@pytest.mark.trace("REQ-INFRA-005")
-def test_opencode_has_four_custom_agents():
-    """OpenCode must discover all four ChannelFlow custom agents."""
+_AGENTS = ("architect", "implementer", "implementer-senior", "reviewer")
+
+#: How many times the listing is asked for before a missing agent is believed.
+ATTEMPTS = 6
+
+
+def _listed_agents() -> tuple[int, set[str]]:
+    """The agent names `opencode agent list` printed, one per header line.
+
+    A header is `name (mode)` at the start of a line. The earlier version looked
+    for the name anywhere in 67 KB of output, which `architect` satisfies from
+    unrelated text -- so a listing missing agents could still pass for some names
+    and fail for others depending on what else the output happened to mention.
+    """
     result = subprocess.run(
         ["opencode", "agent", "list"],
         capture_output=True,
@@ -32,10 +44,39 @@ def test_opencode_has_four_custom_agents():
         cwd="/opt/market-forge",
         timeout=60,
     )
-    assert result.returncode == 0
-    output = result.stdout
-    for agent in ["architect", "implementer", "implementer-senior", "reviewer"]:
-        assert agent in output, f"Missing agent: {agent}"
+    names = set(re.findall(r"^([a-z][a-z-]*) \((?:primary|subagent|all)\)$", result.stdout, re.M))
+    return result.returncode, names
+
+
+@pytest.mark.trace("REQ-INFRA-005")
+def test_opencode_has_four_custom_agents():
+    """OpenCode must discover all four ChannelFlow custom agents.
+
+    **The listing is not deterministic under CPU load, so it is asked for more
+    than once.** Measured on 2026-10-02 with six busy loops running beside it, eight
+    consecutive `opencode agent list` calls, each finishing in about 1.4 seconds
+    with exit status 0, returned all four agents five times, `architect` alone once,
+    and `architect` with `implementer` once. Not a timeout and not a crash: the tool
+    answers before it has finished reading the agent files. In the full suite this
+    test failed in three of eight runs that day and in none of eight run alone,
+    which is what a race with the rest of the suite's load looks like.
+
+    A real absence is not hidden by this: an agent file that does not exist, or a
+    name that is wrong, is missing from every one of the attempts, and the failure
+    says which attempts saw what.
+    """
+    seen: list[set[str]] = []
+    for _ in range(ATTEMPTS):
+        returncode, names = _listed_agents()
+        assert returncode == 0
+        seen.append(names & set(_AGENTS))
+        if set(_AGENTS) <= names:
+            return
+    missing = sorted(set(_AGENTS) - set.union(*seen))
+    raise AssertionError(
+        f"after {ATTEMPTS} attempts the listing never held all of {_AGENTS}; "
+        f"never seen: {missing}; per attempt: {[sorted(s) for s in seen]}"
+    )
 
 
 @pytest.mark.trace("REQ-INFRA-005")
