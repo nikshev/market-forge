@@ -177,6 +177,46 @@ def test_every_frame_is_archived_before_anything_is_decided(tmp_path: Path) -> N
 
 
 @pytest.mark.trace("REQ-WP-066")
+def test_a_normalizer_that_raises_does_not_stop_the_ingest(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The guard around the normalizer, reached.
+
+    `normalize_frames` reports a frame it cannot read as a count and returns, so
+    no frame in the fixtures makes it raise -- and the `except` around it was
+    reachable by nothing. A mutation that turned the handler into `raise` and one
+    that dropped its count both survived the sweep, which is how a defence nobody
+    exercises looks from the outside: present, and unproven.
+
+    Here the normalizer is made to raise on the first frame only. The ingest must
+    survive it, count it, and still turn the next frame into a trade -- "one bad
+    frame must not end an ingest" is the property, and a handler that swallowed
+    everything after the first error would also pass a test that stopped at
+    the exception.
+    """
+    import channelflow.pipeline.ingest as ingest_module
+
+    real = ingest_module.normalize_frames
+    calls = {"n": 0}
+
+    def flaky(**kwargs: Any) -> Any:
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise RuntimeError("the normalizer broke on this frame")
+        return real(**kwargs)
+
+    monkeypatch.setattr(ingest_module, "normalize_frames", flaky)
+    daemon, _, _ = _daemon(tmp_path, frames=["a frame that makes it raise", RECORDED[0]])
+    daemon.start()
+
+    report = daemon.step()
+
+    assert calls["n"] == 2, "the second frame never reached the normalizer"
+    assert report.unparsed == 1
+    assert report.trades == 1
+
+
+@pytest.mark.trace("REQ-WP-066")
 def test_a_bad_frame_does_not_stop_the_ingest(tmp_path: Path) -> None:
     daemon, _, _ = _daemon(tmp_path, frames=["{]", json.dumps({"stream": "x"}), RECORDED[0]])
     daemon.start()

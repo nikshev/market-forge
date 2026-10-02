@@ -12,31 +12,29 @@ replace = '''            written = None'''
 
 [[mutation]]
 name = "an unreadable frame stops the ingest"
-find = '''        except ValueError:
+find = '''        except Exception:  # noqa: BLE001 -- a bad frame is not a reason to stop
             self.unparsed += 1
             return False'''
-replace = '''        except ValueError:
+replace = '''        except Exception:  # noqa: BLE001 -- a bad frame is not a reason to stop
             raise'''
 
 [[mutation]]
-name = "a bad payload counts as a trade"
-find = '''        if not isinstance(stream, str) or not isinstance(payload, dict):
-            self.unparsed += 1
+name = "a frame that yields no trade counts as one"
+find = '''        if not trades:
             return False'''
 replace = '''        if False:
-            self.unparsed += 1
             return False'''
 
 [[mutation]]
-name = "every stream is consumed as a trade"
-find = '''        if not stream.endswith("@aggTrade"):'''
-replace = '''        if False:'''
+name = "the normalizer's unparsed count is discarded"
+find = '''        self.unparsed += unparsed
+        self.unparsed += parse_errors'''
+replace = '''        self.unparsed += parse_errors'''
 
 [[mutation]]
-name = "an ignored stream is dropped silently"
-find = '''            self.ignored += 1
-            return False'''
-replace = '''            return False'''
+name = "the normalizer's ignored count is discarded"
+find = '''        self.ignored += ignored'''
+replace = '''        pass'''
 
 [[mutation]]
 name = "a normalization failure is not counted"
