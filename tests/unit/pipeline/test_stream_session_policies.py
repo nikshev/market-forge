@@ -6,8 +6,7 @@ import queue
 
 import pytest
 
-from channelflow.connectors.session import FakeClock, StreamSession
-from channelflow.connectors.venue import BINANCE_POLICY, BYBIT_POLICY, OKX_POLICY
+from channelflow.connectors.session import BINANCE, BYBIT, OKX, FakeClock, StreamSession
 from channelflow.pipeline.ingest import streams_for
 
 
@@ -26,6 +25,11 @@ class FakePolicyConnector:
 
     def send(self, payload):
         self.sent_pings.append(payload)
+
+    @property
+    def alive(self) -> bool:
+        """A fake whose reader never ends. `kill()` lives in `pipeline/fakes.py`."""
+        return True
 
     def pong(self):
         pass
@@ -52,18 +56,18 @@ class TestStreamSessionPolicies:
     @pytest.mark.trace("REQ-WP-076")
     def test_bybit_policy_pings_with_payload(self):
         """Bybit session pings with Bybit's payload on schedule."""
-        connector = FakePolicyConnector(BYBIT_POLICY)
+        connector = FakePolicyConnector(BYBIT)
         clock = FakeClock()
         session = StreamSession(
             streams=streams_for(["BTCUSDT"]),
-            policy=BYBIT_POLICY,
+            policy=BYBIT,
             connector=connector,
             clock=clock,
         )
         session.start()
 
         # Advance clock past the ping interval
-        clock.advance_ns(BYBIT_POLICY.client_ping_interval_ns + 1)
+        clock.advance_ns(BYBIT.client_ping_interval_ns + 1)
         session.tick()
 
         # Bybit's ping payload is {"op":"ping"}
@@ -72,17 +76,17 @@ class TestStreamSessionPolicies:
     @pytest.mark.trace("REQ-WP-076")
     def test_okx_policy_pings_bare_string(self):
         """OKX session pings with bare string 'ping' on schedule."""
-        connector = FakePolicyConnector(OKX_POLICY)
+        connector = FakePolicyConnector(OKX)
         clock = FakeClock()
         session = StreamSession(
             streams=streams_for(["BTCUSDT"]),
-            policy=OKX_POLICY,
+            policy=OKX,
             connector=connector,
             clock=clock,
         )
         session.start()
 
-        clock.advance_ns(OKX_POLICY.client_ping_interval_ns + 1)
+        clock.advance_ns(OKX.client_ping_interval_ns + 1)
         session.tick()
 
         # OKX's ping payload is bare "ping"
@@ -91,11 +95,11 @@ class TestStreamSessionPolicies:
     @pytest.mark.trace("REQ-WP-076")
     def test_binance_policy_uses_websocket_ping(self):
         """Binance session uses websocket protocol ping/pong, not application ping."""
-        connector = FakePolicyConnector(BINANCE_POLICY)
+        connector = FakePolicyConnector(BINANCE)
         clock = FakeClock()
         session = StreamSession(
             streams=streams_for(["BTCUSDT"]),
-            policy=BINANCE_POLICY,
+            policy=BINANCE,
             connector=connector,
             clock=clock,
         )
@@ -113,11 +117,11 @@ class TestStreamSessionPolicies:
     @pytest.mark.trace("REQ-WP-076")
     def test_bybit_reconnects_on_silence_no_close_frame(self):
         """Bybit reconnects on idle timeout since it sends no close frame."""
-        connector = FakePolicyConnector(BYBIT_POLICY)
+        connector = FakePolicyConnector(BYBIT)
         clock = FakeClock()
         session = StreamSession(
             streams=streams_for(["BTCUSDT"]),
-            policy=BYBIT_POLICY,
+            policy=BYBIT,
             connector=connector,
             clock=clock,
         )
@@ -126,7 +130,7 @@ class TestStreamSessionPolicies:
         # Simulate a frame to set _last_inbound_ns
         session.on_frame()
         # Advance past idle timeout
-        clock.advance_ns(BYBIT_POLICY.idle_timeout_ns + 1)
+        clock.advance_ns(BYBIT.idle_timeout_ns + 1)
         session.tick()
 
         # Should have reconnected: close() called, then connect() called again
@@ -141,18 +145,18 @@ class TestStreamSessionPolicies:
         reconnect on idle. Instead, the venue sends a close frame (code 4004)
         which triggers _reconnect via the session's error handling.
         """
-        connector = FakePolicyConnector(OKX_POLICY)
+        connector = FakePolicyConnector(OKX)
         clock = FakeClock()
         session = StreamSession(
             streams=streams_for(["BTCUSDT"]),
-            policy=OKX_POLICY,
+            policy=OKX,
             connector=connector,
             clock=clock,
         )
         session.start()
 
         # OKX sends pings on schedule
-        clock.advance_ns(OKX_POLICY.client_ping_interval_ns + 1)
+        clock.advance_ns(OKX.client_ping_interval_ns + 1)
         session.tick()
 
         assert connector.sent_pings == ["ping"]

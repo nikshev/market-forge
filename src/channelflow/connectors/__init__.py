@@ -4,9 +4,6 @@
 """
 
 from channelflow.connectors.venue import (
-    BINANCE_POLICY,
-    BYBIT_POLICY,
-    OKX_POLICY,
     VENUE_REGISTRY,
     VenueConfig,
     VenueConnector,
@@ -28,7 +25,4 @@ __all__ = [
     "binance_subscribe_message",
     "bybit_subscribe_message",
     "okx_subscribe_message",
-    "BINANCE_POLICY",
-    "BYBIT_POLICY",
-    "OKX_POLICY",
 ]

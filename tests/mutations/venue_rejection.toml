@@ -1,0 +1,50 @@
+# The mutation sweep for reading a venue's refusal (REQ-WP-078).
+#
+# Pinned against frames captured live on 2026-10-02. Each mutation breaks one of the things
+# that makes `rejection` safe to call on every frame a venue sends.
+#
+# Patterns are TOML *literal* strings on purpose: the basic form treats a trailing
+# backslash as a line continuation and eats the next line's indentation.
+source = "src/channelflow/connectors/venue.py"
+tests = ["tests/unit/connectors/test_rejection_frames.py", "tests/unit/connectors/test_venue_connector.py"]
+
+[[mutation]]
+name = "OKX's error event is not recognised"
+find = '''    if venue == "okx" and data.get("event") == "error":'''
+replace = '''    if False:'''
+
+[[mutation]]
+name = "a successful Bybit reply is read as a refusal"
+find = '''    if venue == "bybit" and data.get("success") is False:'''
+replace = '''    if venue == "bybit" and data.get("success") is not None:'''
+
+[[mutation]]
+name = "a frame that is not JSON raises"
+find = '''    try:
+        data = json.loads(frame)
+    except ValueError:
+        return None
+    if not isinstance(data, dict):
+        return None
+    if venue == "okx"'''
+replace = '''    data = json.loads(frame)
+    if not isinstance(data, dict):
+        return None
+    if venue == "okx"'''
+
+[[mutation]]
+name = "a JSON value that is not an object raises"
+find = '''    if not isinstance(data, dict):
+        return None
+    if venue == "okx"'''
+replace = '''    if venue == "okx"'''
+
+[[mutation]]
+name = "OKX's message is replaced by a placeholder"
+find = '''        return message if isinstance(message, str) else "error (no message)"'''
+replace = '''        return "error (no message)"'''
+
+[[mutation]]
+name = "another venue's refusal is read as this one's"
+find = '''    if venue == "bybit" and data.get("success") is False:'''
+replace = '''    if data.get("success") is False:'''

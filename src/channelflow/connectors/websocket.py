@@ -1,6 +1,7 @@
 """The live edge: a real socket behind [[REQ-WP-051]]'s `Transport` protocol.
 
 # @trace: REQ-WP-066
+# @trace: REQ-WP-078
 
 `StreamSession` already decides everything about a connection's life -- when to
 reconnect, when a silence means the venue gave up, when to ping -- and is tested
@@ -23,11 +24,14 @@ happens on the other side of it.
 from __future__ import annotations
 
 import asyncio
+import logging
 import queue
 import threading
 from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass, field
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 #: How long `close` waits for the socket thread to finish before giving up on
 #: it. Long enough for a clean websocket close, short enough that a wedged
@@ -55,6 +59,10 @@ class WebsocketTransport:
     url_for: Callable[[Sequence[str]], str]
     #: Injected so a test can supply a connector that never touches a network.
     connect_to: Callable[..., Any] | None = None
+    #: The venue this transport serves, for the log. The transport knows no venue's
+    #: conventions, but a line saying "the websocket reader ended" is no use to someone
+    #: reading five services' logs.
+    name: str = "websocket"
 
     #: Frames as the venue sent them, in arrival order.
     frames: queue.Queue[str] = field(default_factory=queue.Queue)
@@ -92,6 +100,11 @@ class WebsocketTransport:
         except BaseException as cause:  # noqa: BLE001 -- reported to the caller's thread
             self._failure = cause
             self._ready.set()
+            # Also logged, here, where it is in hand. `_failure` is read only by `connect()`,
+            # on the first connection; a failure afterwards used to end the thread in
+            # silence, and a daemon whose socket died stayed `Up` for four days.
+            if not self._stopping.is_set():
+                logger.warning("%s: reader ended: %s: %s", self.name, type(cause).__name__, cause)
         finally:
             loop.close()
 
@@ -132,6 +145,17 @@ class WebsocketTransport:
         policy is client-initiated; Binance's is not, and the measurement says
         the library's answer is the one that reaches the venue.
         """
+
+    @property
+    def alive(self) -> bool:
+        """The reader thread is running and neither failed nor was told to stop."""
+        thread = self._thread
+        return (
+            thread is not None
+            and thread.is_alive()
+            and self._failure is None
+            and not self._stopping.is_set()
+        )
 
     def close(self) -> None:
         self._stopping.set()

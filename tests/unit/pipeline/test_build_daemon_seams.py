@@ -10,6 +10,7 @@ file gives an ingest service, and what it produced is read back.
 
 from __future__ import annotations
 
+import json
 import re
 from pathlib import Path
 
@@ -98,3 +99,111 @@ def test_okx_instruments_are_accepted_as_written(tmp_path: Path) -> None:
     daemon = _build("okx", "BTC-USDT-SWAP", tmp_path, LocalObjectStore(root=tmp_path / "bucket"))
 
     assert daemon.venue == "okx"
+
+
+# --- the connector the daemon built -------------------------------------------------
+#
+# OKX could not connect for six days. The daemon opened `wss://ws.okx.com/api/v5/market`,
+# a REST path prefix that answers `HTTP 404`, and then -- at the right URL -- subscribed
+# with `instId = "trades.BTC-USDT-SWAP"`, which OKX answers with "Subscribe failed". Both
+# were reproduced live. The tests read `_url` and `_subscribe_msg` off the connector the
+# daemon **built**, because a test of a helper called with convenient arguments could not
+# see either.
+
+
+@pytest.mark.trace("REQ-WP-078")
+def test_okx_opens_the_public_endpoint_and_subscribes_with_the_instrument_as_okx_names_it(
+    tmp_path: Path,
+) -> None:
+    daemon = _build("okx", "BTC-USDT-SWAP", tmp_path, LocalObjectStore(root=tmp_path / "bucket"))
+
+    assert daemon.connector._url == "wss://ws.okx.com:8443/ws/v5/public"
+    assert json.loads(daemon.connector._subscribe_msg) == {
+        "op": "subscribe",
+        "args": [{"channel": "trades", "instId": "BTC-USDT-SWAP"}],
+    }
+
+
+@pytest.mark.trace("REQ-WP-078")
+def test_bybit_opens_its_linear_endpoint_and_subscribes_to_the_public_trade_topic(
+    tmp_path: Path,
+) -> None:
+    daemon = _build("bybit", "BTCUSDT", tmp_path, LocalObjectStore(root=tmp_path / "bucket"))
+
+    assert daemon.connector._url == "wss://stream.bybit.com/v5/public/linear"
+    assert json.loads(daemon.connector._subscribe_msg) == {
+        "op": "subscribe",
+        "args": ["publicTrade.BTCUSDT"],
+    }
+
+
+@pytest.mark.trace("REQ-WP-078")
+def test_binance_subscribes_through_its_url_and_sends_nothing(tmp_path: Path) -> None:
+    daemon = _build("binance", "BTCUSDT", tmp_path, LocalObjectStore(root=tmp_path / "bucket"))
+
+    url = daemon.connector._transport.url_for(("btcusdt@aggTrade",))
+    assert url == "wss://stream.binance.com:9443/stream?streams=btcusdt@aggTrade"
+
+
+@pytest.mark.trace("REQ-WP-078")
+@pytest.mark.parametrize(("venue", "symbol"), VENUES)
+def test_the_session_runs_the_registrys_policy_for_the_venue(
+    venue: str, symbol: str, tmp_path: Path
+) -> None:
+    """The daemon's silence threshold was 48 hours because it read a policy the registry
+    held and the measured one did not."""
+    from channelflow.connectors.venue import VENUE_REGISTRY
+
+    daemon = _build(venue, symbol, tmp_path, LocalObjectStore(root=tmp_path / "bucket"))
+
+    assert daemon.session.policy == VENUE_REGISTRY[venue].policy
+    assert daemon.session.policy.max_silence_ns == 60 * 1_000_000_000
+
+
+@pytest.mark.trace("REQ-WP-078")
+def test_the_silence_limit_is_configuration_and_reaches_the_session(tmp_path: Path) -> None:
+    settings = ingest_settings_from_env(
+        {
+            "CHANNELFLOW_INGEST_SYMBOLS": "BTCUSDT",
+            "CHANNELFLOW_ARCHIVE_URI": _deployment_archive_uri(),
+            "CHANNELFLOW_INGEST_MAX_SILENCE_SECONDS": "90",
+        }
+    )
+
+    daemon = build_daemon(
+        symbol="BTCUSDT",
+        settings=settings,
+        store=LocalObjectStore(root=tmp_path / "bucket"),
+        catalog_uri=f"sqlite:///{tmp_path}/catalog.db",
+        warehouse=str(tmp_path / "warehouse"),
+        storage={},
+        venue="bybit",
+    )
+
+    assert daemon.session.policy.max_silence_ns == 90 * 1_000_000_000
+
+
+@pytest.mark.trace("REQ-WP-078")
+def test_a_silence_limit_the_policy_cannot_hold_is_refused_naming_the_variable(
+    tmp_path: Path,
+) -> None:
+    """Bybit pings every 20 s; a limit of 10 s would reconnect a healthy quiet connection
+    between two pongs."""
+    settings = ingest_settings_from_env(
+        {
+            "CHANNELFLOW_INGEST_SYMBOLS": "BTCUSDT",
+            "CHANNELFLOW_ARCHIVE_URI": _deployment_archive_uri(),
+            "CHANNELFLOW_INGEST_MAX_SILENCE_SECONDS": "10",
+        }
+    )
+
+    with pytest.raises(MissingConfiguration, match="CHANNELFLOW_INGEST_MAX_SILENCE_SECONDS"):
+        build_daemon(
+            symbol="BTCUSDT",
+            settings=settings,
+            store=LocalObjectStore(root=tmp_path / "bucket"),
+            catalog_uri=f"sqlite:///{tmp_path}/catalog.db",
+            warehouse=str(tmp_path / "warehouse"),
+            storage={},
+            venue="bybit",
+        )

@@ -222,11 +222,11 @@ objects.
 ```sh
 docker compose logs --tail 20 ingest-binance     # frames arriving
 curl -s localhost:8000/readyz                    # {"ready": true, ...}
-docker compose exec -T minio sh -c 'ls /data/*/raw/cex/binance/*/*/*/ | tail -3'
+docker compose exec -T minio sh -c 'ls /data/*/raw/cex/binance/BTCUSDT/*/*/*/ | tail -3'
 ```
 
-The third is the raw archive — one gzip object per minute. If it is growing, the
-socket is connected and the frames are being kept.
+The third is the raw archive — one gzip object per minute **per symbol**. If it is
+growing, the socket is connected and the frames are being kept. See "The raw archive".
 
 ### Everyday commands
 
@@ -282,7 +282,8 @@ secret; `.env` is not committed and never should be.
 | `CHANNELFLOW_BIND_ADDRESS` | what every published port binds to; `127.0.0.1` by default ([[REQ-WP-072]]) |
 | `CHANNELFLOW_CORS_ORIGINS`, `CHANNELFLOW_RATE_LIMIT`, `CHANNELFLOW_RATE_WINDOW_SECONDS` | what the read API allows and refuses |
 | `GRAFANA_ADMIN_PASSWORD`, `GRAFANA_ANONYMOUS` | Grafana's credential; anonymous access is off unless enabled |
-| `CHANNELFLOW_INGEST_SYMBOLS`, `CHANNELFLOW_INGEST_SYMBOLS_ETH`, `CHANNELFLOW_INGEST_SYMBOLS_SOL`, `CHANNELFLOW_INGEST_SYMBOLS_BYBIT`, `CHANNELFLOW_INGEST_SYMBOLS_OKX`, `CHANNELFLOW_INGEST_TIMEFRAME_NS`, `CHANNELFLOW_INGEST_VENUE`, `CHANNELFLOW_SILENCE_WINDOW_MULTIPLIER` | what each ingest daemon reads, which venue it connects to, at what bar size, and how long silence is tolerated — one symbol and venue per process |
+| `CHANNELFLOW_INGEST_SYMBOLS`, `CHANNELFLOW_INGEST_SYMBOLS_ETH`, `CHANNELFLOW_INGEST_SYMBOLS_SOL`, `CHANNELFLOW_INGEST_SYMBOLS_BYBIT`, `CHANNELFLOW_INGEST_SYMBOLS_OKX`, `CHANNELFLOW_INGEST_TIMEFRAME_NS`, `CHANNELFLOW_INGEST_VENUE`, `CHANNELFLOW_INGEST_MAX_SILENCE_SECONDS` | what each ingest daemon reads, which venue it connects to, at what bar size, and how long silence is tolerated before it reconnects (empty: the venue's own 60 s) — one symbol and venue per process |
+| `CHANNELFLOW_LOG_LEVEL`, `CHANNELFLOW_LOG_MAX_SIZE`, `CHANNELFLOW_LOG_MAX_FILE` | how loud the ingest daemons are (empty is INFO), and the cap on every service's container log — 20 MB × 3 files by default |
 | `CHANNELFLOW_TIMEFRAMES`, `CHANNELFLOW_RESAMPLE_INTERVAL` | which timeframes the resampler builds from the one-minute series, and how often it runs ([[REQ-WP-073]]); `1M` is refused. The read API reads the same variable and reports the set at `GET /api/v1/timeframes` ([[REQ-WP-074]]) — one value for both processes, so what a chart offers cannot disagree with what exists |
 | `CHANNELFLOW_MAINTENANCE_INTERVAL`, `CHANNELFLOW_KEEP_DAYS` | how often maintenance runs, and what it may expire |
 | `CHANNELFLOW_CHANNEL_INTERVAL` | how often the channel worker re-fits over the stored bars ([[REQ-WP-077]]) |
@@ -352,6 +353,69 @@ boundary — the last requests of one window and the first of the next.
 `/readyz` and `/metrics` are never limited. Throttling a readiness probe makes an
 orchestrator declare the service unhealthy, which is the outage the limiter
 exists to prevent.
+
+## The raw archive
+
+Every frame a venue sends is kept, uninterpreted, one gzip object per venue, symbol and
+minute:
+
+```text
+raw/cex/<venue>/<symbol>/<YYYY>/<MM>/<DD>/<HHMM>.jsonl.gz
+```
+
+The minute is the **receipt** time, in UTC. The symbol is the one configured —
+BTCUSDT on Binance and Bybit, `BTC-USDT-SWAP` on OKX. Binance and Bybit symbols must be
+upper case, and a lower-case one is refused at start-up: the key and the migration both use
+that spelling, and `btcusdt` would put one instrument in two directories.
+
+The symbol is in the key because each symbol is its own process. Until 2026-10-02 it was
+not, and three Binance processes wrote one key between them: `store.put` replaces an
+object, so the last process to flush a minute won, and every minute held the frames of one
+of BTCUSDT, ETHUSDT and SOLUSDT. What was overwritten cannot be recovered. Measured by the
+bars the same minutes produced, the archive lacks 62% of BTCUSDT's minutes, 66% of
+ETHUSDT's and 57% of SOLUSDT's from 2026-09-17 to the day it was fixed. Bars and channels
+are built from the live stream and not read back from the archive, so they are unaffected.
+
+A restart inside a minute still replaces that minute's object with the tail written after
+it. That is not fixed.
+
+**Moving what was written under the old keys.** Objects under `raw/cex/<venue>/<date>/…`
+and under `<venue>/raw/cex/<venue>/…` are placed under the symbol their own frames name:
+
+```sh
+docker compose exec -T ingest-bybit python -m channelflow.pipeline.archive_rekey          # a dry-run
+docker compose exec -T ingest-bybit python -m channelflow.pipeline.archive_rekey --apply
+```
+
+It is a dry-run unless `--apply` is given. An object is copied, compared with its source by
+size and checksum, and only then removed, so an interruption leaves a duplicate and never a
+gap, and a second run finishes it. An object holding several symbols, or none, is refused and
+left where it is, with the reason printed.
+
+## When a connection ends
+
+A connection that ends is reopened, for every venue and whatever ended it: the stream
+reaches the age at which the venue closes it (24 hours on Binance), the connector's reader
+thread ends, or nothing arrives for longer than the venue is allowed to be silent
+(`CHANNELFLOW_INGEST_MAX_SILENCE_SECONDS`, 60 s unless set).
+
+The log says so once when a connection goes down, with the reason; again at the 2nd, 4th,
+8th… failed attempt; and once when frames return, with how many attempts it took. Attempts
+back off from one second and stop doubling at a minute. A refusal from the venue is a
+WARNING quoting the venue's own words — OKX's `Subscribe failed …`, Bybit's `handler not
+found`. Binance sends none that has been observed, so for Binance a refused request is
+silence.
+
+## Logs
+
+An ingest service logs events and not traffic. INFO has connects, reconnects, recoveries
+and one line for each archive object written; the per-trade lines are at DEBUG
+(`CHANNELFLOW_LOG_LEVEL=DEBUG`). Before 2026-10-02 they were at INFO and Bybit's
+container log reached 6.6 GB in six days.
+
+Every service's container log is capped (`CHANNELFLOW_LOG_MAX_SIZE`,
+`CHANNELFLOW_LOG_MAX_FILE`). A cap applies to a container when it is created, so changing it
+takes effect on `docker compose up -d`.
 
 ## What timeframes a chart may offer
 

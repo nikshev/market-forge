@@ -70,6 +70,11 @@ class FakeReplayConnector:
     def send(self, payload):
         pass
 
+    @property
+    def alive(self) -> bool:
+        """A fake whose reader never ends. `kill()` lives in `pipeline/fakes.py`."""
+        return True
+
     def pong(self):
         pass
 

@@ -1,6 +1,7 @@
 """One stream lifecycle, three venues, and the differences written down.
 
 # @trace: REQ-WP-051
+# @trace: REQ-WP-078
 
 PRD §0 item 10 requires new connectors to implement a shared canonical
 interface, and §35.6 lists reconnect and rate limits among what connector tests
@@ -43,12 +44,15 @@ conservative rather than discovered, and is marked as such.
 
 from __future__ import annotations
 
+import logging
 import queue
 from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Any, Protocol
 
 SECOND_NS = 1_000_000_000
+
+logger = logging.getLogger(__name__)
 
 
 class Keepalive(StrEnum):
@@ -84,6 +88,15 @@ class VenueConnector(Protocol):
     def close(self) -> None: ...
     @property
     def frames(self) -> queue.Queue[str]: ...
+    @property
+    def alive(self) -> bool:
+        """True from `connect` until the reader returns for **any** reason.
+
+        A fact about the reader and not about the venue: a reader that is running but
+        was never subscribed successfully is alive. The reader logs *why* it ended where
+        the exception is in hand; the session only needs to know that it did.
+        """
+        ...
 
 
 class Clock(Protocol):
@@ -142,6 +155,16 @@ class VenuePolicy:
     #: exceeding it against a venue that has done nothing to deserve it.
     min_connect_interval_ns: int = SECOND_NS
 
+    #: How long **this system** tolerates a silent **venue** before reconnecting. Not
+    #: `idle_timeout_ns`, which is how long the *venue* tolerates a silent *client* -- a
+    #: different quantity that happens to be a duration too. Borrowing one for the other
+    #: made Binance's silence threshold 48 hours (its 24-hour stream lifetime, doubled).
+    max_silence_ns: int | None = None
+
+    #: The longest the session waits between attempts while a venue keeps refusing: the
+    #: delay doubles from `min_connect_interval_ns` and stops here.
+    max_connect_backoff_ns: int = 60 * SECOND_NS
+
     def __post_init__(self) -> None:
         if self.keepalive is Keepalive.CLIENT_INITIATED:
             if self.ping_payload is None or self.client_ping_interval_ns is None:
@@ -155,13 +178,44 @@ class VenuePolicy:
                     f"{self.venue}: pinging every {self.client_ping_interval_ns}ns cannot keep "
                     f"a connection the venue closes after {self.idle_timeout_ns}ns"
                 )
+        if self.max_silence_ns is not None:
+            if self.max_silence_ns <= 0:
+                raise ValueError(f"{self.venue}: max_silence_ns must be positive")
+            if (
+                self.client_ping_interval_ns is not None
+                and self.max_silence_ns <= self.client_ping_interval_ns
+            ):
+                raise ValueError(
+                    f"{self.venue}: max_silence_ns {self.max_silence_ns} is not longer than the "
+                    f"ping interval {self.client_ping_interval_ns}; a healthy quiet connection "
+                    "would be reconnected between two pongs"
+                )
+        if self.max_connect_backoff_ns < self.min_connect_interval_ns:
+            raise ValueError(
+                f"{self.venue}: the backoff ceiling {self.max_connect_backoff_ns} is below the "
+                f"minimum connect interval {self.min_connect_interval_ns}"
+            )
 
 
-#: Binance pings and expects a pong; its streams last a day.
+#: How long the three live venues may go without a frame before the session reconnects.
+#:
+#: **The basis, measured on 2026-10-02 from the raw archive.** The longest gap between two
+#: consecutive frames was 22.2 s on Bybit BTCUSDT over 360 complete minutes (then 22.0 s
+#: and 18.8 s), and 11.2 s within a minute on SOLUSDT over 309 sampled minutes. 60 s is
+#: 2.7 and 5.4 times those. A 64.1 s gap also appeared, beginning 10:54:50; the container
+#: started at 10:55:50, so it was this project's own restart and is not a basis for
+#: anything. This is a starting point and not a derivation: a thinner symbol needs a longer
+#: limit, which is what `CHANNELFLOW_INGEST_MAX_SILENCE_SECONDS` is for.
+LIVE_MAX_SILENCE_NS = 60 * SECOND_NS
+
+#: Binance pings and expects a pong; its streams last a day. The 24 hours is a stream
+#: *lifetime*: a connection is closed at that age however much traffic it carries. It
+#: is not an idle timeout, and `venue.py` once put it in that field.
 BINANCE = VenuePolicy(
     venue="binance",
     keepalive=Keepalive.SERVER_INITIATED,
     stream_lifetime_ns=24 * 60 * 60 * SECOND_NS,
+    max_silence_ns=LIVE_MAX_SILENCE_NS,
 )
 
 #: Bybit closed an idle connection at 60.7 seconds with no close frame.
@@ -173,6 +227,7 @@ BYBIT = VenuePolicy(
     client_ping_interval_ns=20 * SECOND_NS,
     ping_payload='{"op":"ping"}',
     announces_close=False,
+    max_silence_ns=LIVE_MAX_SILENCE_NS,
 )
 
 #: OKX closed an idle connection at 30.9 seconds with code 4004 and the message
@@ -183,6 +238,7 @@ OKX = VenuePolicy(
     idle_timeout_ns=30 * SECOND_NS,
     client_ping_interval_ns=15 * SECOND_NS,
     ping_payload="ping",
+    max_silence_ns=LIVE_MAX_SILENCE_NS,
 )
 
 #: HyperCore closed an idle connection at 60.6 seconds with no close frame --
@@ -201,6 +257,22 @@ HYPERCORE = VenuePolicy(
     ping_payload='{"method":"ping"}',
     announces_close=False,
 )
+
+
+def silence_limit_ns(policy: VenuePolicy) -> int | None:
+    """How long a feed may be silent before the session reconnects, or `None` for never.
+
+    The policy's own `max_silence_ns` if it has one. Otherwise, for a venue that gives up
+    without saying so, its idle timeout -- what the session did before this field
+    existed, and what HyperCore still relies on. A venue that announces its closes and
+    names no limit has none.
+    """
+    if policy.max_silence_ns is not None:
+        return policy.max_silence_ns
+    if not policy.announces_close:
+        return policy.idle_timeout_ns
+    return None
+
 
 POLICIES: dict[str, VenuePolicy] = {
     policy.venue: policy for policy in (BINANCE, BYBIT, OKX, HYPERCORE)
@@ -222,6 +294,8 @@ class ConnectorMetrics:
     #: connect. A connector that hammered a venue's limit would be throttled at
     #: the venue instead, which is worse and less visible.
     throttled_reconnects: int = 0
+    #: Reconnects made because the connector's reader had ended (REQ-WP-078).
+    dead_readers: int = 0
 
 
 @dataclass
@@ -238,6 +312,12 @@ class StreamSession:
     _last_inbound_ns: int = 0
     _last_ping_ns: int = 0
     _needs_snapshot: bool = True
+    #: Reconnect bookkeeping (REQ-WP-078). Attempts since the feed last delivered a frame:
+    #: recovery is a frame arriving, **not** `connect()` returning, because Bybit's and
+    #: OKX's `connect()` only starts a thread and returns whether or not it will work.
+    _attempts: int = 0
+    _next_attempt_ns: int = 0
+    _down_since_ns: int | None = None
 
     @property
     def needs_snapshot(self) -> bool:
@@ -263,15 +343,59 @@ class StreamSession:
         # Any new connection means the book must be rebuilt: updates that
         # arrived while disconnected cannot be recovered.
         self._needs_snapshot = True
+        # The venue's connect limit: no second attempt inside it, whatever the reason.
+        self._next_attempt_ns = now + self.policy.min_connect_interval_ns
 
-    def _reconnect(self) -> bool:
-        """Close and open again, unless the venue's connect limit says wait."""
-        since = self.clock.now_ns() - self._connected_at_ns
-        if since < self.policy.min_connect_interval_ns:
+    def _reconnect(self, kind: str, why: str) -> bool:
+        """Close and open again, unless the venue's connect limit or the backoff says wait.
+
+        Never raises. A `connect()` that fails -- Binance's raises `NotConnected` when the
+        socket does not open -- is counted, logged and scheduled, because left to escape
+        it would leave `tick` and end the daemon from inside a reconnect. (`start()` still
+        raises: a daemon that cannot connect at all should fail loudly at start-up.)
+        """
+        now = self.clock.now_ns()
+        routine = kind == "lifetime"
+        if self._down_since_ns is None and not routine:
+            self._down_since_ns = now
+            logger.warning("%s connection down: %s", self.policy.venue, why)
+        if now < self._next_attempt_ns:
             self.metrics.throttled_reconnects += 1
             return False
-        self.connector.close()
-        self._connect()
+
+        self._attempts += 1
+        attempts = self._attempts
+        outcome = "connect() returned"
+        try:
+            self.connector.close()
+            self._connect()
+        except Exception as error:
+            outcome = f"connect() failed: {error}"
+        # Spaced min, 2*min, 4*min ... up to the ceiling, counted over attempts since the
+        # feed last delivered, so a venue that accepts the socket and drops it is not
+        # retried at the minimum interval for ever.
+        delay = min(
+            self.policy.min_connect_interval_ns * 2 ** (attempts - 1),
+            self.policy.max_connect_backoff_ns,
+        )
+        self._next_attempt_ns = now + delay
+
+        if routine:
+            logger.info("%s reconnecting: %s", self.policy.venue, why)
+        elif attempts >= 2 and attempts & (attempts - 1) == 0:
+            # Logged at 2, 4, 8, 16...: the count of lines grows with the log of the
+            # failures and not with their number.
+            logger.warning(
+                "%s still down after %d attempts (%s; %s)",
+                self.policy.venue,
+                attempts,
+                why,
+                outcome,
+            )
+        if kind == "silence":
+            self.metrics.silent_drops += 1
+        elif kind == "reader":
+            self.metrics.dead_readers += 1
         return True
 
     def on_frame(self) -> None:
@@ -281,7 +405,17 @@ class StreamSession:
         counts: it is the venue answering, which is the only thing the timer is
         about.
         """
-        self._last_inbound_ns = self.clock.now_ns()
+        now = self.clock.now_ns()
+        self._last_inbound_ns = now
+        if self._down_since_ns is not None:
+            logger.info(
+                "%s connection recovered after %d attempt(s), down for %.1f s",
+                self.policy.venue,
+                self._attempts,
+                (now - self._down_since_ns) / SECOND_NS,
+            )
+            self._down_since_ns = None
+        self._attempts = 0
 
     def on_ping(self) -> None:
         """The venue pinged us. Binance disconnects a client that does not answer."""
@@ -289,24 +423,36 @@ class StreamSession:
         self.on_frame()
 
     def tick(self) -> None:
-        """Advance the lifecycle. Called on a timer by the ingestion loop."""
+        """Advance the lifecycle. Called on a timer by the ingestion loop; must not block.
+
+        Reconnects, for **every** venue, on three grounds in this order: the stream has
+        reached the age at which the venue closes it; the connector's reader has ended;
+        nothing has arrived for longer than the venue is allowed to be silent.
+
+        `announces_close` used to gate the last of these, on the belief that a venue which
+        says when it gives up needs no second-guessing. Binance and OKX do say -- and
+        nothing in the connectors turned what they said into a reconnect: the reader
+        thread simply ended, and a Binance daemon whose socket died stayed `Up` for four
+        days with no feed. The field now documents what was measured and decides nothing.
+        """
         now = self.clock.now_ns()
 
         lifetime = self.policy.stream_lifetime_ns
         if lifetime is not None and now - self._connected_at_ns >= lifetime:
-            self._reconnect()
+            self._reconnect("lifetime", f"the stream reached its {lifetime / SECOND_NS:.0f} s age")
             return
 
-        idle = self.policy.idle_timeout_ns
-        if (
-            idle is not None
-            and not self.policy.announces_close
-            and now - self._last_inbound_ns > idle
-        ):
-            # Nothing has arrived past the point at which this venue gives up,
-            # and it gives up without saying so. Silence is the only signal.
-            if self._reconnect():
-                self.metrics.silent_drops += 1
+        if not self.connector.alive:
+            self._reconnect("reader", "the connector's reader has ended")
+            return
+
+        limit = silence_limit_ns(self.policy)
+        silent_for = now - self._last_inbound_ns
+        if limit is not None and silent_for > limit:
+            self._reconnect(
+                "silence",
+                f"silent for {silent_for / SECOND_NS:.0f} s (limit {limit / SECOND_NS:.0f} s)",
+            )
             return
 
         interval = self.policy.client_ping_interval_ns

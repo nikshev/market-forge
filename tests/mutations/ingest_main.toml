@@ -1,0 +1,66 @@
+# The mutation sweep for how the ingest daemon is wired and configured (REQ-WP-078).
+#
+# Every defect of REQ-WP-078 lived in a join, so these are the joins: the archive prefix
+# `build_daemon` builds, the symbol it refuses, the silence limit it threads through, and
+# the settings that feed them.
+#
+# Patterns are TOML *literal* strings on purpose: the basic form treats a trailing
+# backslash as a line continuation and eats the next line's indentation.
+source = "src/channelflow/pipeline/ingest_main.py"
+tests = ["tests/unit/pipeline/test_build_daemon_seams.py", "tests/unit/test_settings_ingest.py", "tests/unit/pipeline/test_ingest_logging.py"]
+
+[[mutation]]
+name = "the venue is prefixed to the archive path again"
+find = '''            prefix=prefix[1] if len(prefix) > 1 else "raw/cex",'''
+replace = '''            prefix=f"{venue}/{prefix[1] if len(prefix) > 1 else 'raw/cex'}",'''
+
+[[mutation]]
+name = "a lower-case Binance or Bybit symbol is accepted"
+find = '''    if venue in ("binance", "bybit") and symbol != symbol.upper():'''
+replace = '''    if False:'''
+
+[[mutation]]
+name = "the silence limit never reaches the session"
+find = '''            policy = replace(policy, max_silence_ns=settings.max_silence_ns)'''
+replace = '''            pass'''
+
+[[mutation]]
+name = "a silence limit the policy cannot hold is accepted"
+find = '''        except ValueError as error:
+            raise MissingConfiguration(f"{MAX_SILENCE_SECONDS}: {error}") from error'''
+replace = '''        except ValueError:
+            pass'''
+
+[[mutation]]
+name = "the retired multiplier is quietly accepted"
+find = '''    if values.get(RETIRED_SILENCE_MULTIPLIER, "").strip():'''
+replace = '''    if False:'''
+
+[[mutation]]
+name = "a blank silence limit is an error"
+find = '''    if raw_silence:
+        try:'''
+replace = '''    if raw_silence is not None:
+        try:'''
+
+[[mutation]]
+name = "a negative silence limit is accepted"
+find = '''        if not math.isfinite(seconds) or seconds <= 0:'''
+replace = '''        if not math.isfinite(seconds):'''
+
+[[mutation]]
+name = "an unknown log level falls back to INFO"
+find = '''        return _LEVELS[raw.upper()]'''
+replace = '''        return _LEVELS.get(raw.upper(), logging.INFO)'''
+
+[[mutation]]
+name = "the log level is read without ignoring case"
+find = '''        return _LEVELS[raw.upper()]'''
+replace = '''        return _LEVELS[raw]'''
+
+[[mutation]]
+name = "logging is not configured when the daemon starts"
+find = '''def main(argv: list[str] | None = None) -> int:
+    configure_logging()'''
+replace = '''def main(argv: list[str] | None = None) -> int:
+    pass'''

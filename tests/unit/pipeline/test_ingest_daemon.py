@@ -32,6 +32,11 @@ class FakeVenueConnector:
     def send(self, payload):
         self.sent_payloads.append(payload)
 
+    @property
+    def alive(self) -> bool:
+        """A fake whose reader never ends. `kill()` lives in `pipeline/fakes.py`."""
+        return True
+
     def pong(self):
         pass
 

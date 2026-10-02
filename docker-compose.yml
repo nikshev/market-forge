@@ -31,10 +31,29 @@
 # traversed before the INPUT chain `ufw` manages, so a published port can be
 # reachable while the firewall reports it denied.
 
+# Every service's log is capped, by one block applied through an alias (REQ-WP-078).
+#
+# Bybit's container log reached 6.6 GB in six days and nothing capped it or any other
+# service. A cap does not make a noisy service quiet -- the per-trade lines were demoted
+# at their source for that -- it stops the next noisy one filling a disk shared with other
+# things. 20 MB x 3 files is 60 MB a service: days of history at the expected rate, and a
+# rotation every 35 minutes at the rate the noisiest service had. Both numbers are
+# configuration, and `tests/unit/deploy/test_compose_logging.py` fails for any service
+# added without the alias.
+#
+# A cap applies to a container when it is *created*; editing this file changes nothing
+# for one already running until `docker compose up -d` recreates it.
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: ${CHANNELFLOW_LOG_MAX_SIZE:-20m}
+    max-file: "${CHANNELFLOW_LOG_MAX_FILE:-3}"
+
 name: channelflow
 
 services:
   postgres:
+    logging: *default-logging
     image: postgres:16-alpine3.24
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
@@ -55,6 +74,7 @@ services:
       start_period: 3s
 
   minio:
+    logging: *default-logging
     image: quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z
     command: server /data --console-address ":9001"
     environment:
@@ -75,6 +95,7 @@ services:
   # One-shot: creates the development bucket, then exits. `make up` waits for
   # it to complete, so a healthy stack always has the bucket the tests expect.
   minio_init:
+    logging: *default-logging
     image: quay.io/minio/mc:RELEASE.2025-08-13T08-35-41Z
     depends_on:
       minio:
@@ -100,6 +121,7 @@ services:
   # merge. Self-hosted production is permitted; reselling it as a service is
   # not, which is not something this project does.
   redpanda:
+    logging: *default-logging
     image: redpandadata/redpanda:v25.2.5
     command:
       - redpanda
@@ -137,6 +159,7 @@ services:
   # running nothing is worse than an absent one: it reports healthy.
   # `ingest-binance` does exist, below ([[REQ-WP-066]]).
   api:
+    logging: *default-logging
     build:
       context: .
       dockerfile: Dockerfile
@@ -182,6 +205,7 @@ services:
   # timeframe, and a daemon multiplexing several would share one socket's
   # failure across all of them.
   ingest-binance:
+    logging: *default-logging
     build:
       context: .
       dockerfile: Dockerfile
@@ -198,6 +222,10 @@ services:
       CHANNELFLOW_S3_REGION: us-east-1
       CHANNELFLOW_INGEST_SYMBOLS: ${CHANNELFLOW_INGEST_SYMBOLS}
       CHANNELFLOW_INGEST_TIMEFRAME_NS: ${CHANNELFLOW_INGEST_TIMEFRAME_NS}
+      # Empty means unset. Compose forwards only the variables a service names, so a
+      # setting that is not listed here is unreachable on the host.
+      CHANNELFLOW_INGEST_MAX_SILENCE_SECONDS: ${CHANNELFLOW_INGEST_MAX_SILENCE_SECONDS:-}
+      CHANNELFLOW_LOG_LEVEL: ${CHANNELFLOW_LOG_LEVEL:-}
       # The raw tier of §6.4.4, in the same bucket as the warehouse and beside
       # it rather than inside it: `raw/` and `warehouse/` are different zones.
       CHANNELFLOW_ARCHIVE_URI: s3://${MINIO_BUCKET}/raw/cex
@@ -221,6 +249,7 @@ services:
   # way and `docs/deployment.md` names it in commands a reader pastes. The
   # asymmetry is the PRD's spelling preserved, not an oversight.
   ingest-binance-eth:
+    logging: *default-logging
     build:
       context: .
       dockerfile: Dockerfile
@@ -237,6 +266,10 @@ services:
       CHANNELFLOW_S3_REGION: us-east-1
       CHANNELFLOW_INGEST_SYMBOLS: ${CHANNELFLOW_INGEST_SYMBOLS_ETH}
       CHANNELFLOW_INGEST_TIMEFRAME_NS: ${CHANNELFLOW_INGEST_TIMEFRAME_NS}
+      # Empty means unset. Compose forwards only the variables a service names, so a
+      # setting that is not listed here is unreachable on the host.
+      CHANNELFLOW_INGEST_MAX_SILENCE_SECONDS: ${CHANNELFLOW_INGEST_MAX_SILENCE_SECONDS:-}
+      CHANNELFLOW_LOG_LEVEL: ${CHANNELFLOW_LOG_LEVEL:-}
       CHANNELFLOW_ARCHIVE_URI: s3://${MINIO_BUCKET}/raw/cex
       CHANNELFLOW_INGEST_VENUE: binance
     depends_on:
@@ -247,6 +280,7 @@ services:
     restart: unless-stopped
 
   ingest-binance-sol:
+    logging: *default-logging
     build:
       context: .
       dockerfile: Dockerfile
@@ -263,6 +297,10 @@ services:
       CHANNELFLOW_S3_REGION: us-east-1
       CHANNELFLOW_INGEST_SYMBOLS: ${CHANNELFLOW_INGEST_SYMBOLS_SOL}
       CHANNELFLOW_INGEST_TIMEFRAME_NS: ${CHANNELFLOW_INGEST_TIMEFRAME_NS}
+      # Empty means unset. Compose forwards only the variables a service names, so a
+      # setting that is not listed here is unreachable on the host.
+      CHANNELFLOW_INGEST_MAX_SILENCE_SECONDS: ${CHANNELFLOW_INGEST_MAX_SILENCE_SECONDS:-}
+      CHANNELFLOW_LOG_LEVEL: ${CHANNELFLOW_LOG_LEVEL:-}
       CHANNELFLOW_ARCHIVE_URI: s3://${MINIO_BUCKET}/raw/cex
       CHANNELFLOW_INGEST_VENUE: binance
     depends_on:
@@ -276,6 +314,7 @@ services:
   # venue, same pattern as Binance. Each process runs `ingest_main` with its
   # own `CHANNELFLOW_INGEST_VENUE` and symbol.
   ingest-bybit:
+    logging: *default-logging
     build:
       context: .
       dockerfile: Dockerfile
@@ -292,6 +331,10 @@ services:
       CHANNELFLOW_S3_REGION: us-east-1
       CHANNELFLOW_INGEST_SYMBOLS: ${CHANNELFLOW_INGEST_SYMBOLS_BYBIT}
       CHANNELFLOW_INGEST_TIMEFRAME_NS: ${CHANNELFLOW_INGEST_TIMEFRAME_NS}
+      # Empty means unset. Compose forwards only the variables a service names, so a
+      # setting that is not listed here is unreachable on the host.
+      CHANNELFLOW_INGEST_MAX_SILENCE_SECONDS: ${CHANNELFLOW_INGEST_MAX_SILENCE_SECONDS:-}
+      CHANNELFLOW_LOG_LEVEL: ${CHANNELFLOW_LOG_LEVEL:-}
       CHANNELFLOW_ARCHIVE_URI: s3://${MINIO_BUCKET}/raw/cex
       CHANNELFLOW_INGEST_VENUE: bybit
     depends_on:
@@ -302,6 +345,7 @@ services:
     restart: unless-stopped
 
   ingest-okx:
+    logging: *default-logging
     build:
       context: .
       dockerfile: Dockerfile
@@ -318,6 +362,10 @@ services:
       CHANNELFLOW_S3_REGION: us-east-1
       CHANNELFLOW_INGEST_SYMBOLS: ${CHANNELFLOW_INGEST_SYMBOLS_OKX}
       CHANNELFLOW_INGEST_TIMEFRAME_NS: ${CHANNELFLOW_INGEST_TIMEFRAME_NS}
+      # Empty means unset. Compose forwards only the variables a service names, so a
+      # setting that is not listed here is unreachable on the host.
+      CHANNELFLOW_INGEST_MAX_SILENCE_SECONDS: ${CHANNELFLOW_INGEST_MAX_SILENCE_SECONDS:-}
+      CHANNELFLOW_LOG_LEVEL: ${CHANNELFLOW_LOG_LEVEL:-}
       CHANNELFLOW_ARCHIVE_URI: s3://${MINIO_BUCKET}/raw/cex
       CHANNELFLOW_INGEST_VENUE: okx
     depends_on:
@@ -341,6 +389,7 @@ services:
   # missing, and the watermarks in `record_replay` make the interval a
   # freshness knob rather than a correctness one.
   worker:
+    logging: *default-logging
     build:
       context: .
       dockerfile: Dockerfile
@@ -381,6 +430,7 @@ services:
   # produces only what is missing, so the loop interval is a freshness knob and
   # never a correctness one.
   resample:
+    logging: *default-logging
     build:
       context: .
       dockerfile: Dockerfile
@@ -413,6 +463,7 @@ services:
   # Expiry is opt-in even here. `CHANNELFLOW_KEEP_DAYS` empty means compact and
   # keep everything, because expiring is the one operation that destroys.
   maintenance:
+    logging: *default-logging
     build:
       context: .
       dockerfile: Dockerfile
@@ -440,6 +491,7 @@ services:
     restart: unless-stopped
 
   web:
+    logging: *default-logging
     build:
       context: ./apps/web
       dockerfile: Dockerfile
@@ -450,6 +502,7 @@ services:
         condition: service_healthy
 
   prometheus:
+    logging: *default-logging
     image: prom/prometheus:v3.6.0
     ports:
       - "${CHANNELFLOW_BIND_ADDRESS:-127.0.0.1}:${PROMETHEUS_PORT}:9090"
@@ -469,6 +522,7 @@ services:
   # is generated, never edited -- a hand-written copy would go stale the day a
   # metric gains a producer.
   grafana:
+    logging: *default-logging
     image: grafana/grafana:12.2.0
     depends_on:
       prometheus:

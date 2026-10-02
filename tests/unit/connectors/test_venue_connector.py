@@ -1,16 +1,15 @@
 """Tests for the VenueConnector protocol and VenueConfig registry.
 
 # @trace: REQ-WP-076
+# @trace: REQ-WP-078
 """
 
 import queue
 
 import pytest
 
+from channelflow.connectors.session import BINANCE, BYBIT, OKX, SECOND_NS
 from channelflow.connectors.venue import (
-    BINANCE_POLICY,
-    BYBIT_POLICY,
-    OKX_POLICY,
     VENUE_REGISTRY,
     binance_streams,
     binance_subscribe_message,
@@ -37,6 +36,11 @@ class FakeConnector:
 
     def send(self, payload):
         self.sent.append(payload)
+
+    @property
+    def alive(self) -> bool:
+        """A fake whose reader never ends. `kill()` lives in `pipeline/fakes.py`."""
+        return True
 
     def pong(self):
         pass
@@ -90,8 +94,12 @@ class TestVenueRegistry:
             assert hasattr(config, "connector")
             assert hasattr(config, "stream_builder")
             assert hasattr(config, "policy")
-            assert hasattr(config, "archive_prefix")
-            assert config.archive_prefix == name
+            assert hasattr(config, "url")
+            assert hasattr(config, "subscribe_message")
+            # The venue is added to an archive key once, by `FrameArchive.key_for`. A prefix
+            # held here was prepended by `build_daemon` as well and filed every frame at the
+            # bucket root.
+            assert not hasattr(config, "archive_prefix"), name
 
     @pytest.mark.trace("REQ-WP-076")
     def test_binance_config(self):
@@ -99,7 +107,8 @@ class TestVenueRegistry:
         assert config.connector.endswith("BinanceConnector")
         assert config.stream_builder is binance_streams
         assert config.policy.venue == "binance"
-        assert config.archive_prefix == "binance"
+        assert config.url is None, "Binance subscribes through its URL"
+        assert config.subscribe_message(["BTCUSDT"]) is None
 
     @pytest.mark.trace("REQ-WP-076")
     def test_bybit_config(self):
@@ -107,7 +116,8 @@ class TestVenueRegistry:
         assert config.connector.endswith("BybitConnector")
         assert config.stream_builder is bybit_streams
         assert config.policy.venue == "bybit"
-        assert config.archive_prefix == "bybit"
+        assert config.url == "wss://stream.bybit.com/v5/public/linear"
+        assert '"publicTrade.BTCUSDT"' in config.subscribe_message(["BTCUSDT"])
 
     @pytest.mark.trace("REQ-WP-076")
     def test_okx_config(self):
@@ -115,7 +125,10 @@ class TestVenueRegistry:
         assert config.connector.endswith("OkxConnector")
         assert config.stream_builder is okx_streams
         assert config.policy.venue == "okx"
-        assert config.archive_prefix == "okx"
+        assert config.url == "wss://ws.okx.com:8443/ws/v5/public"
+        message = config.subscribe_message(["BTC-USDT-SWAP"])
+        assert '"instId": "BTC-USDT-SWAP"' in message
+        assert "trades.BTC-USDT-SWAP" not in message, "a stream label is not an instrument"
 
 
 class TestStreamBuilders:
@@ -172,30 +185,42 @@ class TestVenuePolicies:
     """Tests for venue-specific connection policies."""
 
     @pytest.mark.trace("REQ-WP-076")
+    @pytest.mark.trace("REQ-WP-078")
     def test_binance_policy(self):
-        p = BINANCE_POLICY
+        """A 24-hour stream *lifetime*, not a 24-hour idle timeout.
+
+        This test asserted `idle_timeout_ns == 24 hours` and was green, which is how the
+        daemon's silence threshold came to be 48 hours with nothing noticing.
+        """
+        p = VENUE_REGISTRY["binance"].policy
+        assert p is BINANCE
         assert p.venue == "binance"
-        assert p.idle_timeout_ns == 24 * 60 * 60 * 1_000_000_000
+        assert p.stream_lifetime_ns == 24 * 60 * 60 * SECOND_NS
+        assert p.idle_timeout_ns is None
 
     @pytest.mark.trace("REQ-WP-076")
+    @pytest.mark.trace("REQ-WP-078")
     def test_bybit_policy(self):
-        p = BYBIT_POLICY
+        p = VENUE_REGISTRY["bybit"].policy
+        assert p is BYBIT
         assert p.venue == "bybit"
-        assert p.idle_timeout_ns == 60_700_000_000
+        assert p.idle_timeout_ns == 60 * SECOND_NS
         assert p.ping_payload == '{"op":"ping"}'
         assert p.announces_close is False
 
     @pytest.mark.trace("REQ-WP-076")
+    @pytest.mark.trace("REQ-WP-078")
     def test_okx_policy(self):
-        p = OKX_POLICY
+        p = VENUE_REGISTRY["okx"].policy
+        assert p is OKX
         assert p.venue == "okx"
-        assert p.idle_timeout_ns == 30_900_000_000
+        assert p.idle_timeout_ns == 30 * SECOND_NS
         assert p.ping_payload == "ping"
         assert p.announces_close is True
 
     @pytest.mark.trace("REQ-WP-076")
     def test_all_policies_have_min_connect_interval(self):
-        for p in (BINANCE_POLICY, BYBIT_POLICY, OKX_POLICY):
+        for p in (BINANCE, BYBIT, OKX):
             assert p.min_connect_interval_ns == 1_000_000_000
 
 

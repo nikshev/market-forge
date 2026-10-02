@@ -45,6 +45,11 @@ class FakeConnector:
     def send(self, payload: str) -> None:
         self.sent.append(payload)
 
+    @property
+    def alive(self) -> bool:
+        """A fake whose reader never ends. `kill()` lives in `pipeline/fakes.py`."""
+        return True
+
     def pong(self) -> None:
         self.pongs += 1
 
@@ -275,17 +280,27 @@ def test_a_venue_that_stops_answering_without_saying_so_is_treated_as_dropped() 
 
 
 @pytest.mark.trace("REQ-WP-051")
-def test_a_venue_that_announces_its_closes_is_not_second_guessed() -> None:
-    """OKX says why it closed, with a code and a message, so inferring a drop
-    from silence would be this session inventing an event the venue reports."""
+@pytest.mark.trace("REQ-WP-078")
+def test_a_venue_that_announces_its_closes_is_still_reconnected_when_it_goes_quiet() -> None:
+    """Formerly `test_a_venue_that_announces_its_closes_is_not_second_guessed`.
+
+    That test held that OKX says why it closed, with a code and a message, "so inferring
+    a drop from silence would be this session inventing an event the venue reports". The
+    venue does report it. Nothing read the report: the connector's reader thread ended on
+    the close and told the session nothing, and a session that waited for a close frame
+    that had already come waited for ever. A Binance daemon sat `Up` for four days.
+
+    Silence is now judged against its own limit for every venue. The close frame is
+    still announced; it is simply not the only way this session finds out.
+    """
     session, connector, clock = _session(OKX)
-    assert OKX.idle_timeout_ns is not None
+    assert OKX.idle_timeout_ns is not None and OKX.announces_close is True
 
     clock.advance_ns(OKX.idle_timeout_ns * 10)
     session.tick()
 
-    assert connector.closed == 0
-    assert session.metrics.silent_drops == 0
+    assert connector.closed == 1
+    assert session.metrics.silent_drops == 1
 
 
 @pytest.mark.trace("REQ-WP-051")

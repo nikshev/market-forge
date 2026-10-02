@@ -115,6 +115,10 @@ def _replayed_bars(tmp_path: Path) -> list:
         def send(self, payload: str) -> None:
             self._transport.send(payload)
 
+        @property
+        def alive(self) -> bool:
+            return True
+
         def pong(self) -> None:
             self._transport.pong()
 

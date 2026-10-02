@@ -1,126 +1,78 @@
-"""Tests for silence detector in IngestDaemon (REQ-WP-076).
-
-These tests are written FIRST and expected to FAIL because the silence detector
-is not yet implemented (T024a). They document the expected behaviour.
-"""
+"""Silence, judged through the daemon that carries it (REQ-WP-076, REQ-WP-078).
 
 # @trace: REQ-WP-076
+# @trace: REQ-WP-078
 
-import queue
-import tempfile
+The first version of this file asserted `hasattr(daemon, "_last_frame_ns")`: that an
+attribute existed, not that anything happened. It passed beside a Binance feed that sat
+silent for four days. These tests drive an `IngestDaemon` and read what the connector was
+asked to do and what the log said.
+"""
+
+from __future__ import annotations
+
+import logging
 
 import pytest
 
 from channelflow.bars.builder import BarBuilder
-from channelflow.connectors.session import BINANCE, FakeClock, StreamSession
-from channelflow.lakehouse import catalog as open_catalog
+from channelflow.connectors.session import OKX, SECOND_NS, FakeClock, StreamSession
 from channelflow.pipeline.archive import FrameArchive, LocalObjectStore
-from channelflow.pipeline.ingest import IngestDaemon, streams_for
-from channelflow.tables import bars as bars_table
+from channelflow.pipeline.ingest import IngestDaemon
+
+from .fakes import ControllableConnector
 
 
-class SilentConnector:
-    """Fake connector that accepts connection but never delivers frames."""
-
-    def __init__(self):
-        self._frames = queue.Queue()
-        self._connected = False
-        self._closed = False
-
-    def connect(self, streams):
-        self._connected = True
-
-    def send(self, payload):
-        pass
-
-    def pong(self):
-        pass
-
-    def close(self):
-        self._closed = True
-
-    @property
-    def frames(self):
-        return self._frames
-
-    def drain_frames(self) -> list[str]:
-        out = []
-        while True:
-            try:
-                out.append(self._frames.get_nowait())
-            except queue.Empty:
-                return out
+def _daemon(tmp_path):  # type: ignore[no-untyped-def]
+    clock = FakeClock(1_790_000_000 * SECOND_NS)
+    connector = ControllableConnector()
+    connector.now_ns = clock.now_ns
+    daemon = IngestDaemon(
+        session=StreamSession(
+            ("trades.BTC-USDT-SWAP",), policy=OKX, connector=connector, clock=clock
+        ),
+        connector=connector,
+        archive=FrameArchive(
+            store=LocalObjectStore(root=tmp_path), venue="okx", symbol="BTC-USDT-SWAP"
+        ),
+        builder=BarBuilder(timeframe_ns=60 * SECOND_NS, on_final=lambda bar: None),
+        venue="okx",
+        now_ns=clock.now_ns,
+    )
+    daemon.start()
+    return daemon, connector, clock
 
 
-class TestSilenceDetector:
-    """A connection that delivers no frames is reported within a configurable window."""
+@pytest.mark.trace("REQ-WP-076")
+@pytest.mark.trace("REQ-WP-078")
+def test_a_silent_connection_is_reported_with_the_venue_and_reconnected(
+    tmp_path, caplog: pytest.LogCaptureFixture
+) -> None:
+    daemon, connector, clock = _daemon(tmp_path)
+    caplog.set_level(logging.INFO)
 
-    @pytest.mark.trace("REQ-WP-076")
-    def test_silent_connection_reported(self):
-        """A connection that delivers nothing is reported with venue and symbol."""
-        connector = SilentConnector()
-        with tempfile.TemporaryDirectory() as tmpdir:
-            catalog = open_catalog(uri="sqlite:///:memory:", warehouse=tmpdir)
-            sink = bars_table.BarSink(table=bars_table.table_for(catalog))
-            builder = BarBuilder(timeframe_ns=60_000_000_000, on_final=sink)
-            archive = FrameArchive(
-                store=LocalObjectStore(root=tmpdir), venue="bybit", symbol="BTCUSDT"
-            )
+    clock.advance_ns(OKX.max_silence_ns + SECOND_NS)
+    daemon.step()
 
-            daemon = IngestDaemon(
-                session=StreamSession(
-                    streams=streams_for(["BTCUSDT"]),
-                    policy=BINANCE,
-                    connector=connector,
-                    clock=FakeClock(),
-                ),
-                connector=connector,
-                archive=archive,
-                builder=builder,
-                venue="bybit",
-                flush_bars=sink.flush,
-                bars_pending=lambda: sink.pending,
-            )
-            daemon.start()
+    assert connector.closed == 1 and len(connector.connects) == 2
+    said = [r.getMessage() for r in caplog.records if r.levelno >= logging.WARNING]
+    assert any("okx" in m and "silent" in m for m in said), said
 
-            # This test documents the expected behaviour:
-            # After a configurable silence window passes with no frames,
-            # a warning should be logged with venue, symbol, and silence duration.
-            # The feature is not yet implemented (T024a), so this test fails.
-            assert hasattr(daemon, "_last_frame_ns"), "silence detector not implemented"
 
-    @pytest.mark.trace("REQ-WP-076")
-    def test_normal_frame_resets_silence_timer(self):
-        """A frame arriving resets the silence timer; no warning fires."""
-        connector = SilentConnector()
-        with tempfile.TemporaryDirectory() as tmpdir:
-            catalog = open_catalog(uri="sqlite:///:memory:", warehouse=tmpdir)
-            sink = bars_table.BarSink(table=bars_table.table_for(catalog))
-            builder = BarBuilder(timeframe_ns=60_000_000_000, on_final=sink)
-            archive = FrameArchive(
-                store=LocalObjectStore(root=tmpdir), venue="bybit", symbol="BTCUSDT"
-            )
+@pytest.mark.trace("REQ-WP-076")
+@pytest.mark.trace("REQ-WP-078")
+def test_a_frame_arriving_resets_the_silence_timer(tmp_path) -> None:  # type: ignore[no-untyped-def]
+    daemon, connector, clock = _daemon(tmp_path)
+    limit = OKX.max_silence_ns
+    assert limit is not None
 
-            daemon = IngestDaemon(
-                session=StreamSession(
-                    streams=streams_for(["BTCUSDT"]),
-                    policy=BINANCE,
-                    connector=connector,
-                    clock=FakeClock(),
-                ),
-                connector=connector,
-                archive=archive,
-                builder=builder,
-                venue="bybit",
-                flush_bars=sink.flush,
-                bars_pending=lambda: sink.pending,
-            )
-            daemon.start()
+    clock.advance_ns(limit - 20 * SECOND_NS)
+    connector.push("a frame")
+    daemon.step()
+    clock.advance_ns(limit - 20 * SECOND_NS)  # the same again: past the limit from the start
+    daemon.step()
+    assert connector.closed == 0, "a frame must restart the silence timer"
 
-            # Push a frame - this should reset any silence tracking
-            connector._frames.put('{"trade": "data"}')
-            daemon.step()
-
-            # After a frame, the silence timer should be reset
-            # (implementation detail verified by not firing a warning)
-            assert hasattr(daemon, "_check_silence"), "silence check not implemented"
+    clock.advance_ns(21 * SECOND_NS)  # now past the limit since that frame
+    daemon.step()
+    assert connector.closed == 1

@@ -2,6 +2,7 @@
 Aggregate trades into event-time bars.
 
 # @trace: REQ-WP-005
+# @trace: REQ-WP-078
 
 Two properties here are the whole point, and both are absences rather than
 features.
@@ -112,7 +113,7 @@ class BarBuilder:
         return (event_time_ns // self.timeframe_ns) * self.timeframe_ns
 
     def add(self, trade: TradeEvent) -> None:
-        logger.info(
+        logger.debug(
             "BarBuilder.add called for trade %s at %s",
             trade.trade_id,
             trade.meta.event_time_ns,
@@ -161,7 +162,7 @@ class BarBuilder:
         In event-time order, so a watermark jump across several windows
         publishes them in the order they happened.
         """
-        logger.info(
+        logger.debug(
             "_finalize_ready: watermark_ns=%d, open_windows=%s, threshold_ns=%d",
             self._watermark_ns,
             list(self._open.keys()),
@@ -172,12 +173,12 @@ class BarBuilder:
             for start in self._open
             if self._watermark_ns >= start + self.timeframe_ns + self.grace_ns
         )
-        logger.info("_finalize_ready: ready=%s", ready)
+        logger.debug("_finalize_ready: ready=%s", ready)
         for start in ready:
             accumulator = self._open.pop(start)
             bar = self._to_bar(accumulator)
             self._finalized_before_ns = max(self._finalized_before_ns, start + self.timeframe_ns)
-            logger.info("Finalizing bar for window start=%d", start)
+            logger.debug("Finalizing bar for window start=%d", start)
             if self.on_final is not None:
                 self.on_final(bar)
 

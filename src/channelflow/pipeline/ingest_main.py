@@ -12,21 +12,18 @@ to start rather than filling an empty warehouse that reads as a quiet market.
 from __future__ import annotations
 
 import logging
+import math
 import os
 import time
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from importlib import import_module
 from pathlib import Path
 from typing import Any
 
 from channelflow.bars.builder import BarBuilder
 from channelflow.connectors.session import StreamSession
-from channelflow.connectors.venue import (
-    VENUE_REGISTRY,
-    bybit_subscribe_message,
-    okx_subscribe_message,
-)
+from channelflow.connectors.venue import VENUE_REGISTRY
 from channelflow.connectors.websocket import binance_stream_url
 from channelflow.lakehouse import catalog as open_catalog
 from channelflow.pipeline.archive import FrameArchive, LocalObjectStore, ObjectStore, S3ObjectStore
@@ -34,19 +31,62 @@ from channelflow.pipeline.ingest import IngestDaemon
 from channelflow.settings import MissingConfiguration, settings_from_env
 from channelflow.tables import bars as bars_table
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+LOG_LEVEL = "CHANNELFLOW_LOG_LEVEL"
+
+#: What `logging` accepts by name, and nothing it accepts by number or by alias: `10` and
+#: `trace` are refused rather than guessed at.
+_LEVELS: dict[str, int] = {
+    "DEBUG": logging.DEBUG,
+    "INFO": logging.INFO,
+    "WARNING": logging.WARNING,
+    "ERROR": logging.ERROR,
+    "CRITICAL": logging.CRITICAL,
+}
+
+
+def log_level_from_env(environ: Mapping[str, str] | None = None) -> int:
+    """The root log level: `CHANNELFLOW_LOG_LEVEL`, case-insensitive, `INFO` when unset."""
+    values = os.environ if environ is None else environ
+    raw = values.get(LOG_LEVEL, "").strip()
+    if not raw:
+        return logging.INFO
+    try:
+        return _LEVELS[raw.upper()]
+    except KeyError:
+        raise MissingConfiguration(
+            f"{LOG_LEVEL} is {raw!r}; expected one of {', '.join(_LEVELS)}"
+        ) from None
+
+
+def configure_logging(environ: Mapping[str, str] | None = None) -> None:
+    """Set up the root logger. Called from `main()`, not at import.
+
+    It used to run at import time, so importing this module -- as every test of it does --
+    gave the root logger a handler and a level before anything had asked for one.
+    """
+    logging.basicConfig(
+        level=log_level_from_env(environ),
+        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+    )
+
 
 SYMBOLS = "CHANNELFLOW_INGEST_SYMBOLS"
 ARCHIVE_URI = "CHANNELFLOW_ARCHIVE_URI"
 TIMEFRAME = "CHANNELFLOW_INGEST_TIMEFRAME_NS"
 INGEST_VENUE = "CHANNELFLOW_INGEST_VENUE"
-SILENCE_WINDOW_MULTIPLIER = "CHANNELFLOW_SILENCE_WINDOW_MULTIPLIER"
+#: How long a feed may be silent before the session reconnects, in seconds. Unset or blank
+#: leaves the venue's own policy value (60 s on the three live venues, with the measured
+#: basis written beside it in `connectors/session.py`).
+MAX_SILENCE_SECONDS = "CHANNELFLOW_INGEST_MAX_SILENCE_SECONDS"
+#: Retired. It multiplied `idle_timeout_ns`, which is how long the *venue* tolerates a
+#: silent *client* -- a different quantity on each venue, and for Binance a stream lifetime.
+#: Refused when set, so a deployment that still carries it does not believe it is honoured.
+RETIRED_SILENCE_MULTIPLIER = "CHANNELFLOW_SILENCE_WINDOW_MULTIPLIER"
 
 #: One minute. A chart shows its first candle a minute after the daemon starts
 #: rather than fifteen, which is the difference between believing it works and
 #: waiting to find out.
 DEFAULT_TIMEFRAME_NS = 60_000_000_000
-DEFAULT_SILENCE_WINDOW_MULTIPLIER = 2.0
 
 SYMBOLS_BYBIT = "CHANNELFLOW_INGEST_SYMBOLS_BYBIT"
 SYMBOLS_OKX = "CHANNELFLOW_INGEST_SYMBOLS_OKX"
@@ -66,7 +106,8 @@ class IngestSettings:
     symbols: tuple[str, ...]
     archive_uri: str
     timeframe_ns: int
-    silence_window_multiplier: float
+    #: `None` leaves the venue policy's own `max_silence_ns`.
+    max_silence_ns: int | None = None
 
 
 def ingest_settings_from_env(environ: Mapping[str, str] | None = None) -> IngestSettings:
@@ -88,18 +129,31 @@ def ingest_settings_from_env(environ: Mapping[str, str] | None = None) -> Ingest
     if timeframe <= 0:
         raise MissingConfiguration(f"{TIMEFRAME} must be positive, got {timeframe}")
 
-    raw_silence = values.get(SILENCE_WINDOW_MULTIPLIER, "").strip()
-    silence_window = float(raw_silence) if raw_silence else DEFAULT_SILENCE_WINDOW_MULTIPLIER
-    if silence_window <= 0:
+    if values.get(RETIRED_SILENCE_MULTIPLIER, "").strip():
         raise MissingConfiguration(
-            f"{SILENCE_WINDOW_MULTIPLIER} must be positive, got {silence_window}"
+            f"{RETIRED_SILENCE_MULTIPLIER} was removed: it multiplied a quantity that meant "
+            f"something different on each venue. Set {MAX_SILENCE_SECONDS} (seconds) instead, "
+            "or leave both unset for the venue's measured default"
         )
+
+    raw_silence = values.get(MAX_SILENCE_SECONDS, "").strip()
+    max_silence_ns: int | None = None
+    if raw_silence:
+        try:
+            seconds = float(raw_silence)
+        except ValueError:
+            seconds = math.nan
+        if not math.isfinite(seconds) or seconds <= 0:
+            raise MissingConfiguration(
+                f"{MAX_SILENCE_SECONDS} must be a positive number of seconds, got {raw_silence!r}"
+            )
+        max_silence_ns = int(seconds * 1_000_000_000)
 
     return IngestSettings(
         symbols=symbols,
         archive_uri=values[ARCHIVE_URI].strip(),
         timeframe_ns=timeframe,
-        silence_window_multiplier=silence_window,
+        max_silence_ns=max_silence_ns,
     )
 
 
@@ -138,20 +192,6 @@ def _resolve_connector(dotted: str) -> Any:
     return getattr(import_module(module_name), class_name)
 
 
-def _connector_for_venue(venue: str) -> tuple[str, str]:
-    """Build the connector and subscribe message for a venue."""
-    config = VENUE_REGISTRY[venue]
-    streams = config.stream_builder(["placeholder"])  # will be replaced with actual symbols
-    subscribe_msg = ""
-    if venue == "bybit":
-        subscribe_msg = bybit_subscribe_message(streams)
-    elif venue == "okx":
-        subscribe_msg = okx_subscribe_message(streams)
-    # For binance, subscribe_msg is empty (uses URL params).
-    # The registry already holds the dotted path; nothing to compose.
-    return config.connector, subscribe_msg
-
-
 def build_daemon(
     *,
     symbol: str,
@@ -183,23 +223,23 @@ def build_daemon(
     streams = config.stream_builder([symbol])
     connector_cls = _resolve_connector(config.connector)
 
-    if venue == "binance":
-        connector = connector_cls(url_for=binance_stream_url)
-    elif venue == "bybit":
-        connector = connector_cls(
-            url="wss://stream.bybit.com/v5/public/linear",
-            subscribe_msg=bybit_subscribe_message(streams),
-        )
-    elif venue == "okx":
-        connector = connector_cls(
-            url="wss://ws.okx.com/api/v5/market",
-            subscribe_msg=okx_subscribe_message(streams),
-        )
+    # Endpoint and subscription come from the registry and from nowhere else. They were
+    # once spelled out here per venue, which is where OKX's URL answered `HTTP 404` and its
+    # `instId` carried a stream-label prefix, beside tests that built the connector by hand.
+    if config.url is None:
+        connector = connector_cls(url_for=binance_stream_url)  # Binance subscribes by URL
     else:
-        raise MissingConfiguration(f"Unsupported venue: {venue}")
+        connector = connector_cls(url=config.url, subscribe_msg=config.subscribe_message([symbol]))
+
+    policy = config.policy
+    if settings.max_silence_ns is not None:
+        try:
+            policy = replace(policy, max_silence_ns=settings.max_silence_ns)
+        except ValueError as error:
+            raise MissingConfiguration(f"{MAX_SILENCE_SECONDS}: {error}") from error
 
     session = StreamSession(
-        streams=streams, policy=config.policy, connector=connector, clock=SystemClock()
+        streams=streams, policy=policy, connector=connector, clock=SystemClock()
     )
     prefix = settings.archive_uri.removeprefix("s3://").split("/", 1)
     return IngestDaemon(
@@ -219,11 +259,11 @@ def build_daemon(
         flush_bars=sink.flush,
         bars_pending=lambda: sink.pending,
         now_ns=lambda: time.time_ns(),
-        silence_window_multiplier=settings.silence_window_multiplier,
     )
 
 
 def main(argv: list[str] | None = None) -> int:
+    configure_logging()
     plane = settings_from_env()
     ingest = ingest_settings_from_env()
 

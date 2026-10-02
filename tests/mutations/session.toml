@@ -3,7 +3,7 @@
 # Patterns are TOML *literal* strings on purpose: the basic form treats a
 # trailing backslash as a line continuation and eats the next line's indentation.
 source = "src/channelflow/connectors/session.py"
-tests = "tests/unit/connectors"
+tests = ["tests/unit/connectors", "tests/unit/pipeline/test_session_reconnect.py", "tests/unit/pipeline/test_silence_detector.py"]
 
 [[mutation]]
 name = "bybit and okx payloads swapped"
@@ -26,24 +26,33 @@ replace = '''    ping_payload='{"op":"ping"}',
 
 [[mutation]]
 name = "silent drops not inferred"
-find = '''            and now - self._last_inbound_ns > idle'''
-replace = '''            and False'''
+find = '''        if limit is not None and silent_for > limit:'''
+replace = '''        if False:'''
+
 
 [[mutation]]
-name = "silent drops inferred everywhere"
-find = '''            and not self.policy.announces_close'''
-replace = '''            and True'''
+name = "silence is inferred only where a venue does not announce its closes (the old gate)"
+find = '''    if policy.max_silence_ns is not None:
+        return policy.max_silence_ns
+    if not policy.announces_close:'''
+replace = '''    if policy.max_silence_ns is not None and not policy.announces_close:
+        return policy.max_silence_ns
+    if not policy.announces_close:'''
+
 
 [[mutation]]
 name = "silent drops not counted"
-find = '''            if self._reconnect():
-                self.metrics.silent_drops += 1'''
-replace = '''            self._reconnect()'''
+find = '''        if kind == "silence":
+            self.metrics.silent_drops += 1'''
+replace = '''        if kind == "silence":
+            pass'''
+
 
 [[mutation]]
 name = "connect throttle ignored"
-find = '''        if since < self.policy.min_connect_interval_ns:'''
-replace = '''        if False and since < self.policy.min_connect_interval_ns:'''
+find = '''        if now < self._next_attempt_ns:'''
+replace = '''        if False and now < self._next_attempt_ns:'''
+
 
 [[mutation]]
 name = "throttled reconnects not counted"
@@ -68,8 +77,10 @@ replace = '''            pass'''
 
 [[mutation]]
 name = "inbound data does not reset the idle clock"
-find = '''        self._last_inbound_ns = self.clock.now_ns()'''
-replace = '''        pass'''
+find = '''        self._last_inbound_ns = now
+        if self._down_since_ns is not None:'''
+replace = '''        if self._down_since_ns is not None:'''
+
 
 [[mutation]]
 name = "a server ping is not answered"
@@ -80,11 +91,10 @@ replace = '''        self.on_frame()'''
 [[mutation]]
 name = "a reconnect does not need a snapshot"
 find = '''        self._needs_snapshot = True
-
-    def _reconnect'''
+        # The venue's connect limit: no second attempt inside it, whatever the reason.'''
 replace = '''        self._needs_snapshot = False
+        # The venue's connect limit: no second attempt inside it, whatever the reason.'''
 
-    def _reconnect'''
 
 [[mutation]]
 name = "connection failures not counted"
@@ -119,3 +129,79 @@ find = '''    ping_payload='{"method":"ping"}',
     announces_close=False,'''
 replace = '''    ping_payload='{"method":"ping"}',
     announces_close=True,'''
+
+# --- REQ-WP-078: each decision of the new reconnect, removed in turn -------------------
+#
+# The belief that sat in the old `tick` -- a venue that announces its closes needs no
+# second-guessing -- let a Binance feed sit dead for four days. These are the mutations
+# that put it, or any piece of its replacement, back.
+
+[[mutation]]
+name = "a dead reader is not noticed"
+find = '''        if not self.connector.alive:'''
+replace = '''        if False:'''
+
+[[mutation]]
+name = "the stream lifetime no longer reconnects"
+find = '''        if lifetime is not None and now - self._connected_at_ns >= lifetime:'''
+replace = '''        if False and lifetime is not None and now - self._connected_at_ns >= lifetime:'''
+
+[[mutation]]
+name = "the backoff never grows"
+find = '''            self.policy.min_connect_interval_ns * 2 ** (attempts - 1),'''
+replace = '''            self.policy.min_connect_interval_ns,'''
+
+[[mutation]]
+name = "the backoff has no ceiling"
+find = '''            self.policy.max_connect_backoff_ns,
+        )
+        self._next_attempt_ns = now + delay'''
+replace = '''            2**62,
+        )
+        self._next_attempt_ns = now + delay'''
+
+[[mutation]]
+name = "a refused connect escapes tick"
+find = '''        except Exception as error:
+            outcome = f"connect() failed: {error}"'''
+replace = '''        except KeyboardInterrupt as error:
+            outcome = f"connect() failed: {error}"'''
+
+[[mutation]]
+name = "connect() returning counts as recovery"
+find = '''        self._needs_snapshot = True
+        # The venue's connect limit: no second attempt inside it, whatever the reason.'''
+replace = '''        self._needs_snapshot = True
+        self._attempts = 0
+        # The venue's connect limit: no second attempt inside it, whatever the reason.'''
+
+[[mutation]]
+name = "a recovery is never logged"
+find = '''        if self._down_since_ns is not None:
+            logger.info('''
+replace = '''        if False:
+            logger.info('''
+
+[[mutation]]
+name = "the first sign of an outage is not logged"
+find = '''            logger.warning("%s connection down: %s", self.policy.venue, why)'''
+replace = '''            pass'''
+
+[[mutation]]
+name = "every failed attempt is logged"
+find = '''        elif attempts >= 2 and attempts & (attempts - 1) == 0:'''
+replace = '''        elif attempts >= 2:'''
+
+[[mutation]]
+name = "a reader that ended is not counted"
+find = '''        elif kind == "reader":
+            self.metrics.dead_readers += 1'''
+replace = '''        elif kind == "reader":
+            pass'''
+
+[[mutation]]
+name = "an explicit silence limit is ignored"
+find = '''    if policy.max_silence_ns is not None:
+        return policy.max_silence_ns'''
+replace = '''    if False:
+        return policy.max_silence_ns'''

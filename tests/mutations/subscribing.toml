@@ -1,0 +1,62 @@
+# The mutation sweep for the reader Bybit and OKX share (REQ-WP-078).
+#
+# OKX's reader swallowed every exception for six days. Each mutation here puts back one of
+# the silences that cost that, or removes the fact the session polls.
+#
+# Patterns are TOML *literal* strings on purpose: the basic form treats a trailing
+# backslash as a line continuation and eats the next line's indentation.
+source = "src/channelflow/connectors/subscribing.py"
+tests = ["tests/unit/connectors/test_reader_endings.py", "tests/unit/connectors/test_bybit_connector.py", "tests/unit/connectors/test_okx_connector.py"]
+
+[[mutation]]
+name = "a refusal from the venue is not logged"
+find = '''                        if refusal is not None:
+                            logger.warning("%s rejected the request: %s", venue, refusal)'''
+replace = '''                        if refusal is not None:
+                            pass'''
+
+[[mutation]]
+name = "a refusal frame is dropped instead of queued for the archive"
+find = '''                        self._frames.put(frame)
+            except Exception as error:'''
+replace = '''                        if refusal is None:
+                            self._frames.put(frame)
+            except Exception as error:'''
+
+[[mutation]]
+name = "a socket that will not open is silent"
+find = '''                else:
+                    logger.warning(
+                        "%s: could not open %s: %s: %s",'''
+replace = '''                elif False:
+                    logger.warning(
+                        "%s: could not open %s: %s: %s",'''
+
+[[mutation]]
+name = "a failure mid-stream is silent"
+find = '''                elif opened:
+                    logger.warning("%s: reader ended: %s: %s", venue, type(error).__name__, error)'''
+replace = '''                elif opened:
+                    pass'''
+
+[[mutation]]
+name = "a close this process asked for is reported as a failure"
+find = '''                if stop.is_set():
+                    logger.info("%s: reader stopped", venue)'''
+replace = '''                if False:
+                    logger.info("%s: reader stopped", venue)'''
+
+[[mutation]]
+name = "alive ignores a stop"
+find = '''        return thread is not None and thread.is_alive() and not self._stop.is_set()'''
+replace = '''        return thread is not None and thread.is_alive()'''
+
+[[mutation]]
+name = "alive is true whether or not the reader is running"
+find = '''        return thread is not None and thread.is_alive() and not self._stop.is_set()'''
+replace = '''        return not self._stop.is_set()'''
+
+[[mutation]]
+name = "the subscription message is never sent"
+find = '''                    ws.send(self._subscribe_msg)'''
+replace = '''                    pass'''

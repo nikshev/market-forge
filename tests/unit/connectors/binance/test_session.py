@@ -33,6 +33,11 @@ class FakeConnector:
     def send(self, payload: str) -> None:
         self.sent.append(payload)
 
+    @property
+    def alive(self) -> bool:
+        """A fake whose reader never ends. `kill()` lives in `pipeline/fakes.py`."""
+        return True
+
     def pong(self) -> None:
         self.pongs += 1
 
@@ -64,11 +69,16 @@ def test_it_reconnects_before_the_venue_closes_the_stream() -> None:
     session.start()
     assert len(connector.connects) == 1
 
+    # A healthy feed: frames keep arriving. Without them this test asserted that a Binance
+    # connection silent for 24 hours stays connected until its lifetime -- the belief that
+    # let a dead feed sit `Up` for four days. Silence now has its own limit.
     clock.advance_ns(STREAM_LIFETIME_NS - 1)
+    session.on_frame()
     session.tick()
     assert len(connector.connects) == 1
 
     clock.advance_ns(2)
+    session.on_frame()
     session.tick()
     assert len(connector.connects) == 2, "must reconnect before the venue's limit"
 
