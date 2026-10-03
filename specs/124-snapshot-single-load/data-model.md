@@ -22,7 +22,7 @@ The commit sequence number this system calls `snapshot_id`; Iceberg's own id is 
 | name | takes | returns |
 |---|---|---|
 | `_ids_of(table)` | a loaded table | the snapshot numbers it holds, oldest first |
-| `_rows_at(table, snapshot_id)` | a loaded table, a number | the rows of that snapshot, in commit order (what `read` did after resolving) |
+| `_in_commit_order(table, snapshot_id)` | a loaded table, a number | the rows of that snapshot, in commit order (existing; what `read` did after resolving) |
 | `_describe(table, snapshot_id)` | a loaded table, a number | `TableSnapshot`, from the same table |
 
 Public operations — `read`, `current`, `snapshot`, `append` — each hold one loaded table and call

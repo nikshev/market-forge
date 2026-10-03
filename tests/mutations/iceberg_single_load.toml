@@ -1,0 +1,70 @@
+# The mutation sweep for REQ-WP-079: a snapshot read resolves its snapshot against one load.
+#
+# Each mutation puts back one of the second loads the change removed, or removes one of the checks
+# it kept, and a test must notice. The load-count tests are what catch the first four: a second
+# load that happens to be harmless on a quiet table is still a second load.
+#
+# Patterns are TOML *literal* strings on purpose: the basic form treats a trailing
+# backslash as a line continuation and eats the next line's indentation.
+source = "src/channelflow/lakehouse/iceberg.py"
+tests = ["tests/unit/lakehouse/test_single_load.py", "tests/unit/lakehouse/test_iceberg.py"]
+
+[[mutation]]
+name = "read takes the newest number from a second load"
+find = '''        if snapshot_id is None:
+            ids = self._ids_of(table)'''
+replace = '''        if snapshot_id is None:
+            ids = self.snapshot_ids()'''
+
+[[mutation]]
+name = "current takes the list from a second load"
+find = '''        ids = self._ids_of(table)
+        return self._describe(table, ids[-1]) if ids else None'''
+replace = '''        ids = self.snapshot_ids()
+        return self._describe(table, ids[-1]) if ids else None'''
+
+[[mutation]]
+name = "snapshot checks membership against a second load"
+find = '''        ids = self._ids_of(table) if table is not None else ()
+        if table is None or snapshot_id not in ids:'''
+replace = '''        ids = self.snapshot_ids()
+        if table is None or snapshot_id not in ids:'''
+
+[[mutation]]
+name = "append describes whatever is newest after it returns"
+find = '''        return self._describe(table, self._ids_of(table)[-1])'''
+replace = '''        return self._describe(table, self.snapshot_ids()[-1])'''
+
+[[mutation]]
+name = "the refusal lists the snapshots of a later load"
+find = '''            f"{self.name} has no snapshot {snapshot_id}; it has {self._ids_of(table) or 'none'}"'''
+replace = '''            f"{self.name} has no snapshot {snapshot_id}; it has {self.snapshot_ids() or 'none'}"'''
+
+[[mutation]]
+name = "a snapshot that is not there is described anyway"
+find = '''        if table is None or snapshot_id not in ids:'''
+replace = '''        if table is None:'''
+
+[[mutation]]
+name = "describing a snapshot reads the table again"
+find = '''        rows = self._in_commit_order(table, snapshot_id)
+        column = self.schema.event_time_column'''
+replace = '''        rows = self.read(snapshot_id=snapshot_id)
+        column = self.schema.event_time_column'''
+
+[[mutation]]
+name = "a pinned read lists the snapshots it does not use"
+find = '''        if snapshot_id is None:
+            ids = self._ids_of(table)
+            if not ids:
+                return self.schema.arrow().empty_table()
+            wanted = ids[-1]
+        else:
+            wanted = snapshot_id'''
+replace = '''        ids = self.snapshot_ids()
+        if snapshot_id is None:
+            if not ids:
+                return self.schema.arrow().empty_table()
+            wanted = ids[-1]
+        else:
+            wanted = snapshot_id'''

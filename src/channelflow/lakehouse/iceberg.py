@@ -3,6 +3,7 @@
 # @trace: REQ-WP-039
 # @trace: REQ-STORE-001
 # @trace: REQ-WP-041
+# @trace: REQ-WP-079
 
 [[ADR-002]] chose "Parquet on S3-compatible object storage with Iceberg table
 semantics"; `table.py` implements those semantics by hand and [[ADR-060]]
@@ -211,14 +212,27 @@ class IcebergTable:
         table = self._table()
         if table is None:
             return ()
+        return self._ids_of(table)
+
+    @staticmethod
+    def _ids_of(table: _IcebergTable) -> tuple[int, ...]:
+        """The snapshot numbers of **one loaded table**, oldest first.
+
+        Every operation that names a snapshot loads the table once and asks it, here, and never
+        asks the catalog again ([[REQ-WP-079]]). A second load can hold a commit the first does
+        not, and a number taken from one and looked up in the other is the `NoSuchSnapshot` the
+        worker and the resample job logged fourteen times in thirteen hours.
+        """
         return tuple(sorted(int(s.sequence_number or 0) for s in table.metadata.snapshots))
 
     def snapshot(self, snapshot_id: int) -> TableSnapshot:
-        if snapshot_id not in self.snapshot_ids():
+        table = self._table()
+        ids = self._ids_of(table) if table is not None else ()
+        if table is None or snapshot_id not in ids:
             raise NoSuchSnapshot(
-                f"{self.name} has no snapshot {snapshot_id}; it has {self.snapshot_ids() or 'none'}"
+                f"{self.name} has no snapshot {snapshot_id}; it has {ids or 'none'}"
             )
-        return self._describe(snapshot_id)
+        return self._describe(table, snapshot_id)
 
     def current(self) -> TableSnapshot | None:
         """The newest snapshot, or `None` for a table nothing has committed to.
@@ -227,8 +241,11 @@ class IcebergTable:
         one whose latest commit holds no rows are different facts -- and the
         second cannot exist here, because an empty append is refused.
         """
-        ids = self.snapshot_ids()
-        return self._describe(ids[-1]) if ids else None
+        table = self._table()
+        if table is None:
+            return None
+        ids = self._ids_of(table)
+        return self._describe(table, ids[-1]) if ids else None
 
     def read(self, *, snapshot_id: int | None = None, as_of_ns: int | None = None) -> pa.Table:
         """The rows of a snapshot, optionally as of an instant.
@@ -241,8 +258,8 @@ class IcebergTable:
         if table is None:
             return self.schema.arrow().empty_table()
 
-        ids = self.snapshot_ids()
         if snapshot_id is None:
+            ids = self._ids_of(table)
             if not ids:
                 return self.schema.arrow().empty_table()
             wanted = ids[-1]
@@ -354,7 +371,11 @@ class IcebergTable:
                 properties=dict(METADATA_PRUNING),
             )
         table.append(self._arrow(rows))
-        return self._describe(self.snapshot_ids()[-1])
+        # The table object the commit refreshed, not a fresh load: pyiceberg sets
+        # `table.metadata` to the commit's own response, so its newest snapshot is the one this
+        # call wrote. A new load would name whichever commit is newest by now, which under
+        # concurrent writers can be somebody else's, and raise nothing to say so.
+        return self._describe(table, self._ids_of(table)[-1])
 
     # --- what retention needs ----------------------------------------------
 
@@ -515,16 +536,16 @@ class IcebergTable:
             if int(snapshot.sequence_number or 0) == snapshot_id:
                 return int(snapshot.snapshot_id)
         raise NoSuchSnapshot(
-            f"{self.name} has no snapshot {snapshot_id}; it has {self.snapshot_ids() or 'none'}"
+            f"{self.name} has no snapshot {snapshot_id}; it has {self._ids_of(table) or 'none'}"
         )
 
-    def _describe(self, snapshot_id: int) -> TableSnapshot:
-        table = self._require_table()
+    def _describe(self, table: _IcebergTable, snapshot_id: int) -> TableSnapshot:
+        """Describe a snapshot of `table`, using nothing but `table`."""
         iceberg = next(
             s for s in table.metadata.snapshots if int(s.sequence_number or 0) == snapshot_id
         )
-        earlier = [i for i in self.snapshot_ids() if i < snapshot_id]
-        rows = self.read(snapshot_id=snapshot_id)
+        earlier = [i for i in self._ids_of(table) if i < snapshot_id]
+        rows = self._in_commit_order(table, snapshot_id)
         column = self.schema.event_time_column
         return TableSnapshot(
             snapshot_id=snapshot_id,

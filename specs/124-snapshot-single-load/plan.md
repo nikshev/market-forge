@@ -31,7 +31,11 @@ with no error at all. That is the same defect in a form no log would show, so it
 | `read(snapshot_id=2)` | 2 | 1 |
 | `current()` | 5 | 1 |
 | `snapshot(2)` | 5 | 1 |
-| `append([row])` | 7 | 1 |
+| `append([row])` | 7 (6 in the unit test) | 1 |
+
+The planning script patches the shared catalog object, so it also counts pyiceberg's own refresh at
+commit; the unit test counts only the loads `IcebergTable` makes. Hence 7 and 6, and after the change
+2 and 1.
 
 `read(snapshot_id=2)` loads twice although it does not need the list: `snapshot_ids()` is called
 before the branch that ignores it.
@@ -98,9 +102,10 @@ Re-checked after design: no violations; Complexity Tracking is empty.
 
 ## Approach and what was rejected
 
-**Chosen — thread the loaded table through private helpers.** A pure `_ids_of(table)`; a
-`_rows_at(table, snapshot_id)` holding what `read` did after resolving; `_describe(table,
-snapshot_id)`; public operations load once and call these. `append` describes from the table object
+**Chosen — thread the loaded table through private helpers.** A pure `_ids_of(table)`; `_describe(table,
+snapshot_id)`; and the existing `_in_commit_order(table, id)` for the rows (what `read` did after
+resolving, so no new function was needed -- the plan first named a `_rows_at`); public operations
+load once and call these. `append` describes from the table object
 pyiceberg refreshed at its commit.
 
 **Rejected — catch `NoSuchSnapshot` and read again** (in callers, or inside `read`). It hides the
