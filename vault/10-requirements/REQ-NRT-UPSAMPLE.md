@@ -80,7 +80,7 @@ can detect.
 
 <!-- trace:begin -->
 - **Specs:** [[SPEC-125-no-unfinalized-upsample]]
-- **Outcomes:** [[OUT-2026-10-03-plan-no-unfinalized-upsample]], [[OUT-2026-10-03-spec-no-unfinalized-upsample]]
+- **Outcomes:** [[OUT-2026-10-03-plan-no-unfinalized-upsample]], [[OUT-2026-10-03-spec-no-unfinalized-upsample]], [[OUT-2026-10-03-tasks-no-unfinalized-upsample]]
 <!-- trace:end -->
 
 ## Notes

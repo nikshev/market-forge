@@ -927,6 +927,7 @@ graph LR
   OUT_2026_10_03_plan_snapshot_single_load["OUT-2026-10-03-plan-snapshot-single-load"]
   OUT_2026_10_03_spec_no_unfinalized_upsample["OUT-2026-10-03-spec-no-unfinalized-upsample"]
   OUT_2026_10_03_spec_snapshot_single_load["OUT-2026-10-03-spec-snapshot-single-load"]
+  OUT_2026_10_03_tasks_no_unfinalized_upsample["OUT-2026-10-03-tasks-no-unfinalized-upsample"]
   OUT_2026_10_03_tasks_snapshot_single_load["OUT-2026-10-03-tasks-snapshot-single-load"]
   PRD["PRD: ChannelFlow PRD"]
   REQ_API_001["REQ-API-001: Read API for bars, channel snapshots, signals and live updates"]
@@ -5523,6 +5524,7 @@ graph LR
   OUT_2026_10_03_plan_snapshot_single_load -.->|RECORDS| REQ_WP_079
   OUT_2026_10_03_spec_no_unfinalized_upsample -.->|RECORDS| REQ_NRT_UPSAMPLE
   OUT_2026_10_03_spec_snapshot_single_load -.->|RECORDS| REQ_WP_079
+  OUT_2026_10_03_tasks_no_unfinalized_upsample -.->|RECORDS| REQ_NRT_UPSAMPLE
   OUT_2026_10_03_tasks_snapshot_single_load -.->|RECORDS| REQ_WP_079
   SPEC_001_traceability_tooling ==>|SPECIFIES| REQ_INFRA_001
   SPEC_002_project_bootstrap ==>|SPECIFIES| REQ_WP_001

@@ -1,0 +1,26 @@
+## RED — REQ-NRT-UPSAMPLE, before any source change (2026-10-03)
+$ .venv/bin/python -m pytest tests/unit/test_upsample_seam.py -q
+E       AssertionError: a bar computed from four of five minutes
+E       assert (Bar(venue='b..._final=True),) == ()
+E         
+E         Left contains one more item: Bar(venue='binance', symbol='BTCUSDT', timeframe_ns=300000000000, open_time_ns=0, close_time_ns=300000000000, open=Dec...cimal('100'), high_time_ns=30000000000, 
+E         Use -v to get more diff
+tests/unit/test_upsample_seam.py:63: AssertionError
+E       AssertionError: assert 'duplicated' in 'window 0 at 5m has 6 of 5 source 1m bars'
+E        +  where 'window 0 at 5m has 6 of 5 source 1m bars' = Refusal(open_time_ns=0, expected=5, present=6, reason='window 0 at 5m has 6 of 5 source 1m bars').reason
+tests/unit/test_upsample_seam.py:79: AssertionError
+E       AssertionError: assert (Bar(venue='b..._final=True),) == ()
+E         
+E         Left contains one more item: Bar(venue='binance', symbol='BTCUSDT', timeframe_ns=300000000000, open_time_ns=0, close_time_ns=300000000000, open=Dec...cimal('100'), high_time_ns=30000000000, 
+E         Use -v to get more diff
+tests/unit/test_upsample_seam.py:88: AssertionError
+E       AssertionError: assert ['complete', ...ne not final'] == ['complete']
+E         
+E         Left contains 2 more items, first extra item: 'repeated with a gap'
+E         Use -v to get more diff
+tests/unit/test_upsample_seam.py:126: AssertionError
+FAILED tests/unit/test_upsample_seam.py::test_a_repeated_minute_does_not_stand_in_for_a_missing_one
+FAILED tests/unit/test_upsample_seam.py::test_a_window_whose_minutes_are_all_there_but_one_repeated_is_refused
+FAILED tests/unit/test_upsample_seam.py::test_a_window_with_a_source_bar_that_is_not_final_is_refused_and_says_which
+FAILED tests/unit/test_upsample_seam.py::test_of_the_five_window_shapes_exactly_one_is_a_bar_and_exactly_three_are_refused
+4 failed, 7 passed in 160.28s (0:02:40)

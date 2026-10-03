@@ -116,8 +116,10 @@ of each minute-boundary instant strictly inside its window, and at its close.
 **Why this priority**: the second half, and the only one stated as a property of the whole.
 
 **Independent Test**: over a day of one-minute bars resampled to every configured timeframe and
-stored, for every minute `t` of the day, read every timeframe as of `t` and check every bar returned
-closed at or before `t`.
+stored, read every timeframe as of a set of instants `t` and check every bar returned closed at or
+before `t`. The instants are every seventh minute of the day **and** the instant before, at and after
+every window boundary of every timeframe up to a day: a leak shows at a boundary, and every minute of
+the day would be 1,440 reads for no extra evidence.
 
 **Acceptance Scenarios**:
 
@@ -186,7 +188,7 @@ sweep that reports each as caught by a test.
   one not final; one missing; open), the number producing a bar is exactly one, and the number
   producing a refusal is exactly three (today: three produce a bar).
 - **SC-002**: Over a day of source bars and every configured timeframe, the count of bars returned
-  as of `t` that close after `t` is zero for every `t`.
+  as of `t` that close after `t` is zero at every instant tested (the set named in User Story 3).
 - **SC-003**: Each of at least four deliberately leaking resamplers is caught and named by the
   mutation sweep; the number surviving without a recorded reason is zero.
 - **SC-004**: The whole suite for this requirement runs in under one minute with no network.
