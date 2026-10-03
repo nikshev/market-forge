@@ -66,7 +66,7 @@ two are told apart.
 
 **Live proofs.**
 
-- OKX connects and delivers: 17 OKX rows in `bars` (newest closing 15:53 UTC when read at 16:01,
+- OKX connects and delivers (the first bar opens 2026-10-02 15:38 UTC; read through the API the next morning, 810 bars with no restart of any ingest service overnight): 17 OKX rows in `bars` (newest closing 15:53 UTC when read at 16:01,
   the sink flushes in batches) and 22 objects under `raw/cex/okx/BTC-USDT-SWAP/` in the hour
   before the last check, each holding 800-2,000 frames.
 - Archive layout, one hour after the recreate: 59 / 60 / 59 / 59 objects for Binance BTC / ETH /
@@ -114,6 +114,13 @@ clearing a replacement reader's socket survived until a test started one reader 
 - `channelflow.tables.bars` logs `BarSink.flush called` at INFO once per closed bar (about one
   line a minute per service, inside the 6,944 B/min ceiling at 136 B/min). Demoting it would be
   a one-word change; it was left because it is the only line that says the sink is alive.
+- **Found the next morning, not caused by this change and not fixed by it:** `resample` exited
+  once at 01:02 on 2026-10-03 with `NoSuchSnapshot: bars has no snapshot 4424` (`lakehouse/iceberg.py`
+  `_allocated`, reached from `bars.read_bars`) and compose restarted it. The ingest services log
+  21-50 `pyiceberg ... Commit failed due to a concurrent update, retrying` warnings each over the
+  night: five writers share the `bars` table. The crash reads as a race between choosing the
+  latest snapshot and resolving it against a table loaded again after a commit landed; that is
+  an inference from the traceback, not yet reproduced. It wants its own requirement.
 - Bucket versioning and reconnect metrics are out of scope by the spec (PRD §33's reconnect and
   stale-feed counts stay log events).
 - **Process mistakes worth recording.** The FakeS3 tests were written alongside the archive code
