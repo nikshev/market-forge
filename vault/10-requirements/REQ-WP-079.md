@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "§6.4, §7"
 prd_lines: "600-642, 786"
 phase: null
-status: specified
+status: planned
 depends_on: [REQ-WP-039]
 tags: [lakehouse, reliability]
 hard_gated: false
@@ -57,7 +57,7 @@ table, and it grows with the number of writers.
 
 <!-- trace:begin -->
 - **Specs:** [[SPEC-124-snapshot-single-load]]
-- **Outcomes:** [[OUT-2026-10-03-spec-snapshot-single-load]]
+- **Outcomes:** [[OUT-2026-10-03-plan-snapshot-single-load]], [[OUT-2026-10-03-spec-snapshot-single-load]]
 <!-- trace:end -->
 
 ## Notes

@@ -66,6 +66,8 @@ the read uses one version.
    description is of a snapshot that exists in the version read.
 3. **Given** the same table, **When** a snapshot is described by number, **Then** a number that
    exists in the version read is described and no other load can make it vanish.
+4. **Given** a writer whose commit is immediately followed by another process's, **When** the
+   first writer's `append` returns, **Then** the snapshot it returns is the one it wrote.
 
 ---
 
@@ -136,6 +138,8 @@ is what proves the single load.
   produces it.
 - **FR-008**: The test that proves FR-001 to FR-003 MUST fail against today's code for the stated
   reason (Principle XIV; the repository's RED discipline).
+- **FR-009**: The snapshot `append` returns MUST be the one that call committed, not the newest at
+  the time it returns. *(Added by planning: the same defect in a form that raises nothing.)*
 
 ### Key Entities
 
@@ -148,8 +152,9 @@ is what proves the single load.
 
 ### Measurable Outcomes
 
-- **SC-001**: Against a table that gains a commit between every two loads, 1,000 reads of the
-  newest snapshot raise no `NoSuchSnapshot` (today: every one does).
+- **SC-001**: Against a table that gains a commit between every two loads, 25 consecutive reads of
+  the newest snapshot raise no `NoSuchSnapshot` (today: every one does). *(25, not the 1,000 first
+  written: one race is already a proof and each real commit costs about 60 ms.)*
 - **SC-002**: After deployment, 24 hours of the five-writer stack leave zero `NoSuchSnapshot` in
   the `worker` and `resample` logs (today: 14 in about 13 hours).
 - **SC-003**: Every existing lakehouse test passes unchanged; a pinned read before and after later
