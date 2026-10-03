@@ -1,6 +1,7 @@
 """PRD §29.5's `feature_snapshots`, and §29's `markets` and scored setups.
 
 # @trace: REQ-STORE-002
+# @trace: REQ-WP-081
 
     ## 29.5. `feature_snapshots`
     Prefer wide table for stable production feature set plus optional long table
@@ -182,6 +183,28 @@ def market_row(instrument: Instrument) -> dict[str, object]:
         "min_notional": instrument.min_notional,
         "contract_size": "" if instrument.contract_size is None else str(instrument.contract_size),
         "status": instrument.status,
+    }
+
+
+def unruled_market_row(venue: str, symbol: str, market_type: str) -> dict[str, object]:
+    """A market whose trading rules are not known: every rule column empty rather than zeroed.
+
+    `instrument_from_row` reads an empty tick size back as "no rules", which is what it is. One
+    definition, used by the API's `add_market` and by ingest's registration ([[REQ-WP-081]]): a
+    market
+    with no rules written two ways would be two things that happen to agree today.
+    """
+    return {
+        "venue": venue,
+        "symbol": symbol,
+        "market_type": market_type,
+        "base_asset": "",
+        "quote_asset": "",
+        "tick_size": Decimal(0),
+        "step_size": Decimal(0),
+        "min_notional": Decimal(0),
+        "contract_size": "",
+        "status": "",
     }
 
 

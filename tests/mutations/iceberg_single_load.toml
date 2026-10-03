@@ -7,7 +7,11 @@
 # Patterns are TOML *literal* strings on purpose: the basic form treats a trailing
 # backslash as a line continuation and eats the next line's indentation.
 source = "src/channelflow/lakehouse/iceberg.py"
-tests = ["tests/unit/lakehouse/test_single_load.py", "tests/unit/lakehouse/test_iceberg.py"]
+tests = [
+    "tests/unit/lakehouse/test_single_load.py",
+    "tests/unit/lakehouse/test_iceberg.py",
+    "tests/unit/lakehouse/test_concurrent_create.py",
+]
 
 [[mutation]]
 name = "read takes the newest number from a second load"
@@ -68,3 +72,9 @@ replace = '''        ids = self.snapshot_ids()
             wanted = ids[-1]
         else:
             wanted = snapshot_id'''
+
+# REQ-WP-081: a writer that loses the race to create a table uses the table that won.
+[[mutation]]
+name = "a writer that loses the race to create the table fails"
+find = '''            except TableAlreadyExistsError:'''
+replace = '''            except KeyError:'''

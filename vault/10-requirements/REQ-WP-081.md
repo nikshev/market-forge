@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "§27.1, §28.1, §6.2"
 prd_lines: "4388-4400, 4461-4475, 405-420"
 phase: null
-status: planned
+status: implemented
 depends_on: [REQ-WP-021, REQ-WP-075, REQ-WP-076]
 tags: [markets, overview, ingest]
 hard_gated: false
@@ -67,7 +67,42 @@ continues. The registration is retried the next time the process starts, and not
 
 <!-- trace:begin -->
 - **Specs:** [[SPEC-127-markets-registered]]
-- **Outcomes:** [[OUT-2026-10-03-plan-markets-registered]], [[OUT-2026-10-03-spec-markets-registered]], [[OUT-2026-10-03-tasks-markets-registered]]
+- **Tests:**
+    - `tests/unit/connectors/test_market_types.py::test_binance_is_spot_because_its_stream_is_the_spot_stream`
+    - `tests/unit/connectors/test_market_types.py::test_bybit_is_perp_because_its_endpoint_is_the_linear_one`
+    - `tests/unit/connectors/test_market_types.py::test_every_venue_in_the_registry_names_a_market_type`
+    - `tests/unit/connectors/test_market_types.py::test_okx_reads_its_instrument_not_its_venue[BTC-USDT-SWAP-perp]`
+    - `tests/unit/connectors/test_market_types.py::test_okx_reads_its_instrument_not_its_venue[BTC-USDT-spot]`
+    - `tests/unit/connectors/test_market_types.py::test_okx_reads_its_instrument_not_its_venue[ETH-USDT-SWAP-perp]`
+    - `tests/unit/connectors/test_market_types.py::test_okx_refuses_an_instrument_it_does_not_recognise_rather_than_guess[BTC-USDT-240329]`
+    - `tests/unit/connectors/test_market_types.py::test_okx_refuses_an_instrument_it_does_not_recognise_rather_than_guess[BTC-USDT-SWAP-X]`
+    - `tests/unit/connectors/test_market_types.py::test_okx_refuses_an_instrument_it_does_not_recognise_rather_than_guess[BTCUSDT]`
+    - `tests/unit/connectors/test_market_types.py::test_okx_refuses_an_instrument_it_does_not_recognise_rather_than_guess[]`
+    - `tests/unit/connectors/test_market_types.py::test_the_endpoint_table_would_notice_a_futures_binance`
+    - `tests/unit/lakehouse/test_concurrent_create.py::test_the_writer_that_lost_the_race_returns_its_own_snapshot`
+    - `tests/unit/lakehouse/test_concurrent_create.py::test_writers_racing_to_create_the_same_table_all_land`
+    - `tests/unit/pipeline/test_market_registration.py::test_a_failing_registration_is_one_warning_naming_venue_and_symbol_and_ingest_runs`
+    - `tests/unit/pipeline/test_market_registration.py::test_a_key_held_with_trading_rules_is_recognised_and_not_overwritten`
+    - `tests/unit/pipeline/test_market_registration.py::test_an_instrument_okx_does_not_recognise_is_a_warning_and_ingest_runs`
+    - `tests/unit/pipeline/test_market_registration.py::test_an_unreachable_catalog_is_the_same_soft_warning`
+    - `tests/unit/pipeline/test_market_registration.py::test_five_keys_registered_at_once_end_with_five_rows`
+    - `tests/unit/pipeline/test_market_registration.py::test_register_softly_reports_what_it_did_and_never_raises`
+    - `tests/unit/pipeline/test_market_registration.py::test_registering_twice_adds_nothing`
+    - `tests/unit/pipeline/test_market_registration.py::test_registering_writes_one_row_that_reads_back_with_no_instrument`
+    - `tests/unit/pipeline/test_market_registration.py::test_ten_starts_leave_one_row_for_the_key`
+    - `tests/unit/pipeline/test_market_registration.py::test_the_row_carries_the_type_the_registry_gives_that_venue[binance-BTCUSDT-spot]`
+    - `tests/unit/pipeline/test_market_registration.py::test_the_row_carries_the_type_the_registry_gives_that_venue[bybit-BTCUSDT-perp]`
+    - `tests/unit/pipeline/test_market_registration.py::test_the_row_carries_the_type_the_registry_gives_that_venue[okx-BTC-USDT-SWAP-perp]`
+    - `tests/unit/pipeline/test_market_registration.py::test_the_row_carries_the_type_the_registry_gives_that_venue[okx-BTC-USDT-spot]`
+    - `tests/unit/pipeline/test_market_registration.py::test_the_row_is_exactly_what_the_repository_writes_for_a_market_without_rules`
+    - `tests/unit/pipeline/test_market_registration.py::test_two_symbols_of_one_venue_are_both_registered`
+- **Code:**
+    - `src/channelflow/api/lakehouse_repository.py`
+    - `src/channelflow/connectors/venue.py`
+    - `src/channelflow/lakehouse/iceberg.py`
+    - `src/channelflow/pipeline/ingest_main.py`
+    - `src/channelflow/tables/features.py`
+- **Outcomes:** [[OUT-2026-10-03-implement-markets-registered]], [[OUT-2026-10-03-plan-markets-registered]], [[OUT-2026-10-03-spec-markets-registered]], [[OUT-2026-10-03-tasks-markets-registered]]
 <!-- trace:end -->
 
 ## Notes
@@ -77,3 +112,12 @@ Human territory. Never machine-rewritten.
 Out of scope: trading rules for Bybit and OKX; scores and ranking (an unscored market sorts after a
 scored one and carries nulls, as [[REQ-WP-075]] already says); DEX markets; removing a market that is
 no longer ingested.
+
+### 2026-10-03: what building it found
+
+Five daemons started together on an empty catalog and **four lost a race to create the table**
+(`TableAlreadyExistsError` out of `IcebergTable.append`), which this requirement's own soft-failure rule
+would have turned into four warnings and four unlisted markets after every deploy. Found by the thread
+test, fixed in `append` (a writer that loses the race uses the table that won), and tested without threads
+by forcing the interleaving. Live: five markets listed on 2026-10-03 at 17:06 UTC, binance spot and bybit
+and okx perp, and two restarts of one daemon left the list at five.

@@ -1,0 +1,14 @@
+# The call that makes a daemon register its market (REQ-WP-081): if it is dropped, the overview is empty
+# again and nothing else notices.
+#
+# Patterns are TOML *literal* strings on purpose: the basic form treats a trailing
+# backslash as a line continuation and eats the next line's indentation.
+source = "src/channelflow/pipeline/ingest_main.py"
+tests = ["tests/unit/pipeline/test_market_registration.py"]
+
+[[mutation]]
+name = "the daemon never registers its market"
+find = '''    register_own_market(
+        venue=venue,'''
+replace = '''    (lambda **_: None)(
+        venue=venue,'''

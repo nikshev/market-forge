@@ -1,0 +1,52 @@
+# The mutation sweep for REQ-WP-081: each ingest process registers the market it ingests.
+#
+# Each mutation is a way the overview could be wrong or ingest could be hurt: a market listed twice, a
+# market not listed, a false type on the first screen, a failure to register that stops a feed.
+#
+# Patterns are TOML *literal* strings on purpose: the basic form treats a trailing
+# backslash as a line continuation and eats the next line's indentation.
+source = "src/channelflow/pipeline/market_registration.py"
+tests = ["tests/unit/pipeline/test_market_registration.py", "tests/unit/connectors/test_market_types.py"]
+
+[[mutation]]
+name = "a key that is present is registered again"
+find = '''    if (venue, symbol) in held:
+        return False'''
+replace = '''    if False:
+        return False'''
+
+[[mutation]]
+name = "the key is the venue alone, so a venue's second symbol is never listed"
+find = '''    if (venue, symbol) in held:'''
+replace = '''    if venue in {held_venue for held_venue, _ in held}:'''
+
+[[mutation]]
+name = "every market is registered with the same type"
+find = '''        market_type = VENUE_REGISTRY[venue].market_type(symbol)'''
+replace = '''        market_type = "perp"'''
+
+[[mutation]]
+name = "a failure to register is not caught, so it stops the feed"
+find = '''    except Exception as error:  # noqa: BLE001 -- ingest is the product; the list is not'''
+replace = '''    except KeyboardInterrupt as error:'''
+
+[[mutation]]
+name = "an unreachable catalog is not caught, so it stops the feed"
+find = '''        catalog = open_catalog(uri=catalog_uri, warehouse=warehouse, **dict(storage))
+    except Exception as error:  # noqa: BLE001'''
+replace = '''        catalog = open_catalog(uri=catalog_uri, warehouse=warehouse, **dict(storage))
+    except KeyboardInterrupt as error:'''
+
+[[mutation]]
+name = "a registration that failed says nothing"
+find = '''    except Exception as error:  # noqa: BLE001 -- ingest is the product; the list is not
+        logger.warning(
+            "%s %s: could not register its market: %s: %s",
+            venue,
+            symbol,
+            type(error).__name__,
+            error,
+        )
+        return None'''
+replace = '''    except Exception as error:  # noqa: BLE001 -- ingest is the product; the list is not
+        return None'''

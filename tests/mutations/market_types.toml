@@ -1,0 +1,46 @@
+# The venue registry's market types (REQ-WP-081): the label on the first screen.
+#
+# Patterns are TOML *literal* strings on purpose: the basic form treats a trailing
+# backslash as a line continuation and eats the next line's indentation.
+source = "src/channelflow/connectors/venue.py"
+tests = ["tests/unit/connectors/test_market_types.py", "tests/unit/pipeline/test_market_registration.py"]
+
+[[mutation]]
+name = "Binance is called a perpetual"
+find = '''    stream is ever moved to the futures endpoint this must change with it, and
+    `tests/unit/connectors/test_market_types.py` fails until it does.
+    """
+    return "spot"'''
+replace = '''    stream is ever moved to the futures endpoint this must change with it, and
+    `tests/unit/connectors/test_market_types.py` fails until it does.
+    """
+    return "perp"'''
+
+[[mutation]]
+name = "Bybit is called spot"
+find = '''    """`perp`: the daemon connects to `/v5/public/linear`, Bybit's linear perpetuals."""
+    return "perp"'''
+replace = '''    """`perp`: the daemon connects to `/v5/public/linear`, Bybit's linear perpetuals."""
+    return "spot"'''
+
+[[mutation]]
+name = "an OKX spot pair is called a perpetual"
+find = '''    if len(parts) == 2 and parts[0] and parts[1]:
+        return "spot"'''
+replace = '''    if len(parts) == 2 and parts[0] and parts[1]:
+        return "perp"'''
+
+[[mutation]]
+name = "an OKX instrument of an unknown kind is guessed, not refused"
+find = '''    raise ValueError(
+        f"okx: cannot tell the market type of instrument {symbol!r}; "'''
+replace = '''    return "perp"
+    raise ValueError(
+        f"okx: cannot tell the market type of instrument {symbol!r}; "'''
+
+[[mutation]]
+name = "a venue is registered without a market type"
+find = '''        subscribe_message=okx_subscription,
+        market_type=okx_market_type,'''
+replace = '''        subscribe_message=okx_subscription,
+        market_type=None,'''

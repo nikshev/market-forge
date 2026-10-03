@@ -2,6 +2,7 @@
 
 # @trace: REQ-WP-076
 # @trace: REQ-WP-078
+# @trace: REQ-WP-081
 
 The ingest daemon currently knows only Binance. This module introduces a
 `VenueConnector` protocol that abstracts the connection lifecycle per venue,
@@ -82,6 +83,44 @@ class VenueConfig:
     #: `BTC-USDT-SWAP`; feeding the first to the second is what OKX rejected with
     #: "Subscribe failed". `None` where nothing is sent.
     subscribe_message: Callable[[Sequence[str]], str | None]
+    #: What market this venue's feed is, from the **symbol**: `spot` or `perp`
+    #: ([[REQ-WP-081]]). It is a property of the feed, so it lives here with the URL and not in the
+    #: code that registers a market -- a second home for a venue's facts is how two of them end up
+    #: disagreeing. A function of the symbol because OKX's URL says nothing and its instrument does.
+    market_type: Callable[[str], str]
+
+
+def binance_market_type(symbol: str) -> str:
+    """`spot`: the daemon connects to `stream.binance.com`, Binance's **spot** stream.
+
+    PRD §26.1's example alert says "Binance Perp", and this deployment's Binance data is not. If the
+    stream is ever moved to the futures endpoint this must change with it, and
+    `tests/unit/connectors/test_market_types.py` fails until it does.
+    """
+    return "spot"
+
+
+def bybit_market_type(symbol: str) -> str:
+    """`perp`: the daemon connects to `/v5/public/linear`, Bybit's linear perpetuals."""
+    return "perp"
+
+
+def okx_market_type(symbol: str) -> str:
+    """`perp` for `BASE-QUOTE-SWAP`, `spot` for `BASE-QUOTE`; anything else is refused.
+
+    OKX's endpoint is the same for every instrument and the instrument names its own kind. A guess
+    here would be a label on the first screen that nobody checked: a dated future
+    (`BTC-USDT-240329`) is neither of the two.
+    """
+    parts = symbol.split("-")
+    if len(parts) == 3 and parts[2] == "SWAP" and parts[0] and parts[1]:
+        return "perp"
+    if len(parts) == 2 and parts[0] and parts[1]:
+        return "spot"
+    raise ValueError(
+        f"okx: cannot tell the market type of instrument {symbol!r}; "
+        "expected BASE-QUOTE-SWAP (perp) or BASE-QUOTE (spot)"
+    )
 
 
 def binance_streams(symbols: Sequence[str]) -> tuple[str, ...]:
@@ -167,6 +206,7 @@ VENUE_REGISTRY = {
         policy=BINANCE,
         url=None,
         subscribe_message=binance_subscription,
+        market_type=binance_market_type,
     ),
     "bybit": VenueConfig(
         connector="channelflow.connectors.bybit.connector.BybitConnector",
@@ -174,6 +214,7 @@ VENUE_REGISTRY = {
         policy=BYBIT,
         url="wss://stream.bybit.com/v5/public/linear",
         subscribe_message=bybit_subscription,
+        market_type=bybit_market_type,
     ),
     "okx": VenueConfig(
         connector="channelflow.connectors.okx.connector.OkxConnector",
@@ -183,5 +224,6 @@ VENUE_REGISTRY = {
         # was, is a REST path prefix: connecting to it answers `HTTP 404`.
         url="wss://ws.okx.com:8443/ws/v5/public",
         subscribe_message=okx_subscription,
+        market_type=okx_market_type,
     ),
 }

@@ -2,6 +2,7 @@
 
 # @trace: REQ-STORE-002
 # @trace: REQ-API-001
+# @trace: REQ-WP-081
 
 [[ADR-019]] made the API depend on a protocol rather than a database, with a
 note saying the durable implementation "arrives with section 29 and replaces it
@@ -28,7 +29,6 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass, field
-from decimal import Decimal
 
 from channelflow.api.repositories import Extrema, FeaturePoint, Market, ScoredSetup
 from channelflow.bars import Bar
@@ -101,25 +101,9 @@ class LakehouseRepository:
         if instrument is not None:
             self._markets.append([features_table.market_row(instrument)])
             return
-        # No rules yet: the row still has to satisfy the schema, and every rule
-        # column is written empty rather than zeroed. `instrument_from_row`
-        # reads an empty tick size back as "no rules", which is what it is.
-        self._markets.append(
-            [
-                {
-                    "venue": venue,
-                    "symbol": symbol,
-                    "market_type": market_type,
-                    "base_asset": "",
-                    "quote_asset": "",
-                    "tick_size": Decimal(0),
-                    "step_size": Decimal(0),
-                    "min_notional": Decimal(0),
-                    "contract_size": "",
-                    "status": "",
-                }
-            ]
-        )
+        # No rules yet: the row still has to satisfy the schema, and every rule column is written
+        # empty rather than zeroed (`features_table.unruled_market_row`, the one definition).
+        self._markets.append([features_table.unruled_market_row(venue, symbol, market_type)])
 
     def add_bar(self, bar: Bar) -> None:
         bars_table.write_bars(self._bars, [bar])

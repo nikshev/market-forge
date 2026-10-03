@@ -448,6 +448,25 @@ WARNING quoting the venue's own words — OKX's `Subscribe failed …`, Bybit's 
 found`. Binance sends none that has been observed, so for Binance a refused request is
 silence.
 
+## Which markets are listed
+
+[[REQ-WP-081]]. The overview (`/markets`, [[REQ-WP-075]]) lists what the markets table holds, and each
+ingest service **registers the market it ingests** in that table when it starts, once: its venue, its
+symbol and the venue's market type, with no trading rules (nothing reads them, and only Binance has a
+normalizer). Starting a service again adds nothing, and a failure to register is one warning naming the
+venue and the symbol: ingest goes on, because the bars are the product and the list is not.
+
+The market type is the **feed's**, not the venue's reputation. The Binance service connects to
+`stream.binance.com`, Binance's **spot** stream, so it is listed as spot; the Bybit service connects to
+Bybit's linear endpoint and OKX is read from its instrument (`BTC-USDT-SWAP` is a perpetual), so those
+are perpetuals. PRD §26.1's example alert says "Binance Perp"; this deployment's Binance data is not. A
+test ties each type to the endpoint the service really uses, so moving a feed to another market fails
+until the type is reconsidered. An OKX instrument that is neither a swap nor a spot pair is refused with a
+warning and not listed, rather than labelled by guess.
+
+Five services start together after a deploy, and the first of them to reach an empty catalog creates the
+table; the others find it already made and carry on.
+
 ## Logs
 
 An ingest service logs events and not traffic. INFO has connects, reconnects, recoveries

@@ -3,6 +3,7 @@
 # @trace: REQ-WP-066
 # @trace: REQ-WP-078
 # @trace: REQ-WP-076
+# @trace: REQ-WP-081
 
 The same shape as the read API's composition root, and for the same reasons: the
 environment is the only input, nothing defaults, and a missing variable refuses
@@ -28,6 +29,7 @@ from channelflow.connectors.websocket import binance_stream_url
 from channelflow.lakehouse import catalog as open_catalog
 from channelflow.pipeline.archive import FrameArchive, LocalObjectStore, ObjectStore, S3ObjectStore
 from channelflow.pipeline.ingest import IngestDaemon
+from channelflow.pipeline.market_registration import register_own_market
 from channelflow.settings import MissingConfiguration, settings_from_env
 from channelflow.tables import bars as bars_table
 
@@ -294,6 +296,16 @@ def main(argv: list[str] | None = None) -> int:
     print(
         f"ingesting {ingest.symbols[0]} at {ingest.timeframe_ns / 1e9:g}s bars for {venue}, "
         f"archiving to {ingest.archive_uri}"
+    )
+    # The market this process ingests goes in the markets table, once, before it begins: the
+    # overview lists what is in that table and nothing else ([[REQ-WP-081]]). Soft by construction:
+    # it returns rather than raises, and a failure is one warning, never a stopped feed.
+    register_own_market(
+        venue=venue,
+        symbol=ingest.symbols[0],
+        catalog_uri=plane.catalog_uri,
+        warehouse=plane.warehouse,
+        storage=plane.storage,
     )
     daemon.run()
     return 0

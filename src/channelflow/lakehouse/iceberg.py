@@ -4,6 +4,7 @@
 # @trace: REQ-STORE-001
 # @trace: REQ-WP-041
 # @trace: REQ-WP-079
+# @trace: REQ-WP-081
 
 [[ADR-002]] chose "Parquet on S3-compatible object storage with Iceberg table
 semantics"; `table.py` implements those semantics by hand and [[ADR-060]]
@@ -47,7 +48,11 @@ import pyarrow as pa
 import pyarrow.compute as pc
 from pyiceberg.catalog import Catalog as Catalog
 from pyiceberg.catalog.sql import SqlCatalog
-from pyiceberg.exceptions import NamespaceAlreadyExistsError, NoSuchTableError
+from pyiceberg.exceptions import (
+    NamespaceAlreadyExistsError,
+    NoSuchTableError,
+    TableAlreadyExistsError,
+)
 from pyiceberg.table import Table as _IcebergTable
 
 from channelflow.lakehouse.schema import Schema
@@ -365,11 +370,19 @@ class IcebergTable:
             )
         table = self._table()
         if table is None:
-            table = self.catalog.create_table(
-                f"{NAMESPACE}.{self.name}",
-                schema=self.schema.arrow(),
-                properties=dict(METADATA_PRUNING),
-            )
+            try:
+                table = self.catalog.create_table(
+                    f"{NAMESPACE}.{self.name}",
+                    schema=self.schema.arrow(),
+                    properties=dict(METADATA_PRUNING),
+                )
+            except TableAlreadyExistsError:
+                # Looking and creating are two steps, and another writer can take the one between
+                # them: five ingest daemons restarted together do exactly this to a fresh table
+                # ([[REQ-WP-081]]). The table exists; that is all this writer wanted to know.
+                table = self._table()
+                if table is None:
+                    raise
         table.append(self._arrow(rows))
         # The table object the commit refreshed, not a fresh load: pyiceberg sets
         # `table.metadata` to the commit's own response, so its newest snapshot is the one this
