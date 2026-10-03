@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "§27.1, §28.1, §6.2"
 prd_lines: "4388-4400, 4461-4475, 405-420"
 phase: null
-status: draft
+status: specified
 depends_on: [REQ-WP-021, REQ-WP-075, REQ-WP-076]
 tags: [markets, overview, ingest]
 hard_gated: false
@@ -66,7 +66,8 @@ continues. The registration is retried the next time the process starts, and not
 ## Trace
 
 <!-- trace:begin -->
-_No linked artifacts yet._
+- **Specs:** [[SPEC-127-markets-registered]]
+- **Outcomes:** [[OUT-2026-10-03-spec-markets-registered]]
 <!-- trace:end -->
 
 ## Notes

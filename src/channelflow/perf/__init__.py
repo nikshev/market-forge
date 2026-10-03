@@ -10,6 +10,7 @@ from channelflow.perf.targets import (
     headroom,
     scaling_ratio,
     timed,
+    timed_interleaved,
 )
 
 __all__ = [
@@ -19,4 +20,5 @@ __all__ = [
     "headroom",
     "scaling_ratio",
     "timed",
+    "timed_interleaved",
 ]

@@ -29,14 +29,14 @@ replace = '''        if False and not self.samples_ns:'''
 [[mutation]]
 name = "scaling compares durations, not ratios"
 find = '''    return tuple(
-        later / max(1, earlier) for earlier, later in zip(medians, medians[1:], strict=False)
+        later / max(1, earlier) for earlier, later in zip(picked, picked[1:], strict=False)
     )'''
-replace = '''    return tuple(float(later) for later in medians[1:])'''
+replace = '''    return tuple(float(later) for later in picked[1:])'''
 
 [[mutation]]
 name = "scaling divides the wrong way"
-find = '''        later / max(1, earlier) for earlier, later in zip(medians, medians[1:], strict=False)'''
-replace = '''        earlier / max(1, later) for earlier, later in zip(medians, medians[1:], strict=False)'''
+find = '''        later / max(1, earlier) for earlier, later in zip(picked, picked[1:], strict=False)'''
+replace = '''        earlier / max(1, later) for earlier, later in zip(picked, picked[1:], strict=False)'''
 
 [[mutation]]
 name = "a single measurement is a scaling series"
@@ -61,5 +61,59 @@ replace = '''    return observed / max(1, target.budget_ns)'''
 
 [[mutation]]
 name = "a run of zero repeats is allowed"
-find = '''    if repeats < 1:'''
-replace = '''    if repeats < 0:'''
+find = '''    if repeats < 1:
+        raise ValueError("a measurement needs at least one run")
+    samples: list[int] = []'''
+replace = '''    if repeats < 0:
+        raise ValueError("a measurement needs at least one run")
+    samples: list[int] = []'''
+
+[[mutation]]
+name = "a run of zero rounds is allowed"
+find = '''    if repeats < 1:
+        raise ValueError("a measurement needs at least one run")
+    names = list(operations)'''
+replace = '''    if repeats < 0:
+        raise ValueError("a measurement needs at least one run")
+    names = list(operations)'''
+
+[[mutation]]
+name = "measuring nothing is allowed"
+find = '''    if not operations:
+        raise ValueError("there is nothing to measure")'''
+replace = '''    if False:
+        raise ValueError("there is nothing to measure")'''
+
+# REQ-INFRA-011: the sizes are measured in rounds, and a lower quantile is compared.
+[[mutation]]
+name = "the rounds always start with the same operation"
+find = '''            name = names[(round_number + offset) % len(names)]'''
+replace = '''            name = names[offset]'''
+
+[[mutation]]
+name = "the scaling ratio ignores the quantile it was given"
+find = '''    picked = [measurement.percentile_ns(fraction) for measurement in measurements]'''
+replace = '''    picked = [measurement.p50_ns for measurement in measurements]'''
+
+[[mutation]]
+name = "the interleaved measurements come back in another order"
+find = '''    return tuple(Measurement(name=name, samples_ns=tuple(samples[name])) for name in names)'''
+replace = '''    return tuple(Measurement(name=name, samples_ns=tuple(samples[name])) for name in reversed(names))'''
+
+[[mutation]]
+name = "the interleaved rounds read the real clock and not the one they were given"
+find = '''            started = clock()
+            operations[name]()
+            samples[name].append(clock() - started)'''
+replace = '''            started = time.perf_counter_ns()
+            operations[name]()
+            samples[name].append(time.perf_counter_ns() - started)'''
+
+[[mutation]]
+name = "each operation runs to completion before the next, which is the fault"
+find = '''    for round_number in range(repeats):
+        for offset in range(len(names)):
+            name = names[(round_number + offset) % len(names)]'''
+replace = '''    for offset in range(len(names)):
+        for round_number in range(repeats):
+            name = names[offset]'''

@@ -11,7 +11,9 @@ The target is the promise made to a user and is asserted because breaking it
 matters; with fiftyfold headroom it would keep passing through a fortyfold
 regression. The scaling ratio is what bites: a change making a linear read
 quadratic fails it on a fast machine and a slow one alike, because a ratio
-between two measurements from the same run divides the machine out.
+between two measurements from the same run divides the machine out -- provided the sizes are
+measured in rounds and not one after another (REQ-INFRA-011): measured in blocks, a burst of
+load lands on one size and the ratio across it is wrong by the size of the burst.
 """
 
 from __future__ import annotations
@@ -32,7 +34,7 @@ from channelflow.domain import EventMeta, TradeEvent
 from channelflow.features.flow import FlowTracker
 from channelflow.lakehouse import Catalog
 from channelflow.lakehouse import catalog as open_catalog
-from channelflow.perf import TARGETS, headroom, scaling_ratio, timed
+from channelflow.perf import TARGETS, headroom, scaling_ratio, timed, timed_interleaved
 from channelflow.tables import bars as bars_table
 
 BASE_NS = 1_700_000_000_000_000_000
@@ -50,6 +52,13 @@ REPEATS = 20
 #: bound sits between them with room for the fixed overhead that makes small
 #: sizes cheaper per row.
 MAX_DOUBLING_RATIO = 3.0
+
+#: Which quantile of each size the ratio compares, and why not the median ([[REQ-INFRA-011]]). Noise
+#: only ever adds time, so on a busy host a lower quantile is still a fast sample where the median
+#: may
+#: already be a slow one. Every sample of a quadratic operation is quadratic, so the guard still
+#: bites.
+SCALING_QUANTILE = 0.25
 
 
 def _target(name: str) -> object:
@@ -211,15 +220,21 @@ def test_the_read_stays_linear_as_the_series_grows() -> None:
     fast runner and a slow one alike -- which a duration cannot.
     """
     sizes = (1_000, 2_000, 4_000)
-    measurements = []
-    for rows in sizes:
-        repository = _seeded(rows)
-        _read(repository, rows)
-        measurements.append(
-            timed(lambda r=repository, n=rows: _read(r, n), name=f"read:{rows}", repeats=7)
-        )
+    repositories = {rows: _seeded(rows) for rows in sizes}
+    for rows, repository in repositories.items():
+        _read(repository, rows)  # warm each: the first read is not the question
 
-    ratios = scaling_ratio(measurements)
+    # In rounds, so a burst of load reaches every size and not just one (REQ-INFRA-011); the lower
+    # quartile, because noise only adds time.
+    measurements = timed_interleaved(
+        {
+            f"read:{rows}": (lambda r=repository, n=rows: _read(r, n))
+            for rows, repository in repositories.items()
+        },
+        repeats=REPEATS,
+    )
+
+    ratios = scaling_ratio(measurements, fraction=SCALING_QUANTILE)
     print(f"\nread scaling across {sizes}: {[f'{r:.2f}x' for r in ratios]}")
     for ratio in ratios:
         assert ratio < MAX_DOUBLING_RATIO, ratios
@@ -240,11 +255,10 @@ def test_the_scaling_guard_fails_on_something_quadratic() -> None:
                 total += outer ^ inner
 
     sizes = (200, 400, 800)
-    measurements = [
-        timed(lambda n=rows: quadratic(n), name=f"quadratic:{rows}", repeats=REPEATS)
-        for rows in sizes
-    ]
-    ratios = scaling_ratio(measurements)
+    measurements = timed_interleaved(
+        {f"quadratic:{rows}": (lambda n=rows: quadratic(n)) for rows in sizes}, repeats=REPEATS
+    )
+    ratios = scaling_ratio(measurements, fraction=SCALING_QUANTILE)
     print(f"\nquadratic scaling across {sizes}: {[f'{r:.2f}x' for r in ratios]}")
     assert any(ratio >= MAX_DOUBLING_RATIO for ratio in ratios), ratios
 
@@ -272,10 +286,10 @@ def test_a_linear_operation_passes_the_same_guard() -> None:
             total += index
 
     sizes = (200, 400, 800)
-    measurements = [
-        timed(lambda n=rows: linear(n), name=f"linear:{rows}", repeats=REPEATS) for rows in sizes
-    ]
-    ratios = scaling_ratio(measurements)
+    measurements = timed_interleaved(
+        {f"linear:{rows}": (lambda n=rows: linear(n)) for rows in sizes}, repeats=REPEATS
+    )
+    ratios = scaling_ratio(measurements, fraction=SCALING_QUANTILE)
     print(f"\nlinear scaling across {sizes}: {[f'{r:.2f}x' for r in ratios]}")
     for ratio in ratios:
         assert ratio < MAX_DOUBLING_RATIO, ratios
