@@ -2,7 +2,7 @@
 id: OUT-2026-10-03-implement-snapshot-single-load
 step: implement
 records: [REQ-WP-079]
-commit: null
+commit: c9fdd0c
 ---
 
 ## What was done
@@ -72,8 +72,24 @@ No claim is made for it.
 - **The 24-hour check (T019).**
 - **`append` still reads every row to describe itself** (about three seconds on `bars`), and `current()`
   too. Recorded in the plan as its own piece of work; the single-load change does not touch it.
-- **`compact()` reads and then overwrites while five processes append.** Not examined beyond the
-  data: no gap in the minute bars at the 21:39 and 03:39 maintenance runs. Still a question.
 - **The requirement note's own text says `snapshot()` and `current()` "have the same shape" and are
   exposed.** They have the shape (several loads) but not the exposure. A dated note on the
   requirement says so; its hand-written text is not rewritten.
+
+## Closed afterwards (2026-10-03)
+
+- **`compact()` against a concurrent append: not a risk, shown by experiment.**
+  `specs/124-snapshot-single-load/compact_race.py` appends a row between `compact()`'s read and its
+  overwrite. pyiceberg detects it: `compact()` **raises `ValidationException`** ("Added data files were
+  found matching the filter"), the competitor's row survives (5 rows of 5), and nothing is
+  overwritten. `maintenance_main` catches an exception per table ("one table must not end the pass")
+  and tries again at the next pass, six hours on. The cost is a skipped compaction, not lost bars; at
+  `FLUSH_EVERY_BARS = 15` each writer commits about every fifteen minutes, so a 15-second compaction
+  window meets a commit rarely, and the three maintenance runs on record all completed.
+- **`append` and `current()` reading every row to describe themselves:** not pursued. It is a cost,
+  about three seconds on `bars`, and nothing is wrong because of it; it becomes a requirement when
+  something is.
+- **The websockets `keepalive ping failed` ERROR traceback and the once-a-bar `BarSink.flush`
+  INFO:** left as they are, on purpose. Both are one line or one traceback per event and sit inside
+  the log budget of [[REQ-WP-078]].
+- **The `copy-trade` plan's `Co-Authored-By: Claude Fable 5` lines:** the user said to ignore them.
