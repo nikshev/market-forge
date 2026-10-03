@@ -1,0 +1,17 @@
+# The table side of REQ-NRT-UPSAMPLE's seam: what an as-of read of `bars` is keyed on.
+#
+# `read_bars(as_of_ns=t)` filters on the table's event-time column, and for `bars` that is
+# `close_time_ns`: a bar is returned for an instant only once its window has closed. Keyed on the
+# *open* time instead, every higher-timeframe window still in progress would be returned to every
+# as-of reader, and nothing noticed before the seam tests existed. A survivor here would mean the
+# storage filter the whole requirement leans on is untested.
+#
+# Patterns are TOML *literal* strings on purpose: the basic form treats a trailing
+# backslash as a line continuation and eats the next line's indentation.
+source = "src/channelflow/tables/bars.py"
+tests = ["tests/unit/test_upsample_seam.py", "tests/unit/tables"]
+
+[[mutation]]
+name = "the as-of read is keyed on a bar's open time, so a window in progress is readable"
+find = '''    event_time_column="close_time_ns",'''
+replace = '''    event_time_column="open_time_ns",'''

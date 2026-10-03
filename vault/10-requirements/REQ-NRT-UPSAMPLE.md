@@ -5,7 +5,7 @@ type: constraint
 prd_ref: "§13A.17"
 prd_lines: "1853-1875"
 phase: null
-status: specified
+status: implemented
 depends_on: [REQ-WP-073]
 tags: [timeframes, non-repainting]
 hard_gated: true
@@ -80,9 +80,36 @@ can detect.
 
 <!-- trace:begin -->
 - **Specs:** [[SPEC-125-no-unfinalized-upsample]]
-- **Outcomes:** [[OUT-2026-10-03-plan-no-unfinalized-upsample]], [[OUT-2026-10-03-spec-no-unfinalized-upsample]], [[OUT-2026-10-03-tasks-no-unfinalized-upsample]]
+- **Tests:**
+    - `tests/unit/test_upsample_seam.py::test_a_bar_cannot_be_read_as_of_any_instant_inside_its_window`
+    - `tests/unit/test_upsample_seam.py::test_a_complete_window_of_final_minutes_is_a_bar`
+    - `tests/unit/test_upsample_seam.py::test_a_missing_minute_is_still_refused_with_the_window_and_the_count`
+    - `tests/unit/test_upsample_seam.py::test_a_refusal_names_a_few_minutes_and_counts_the_rest`
+    - `tests/unit/test_upsample_seam.py::test_a_repeated_minute_does_not_stand_in_for_a_missing_one`
+    - `tests/unit/test_upsample_seam.py::test_a_window_still_open_yields_neither_a_bar_nor_a_refusal`
+    - `tests/unit/test_upsample_seam.py::test_a_window_whose_minutes_are_all_there_but_one_repeated_is_refused`
+    - `tests/unit/test_upsample_seam.py::test_a_window_with_a_source_bar_that_is_not_final_is_refused_and_says_which`
+    - `tests/unit/test_upsample_seam.py::test_no_read_as_of_t_contains_a_bar_that_closes_after_t`
+    - `tests/unit/test_upsample_seam.py::test_of_the_five_window_shapes_exactly_one_is_a_bar_and_exactly_three_are_refused`
+    - `tests/unit/test_upsample_seam.py::test_the_bar_is_readable_the_instant_its_window_closes`
+    - `tests/unit/test_upsample_seam.py::test_the_property_is_the_as_of_reads_and_not_an_accident_of_the_fixture`
+- **Code:**
+    - `src/channelflow/pipeline/resample.py`
+- **Outcomes:** [[OUT-2026-10-03-implement-no-unfinalized-upsample]], [[OUT-2026-10-03-plan-no-unfinalized-upsample]], [[OUT-2026-10-03-spec-no-unfinalized-upsample]], [[OUT-2026-10-03-tasks-no-unfinalized-upsample]]
 <!-- trace:end -->
 
 ## Notes
 
 Human territory. Never machine-rewritten.
+
+### 2026-10-03: what the first test of this found
+
+[[REQ-WP-073]] was `implemented` and its resampler "refused incomplete windows", with a test. Running
+it for this requirement showed it judged completeness by **counting** bars: minutes 0, 1, 2, 3 and 3
+again were folded into a bar although minute 4 was missing, and so was a window holding a source bar
+that was not final. Neither occurs on the deployment (no duplicate row, and the table refuses
+unfinalized ones on write), which is why nothing had seen them: what kept them out was another
+module's behaviour. The resampler now identifies the minutes; a differential over 18,026 live
+windows shows no change in what it produces today. The "consumer" the requirement speaks of does not
+yet exist (§13A.17's extrema hierarchy and confluence features have no note), so the guarantee is
+stated and tested on the as-of read, which whatever is written later will inherit.

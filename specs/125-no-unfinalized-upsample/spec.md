@@ -118,8 +118,9 @@ of each minute-boundary instant strictly inside its window, and at its close.
 **Independent Test**: over a day of one-minute bars resampled to every configured timeframe and
 stored, read every timeframe as of a set of instants `t` and check every bar returned closed at or
 before `t`. The instants are every seventh minute of the day **and** the instant before, at and after
-every window boundary of every timeframe up to a day: a leak shows at a boundary, and every minute of
-the day would be 1,440 reads for no extra evidence.
+every window boundary of every timeframe from fifteen minutes up to a day, and of every fourth
+five-minute boundary: a leak shows at a boundary, a boundary is a boundary, and every minute of the
+day, or all 288 five-minute boundaries, would cost a minute of reads for nothing the others do not show.
 
 **Acceptance Scenarios**:
 

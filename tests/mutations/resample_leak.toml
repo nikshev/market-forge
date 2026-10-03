@@ -1,0 +1,55 @@
+# The mutation sweep for REQ-NRT-UPSAMPLE: a deliberately leaking resampler is caught, and named.
+#
+# PRD §13A.17: "Do not upsample a higher-timeframe future close into lower-timeframe features before
+# that higher-timeframe bar is finalized." A constraint whose test has never seen the violation it
+# forbids is a constraint nobody has checked, so each mutation below *is* a violation, put into
+# `resample`, and a test must fail on it.
+#
+# Patterns are TOML *literal* strings on purpose: the basic form treats a trailing
+# backslash as a line continuation and eats the next line's indentation.
+source = "src/channelflow/pipeline/resample.py"
+tests = ["tests/unit/test_upsample_seam.py", "tests/unit/test_resample.py"]
+
+[[mutation]]
+name = "the window still in progress is emitted"
+find = '''        if close > now_ns:
+            continue'''
+replace = '''        if False:
+            continue'''
+
+[[mutation]]
+name = "an incomplete window is folded anyway"
+find = '''        if faults:
+            refusals.append('''
+replace = '''        if False:
+            refusals.append('''
+
+[[mutation]]
+name = "completeness is a count again, so a repeated minute stands in for a missing one"
+find = '''    missing = [t for t in wanted if t not in held]'''
+replace = '''    missing = [t for t in wanted if t not in held] if len(window) != expected else []'''
+
+[[mutation]]
+name = "a missing minute is not noticed"
+find = '''    missing = [t for t in wanted if t not in held]'''
+replace = '''    missing: list[int] = []'''
+
+[[mutation]]
+name = "a minute that appears twice is not noticed"
+find = '''    duplicated = [t for t in wanted if held.get(t, 0) > 1]'''
+replace = '''    duplicated: list[int] = []'''
+
+[[mutation]]
+name = "a source bar that is not final is folded"
+find = '''    not_final = sorted({bar.open_time_ns for bar in window if not bar.is_final})'''
+replace = '''    not_final: list[int] = []'''
+
+[[mutation]]
+name = "the refusal reports every minute present"
+find = '''    return expected - len(missing), faults'''
+replace = '''    return expected, faults'''
+
+[[mutation]]
+name = "a refusal names every minute it is short of"
+find = '''    shown = ", ".join(str(t) for t in open_times[:NAMED_IN_A_REFUSAL])'''
+replace = '''    shown = ", ".join(str(t) for t in open_times)'''

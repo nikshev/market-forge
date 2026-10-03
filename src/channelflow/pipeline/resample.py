@@ -1,6 +1,7 @@
 """Resample one-minute bars into higher configured timeframes.
 
 # @trace: REQ-WP-073
+# @trace: REQ-NRT-UPSAMPLE
 
 The fold is pure and takes no clock. `resample` groups by window and refuses
 what it cannot honestly build; `resample_main` is the process that runs it.
@@ -34,6 +35,48 @@ class Refusal:
     expected: int
     present: int
     reason: str
+
+
+#: How many open times a refusal names before it says how many more there were. A day-long window
+#: short of a thousand minutes would otherwise put a thousand numbers on a line the job prints on
+#: every pass, which is the log volume [[REQ-WP-078]] spent a change removing.
+NAMED_IN_A_REFUSAL = 5
+
+
+def _named(open_times: Sequence[int]) -> str:
+    shown = ", ".join(str(t) for t in open_times[:NAMED_IN_A_REFUSAL])
+    extra = len(open_times) - NAMED_IN_A_REFUSAL
+    return f"[{shown}, +{extra} more]" if extra > 0 else f"[{shown}]"
+
+
+def _judgement(
+    window: Sequence[Bar], *, start: int, expected: int, step: int
+) -> tuple[int, list[str]]:
+    """What is wrong with a closed window, by *identifying* its minutes rather than counting them.
+
+    [[REQ-NRT-UPSAMPLE]]: five bars is not five minutes. Minutes 0, 1, 2, 3 and 3 again number five
+    and are four, and counting called that complete and folded a bar from four-fifths of a window.
+    A bar that is not final may still change, so a window holding one is not the window it will be.
+
+    Returns how many distinct expected minutes are present and a description of each fault, empty
+    when the window is sound.
+    """
+    wanted = [start + k * step for k in range(expected)]
+    held: dict[int, int] = {}
+    for bar in window:
+        held[bar.open_time_ns] = held.get(bar.open_time_ns, 0) + 1
+    missing = [t for t in wanted if t not in held]
+    duplicated = [t for t in wanted if held.get(t, 0) > 1]
+    not_final = sorted({bar.open_time_ns for bar in window if not bar.is_final})
+
+    faults: list[str] = []
+    if missing:
+        faults.append(f"missing {_named(missing)}")
+    if duplicated:
+        faults.append(f"duplicated {_named(duplicated)}")
+    if not_final:
+        faults.append(f"not final {_named(not_final)}")
+    return expected - len(missing), faults
 
 
 @dataclass(frozen=True)
@@ -206,15 +249,18 @@ def resample(
         if start in already_present:
             skipped += 1
             continue
-        if len(window) != expected:
+        present, faults = _judgement(
+            window, start=start, expected=expected, step=source_timeframe.ns
+        )
+        if faults:
             refusals.append(
                 Refusal(
                     open_time_ns=start,
                     expected=expected,
-                    present=len(window),
+                    present=present,
                     reason=(
-                        f"window {start} at {target.token} has {len(window)} of "
-                        f"{expected} source {source_timeframe.token} bars"
+                        f"window {start} at {target.token} has {present} of "
+                        f"{expected} source {source_timeframe.token} bars; " + "; ".join(faults)
                     ),
                 )
             )
