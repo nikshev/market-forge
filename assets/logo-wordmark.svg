@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 512" width="1400" height="512" role="img" aria-label="Market Forge">
+  <rect width="1400" height="512" fill="#141417"/>
+  <g>
+    <rect x="30" y="0" width="512" height="512" rx="112" fill="#141417"/>
+    <polygon points="110,230 462,90 462,260 110,400" fill="#2a2250"/>
+    <line x1="110" y1="230" x2="462" y2="90" stroke="#7c5cff" stroke-width="12" stroke-linecap="round"/>
+    <line x1="110" y1="400" x2="462" y2="260" stroke="#7c5cff" stroke-width="12" stroke-linecap="round"/>
+    <line x1="110" y1="315" x2="462" y2="175" stroke="#7c5cff" stroke-width="6" stroke-linecap="round" stroke-dasharray="4 18"/>
+    <polyline points="130,345 190,290 240,300 290,215 330,146 380,215 420,205 462,222" fill="none" stroke="#f4f4f6" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="330" cy="146" r="22" fill="#ffb02e"/>
+    <circle cx="330" cy="146" r="10" fill="#141417"/>
+  </g>
+  <text x="590" y="272" font-family="Inter, 'Helvetica Neue', Arial, sans-serif" font-size="112" font-weight="700" fill="#f4f4f6">Market Forge</text>
+  <text x="594" y="338" font-family="'JetBrains Mono', 'SFMono-Regular', Consolas, monospace" font-size="28" fill="#9a9aa6">NON-REPAINTING SIGNAL RADAR</text>
+</svg>
