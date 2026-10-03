@@ -938,6 +938,7 @@ graph LR
   OUT_2026_10_03_spec_telegram_mini_app["OUT-2026-10-03-spec-telegram-mini-app"]
   OUT_2026_10_03_tasks_no_unfinalized_upsample["OUT-2026-10-03-tasks-no-unfinalized-upsample"]
   OUT_2026_10_03_tasks_snapshot_single_load["OUT-2026-10-03-tasks-snapshot-single-load"]
+  OUT_2026_10_03_tasks_telegram_mini_app["OUT-2026-10-03-tasks-telegram-mini-app"]
   PRD["PRD: ChannelFlow PRD"]
   REQ_API_001["REQ-API-001: Read API for bars, channel snapshots, signals and live updates"]
   REQ_ASSET_001["REQ-ASSET-001: Asset identity and cross-venue instrument registry"]
@@ -5564,6 +5565,7 @@ graph LR
   OUT_2026_10_03_spec_telegram_mini_app -.->|RECORDS| REQ_WP_080
   OUT_2026_10_03_tasks_no_unfinalized_upsample -.->|RECORDS| REQ_NRT_UPSAMPLE
   OUT_2026_10_03_tasks_snapshot_single_load -.->|RECORDS| REQ_WP_079
+  OUT_2026_10_03_tasks_telegram_mini_app -.->|RECORDS| REQ_WP_080
   SPEC_001_traceability_tooling ==>|SPECIFIES| REQ_INFRA_001
   SPEC_002_project_bootstrap ==>|SPECIFIES| REQ_WP_001
   SPEC_003_ci_full_gate ==>|SPECIFIES| REQ_INFRA_002

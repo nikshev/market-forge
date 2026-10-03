@@ -75,7 +75,7 @@ alert sender exists, [[REQ-WP-008]]), and the on-chain link an alert may later c
 
 <!-- trace:begin -->
 - **Specs:** [[SPEC-126-telegram-mini-app]]
-- **Outcomes:** [[OUT-2026-10-03-plan-telegram-mini-app]], [[OUT-2026-10-03-spec-telegram-mini-app]]
+- **Outcomes:** [[OUT-2026-10-03-plan-telegram-mini-app]], [[OUT-2026-10-03-spec-telegram-mini-app]], [[OUT-2026-10-03-tasks-telegram-mini-app]]
 <!-- trace:end -->
 
 ## Notes
