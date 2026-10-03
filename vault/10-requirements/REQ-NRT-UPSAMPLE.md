@@ -5,7 +5,7 @@ type: constraint
 prd_ref: "§13A.17"
 prd_lines: "1853-1875"
 phase: null
-status: draft
+status: specified
 depends_on: [REQ-WP-073]
 tags: [timeframes, non-repainting]
 hard_gated: true
@@ -79,7 +79,8 @@ can detect.
 ## Trace
 
 <!-- trace:begin -->
-_No linked artifacts yet._
+- **Specs:** [[SPEC-125-no-unfinalized-upsample]]
+- **Outcomes:** [[OUT-2026-10-03-spec-no-unfinalized-upsample]]
 <!-- trace:end -->
 
 ## Notes
