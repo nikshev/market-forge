@@ -923,6 +923,7 @@ graph LR
   OUT_2026_10_02_spec_ingest_resilience["OUT-2026-10-02-spec-ingest-resilience"]
   OUT_2026_10_02_tasks_ingest_resilience["OUT-2026-10-02-tasks-ingest-resilience"]
   OUT_2026_10_03_implement_snapshot_single_load["OUT-2026-10-03-implement-snapshot-single-load"]
+  OUT_2026_10_03_plan_no_unfinalized_upsample["OUT-2026-10-03-plan-no-unfinalized-upsample"]
   OUT_2026_10_03_plan_snapshot_single_load["OUT-2026-10-03-plan-snapshot-single-load"]
   OUT_2026_10_03_spec_no_unfinalized_upsample["OUT-2026-10-03-spec-no-unfinalized-upsample"]
   OUT_2026_10_03_spec_snapshot_single_load["OUT-2026-10-03-spec-snapshot-single-load"]
@@ -5518,6 +5519,7 @@ graph LR
   OUT_2026_10_02_spec_ingest_resilience -.->|RECORDS| REQ_WP_078
   OUT_2026_10_02_tasks_ingest_resilience -.->|RECORDS| REQ_WP_078
   OUT_2026_10_03_implement_snapshot_single_load -.->|RECORDS| REQ_WP_079
+  OUT_2026_10_03_plan_no_unfinalized_upsample -.->|RECORDS| REQ_NRT_UPSAMPLE
   OUT_2026_10_03_plan_snapshot_single_load -.->|RECORDS| REQ_WP_079
   OUT_2026_10_03_spec_no_unfinalized_upsample -.->|RECORDS| REQ_NRT_UPSAMPLE
   OUT_2026_10_03_spec_snapshot_single_load -.->|RECORDS| REQ_WP_079
