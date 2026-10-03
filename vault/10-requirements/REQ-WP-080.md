@@ -160,10 +160,19 @@ alert sender exists, [[REQ-WP-008]]), and the on-chain link an alert may later c
     - `tests/unit/test_settings_telegram.py::test_the_token_never_appears_in_the_settings_text`
 - **Code:**
     - `apps/web/src/Chart.tsx`
+    - `apps/web/src/__tests__/buildHasNoInitData.test.ts`
+    - `apps/web/src/__tests__/chartTheme.test.ts`
+    - `apps/web/src/__tests__/startParam.test.ts`
+    - `apps/web/src/__tests__/telegram.test.ts`
+    - `apps/web/src/__tests__/telegramVectors.test.ts`
     - `apps/web/src/api.ts`
     - `apps/web/src/main.tsx`
+    - `apps/web/src/startParam.ts`
+    - `apps/web/src/telegram.ts`
+    - `apps/web/src/theme.ts`
     - `src/channelflow/api/app.py`
     - `src/channelflow/api/main.py`
+    - `src/channelflow/api/telegram_auth.py`
     - `src/channelflow/settings.py`
 - **Outcomes:** [[OUT-2026-10-03-implement-telegram-mini-app]], [[OUT-2026-10-03-plan-telegram-mini-app]], [[OUT-2026-10-03-spec-telegram-mini-app]], [[OUT-2026-10-03-tasks-telegram-mini-app]]
 <!-- trace:end -->
