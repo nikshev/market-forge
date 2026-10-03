@@ -1,3 +1,4 @@
+// @trace: REQ-WP-080
 // @trace: REQ-WP-009
 // @trace: REQ-WP-074
 // @trace: REQ-WP-075
@@ -8,6 +9,7 @@
 // empty component tree, which is exactly the indistinguishable blank the rule
 // forbids.
 
+import { authorizationHeader } from "./telegram";
 import type {
   BarOut,
   MarketOut,
@@ -71,7 +73,10 @@ async function get<T>(
     Object.entries(params).map(([k, v]) => [k, String(v)]),
   ).toString();
   try {
-    const response = await fetch(`${BASE}${path}?${query}`);
+    const url = `${BASE}${path}?${query}`;
+    // The URL alone outside Telegram: the call is exactly what it was (REQ-WP-080).
+    const headers = authorizationHeader();
+    const response = Object.keys(headers).length === 0 ? await fetch(url) : await fetch(url, { headers });
     if (!response.ok) {
       // The status is the detail a reader can act on. "Something went wrong"
       // sends them to the console.

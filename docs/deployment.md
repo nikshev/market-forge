@@ -28,6 +28,7 @@ Thirteen services, started together:
 | `resample` | builds every configured timeframe from the one-minute series, on a loop ([[REQ-WP-073]]) |
 | `maintenance` | prunes metadata, compacts and optionally expires, on a loop ([[REQ-WP-070]]) |
 | `worker` | fits channels, signals and extrema over the stored bars, on a loop ([[REQ-WP-077]]) |
+| `cloudflared` | **only with `--profile telegram`**: an outbound tunnel that gives the web service an HTTPS address for the Telegram Mini App ([[REQ-WP-080]]) |
 
 All eight application services build from this repository ([[REQ-WP-064]],
 [[REQ-WP-066]], [[REQ-WP-070]], [[REQ-WP-073]], [[REQ-WP-077]]) rather than pulling a tag naming
@@ -295,6 +296,47 @@ values. PRD §34 requires the Telegram token to come from a secret manager in
 anything that is not a laptop, and nothing in this repository reads it from the
 environment on its own: the transport and its credentials are supplied by the
 caller ([[ADR-018]]).
+
+## Opening it inside Telegram
+
+[[REQ-WP-080]]. The overview and the chart open as a Telegram Mini App, from a bot, as `lexa-reader`
+does. Nothing the pages show changes; the stack gains an optional tunnel and the API gains an optional
+gate.
+
+**What the gate is.** Access control, not secrecy. The data is public market data. The gate stops the
+public address from being a free read API and makes "opens inside Telegram" mean something. Telegram
+signs a launch; the API verifies it on every request, stores nothing, and keeps no user. A captured
+launch can be replayed until it ages out, which is `CHANNELFLOW_TELEGRAM_MAX_AGE_SECONDS` (a day unless
+set). `CHANNELFLOW_TELEGRAM_AUTH` is `off` unless it is `required`; `required` without
+`TELEGRAM_BOT_TOKEN` stops the service rather than serve open, and any other spelling is refused.
+
+**What the public address reaches.** The web service's nginx proxies `/api/` and nothing else, and the
+API serves its data under `/api/v1/`. `/readyz` and `/metrics` are outside that prefix and are not
+reachable through the tunnel; `tests/unit/deploy/test_public_surface.py` keeps it so. The websocket is
+closed to an unsigned caller when authentication is required; the page does not use it.
+
+**To set it up.**
+
+1. Create the bot with BotFather (`/newbot`). Its token goes in `.env` as `TELEGRAM_BOT_TOKEN`, the same
+   variable the alert sender reads.
+2. Create a Cloudflare Tunnel (Zero Trust, Networks, Tunnels, Cloudflared). Copy its token into `.env` as
+   `CHANNELFLOW_TUNNEL_TOKEN`. Add a public hostname whose service is HTTP at `web:8080`.
+3. Set `CHANNELFLOW_TELEGRAM_AUTH=required` in `.env`. Leave `CHANNELFLOW_TUNNEL_PROTOCOL` at `http2`:
+   UDP egress to Cloudflare is blocked on this host.
+4. Start it: `docker compose --profile telegram up -d --build`.
+5. In BotFather create the Mini App (`/newapp`) with the public hostname as its URL.
+6. Check: `curl https://<hostname>/api/v1/timeframes` answers 401 with a reason, not data. Then open the
+   bot in Telegram on a phone.
+
+**Two forms of a link.** An alert's button may carry the full deep link as before. A link of the form
+`t.me/<bot>/<app>?startapp=<value>` carries the same chart state as a `start_param`: the base64url of
+the deep link's path and query, at most 512 characters. A value that cannot be read opens the overview.
+
+**Developing without Telegram.** From `apps/web`, `npm run dev:init` writes a freshly signed launch to
+`.env.development.local`, so the authentication can be exercised in a plain browser. It is never written
+to `.env.local`: Vite reads that in a production build too, and `docker build` copies whatever is in the
+directory. The application reads it only in development, `apps/web/.dockerignore` keeps it out of the
+image, and a test builds for production with a marker in it and searches the output.
 
 ## What is exposed, and to whom
 

@@ -1,0 +1,95 @@
+# The mutation sweep for REQ-WP-080's gate: Telegram's signature, and who is let through.
+#
+# This is the one part of the Mini App that can be wrong in a way a demo would not show, so each
+# mutation is a way of letting somebody in, or of refusing wrongly, or of leaking: and a test must fail.
+#
+# Patterns are TOML *literal* strings on purpose: the basic form treats a trailing
+# backslash as a line continuation and eats the next line's indentation.
+source = "src/channelflow/api/telegram_auth.py"
+tests = [
+    "tests/unit/api/test_telegram_auth.py",
+    "tests/unit/api/test_telegram_gate.py",
+    "tests/unit/deploy/test_public_surface.py",
+]
+
+[[mutation]]
+name = "the age of a launch is not checked"
+find = '''    if now - auth_date > max_age_seconds:'''
+replace = '''    if False:'''
+
+[[mutation]]
+name = "a launch from the future is accepted"
+find = '''    if auth_date - now > SKEW_SECONDS:'''
+replace = '''    if False:'''
+
+[[mutation]]
+name = "the data-check-string is not sorted, so the signature depends on field order"
+find = '''    check_string = "\n".join(f"{key}={fields[key]}" for key in sorted(fields))'''
+replace = '''    check_string = "\n".join(f"{key}={fields[key]}" for key in fields)'''
+
+[[mutation]]
+name = "a missing hash is not refused"
+find = '''    if not provided:
+        raise LaunchRefused("missing_hash")'''
+replace = '''    if False:
+        raise LaunchRefused("missing_hash")'''
+
+[[mutation]]
+name = "an empty bot token is used as a key"
+find = '''    if not bot_token.strip():
+        raise ValueError("TELEGRAM_BOT_TOKEN is not configured; there is nothing to verify against")'''
+replace = '''    if False:
+        raise ValueError("TELEGRAM_BOT_TOKEN is not configured; there is nothing to verify against")'''
+
+[[mutation]]
+name = "a launch that names a field twice is resolved by taking the last"
+find = '''    if len(set(keys)) != len(keys):'''
+replace = '''    if False:'''
+
+[[mutation]]
+name = "a launch of absurd size is parsed and hashed"
+find = '''    if len(init_data) > MAX_LAUNCH_CHARS:'''
+replace = '''    if False:'''
+
+[[mutation]]
+name = "the hash is compared as text, so a non-ASCII hash is a TypeError"
+find = '''    if not hmac.compare_digest(expected.encode(), provided.encode()):'''
+replace = '''    if not hmac.compare_digest(expected, provided):'''
+
+[[mutation]]
+name = "the signature is compared with == instead of in constant time"
+find = '''    if not hmac.compare_digest(expected.encode(), provided.encode()):'''
+replace = '''    if expected != provided:'''
+survives = "Equivalent in outcome. The two comparisons accept and refuse exactly the same strings; constant time is a timing property, which no value comparison in a test can see. It is stated in the module and pinned by reading, not by a test."
+
+[[mutation]]
+name = "a launch with a user is reported as having none"
+find = '''    return LaunchData(auth_date=auth_date, has_user="user" in fields)'''
+replace = '''    return LaunchData(auth_date=auth_date, has_user=False)'''
+
+[[mutation]]
+name = "the gate covers a narrower prefix, so the next route is open"
+find = '''        return path == "/api/v1" or path.startswith("/api/v1/")'''
+replace = '''        return path.startswith("/api/v1/markets")'''
+
+[[mutation]]
+name = "the websocket is outside the gate"
+find = '''        return path.startswith("/ws/")'''
+replace = '''        return False'''
+
+[[mutation]]
+name = "a header with another scheme is verified as if it were ours"
+find = '''        if not authorization.startswith(SCHEME):
+            raise LaunchRefused("malformed")'''
+replace = '''        if False:
+            raise LaunchRefused("malformed")'''
+
+[[mutation]]
+name = "a refusal answers 200"
+find = '''                {"reason": refused.reason}, status_code=401, headers={"WWW-Authenticate": "tma"}'''
+replace = '''                {"reason": refused.reason}, status_code=200, headers={"WWW-Authenticate": "tma"}'''
+
+[[mutation]]
+name = "a refusal body carries more than the reason"
+find = '''                {"reason": refused.reason}, status_code=401, headers={"WWW-Authenticate": "tma"}'''
+replace = '''                {"reason": refused.reason, "scope": scope["path"]}, status_code=401, headers={"WWW-Authenticate": "tma"}'''

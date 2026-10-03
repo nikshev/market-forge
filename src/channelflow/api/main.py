@@ -3,6 +3,7 @@
 # @trace: REQ-WP-064
 # @trace: REQ-WP-072
 # @trace: REQ-WP-074
+# @trace: REQ-WP-080
 
 PRD §6.2's MVP deployment names an `api` service. There was no way to run one:
 `create_app` takes an already-built repository, `LakehouseRepository` takes a
@@ -28,6 +29,7 @@ from fastapi import FastAPI
 from channelflow.api.app import create_app
 from channelflow.api.lakehouse_repository import LakehouseRepository
 from channelflow.api.readiness import catalog_probe
+from channelflow.api.telegram_auth import TelegramGate
 from channelflow.lakehouse import catalog as open_catalog
 from channelflow.lakehouse.iceberg import NAMESPACE
 from channelflow.settings import (
@@ -51,6 +53,16 @@ def build_app(settings: Settings) -> FastAPI:
         allowed_origins=settings.allowed_origins,
         rate_limit=settings.rate_limit,
         timeframes=settings.timeframes,
+        telegram_gate=_telegram_gate(settings),
+    )
+
+
+def _telegram_gate(settings: Settings) -> TelegramGate | None:
+    """The gate when authentication is required, nothing when it is off ([[REQ-WP-080]])."""
+    if settings.telegram_auth != "required":
+        return None
+    return TelegramGate(
+        bot_token=settings.telegram_bot_token, max_age_seconds=settings.telegram_max_age_seconds
     )
 
 

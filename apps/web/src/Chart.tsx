@@ -1,3 +1,4 @@
+// @trace: REQ-WP-080
 // @trace: REQ-WP-009
 // @trace: REQ-US-002
 //
@@ -25,6 +26,7 @@ import type {
   SignalOut,
 } from "./types";
 import { profileBars } from "./volumeProfile";
+import { chartLayout, schemeNow, type Scheme } from "./theme";
 import type { Profile } from "./volumeProfile";
 
 const ZONE_COLOURS: Record<string, string> = {
@@ -46,6 +48,7 @@ export function Chart({
   focusAtNs = null,
   extrema = { confirmed: [], candidates: [] },
   mode = AS_SEEN_THEN,
+  scheme = schemeNow(),
 }: {
   bars: BarOut[];
   channel: ChannelOut | null;
@@ -56,6 +59,8 @@ export function Chart({
   extrema?: ExtremaResponse;
   /** Which mode the chart is in. The extremum filter is AS-SEEN-THEN's only. */
   mode?: ChannelMode;
+  /** The colour scheme (REQ-WP-080). Light is what the chart always was. */
+  scheme?: Scheme;
 }): JSX.Element {
   const container = useRef<HTMLDivElement>(null);
   const chart = useRef<IChartApi | null>(null);
@@ -67,13 +72,14 @@ export function Chart({
     const instance = createChart(container.current, {
       height: 480,
       timeScale: { timeVisible: true, secondsVisible: false },
+      ...chartLayout(scheme),
     });
     chart.current = instance;
     return () => {
       instance.remove();
       chart.current = null;
     };
-  }, []);
+  }, [scheme]);
 
   useEffect(() => {
     const instance = chart.current;

@@ -1,0 +1,60 @@
+{
+  "about": "REQ-WP-080. Signatures computed by openssl (tests/vectors/make_vectors.sh); never by the code under test.",
+  "bot_token": "123456:TEST-TOKEN-NOT-A-SECRET",
+  "max_age_seconds": 86400,
+  "now": 1790000000,
+  "cases": [
+    {
+      "name": "valid",
+      "init_data": "query_id=AAHdF6IQAAAAAN0XohDhrOrc&user=%7B%22id%22%3A7%2C%22first_name%22%3A%22Test%22%2C%22username%22%3A%22tester%22%7D&auth_date=1789999900&hash=cc39c8fbde17d7ecc89eb6ac3bf37a64343b91031c8431de0600087c04e2f867",
+      "verdict": "accept"
+    },
+    {
+      "name": "valid_no_user",
+      "init_data": "query_id=AAHdF6IQAAAAAN0XohDhrOrc&auth_date=1789999900&hash=42c9bb5690ceefb9af5835b468d172bbdceee16fe360372de1fd1e7f91db0f9d",
+      "verdict": "accept"
+    },
+    {
+      "name": "field_changed",
+      "init_data": "query_id=AAHdF6IQAAAAAN0XohDhrOrcX&user=%7B%22id%22%3A7%2C%22first_name%22%3A%22Test%22%2C%22username%22%3A%22tester%22%7D&auth_date=1789999900&hash=cc39c8fbde17d7ecc89eb6ac3bf37a64343b91031c8431de0600087c04e2f867",
+      "verdict": "refuse",
+      "reason": "bad_signature"
+    },
+    {
+      "name": "wrong_token",
+      "init_data": "query_id=AAHdF6IQAAAAAN0XohDhrOrc&user=%7B%22id%22%3A7%2C%22first_name%22%3A%22Test%22%2C%22username%22%3A%22tester%22%7D&auth_date=1789999900&hash=4bc299923357d5d84acce016a54ca2cc62993a9cd121f6e05ebed3c5ffe68bc9",
+      "verdict": "refuse",
+      "reason": "bad_signature"
+    },
+    {
+      "name": "no_hash",
+      "init_data": "query_id=AAHdF6IQAAAAAN0XohDhrOrc&user=%7B%22id%22%3A7%2C%22first_name%22%3A%22Test%22%2C%22username%22%3A%22tester%22%7D&auth_date=1789999900",
+      "verdict": "refuse",
+      "reason": "missing_hash"
+    },
+    {
+      "name": "no_auth_date",
+      "init_data": "query_id=AAHdF6IQAAAAAN0XohDhrOrc&user=%7B%22id%22%3A7%2C%22first_name%22%3A%22Test%22%2C%22username%22%3A%22tester%22%7D&hash=2f2ddc6fe24f4c29b87e49a3f2495a53841b06b935ab5190b91d6993b5d5ae9a",
+      "verdict": "refuse",
+      "reason": "missing_auth_date"
+    },
+    {
+      "name": "stale",
+      "init_data": "query_id=AAHdF6IQAAAAAN0XohDhrOrc&user=%7B%22id%22%3A7%2C%22first_name%22%3A%22Test%22%2C%22username%22%3A%22tester%22%7D&auth_date=1789913599&hash=7d97077076716d3abbe3713a2d1b80143ec34c13e8ae791b90d0bee5276f55d3",
+      "verdict": "refuse",
+      "reason": "too_old"
+    },
+    {
+      "name": "from_the_future",
+      "init_data": "query_id=AAHdF6IQAAAAAN0XohDhrOrc&user=%7B%22id%22%3A7%2C%22first_name%22%3A%22Test%22%2C%22username%22%3A%22tester%22%7D&auth_date=1790000061&hash=35a25b1096568f8ff1701d991b3193fa38d738fdabc84940053fcac0b3df0832",
+      "verdict": "refuse",
+      "reason": "from_the_future"
+    },
+    {
+      "name": "auth_date_not_a_number",
+      "init_data": "query_id=AAHdF6IQAAAAAN0XohDhrOrc&user=%7B%22id%22%3A7%2C%22first_name%22%3A%22Test%22%2C%22username%22%3A%22tester%22%7D&auth_date=not-a-number&hash=8a2839d7852a9233daa9c14efa4bda5be2afc308165e28b8b1623e0b77257238",
+      "verdict": "refuse",
+      "reason": "malformed"
+    }
+  ]
+}

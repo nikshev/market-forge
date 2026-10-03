@@ -62,8 +62,10 @@ them to the API in each state of wrongness.
 1. **Given** a launch signed with the configured bot token and fresh, **When** it is verified,
    **Then** it is accepted — and the two independent implementations agree on the signature.
 2. **Given** a launch with one field changed, **or** signed with another token, **or** with the hash
-   missing, **or** the `auth_date` missing, **or** older than the configured age, **or** more than a
-   minute in the future, **When** it is verified, **Then** each is refused and each for its own reason.
+   missing, **or** the `auth_date` missing or not a number, **or** older than the configured age, **or**
+   more than a minute in the future, **When** it is verified, **Then** each is refused, for the reason
+   that names what was wrong. A changed field and a wrong token are one reason, a bad signature, **on
+   purpose**: telling them apart would tell an attacker which half of a guess was right.
 3. **Given** authentication is required, **When** a request to a market route has no valid
    `Authorization: tma <initData>` header, **Then** it gets 401 and **no market data**.
 4. **Given** authentication is required, **When** the request has a valid header, **Then** the response
@@ -158,9 +160,10 @@ for. It needs a bot token and a tunnel that the owner provides.
 
 - **FR-001**: The API MUST verify a launch as Telegram defines it: HMAC-SHA256 over the sorted
   `key=value` lines with the key `HMAC("WebAppData", bot_token)`, compared in constant time.
-- **FR-002**: A launch MUST be refused when a field was changed, the token differs, the hash or
-  `auth_date` is missing, the launch is older than the configured maximum age, or is more than a minute
-  in the future — each with its own reason, and none of them naming the token.
+- **FR-002**: A launch MUST be refused when a field was changed, the token differs, the hash is
+  missing, `auth_date` is missing or not a number, the launch is older than the configured maximum age,
+  or is more than a minute in the future — each with the reason that names what was wrong (a changed
+  field and a wrong token share the reason `bad_signature`), and none of them naming the token.
 - **FR-003**: The signature computed by the dev tool and the one the verifier expects MUST agree,
   proven by two implementations in two languages over the same inputs.
 - **FR-004**: With authentication required, every route that serves market data — including the
@@ -195,9 +198,10 @@ for. It needs a bot token and a tunnel that the owner provides.
 
 ### Measurable Outcomes
 
-- **SC-001**: Of eight launch variants (valid; field changed; wrong token; no hash; no `auth_date`;
-  stale; future; valid with no user), exactly two are accepted, and the six refused give six distinct
-  reasons.
+- **SC-001**: Of nine launch variants (valid; valid with no user; field changed; wrong token; no hash;
+  no `auth_date`; `auth_date` not a number; stale; future), exactly two are accepted, and the seven
+  refused give six distinct reasons — the two bad-signature cases being one by design. *(The first
+  wording said six refusals, six reasons; building the vectors showed two of the six cannot differ.)*
 - **SC-002**: With authentication required, 0 of the market routes return data to an unsigned request
   (counted by walking every route, and asserting how many were walked — a walk that reaches none
   reports success, which [[REQ-WP-072]] already found once).

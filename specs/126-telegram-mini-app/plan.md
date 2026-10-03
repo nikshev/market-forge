@@ -131,7 +131,7 @@ to `http2` because this host blocks QUIC egress (as `lexa-reader` found).
 
 ## Tests (written first)
 
-**pytest (fast gate; carry the edges):** the vectors (8 variants: two accepted, six refused, six
+**pytest (fast gate; carry the edges):** the vectors (9 variants: two accepted, seven refused, six
 distinct reasons); the verifier's boundaries (age, future, skew); the token never in an error or a log
 record; the gate over a route walk — every `/api/v1` route walked, count asserted, each 401 unsigned
 and 200 signed, and `off` unchanged; start refused for `required` with no token; websocket refused;

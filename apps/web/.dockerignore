@@ -1,0 +1,12 @@
+# @trace: REQ-WP-080
+#
+# What `COPY . .` in the Dockerfile must not take into the image.
+#
+# `.env*`: a developer's local files. Vite reads some of them in a production build, and one of them
+# (`.env.development.local`) holds a signed Telegram launch written by `npm run dev:init`. None of it
+# belongs in an artifact that is promoted between deployments.
+.env
+.env.*
+node_modules
+dist
+coverage

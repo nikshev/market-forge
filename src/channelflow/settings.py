@@ -3,6 +3,7 @@
 # @trace: REQ-WP-064
 # @trace: REQ-WP-066
 # @trace: REQ-WP-072
+# @trace: REQ-WP-080
 # @trace: REQ-WP-074
 
 Shared by every process that reaches the canonical plane -- the read API and the
@@ -55,6 +56,14 @@ _STORAGE = {
 CORS_ORIGINS = "CHANNELFLOW_CORS_ORIGINS"
 RATE_LIMIT = "CHANNELFLOW_RATE_LIMIT"
 RATE_WINDOW_SECONDS = "CHANNELFLOW_RATE_WINDOW_SECONDS"
+
+#: Telegram Mini App authentication ([[REQ-WP-080]]). The token is the one the alert sender already
+#: uses: two names for one secret would be two places to rotate it.
+TELEGRAM_AUTH = "CHANNELFLOW_TELEGRAM_AUTH"
+TELEGRAM_BOT_TOKEN = "TELEGRAM_BOT_TOKEN"
+TELEGRAM_MAX_AGE_SECONDS = "CHANNELFLOW_TELEGRAM_MAX_AGE_SECONDS"
+TELEGRAM_AUTH_MODES = ("off", "required")
+DEFAULT_TELEGRAM_MAX_AGE_SECONDS = 86_400
 
 #: What the deployment produces ([[REQ-WP-073]]) and therefore what the read
 #: API reports it can serve ([[REQ-WP-074]]). One variable, read by both
@@ -171,6 +180,11 @@ class Settings:
     #: variable is unset, which is honest: such a deployment produces only the
     #: source, and `timeframes.offered` adds it unconditionally.
     timeframes: tuple[Timeframe, ...] = ()
+    #: `off` (the default, and what every local run is) or `required` ([[REQ-WP-080]]).
+    telegram_auth: str = "off"
+    #: Never rendered: see `_rendered`.
+    telegram_bot_token: str = ""
+    telegram_max_age_seconds: int = DEFAULT_TELEGRAM_MAX_AGE_SECONDS
 
     def _rendered(self) -> str:
         storage = {
@@ -181,7 +195,10 @@ class Settings:
             f"Settings(catalog_uri={mask_password(self.catalog_uri)!r}, "
             f"warehouse={self.warehouse!r}, storage={storage!r}, "
             f"allowed_origins={self.allowed_origins!r}, rate_limit={self.rate_limit!r}, "
-            f"timeframes={tuple(tf.token for tf in self.timeframes)!r})"
+            f"timeframes={tuple(tf.token for tf in self.timeframes)!r}, "
+            f"telegram_auth={self.telegram_auth!r}, "
+            f"telegram_bot_token={MASK if self.telegram_bot_token else ''!r}, "
+            f"telegram_max_age_seconds={self.telegram_max_age_seconds!r})"
         )
 
     def __repr__(self) -> str:
@@ -213,6 +230,7 @@ def settings_from_env(environ: Mapping[str, str] | None = None) -> Settings:
         if values.get(name, "").strip()
     }
     raw_timeframes = values.get(TIMEFRAMES, "").strip()
+    telegram_auth, telegram_token, telegram_max_age = _telegram(values)
     return Settings(
         catalog_uri=values[CATALOG_URI].strip(),
         warehouse=values[WAREHOUSE].strip(),
@@ -220,7 +238,40 @@ def settings_from_env(environ: Mapping[str, str] | None = None) -> Settings:
         allowed_origins=_origins(values.get(CORS_ORIGINS, "")),
         rate_limit=_rate_limit(values),
         timeframes=parse_list(raw_timeframes) if raw_timeframes else (),
+        telegram_auth=telegram_auth,
+        telegram_bot_token=telegram_token,
+        telegram_max_age_seconds=telegram_max_age,
     )
+
+
+def _telegram(values: Mapping[str, str]) -> tuple[str, str, int]:
+    """The Mini App's authentication settings, refusing what would serve open by mistake.
+
+    `required` with no token stops the service: a deployment that asked for authentication and has
+    none
+    must not look the same as one that has it. Any other spelling of the mode is refused rather than
+    guessed -- `on`, `true` and `REQUIRED` are each a way to believe the gate is up when it is not.
+    """
+    mode = values.get(TELEGRAM_AUTH, "").strip() or "off"
+    if mode not in TELEGRAM_AUTH_MODES:
+        raise MissingConfiguration(
+            f"{TELEGRAM_AUTH} is {mode!r}; it must be one of {', '.join(TELEGRAM_AUTH_MODES)}"
+        )
+    token = values.get(TELEGRAM_BOT_TOKEN, "").strip()
+    if mode == "required" and not token:
+        raise MissingConfiguration(
+            f"{TELEGRAM_AUTH}=required needs {TELEGRAM_BOT_TOKEN}; refusing to start rather than "
+            "serve open"
+        )
+    raw_age = values.get(TELEGRAM_MAX_AGE_SECONDS, "").strip()
+    if not raw_age:
+        return mode, token, DEFAULT_TELEGRAM_MAX_AGE_SECONDS
+    if not raw_age.isdigit() or int(raw_age) < 1:
+        raise MissingConfiguration(
+            f"{TELEGRAM_MAX_AGE_SECONDS} is {raw_age!r}; it must be a whole number of seconds, "
+            "at least 1"
+        )
+    return mode, token, int(raw_age)
 
 
 def _origins(raw: str) -> tuple[str, ...]:

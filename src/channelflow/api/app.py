@@ -3,6 +3,7 @@
 # @trace: REQ-API-001
 # @trace: REQ-WP-072
 # @trace: REQ-WP-074
+# @trace: REQ-WP-080
 """
 
 from __future__ import annotations
@@ -19,6 +20,7 @@ from channelflow.api.readiness import router as readiness_router
 from channelflow.api.repositories import Repository
 from channelflow.api.routes import router
 from channelflow.api.security import FixedWindowLimiter, RateLimitMiddleware
+from channelflow.api.telegram_auth import TelegramAuthMiddleware, TelegramGate
 from channelflow.api.ws import register_websocket
 from channelflow.metrics import MetricRegistry
 from channelflow.settings import RateLimit
@@ -34,6 +36,7 @@ def create_app(
     rate_limit: RateLimit | None = None,
     timeframes: tuple[Timeframe, ...] = (),
     clock: Callable[[], float] = time.monotonic,
+    telegram_gate: TelegramGate | None = None,
 ) -> FastAPI:
     """Build the app over a repository (ADR-019).
 
@@ -55,6 +58,12 @@ def create_app(
     configured to resample nothing, which still serves the source.
     """
     app = FastAPI(title="ChannelFlow read API", version="1.0.0")
+    if telegram_gate is not None:
+        # Added first, so it is the innermost: the rate limiter and CORS sit outside it, which means
+        # an
+        # unsigned flood is counted by the limiter and a CORS preflight is answered before the gate
+        # sees it ([[REQ-WP-080]]).
+        app.add_middleware(TelegramAuthMiddleware, gate=telegram_gate)
     if rate_limit is not None:
         app.add_middleware(RateLimitMiddleware, limiter=FixedWindowLimiter(rate_limit, clock=clock))
     if allowed_origins:

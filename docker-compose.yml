@@ -176,6 +176,11 @@ services:
       # reports it, and the resampler builds it -- one `.env` value for both, so
       # what a chart offers cannot disagree with what exists.
       CHANNELFLOW_TIMEFRAMES: ${CHANNELFLOW_TIMEFRAMES}
+      # Telegram Mini App authentication ([[REQ-WP-080]]). `off` unless asked for. The bot token is
+      # the one the alert sender uses, and this is the only service given it.
+      CHANNELFLOW_TELEGRAM_AUTH: ${CHANNELFLOW_TELEGRAM_AUTH:-off}
+      CHANNELFLOW_TELEGRAM_MAX_AGE_SECONDS: ${CHANNELFLOW_TELEGRAM_MAX_AGE_SECONDS:-}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
     ports:
       - "${CHANNELFLOW_BIND_ADDRESS:-127.0.0.1}:${API_PORT}:8000"
     depends_on:
@@ -500,6 +505,27 @@ services:
     depends_on:
       api:
         condition: service_healthy
+
+  # An HTTPS address for the Telegram Mini App ([[REQ-WP-080]]). Off unless the `telegram` profile is
+  # named: `docker compose --profile telegram up -d --build`. An outbound tunnel to Cloudflare, which
+  # serves the public hostname and terminates TLS, so no host port is opened and no certificate lives
+  # here. Its public hostname must point at `http://web:8080` (set in Cloudflare's dashboard).
+  cloudflared:
+    logging: *default-logging
+    profiles: ["telegram"]
+    image: cloudflare/cloudflared:2026.9.3
+    command: tunnel --no-autoupdate run
+    environment:
+      # Empty by default and not `:?`: that is evaluated for every service, profile or not, and would
+      # break `docker compose config` for everyone who never turns the profile on. Empty makes the
+      # tunnel fail visibly at start.
+      TUNNEL_TOKEN: ${CHANNELFLOW_TUNNEL_TOKEN:-}
+      # UDP egress to Cloudflare's edge is blocked on this host, and the default (QUIC) never
+      # connects; `lexa-reader` found the same.
+      TUNNEL_TRANSPORT_PROTOCOL: ${CHANNELFLOW_TUNNEL_PROTOCOL:-http2}
+    depends_on:
+      - web
+    restart: unless-stopped
 
   prometheus:
     logging: *default-logging
