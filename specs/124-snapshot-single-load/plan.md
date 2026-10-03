@@ -127,8 +127,9 @@ window.
    `self._table()` added later fails it.
 2. **A commit lands between loads** — a wrapper that commits one more row through another handle
    *before returning each load after the first*, so the race happens on every call, not once an hour.
-   Over 25 consecutive reads of the newest snapshot, `current()`, `snapshot(n)` and `append`, no
-   `NoSuchSnapshot`. Fails today.
+   Over 25 consecutive reads of the newest snapshot, `current()` and `snapshot(n)`, no
+   `NoSuchSnapshot`. Fails today. (`append` is not raced this way: its first load is the clean one,
+   so it is covered by test 3, which commits the competitor *after* the writer's own commit.)
 3. **`append` returns its own snapshot** — a competing commit lands immediately after this writer's;
    the returned snapshot is this writer's number and content. Pins the pyiceberg refresh.
 4. **A missing snapshot is still refused, by name** — and the message lists the snapshots of the
