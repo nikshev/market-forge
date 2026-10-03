@@ -67,7 +67,7 @@ continues. The registration is retried the next time the process starts, and not
 
 <!-- trace:begin -->
 - **Specs:** [[SPEC-127-markets-registered]]
-- **Outcomes:** [[OUT-2026-10-03-plan-markets-registered]], [[OUT-2026-10-03-spec-markets-registered]]
+- **Outcomes:** [[OUT-2026-10-03-plan-markets-registered]], [[OUT-2026-10-03-spec-markets-registered]], [[OUT-2026-10-03-tasks-markets-registered]]
 <!-- trace:end -->
 
 ## Notes

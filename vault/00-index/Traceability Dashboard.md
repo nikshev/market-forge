@@ -951,6 +951,7 @@ graph LR
   OUT_2026_10_03_spec_no_unfinalized_upsample["OUT-2026-10-03-spec-no-unfinalized-upsample"]
   OUT_2026_10_03_spec_snapshot_single_load["OUT-2026-10-03-spec-snapshot-single-load"]
   OUT_2026_10_03_spec_telegram_mini_app["OUT-2026-10-03-spec-telegram-mini-app"]
+  OUT_2026_10_03_tasks_markets_registered["OUT-2026-10-03-tasks-markets-registered"]
   OUT_2026_10_03_tasks_no_unfinalized_upsample["OUT-2026-10-03-tasks-no-unfinalized-upsample"]
   OUT_2026_10_03_tasks_snapshot_single_load["OUT-2026-10-03-tasks-snapshot-single-load"]
   OUT_2026_10_03_tasks_telegram_mini_app["OUT-2026-10-03-tasks-telegram-mini-app"]
@@ -5702,6 +5703,7 @@ graph LR
   OUT_2026_10_03_spec_no_unfinalized_upsample -.->|RECORDS| REQ_NRT_UPSAMPLE
   OUT_2026_10_03_spec_snapshot_single_load -.->|RECORDS| REQ_WP_079
   OUT_2026_10_03_spec_telegram_mini_app -.->|RECORDS| REQ_WP_080
+  OUT_2026_10_03_tasks_markets_registered -.->|RECORDS| REQ_WP_081
   OUT_2026_10_03_tasks_no_unfinalized_upsample -.->|RECORDS| REQ_NRT_UPSAMPLE
   OUT_2026_10_03_tasks_snapshot_single_load -.->|RECORDS| REQ_WP_079
   OUT_2026_10_03_tasks_telegram_mini_app -.->|RECORDS| REQ_WP_080
