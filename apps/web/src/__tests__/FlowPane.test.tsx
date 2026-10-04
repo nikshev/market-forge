@@ -19,9 +19,9 @@ function points(values: Record<string, number>[]): FeaturePointOut[] {
 
 describe("the pane a reader sees", () => {
   it("offers every pane and marks the selected one", () => {
-    render(<FlowPane points={points([{ cvd: 1 }])} feature="cvd" onSelect={() => {}} />);
+    render(<FlowPane points={points([{ cvd_base: 1 }])} feature="cvd_base" onSelect={() => {}} />);
 
-    expect(screen.getByRole("button", { name: "CVD" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "CVD (base)" })).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByRole("button", { name: "OFI (1m)" })).toHaveAttribute(
       "aria-pressed",
       "false",

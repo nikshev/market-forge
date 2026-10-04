@@ -42,7 +42,7 @@ describe("the pane row with some panes empty", () => {
       />,
     );
 
-    const cvd = screen.getByRole("button", { name: "CVD no data" });
+    const cvd = screen.getByRole("button", { name: "CVD (base) no data" });
     expect(cvd).toBeDisabled();
     expect(screen.getAllByRole("button", { name: /no data$/ })).toHaveLength(8);
   });
@@ -60,7 +60,7 @@ describe("the pane row with some panes empty", () => {
       />,
     );
 
-    screen.getByRole("button", { name: "CVD no data" }).click();
+    screen.getByRole("button", { name: "CVD (base) no data" }).click();
 
     expect(chosen).toBe("");
   });
@@ -82,7 +82,7 @@ describe("when it is not known which panes have data", () => {
     render(<FlowPane points={[]} feature="cvd" available={null} onSelect={() => {}} />);
 
     expect(screen.queryByRole("button", { name: /no data/ })).toBeNull();
-    expect(screen.getByRole("button", { name: "CVD" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "CVD (base)" })).toBeEnabled();
   });
 
   it("does the same when `available` is not given at all: the old behaviour exactly", () => {

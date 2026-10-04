@@ -3,6 +3,7 @@
 // @trace: REQ-WP-063
 // @trace: REQ-WP-084
 // @trace: REQ-WP-085
+// @trace: REQ-WP-088
 //
 // PRD section 27.3's lower panes, for the three Phase 2 has data for.
 //
@@ -29,7 +30,9 @@ export interface Pane {
 // imbalance and DEX active liquidity. This is how the page's row compares with it (REQ-WP-085):
 //
 //   volume                 present, first, in `BAR_PANES` below -- read from the bars, not a feature;
-//   CVD, OFI (1m)          here, from [[REQ-WP-027]]; no producer writes them yet, so they read "no data";
+//   CVD (base)             here as `cvd_base` ([[REQ-WP-088]]): derived by the worker from the bars' stored
+//                          aggressor split, in base units not notional ([[ADR-068]]);
+//   OFI (1m)               here, from [[REQ-WP-027]]; needs a book subscription nobody has, so "no data";
 //   OI, funding, basis,
 //   liquidations           here, from [[REQ-WP-030]]; no producer writes them yet;
 //   DEX swap imbalance,
@@ -52,7 +55,7 @@ export interface Pane {
 // forever, which reads as a quiet market rather than as a typo. Volume is not a feature, which is why it is
 // not an entry here but in `BAR_PANES`.
 export const PANES: readonly Pane[] = [
-  { feature: "cvd", label: "CVD" },
+  { feature: "cvd_base", label: "CVD (base)" },
   { feature: "ofi_1m", label: "OFI (1m)" },
   { feature: "depth_imbalance_10", label: "Depth imbalance (10)" },
   { feature: "open_interest_usd", label: "Open interest" },
@@ -203,4 +206,39 @@ export function chooseSelection(
     return current;
   }
   return ROW.find((pane) => available.has(pane.feature))?.feature ?? null;
+}
+
+/**
+ * Splits a drawn series where the feature's own `cvd_run` changes (REQ-WP-088).
+ *
+ * A running sum is not comparable across a missing bar or a missed trade, and a line joined across the
+ * break would say it is. Each run is its own segment. A series with no run information (every other
+ * feature) is one segment; a point without a value for the feature is a gap in the series and not a break.
+ */
+export function segments(
+  drawn: readonly PanePoint[],
+  points: readonly FeaturePointOut[],
+): PanePoint[][] {
+  const runAt = new Map<bigint, number>();
+  for (const point of points) {
+    const run = point.values["cvd_run"];
+    if (run !== undefined) {
+      runAt.set(point.at_ns, run);
+    }
+  }
+  const result: PanePoint[][] = [];
+  let currentRun: number | undefined;
+  for (const point of drawn) {
+    const run = runAt.get(point.at_ns);
+    const last = result.at(-1);
+    if (last === undefined || (run !== undefined && currentRun !== undefined && run !== currentRun)) {
+      result.push([point]);
+    } else {
+      last.push(point);
+    }
+    if (run !== undefined) {
+      currentRun = run;
+    }
+  }
+  return result;
 }

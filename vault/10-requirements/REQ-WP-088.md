@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "§15.4, §27.3, §29.5"
 prd_lines: "2386-2403, 4423-4436"
 phase: null
-status: planned
+status: implemented
 depends_on: [REQ-WP-011, REQ-STORE-002, REQ-WP-027, REQ-WP-084]
 tags: [features, cvd, ingest, pipeline, web]
 hard_gated: false
@@ -68,7 +68,50 @@ pane draws a line.
 
 <!-- trace:begin -->
 - **Specs:** [[SPEC-135-trade-flow-features]]
-- **Outcomes:** [[OUT-2026-10-04-plan-trade-flow-features]], [[OUT-2026-10-04-spec-trade-flow-features]], [[OUT-2026-10-04-tasks-trade-flow-features]]
+- **Tests:**
+    - `tests/unit/features/test_flow_bars.py::test_a_bar_where_nothing_traded_has_no_normalized_delta_and_is_not_a_break`
+    - `tests/unit/features/test_flow_bars.py::test_a_bar_whose_id_span_differs_from_its_trade_count_has_no_row_and_breaks_both_sides`
+    - `tests/unit/features/test_flow_bars.py::test_a_forming_bar_produces_no_row`
+    - `tests/unit/features/test_flow_bars.py::test_a_missing_bar_ends_the_run_and_nothing_is_summed_across_it`
+    - `tests/unit/features/test_flow_bars.py::test_a_trade_id_jump_between_bars_ends_the_run_for_a_sequential_venue`
+    - `tests/unit/features/test_flow_bars.py::test_a_venue_without_sequential_ids_breaks_only_on_a_missing_bar`
+    - `tests/unit/features/test_flow_bars.py::test_appending_later_bars_leaves_the_earlier_rows_unchanged`
+    - `tests/unit/features/test_flow_bars.py::test_delta_and_cvd_are_hand_computed_for_three_bars`
+    - `tests/unit/features/test_flow_bars.py::test_each_timeframe_has_its_own_runs`
+    - `tests/unit/features/test_flow_bars.py::test_no_bars_give_no_rows`
+    - `tests/unit/features/test_flow_bars.py::test_normalized_delta_is_the_delta_over_the_bars_volume`
+    - `tests/unit/features/test_flow_bars.py::test_slope_is_delta_over_seconds_and_acceleration_is_absent_in_a_runs_first_bar`
+    - `tests/unit/features/test_flow_bars.py::test_the_feature_names_are_the_six_base_names_and_never_the_notional_ones`
+    - `tests/unit/features/test_flow_bars.py::test_the_first_bar_of_a_new_run_has_no_acceleration_either`
+    - `tests/unit/features/test_flow_bars.py::test_the_order_the_bars_arrive_in_does_not_matter`
+    - `tests/unit/features/test_flow_registry.py::test_every_flow_feature_is_registered_with_its_unit_and_the_deviation_stated[cvd_base]`
+    - `tests/unit/features/test_flow_registry.py::test_every_flow_feature_is_registered_with_its_unit_and_the_deviation_stated[cvd_base_acceleration]`
+    - `tests/unit/features/test_flow_registry.py::test_every_flow_feature_is_registered_with_its_unit_and_the_deviation_stated[cvd_base_slope]`
+    - `tests/unit/features/test_flow_registry.py::test_every_flow_feature_is_registered_with_its_unit_and_the_deviation_stated[cvd_run]`
+    - `tests/unit/features/test_flow_registry.py::test_every_flow_feature_is_registered_with_its_unit_and_the_deviation_stated[delta_base]`
+    - `tests/unit/features/test_flow_registry.py::test_every_flow_feature_is_registered_with_its_unit_and_the_deviation_stated[normalized_delta_base]`
+    - `tests/unit/features/test_flow_registry.py::test_only_binance_is_flagged_as_having_sequential_trade_ids`
+    - `tests/unit/pipeline/test_channel_flow_step.py::test_a_failing_flow_step_does_not_stop_the_channel_step`
+    - `tests/unit/pipeline/test_channel_flow_step.py::test_a_pass_writes_the_flow_rows_and_a_second_pass_writes_nothing`
+    - `tests/unit/pipeline/test_channel_flow_step.py::test_the_channel_step_still_gets_the_bars_it_always_got`
+    - `tests/unit/pipeline/test_channel_flow_step.py::test_the_flow_step_writes_every_timeframe_the_bars_table_has`
+    - `tests/unit/tables/test_flow_sink.py::test_a_longer_series_appends_only_what_is_after_the_latest_row`
+    - `tests/unit/tables/test_flow_sink.py::test_a_shorter_series_writes_nothing_and_never_rewrites`
+    - `tests/unit/tables/test_flow_sink.py::test_rows_are_written_and_a_second_pass_over_the_same_bars_writes_nothing`
+    - `tests/unit/tables/test_flow_sink.py::test_two_series_do_not_see_each_others_latest_row`
+    - `tests/unit/web/test_cvd_pane_artifacts.py::test_every_module_this_requirement_touches_names_it[FlowPane.tsx]`
+    - `tests/unit/web/test_cvd_pane_artifacts.py::test_every_module_this_requirement_touches_names_it[panes.ts]`
+    - `tests/unit/web/test_cvd_pane_artifacts.py::test_the_cvd_pane_names_a_feature_the_worker_writes`
+    - `tests/unit/web/test_cvd_pane_artifacts.py::test_there_is_a_live_screenshot_of_the_cvd_pane_in_each_scheme[dark]`
+    - `tests/unit/web/test_cvd_pane_artifacts.py::test_there_is_a_live_screenshot_of_the_cvd_pane_in_each_scheme[light]`
+- **Code:**
+    - `apps/web/src/FlowPane.tsx`
+    - `apps/web/src/panes.ts`
+    - `src/channelflow/connectors/venue.py`
+    - `src/channelflow/features/__init__.py`
+    - `src/channelflow/pipeline/channel_main.py`
+    - `src/channelflow/tables/features.py`
+- **Outcomes:** [[OUT-2026-10-04-implement-trade-flow-features]], [[OUT-2026-10-04-plan-trade-flow-features]], [[OUT-2026-10-04-spec-trade-flow-features]], [[OUT-2026-10-04-tasks-trade-flow-features]]
 <!-- trace:end -->
 
 ## Notes

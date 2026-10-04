@@ -1,6 +1,7 @@
 """Venue abstraction for multi-venue ingest.
 
 # @trace: REQ-WP-076
+# @trace: REQ-WP-088
 # @trace: REQ-WP-078
 # @trace: REQ-WP-081
 
@@ -88,6 +89,13 @@ class VenueConfig:
     #: code that registers a market -- a second home for a venue's facts is how two of them end up
     #: disagreeing. A function of the symbol because OKX's URL says nothing and its instrument does.
     market_type: Callable[[str], str]
+    #: Whether the trade ids of this feed are sequential per symbol, so that a jump between two
+    #: bars -- or an id span that is not the bar's trade count -- shows a missed trade ([[REQ-
+    #: WP-088]]). **Measured** on live bars, 2026-10-04: Binance `aggTrade` ids are; Bybit's are
+    #: not numeric and OKX's are numeric but not sequential (98% of its bars disagree). A venue
+    #: says `False` until it has been measured, because a wrong `True` marks good bars
+    #: incomplete.
+    sequential_trade_ids: bool = False
 
 
 def binance_market_type(symbol: str) -> str:
@@ -207,6 +215,7 @@ VENUE_REGISTRY = {
         url=None,
         subscribe_message=binance_subscription,
         market_type=binance_market_type,
+        sequential_trade_ids=True,
     ),
     "bybit": VenueConfig(
         connector="channelflow.connectors.bybit.connector.BybitConnector",

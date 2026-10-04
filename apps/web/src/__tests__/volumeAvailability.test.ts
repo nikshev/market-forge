@@ -39,12 +39,12 @@ describe("which panes have data, with bars", () => {
   });
 
   it("leaves volume out when no bar is final, or there are none", () => {
-    expect(availablePanes([point({ cvd: 1 })], [bar(0, false)]).has("volume")).toBe(false);
-    expect(availablePanes([point({ cvd: 1 })], []).has("volume")).toBe(false);
+    expect(availablePanes([point({ cvd_base: 1 })], [bar(0, false)]).has("volume")).toBe(false);
+    expect(availablePanes([point({ cvd_base: 1 })], []).has("volume")).toBe(false);
   });
 
   it("is what it was for the features when no bars are given", () => {
-    expect([...availablePanes([point({ cvd: 1 })])]).toEqual(["cvd"]);
+    expect([...availablePanes([point({ cvd_base: 1 })])]).toEqual(["cvd_base"]);
   });
 });
 

@@ -86,7 +86,7 @@ describe("the pane row on the chart page", () => {
 
     // The page opens on Volume, which does not depend on the features, so the failure is not shown until a
     // feature pane is chosen (REQ-WP-085); until then nothing claims "no data" either.
-    fireEvent.click(await screen.findByRole("button", { name: "CVD" }));
+    fireEvent.click(await screen.findByRole("button", { name: "CVD (base)" }));
     expect(await screen.findByRole("status", { name: "Pane load" })).toHaveTextContent("HTTP 503");
     expect(screen.queryByRole("button", { name: /no data/ })).toBeNull();
   });

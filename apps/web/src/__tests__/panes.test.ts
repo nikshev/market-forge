@@ -25,7 +25,7 @@ describe("the pane list", () => {
     // derivatives from [[REQ-WP-030]], swap imbalance from [[REQ-WP-059]] and
     // active liquidity from [[REQ-WP-063]], each when its feature existed.
     expect(PANES.map((p) => p.feature)).toEqual([
-      "cvd",
+      "cvd_base",
       "ofi_1m",
       "depth_imbalance_10",
       "open_interest_usd",

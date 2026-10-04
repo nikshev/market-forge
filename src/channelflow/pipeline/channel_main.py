@@ -2,6 +2,7 @@
 
 # @trace: REQ-WP-077
 # @trace: REQ-INFRA-012
+# @trace: REQ-WP-088
 
 The process half of `channel_production`: it reads the bars table for each
 configured timeframe, calls `record_replay` (which already exists, is correct,
@@ -18,14 +19,20 @@ from __future__ import annotations
 
 import argparse
 import os
+from collections import defaultdict
 from collections.abc import Sequence
 
+from channelflow.bars.models import Bar
+from channelflow.connectors.venue import VENUE_REGISTRY
+from channelflow.features.flow_bars import flow_rows
 from channelflow.lakehouse import Catalog, IcebergTable
 from channelflow.lakehouse import catalog as open_catalog
 from channelflow.pipeline.passes import run_passes
 from channelflow.pipeline.replay import record_replay
 from channelflow.settings import MissingConfiguration, settings_from_env
 from channelflow.tables import bars as bars_table
+from channelflow.tables import features as features_table
+from channelflow.tables.features import latest_flow_times, write_flow
 from channelflow.timeframes import Timeframe, parse_list
 
 #: The timeframes this deployment produces, comma-separated. `1m` is the source
@@ -80,6 +87,53 @@ def run_series(
     )
 
 
+def write_flow_features(catalog: Catalog, all_bars: Sequence[Bar]) -> int:
+    """CVD and the trade-imbalance features, from the bars this pass already read ([[REQ-WP-088]]).
+
+    Every `(venue, symbol, timeframe)` the bars table has, including the timeframes `resample`
+    builds. The bars carry the aggressor split, so nothing is read twice and no trade is touched.
+    One series failing is reported and does not stop the others, and none of it can stop the
+    channel step that follows. Returns how many bars' worth of rows were written.
+    """
+    grouped: dict[tuple[str, str, int], list[Bar]] = defaultdict(list)
+    for bar in all_bars:
+        grouped[(bar.venue, bar.symbol, bar.timeframe_ns)].append(bar)
+
+    try:
+        table = features_table.features_table_for(catalog)
+        latest = latest_flow_times(table)
+    except Exception as cause:  # noqa: BLE001 -- the channel step must still run
+        print(
+            f"  flow: could not read the features table -- {type(cause).__name__}: {cause}",
+            flush=True,
+        )
+        return 0
+
+    written = 0
+    for (venue, symbol, timeframe_ns), series_bars in sorted(grouped.items()):
+        config = VENUE_REGISTRY.get(venue)
+        try:
+            written += write_flow(
+                table,
+                venue=venue,
+                symbol=symbol,
+                timeframe_ns=timeframe_ns,
+                rows=flow_rows(
+                    series_bars,
+                    sequential_ids=config.sequential_trade_ids if config is not None else False,
+                ),
+                latest=latest,
+            )
+        except Exception as cause:  # noqa: BLE001 -- one series must not end the pass
+            print(
+                f"  {venue} {symbol} {timeframe_ns // 60_000_000_000}m: flow step failed -- "
+                f"{type(cause).__name__}: {cause}",
+                flush=True,
+            )
+    print(f"  flow rows written for {written} bar(s)", flush=True)
+    return written
+
+
 def run_pass(
     catalog: Catalog,
     *,
@@ -100,6 +154,8 @@ def run_pass(
     # Discover all series from the bars table (any timeframe)
     all_bars = bars_table.read_bars(table)
     series = sorted({(bar.venue, bar.symbol) for bar in all_bars})
+
+    write_flow_features(catalog, all_bars)
 
     results: list[tuple[str, str, str, int, int, int, int]] = []
     for venue, symbol in series:

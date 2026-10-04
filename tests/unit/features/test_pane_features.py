@@ -78,7 +78,8 @@ def test_the_derivatives_panes_are_offered() -> None:
 def test_the_order_flow_panes_are_still_offered() -> None:
     offered = set(offered_features())
 
-    assert {"cvd", "ofi_1m", "depth_imbalance_10"} <= offered
+    # CVD is `cvd_base` since REQ-WP-088: derived from the bars, in base units (ADR-068).
+    assert {"cvd_base", "ofi_1m", "depth_imbalance_10"} <= offered
 
 
 @pytest.mark.trace("REQ-WP-059")

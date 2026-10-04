@@ -112,7 +112,12 @@ failure that names the feature.
     - `tests/unit/features/test_truncation_parity.py::test_the_truncated_and_full_runs_agree[channel_width_pct]`
     - `tests/unit/features/test_truncation_parity.py::test_the_truncated_and_full_runs_agree[cvd]`
     - `tests/unit/features/test_truncation_parity.py::test_the_truncated_and_full_runs_agree[cvd_acceleration]`
+    - `tests/unit/features/test_truncation_parity.py::test_the_truncated_and_full_runs_agree[cvd_base]`
+    - `tests/unit/features/test_truncation_parity.py::test_the_truncated_and_full_runs_agree[cvd_base_acceleration]`
+    - `tests/unit/features/test_truncation_parity.py::test_the_truncated_and_full_runs_agree[cvd_base_slope]`
+    - `tests/unit/features/test_truncation_parity.py::test_the_truncated_and_full_runs_agree[cvd_run]`
     - `tests/unit/features/test_truncation_parity.py::test_the_truncated_and_full_runs_agree[cvd_slope]`
+    - `tests/unit/features/test_truncation_parity.py::test_the_truncated_and_full_runs_agree[delta_base]`
     - `tests/unit/features/test_truncation_parity.py::test_the_truncated_and_full_runs_agree[delta_notional]`
     - `tests/unit/features/test_truncation_parity.py::test_the_truncated_and_full_runs_agree[dex_active_liquidity]`
     - `tests/unit/features/test_truncation_parity.py::test_the_truncated_and_full_runs_agree[dex_swap_imbalance]`
@@ -127,6 +132,7 @@ failure that names the feature.
     - `tests/unit/features/test_truncation_parity.py::test_the_truncated_and_full_runs_agree[long_short_z]`
     - `tests/unit/features/test_truncation_parity.py::test_the_truncated_and_full_runs_agree[mark_premium_bps]`
     - `tests/unit/features/test_truncation_parity.py::test_the_truncated_and_full_runs_agree[normalized_delta]`
+    - `tests/unit/features/test_truncation_parity.py::test_the_truncated_and_full_runs_agree[normalized_delta_base]`
     - `tests/unit/features/test_truncation_parity.py::test_the_truncated_and_full_runs_agree[ofi_1m]`
     - `tests/unit/features/test_truncation_parity.py::test_the_truncated_and_full_runs_agree[ofi_1s]`
     - `tests/unit/features/test_truncation_parity.py::test_the_truncated_and_full_runs_agree[ofi_30s]`

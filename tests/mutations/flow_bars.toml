@@ -1,0 +1,79 @@
+# The mutation sweep for REQ-WP-088: CVD and the trade-imbalance features, derived from bars.
+#
+# Each mutation is a way a run could be joined across a break, a bar could be counted that should not be,
+# or a row could look past its own bar.
+#
+# Patterns are TOML *literal* strings on purpose: the basic form treats a trailing
+# backslash as a line continuation and eats the next line's indentation.
+source = "src/channelflow/features/flow_bars.py"
+tests = ["tests/unit/features/test_flow_bars.py", "tests/unit/features/test_truncation_parity.py"]
+
+[[mutation]]
+name = "a missing bar does not end the run"
+find = '''            bar.open_time_ns != previous.open_time_ns + bar.timeframe_ns'''
+replace = '''            bar.open_time_ns == previous.open_time_ns + bar.timeframe_ns'''
+
+[[mutation]]
+name = "a trade-id jump does not end the run"
+find = '''    return after[0] != before[1] + 1'''
+replace = '''    return after[0] == before[1] + 1'''
+
+[[mutation]]
+name = "a bar with missed trades inside it is trusted"
+find = '''    return ids[1] - ids[0] + 1 != bar.trade_count'''
+replace = '''    return ids[1] - ids[0] + 1 == bar.trade_count'''
+
+[[mutation]]
+name = "a bar that is still forming produces a row"
+find = '''        if bar.is_final:
+            by_open[bar.open_time_ns] = bar'''
+replace = '''        if True:
+            by_open[bar.open_time_ns] = bar'''
+
+[[mutation]]
+name = "the sum is not restarted at a break"
+find = '''            run += 1
+            cvd = Decimal(0)'''
+replace = '''            run += 1'''
+
+[[mutation]]
+name = "the sum is replaced instead of accumulated"
+find = '''        cvd += bar.delta_base'''
+replace = '''        cvd = bar.delta_base'''
+
+[[mutation]]
+name = "a bar of no volume gets a ratio"
+find = '''        if bar.volume_base > 0:'''
+replace = '''        if bar.volume_base >= 0:'''
+
+[[mutation]]
+name = "the first bar of a run gets an acceleration"
+find = '''            previous_slope = None
+        pending_break = False'''
+replace = '''        pending_break = False'''
+
+[[mutation]]
+name = "a venue without sequential ids is judged by them anyway"
+find = '''            or (sequential_ids and _id_jump(previous, bar))'''
+replace = '''            or _id_jump(previous, bar)'''
+
+[[mutation]]
+name = "an incomplete bar does not break the run after it"
+find = '''            pending_break = True
+            continue'''
+replace = '''            continue'''
+
+[[mutation]]
+name = "the row is stamped at the bar's open, not its close"
+find = '''        rows.append(FlowRow(at_ns=bar.close_time_ns, values=values))'''
+replace = '''        rows.append(FlowRow(at_ns=bar.open_time_ns, values=values))'''
+
+[[mutation]]
+name = "the slope ignores the bar's length"
+find = '''        slope = float(bar.delta_base) / seconds'''
+replace = '''        slope = float(bar.delta_base)'''
+
+[[mutation]]
+name = "a gap that is exactly one extra bar is not a gap"
+find = '''        if last_emitted and (broken or pending_break):'''
+replace = '''        if last_emitted and (pending_break):'''

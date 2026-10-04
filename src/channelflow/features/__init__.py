@@ -1,6 +1,7 @@
 """Order-flow and book features (REQ-WP-011).
 
 # @trace: REQ-WP-011
+# @trace: REQ-WP-088
 
 PRD section 15. Scope is REQ-WP-011's acceptance list: queue and depth
 imbalance, microprice, OFI, cumulative volume delta, wall persistence. Section
@@ -23,10 +24,20 @@ def exposed_feature_names() -> tuple[str, ...]:
     """
     from channelflow import derivatives, volume
     from channelflow.channels import features as channel_features
-    from channelflow.features import dex, flow, instant, ofi, walls
+    from channelflow.features import dex, flow, flow_bars, instant, ofi, walls
 
     names: list[str] = []
-    for module in (instant, ofi, flow, walls, dex, derivatives, volume, channel_features):
+    for module in (
+        instant,
+        ofi,
+        flow,
+        flow_bars,
+        walls,
+        dex,
+        derivatives,
+        volume,
+        channel_features,
+    ):
         names.extend(module.FEATURES)
     return tuple(names)
 

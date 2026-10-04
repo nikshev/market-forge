@@ -8,12 +8,12 @@
 
 **Why this is worth the work.** `FeatureSpec` carries
 `point_in_time_safe: Literal[True]`, so the type makes any other value
-unregisterable: all 55 registered features *declare* point-in-time safety, and
+unregisterable: all 61 registered features *declare* point-in-time safety, and
 the only test that touches that field asserts it is a `bool` — which the type
 guarantees before the test runs. The promise is extracted by the type and
 verified by nothing. This is its verification.
 
-**`NOT_YET_COVERED` is a debt register, not a permission.** The 55 features share
+**`NOT_YET_COVERED` is a debt register, not a permission.** The 61 features share
 no interface — some take events with a window, some a book service, some a
 stateful tracker — so each case is written by hand against its own signature.
 [[REQ-NRT-LEAK]] stays at `specified` until that list is empty. What the list
@@ -69,6 +69,7 @@ from channelflow.features.dex import (
     swap_imbalance,
 )
 from channelflow.features.flow import FlowTracker
+from channelflow.features.flow_bars import FLOW_FEATURES, flow_rows
 from channelflow.features.ofi import OFITracker
 from channelflow.features.truncation import (
     RELATIVE_TOLERANCE,
@@ -89,6 +90,7 @@ from tests.unit.features.test_dex import MINUTE_NS as DEX_MINUTE_NS
 from tests.unit.features.test_dex import NOW as DEX_NOW
 from tests.unit.features.test_dex import SECOND_NS as DEX_SECOND_NS
 from tests.unit.features.test_dex import _swap as dex_swap
+from tests.unit.features.test_flow_bars import make_bar as flow_bar
 from tests.unit.features.test_ofi import obs
 
 LOOKBACK = 30
@@ -178,6 +180,38 @@ def _flow_cases() -> list[TruncationCase]:
             full=lambda reader=reader: reader(tracker(upto_t=False)),
         )
         for name, reader in readers.items()
+    ]
+
+
+def _flow_bar_cases() -> list[TruncationCase]:
+    """`trade_flow` from bars (REQ-WP-088): a pure function over bars, asked for the row at `t`.
+
+    The truncated side sees only the bars up to and including the one that closes at `t`; the full
+    side sees all of them. A bar is missing before `t`, so a run has already broken when `t` is
+    reached, and bars follow `t` whose deltas differ: if the sum, the slope's previous bar, the
+    break detection or the incomplete-bar check looked past `t`, this is what would notice.
+    """
+    indices = [i for i in range(60) if i != 25]
+    bars = [flow_bar(i, str(3 + i % 7), str(2 + i % 5)) for i in indices]
+    at_index = 40
+    at_bar = next(
+        bar for bar in bars if bar.open_time_ns == flow_bar(at_index, "1", "1").open_time_ns
+    )
+    at_ns = at_bar.close_time_ns
+
+    def row(upto_t: bool) -> dict[str, float]:
+        seen = [b for b in bars if not upto_t or b.close_time_ns <= at_ns]
+        by_close = {r.at_ns: r.values for r in flow_rows(seen, sequential_ids=True)}
+        return by_close[at_ns]
+
+    return [
+        TruncationCase(
+            feature=name,
+            at_ns=at_ns,
+            truncated=lambda name=name: row(upto_t=True).get(name),
+            full=lambda name=name: row(upto_t=False).get(name),
+        )
+        for name in FLOW_FEATURES
     ]
 
 
@@ -480,6 +514,7 @@ def _defi_cases() -> list[TruncationCase]:
 CASES: list[TruncationCase] = (
     _channel_cases()
     + _flow_cases()
+    + _flow_bar_cases()
     + _ofi_cases()
     + _derivatives_cases()
     + _order_book_cases()
@@ -565,7 +600,7 @@ def test_the_registry_is_fully_imported_before_anything_is_counted() -> None:
     complete and is half.
     """
     names = exposed_feature_names()
-    assert len(names) == 55
+    assert len(names) == 61
     assert sorted(names) == sorted(REGISTRY)
 
 
@@ -582,15 +617,15 @@ def test_every_registered_feature_is_covered_or_declared_outstanding() -> None:
 def test_every_feature_is_accounted_for() -> None:
     """The debt register is empty, which is what lets REQ-NRT-LEAK complete.
 
-    39 cases and 16 refusals. The refusals are not a shortfall: they are the
+    45 cases and 16 refusals. The refusals are not a shortfall: they are the
     features whose producers name no moment, so §35.4's second run cannot be
     expressed for them at all. `test_a_refusal_is_only_available_to_a_feature_
     that_names_no_moment` is what stops that being a way out.
     """
     assert NOT_YET_COVERED == frozenset()
-    assert len(CASES) == 39
+    assert len(CASES) == 45
     assert len(REFUSALS) == 16
-    assert len(CASES) + len(REFUSALS) == 55 == len(REGISTRY)
+    assert len(CASES) + len(REFUSALS) == 61 == len(REGISTRY)
     assert {case.feature for case in CASES} & {r.feature for r in REFUSALS} == set()
 
 

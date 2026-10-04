@@ -2,6 +2,7 @@
 
 # @trace: REQ-STORE-002
 # @trace: REQ-WP-081
+# @trace: REQ-WP-088
 
     ## 29.5. `feature_snapshots`
     Prefer wide table for stable production feature set plus optional long table
@@ -23,9 +24,13 @@ from __future__ import annotations
 
 import hashlib
 import struct
+from collections.abc import Mapping, Sequence
 from decimal import Decimal
 
+import pyarrow.compute as pc
+
 from channelflow.domain import Instrument
+from channelflow.features.flow_bars import FlowRow
 from channelflow.lakehouse import Catalog, Column, IcebergTable, Schema
 from channelflow.scoring import Group, GroupContribution, SignalScore
 from channelflow.tables.rows import (
@@ -258,6 +263,72 @@ def feature_rows(
         }
         for name in sorted(values)
     ]
+
+
+#: The feature whose latest row marks how far a series' flow has been written: every emitted
+#: bar has one.
+FLOW_MARKER = "cvd_base"
+
+
+def latest_flow_times(table: IcebergTable) -> dict[tuple[str, str, int], int]:
+    """The close time of the latest flow row on record for each `(venue, symbol, timeframe_ns)`.
+
+    One read of the table, aggregated by arrow rather than row by row, so a pass can look every
+    series up without reading the table once per series (ADR-056: a writer reads before it
+    writes).
+    """
+    rows = table.read()
+    if rows.num_rows == 0:
+        return {}
+    flow = rows.filter(pc.equal(rows["feature_name"], FLOW_MARKER))
+    if flow.num_rows == 0:
+        return {}
+    grouped = flow.group_by(["venue", "symbol", "timeframe_ns"]).aggregate([("at_ns", "max")])
+    keys = zip(
+        grouped["venue"].to_pylist(),
+        grouped["symbol"].to_pylist(),
+        grouped["timeframe_ns"].to_pylist(),
+        strict=True,
+    )
+    return {
+        key: int(latest) for key, latest in zip(keys, grouped["at_ns_max"].to_pylist(), strict=True)
+    }
+
+
+def write_flow(
+    table: IcebergTable,
+    *,
+    venue: str,
+    symbol: str,
+    timeframe_ns: int,
+    rows: Sequence[FlowRow],
+    latest: Mapping[tuple[str, str, int], int] | None = None,
+) -> int:
+    """Append the flow rows after the latest on record for this series; return the bars written.
+
+    Append-only and idempotent ([[REQ-WP-088]], ADR-056): a second pass over the same bars writes
+    nothing, a shorter series writes nothing, and a row already on record is never rewritten.
+    `latest` is the pass's own single read (`latest_flow_times`); without it the table is read here.
+    """
+    known = latest if latest is not None else latest_flow_times(table)
+    after = known.get((venue, symbol, timeframe_ns))
+    fresh = [row for row in rows if after is None or row.at_ns > after]
+    if not fresh:
+        return 0
+    table.append(
+        [
+            record
+            for row in fresh
+            for record in feature_rows(
+                venue=venue,
+                symbol=symbol,
+                timeframe_ns=timeframe_ns,
+                at_ns=row.at_ns,
+                values=row.values,
+            )
+        ]
+    )
+    return len(fresh)
 
 
 def score_rows(

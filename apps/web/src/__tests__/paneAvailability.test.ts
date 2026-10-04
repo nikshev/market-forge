@@ -27,13 +27,13 @@ describe("which panes have data", () => {
   });
 
   it("counts a value of zero as data", () => {
-    expect(availablePanes([point(0, { cvd: 0 })]).has("cvd")).toBe(true);
+    expect(availablePanes([point(0, { cvd_base: 0 })]).has("cvd_base")).toBe(true);
   });
 
   it("does not drop a pane for the gaps inside its series", () => {
-    const available = availablePanes([point(0, { cvd: 1 }), point(1, {}), point(2, { cvd: 3 })]);
+    const available = availablePanes([point(0, { cvd_base: 1 }), point(1, {}), point(2, { cvd_base: 3 })]);
 
-    expect(available.has("cvd")).toBe(true);
+    expect(available.has("cvd_base")).toBe(true);
   });
 
   it("gives a name that is not one of the panes no pane", () => {

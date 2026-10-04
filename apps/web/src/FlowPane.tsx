@@ -2,6 +2,7 @@
 // @trace: REQ-WP-027
 // @trace: REQ-WP-084
 // @trace: REQ-WP-085
+// @trace: REQ-WP-088
 //
 // PRD section 27.3's lower pane, attached to the page.
 //
@@ -13,7 +14,7 @@ import Box from "@mui/material/Box";
 import ToggleButton from "@mui/material/ToggleButton";
 import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
 import Typography from "@mui/material/Typography";
-import { isBarPane, paneSeries, ROW, volumeSeries } from "./panes";
+import { isBarPane, paneSeries, ROW, segments, volumeSeries } from "./panes";
 import { chartMilliseconds } from "./time";
 import type { BarOut, FeaturePointOut } from "./types";
 
@@ -123,23 +124,35 @@ export function FlowPane({
           role="img"
           aria-label={`${feature} over ${series.points.length} point(s)`}
         >
-          <polyline
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1"
-            points={plot(series.points, WIDTH, HEIGHT)}
-          />
+          {plot(series.points, segments(series.points, points), WIDTH, HEIGHT).map((part) =>
+            part.coordinates.length === 1 ? (
+              <circle key={part.key} cx={part.coordinates[0]![0]} cy={part.coordinates[0]![1]} r="1.5" fill="currentColor" />
+            ) : (
+              <polyline
+                key={part.key}
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1"
+                points={part.coordinates.map(([x, y]) => `${x},${y}`).join(" ")}
+              />
+            ),
+          )}
         </svg>
       ) : null}
     </Box>
   );
 }
 
+/**
+ * The drawing's coordinates, one run at a time (REQ-WP-088: a line is not joined across a break), on a scale
+ * common to all runs so the pieces of one series sit where they belong against each other.
+ */
 function plot(
   points: readonly { at_ns: bigint; value: number }[],
+  parts: readonly (readonly { at_ns: bigint; value: number }[])[],
   width: number,
   height: number,
-): string {
+): { key: string; coordinates: [string, string][] }[] {
   // Milliseconds, through the named narrowing: one pixel of this pane is minutes
   // wide, so nanosecond resolution cannot reach it. The division happens in
   // `bigint`, so what is given up is resolution the drawing never had.
@@ -152,13 +165,14 @@ function plot(
   // which would look exactly like the empty state this pane keeps separate.
   const spanT = t1 - t0 || 1;
   const spanV = v1 - v0 || 1;
-  return points
-    .map((p) => {
+  return parts.map((part) => ({
+    key: String(part[0]?.at_ns ?? "empty"),
+    coordinates: part.map((p): [string, string] => {
       const x = ((chartMilliseconds(p.at_ns) - t0) / spanT) * width;
       const y = height - ((p.value - v0) / spanV) * height;
-      return `${x.toFixed(2)},${y.toFixed(2)}`;
-    })
-    .join(" ");
+      return [x.toFixed(2), y.toFixed(2)];
+    }),
+  }));
 }
 
 /**
