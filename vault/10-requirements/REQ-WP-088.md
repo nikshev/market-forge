@@ -74,3 +74,8 @@ done and tested; the wiring is missing. Whether the feature producer lives in th
 trades) or runs from the frame archive is the spec's decision; the former couples feature production to the
 socket process, the latter adds a pass and a lag. Ingest does not persist trades today, so a restart loses the
 running sum unless the spec stores or recomputes it.
+
+The same trade intake is what [[REQ-WP-089]] (the volume profile with buy/sell by price level) needs. Aggregating at
+the intake into per-bar price bins (buy and sell volume per bin) would feed both this requirement's delta and that
+one's profile without storing every trade; the spec for whichever is taken first decides the shape, and the other
+must not re-invent it.

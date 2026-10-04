@@ -2,7 +2,7 @@
 id: OUT-2026-10-04-implement-volume-pane
 step: implement
 records: [REQ-WP-085]
-commit: null
+commit: a391b34
 ---
 
 ## What was done

@@ -80,6 +80,10 @@ It changes nothing about the other panes' sources, about the API, or about how b
     - `apps/web/src/App.tsx`
     - `apps/web/src/FlowPane.tsx`
     - `apps/web/src/__tests__/chartPanesLoading.test.tsx`
+    - `apps/web/src/__tests__/chartVolumeOpens.test.tsx`
+    - `apps/web/src/__tests__/flowPaneVolume.test.tsx`
+    - `apps/web/src/__tests__/volumeAvailability.test.ts`
+    - `apps/web/src/__tests__/volumePane.test.ts`
     - `apps/web/src/panes.ts`
 - **Outcomes:** [[OUT-2026-10-04-implement-volume-pane]], [[OUT-2026-10-04-plan-volume-pane]], [[OUT-2026-10-04-spec-volume-pane]], [[OUT-2026-10-04-tasks-volume-pane]]
 <!-- trace:end -->

@@ -2,7 +2,7 @@
 id: OUT-2026-10-04-implement-chart-candidates-no-data
 step: implement
 records: [REQ-WP-084]
-commit: null
+commit: a64530d
 ---
 
 ## What was done
