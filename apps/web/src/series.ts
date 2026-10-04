@@ -1,3 +1,4 @@
+// @trace: REQ-WP-083
 // @trace: REQ-WP-009
 // @trace: REQ-WP-082
 //
@@ -47,7 +48,7 @@ export interface Marker {
 // wrote "I do not see the channel". The centre is solid and heavy; the bounds take the zones' own colours
 // (upper is where a short is rejected, so red), so a line and the zone it bounds read as one thing.
 export const CHANNEL_STYLE = {
-  center: { color: "#1c7ed6", lineWidth: 4, lineStyle: 0 },
+  center: { color: "#7c5cff", lineWidth: 4, lineStyle: 0 },
   upper: { color: "#d64545", lineWidth: 2, lineStyle: 2 },
   lower: { color: "#2f9e44", lineWidth: 2, lineStyle: 2 },
 } as const;

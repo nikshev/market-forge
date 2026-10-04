@@ -25,7 +25,22 @@ export function schemeNow(): Scheme {
   return document.documentElement.dataset.scheme === "dark" ? "dark" : "light";
 }
 
-export function chartLayout(scheme: Scheme): DeepPartial<ChartOptions> {
+// The colours the chart takes from the interface's theme (REQ-WP-083).
+export interface ChartPalette {
+  background: string;
+  text: string;
+  grid: string;
+}
+
+export function chartLayout(scheme: Scheme, palette?: ChartPalette): DeepPartial<ChartOptions> {
+  // With the theme's palette the chart sits on the surface it is drawn on, in light or dark: a light chart
+  // on a dark card is the first thing a dark theme gets wrong.
+  if (palette !== undefined) {
+    return {
+      layout: { background: { type: ColorType.Solid, color: palette.background }, textColor: palette.text },
+      grid: { vertLines: { color: palette.grid }, horzLines: { color: palette.grid } },
+    };
+  }
   if (scheme === "light") {
     return {};
   }
@@ -49,9 +64,5 @@ export function applyTelegramTheme(app: {
   if (app.colorScheme !== undefined) {
     root.dataset.scheme = app.colorScheme;
     root.style.colorScheme = app.colorScheme;
-  }
-  if (root.style.getPropertyValue("--tg-bg") !== "") {
-    document.body.style.background = "var(--tg-bg)";
-    document.body.style.color = "var(--tg-text, inherit)";
   }
 }

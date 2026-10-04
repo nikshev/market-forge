@@ -1,3 +1,4 @@
+// @trace: REQ-WP-083
 // @trace: REQ-WP-027
 //
 // PRD section 27.3's lower pane, attached to the page.
@@ -6,6 +7,10 @@
 // what to say when there is nothing -- all of that is `panes.ts`, where it is
 // tested. Here it is a selector, a line, and the three messages.
 
+import Box from "@mui/material/Box";
+import ToggleButton from "@mui/material/ToggleButton";
+import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
+import Typography from "@mui/material/Typography";
 import { paneSeries, PANES } from "./panes";
 import { chartMilliseconds } from "./time";
 import type { FeaturePointOut } from "./types";
@@ -28,28 +33,36 @@ export function FlowPane({
   const series = paneSeries(points, feature);
 
   return (
-    <section aria-label="Lower pane">
-      <div role="group" aria-label="Pane">
-        {PANES.map((pane) => (
-          <button
-            key={pane.feature}
-            type="button"
-            aria-pressed={pane.feature === feature}
-            onClick={() => onSelect(pane.feature)}
-          >
-            {pane.label}
-          </button>
-        ))}
-      </div>
+    <Box component="section" aria-label="Lower pane" sx={{ mt: 2 }}>
+      <Box sx={{ overflowX: "auto", pb: 0.5 }}>
+        <ToggleButtonGroup
+          exclusive
+          size="small"
+          color="primary"
+          aria-label="Pane"
+          value={feature}
+          onChange={(_, next: string | null) => {
+            if (next !== null) {
+              onSelect(next);
+            }
+          }}
+        >
+          {PANES.map((pane) => (
+            <ToggleButton key={pane.feature} value={pane.feature}>
+              {pane.label}
+            </ToggleButton>
+          ))}
+        </ToggleButtonGroup>
+      </Box>
       {failure === null ? null : (
-        <p role="status" aria-label="Pane load">
+        <Typography role="status" aria-label="Pane load" color="error" sx={{ mt: 1 }}>
           Could not load this pane: {failure}
-        </p>
+        </Typography>
       )}
       {failure === null && series.state !== "ok" ? (
-        <p role="status" aria-label="Pane contents">
+        <Typography role="status" aria-label="Pane contents" color="text.secondary" sx={{ mt: 1 }}>
           {series.note}
-        </p>
+        </Typography>
       ) : null}
       {failure === null && series.state === "ok" ? (
         <svg
@@ -66,7 +79,7 @@ export function FlowPane({
           />
         </svg>
       ) : null}
-    </section>
+    </Box>
   );
 }
 

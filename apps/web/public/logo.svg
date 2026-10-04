@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="Market Forge logo">
+  <rect width="512" height="512" rx="112" fill="#141417"/>
+  <polygon points="80,230 432,90 432,260 80,400" fill="#2a2250"/>
+  <line x1="80" y1="230" x2="432" y2="90" stroke="#7c5cff" stroke-width="12" stroke-linecap="round"/>
+  <line x1="80" y1="400" x2="432" y2="260" stroke="#7c5cff" stroke-width="12" stroke-linecap="round"/>
+  <line x1="80" y1="315" x2="432" y2="175" stroke="#7c5cff" stroke-width="6" stroke-linecap="round" stroke-dasharray="4 18"/>
+  <polyline points="100,345 160,290 210,300 260,215 300,146 350,215 390,205 432,222" fill="none" stroke="#f4f4f6" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="300" cy="146" r="22" fill="#ffb02e"/>
+  <circle cx="300" cy="146" r="10" fill="#141417"/>
+</svg>

@@ -2,6 +2,7 @@
 // @trace: REQ-WP-009
 // @trace: REQ-WP-074
 // @trace: REQ-US-002
+// @trace: REQ-WP-083
 //
 // The page an alert's deep link opens. PRD section 27.1's route, and section
 // 27.5's default: AS-SEEN-THEN, always, unless the link says otherwise in so
@@ -11,6 +12,11 @@
 // control changes it afterwards. The offered set comes from the API, because a
 // list written here would be the second list REQ-WP-073's FR-002 forbids.
 
+import Alert from "@mui/material/Alert";
+import Paper from "@mui/material/Paper";
+import Stack from "@mui/material/Stack";
+import { useTheme } from "@mui/material/styles";
+import Typography from "@mui/material/Typography";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
@@ -21,6 +27,7 @@ import {
   fetchFeatureSeries,
   fetchTimeframes,
 } from "./api";
+import { AppShell } from "./AppShell";
 import { Chart } from "./Chart";
 import { DexBands } from "./DexBands";
 import { ChannelModeControl } from "./ChannelMode";
@@ -73,6 +80,7 @@ function writeAddress(search: string): void {
 }
 
 export function App(): JSX.Element {
+  const theme = useTheme();
   // Parsed once, at mount. The address is an input on the way in and an output
   // afterwards: re-parsing it every render re-created this object, re-created
   // `load` with it, and refired the effect -- measured 2026-09-23 as 316 bars
@@ -248,10 +256,9 @@ export function App(): JSX.Element {
 
   if (link === null) {
     return (
-      <main>
-        <h1>Market Forge</h1>
-        <p>Open a chart at /chart/&lt;venue&gt;/&lt;symbol&gt;.</p>
-      </main>
+      <AppShell>
+        <Typography>Open a chart at /chart/&lt;venue&gt;/&lt;symbol&gt;.</Typography>
+      </AppShell>
     );
   }
 
@@ -260,13 +267,12 @@ export function App(): JSX.Element {
     // empty control would look like a shape with no data rather than a
     // failure.
     return (
-      <main>
-        <h1>Market Forge</h1>
-        <h2>
+      <AppShell back="/">
+        <Typography variant="h5" component="h2" sx={{ mb: 1 }}>
           {link.symbol} · {link.venue} · {timeframe}
-        </h2>
+        </Typography>
         <LoadState state="failed" detail={offeredFailure} />
-      </main>
+      </AppShell>
     );
   }
 
@@ -285,44 +291,54 @@ export function App(): JSX.Element {
   };
 
   return (
-    <main>
-      <h1>Market Forge</h1>
-      <h2>
+    <AppShell back="/">
+      <Typography variant="h5" component="h2" sx={{ mb: 1.5, overflowWrap: "anywhere" }}>
         {link.symbol} · {link.venue} · {timeframe}
-      </h2>
-      {offered === null ? null : (
-        <TimeframeControl offered={offered} selected={timeframe} onSelect={selectTimeframe} />
-      )}
-      <ChannelModeControl mode={mode} onChange={selectMode} />
+      </Typography>
+      <Stack spacing={1.5} sx={{ mb: 1.5 }}>
+        {offered === null ? null : (
+          <TimeframeControl offered={offered} selected={timeframe} onSelect={selectTimeframe} />
+        )}
+        <ChannelModeControl mode={mode} onChange={selectMode} />
+      </Stack>
       {refused ? (
         // FR-006: refused visibly, naming the token, instead of silently
         // substituting a timeframe nobody asked for. No chart: an empty one
         // would read as "no data at the right timeframe", which is a different
         // and false claim.
-        <p role="alert">
+        <Alert severity="warning" role="alert" sx={{ my: 1 }}>
           Cannot show {timeframe}: this deployment offers{" "}
           {offered.map((entry) => entry.token).join(", ")}.
-        </p>
+        </Alert>
       ) : null}
       <LoadState state={state} detail={detail} />
       {notice === null ? null : (
         // Named, because the page now carries more than one status and a
         // reader -- or a test -- asking for "the status" would get whichever
         // came first.
-        <p role="status" aria-label="Overlay restoration">
+        <Alert severity="info" variant="outlined" role="status" aria-label="Overlay restoration" sx={{ my: 1 }}>
           {notice}
-        </p>
+        </Alert>
       )}
       {refused ? null : (
-        <Chart
-          bars={bars}
-          channel={channel}
-          signal={null}
-          overlays={link.overlays.overlays}
-          focusAtNs={link.atNs}
-          extrema={extrema}
-          mode={mode}
-        />
+        // The chart sits on the theme's surface and draws in its palette (REQ-WP-083).
+        <Paper variant="outlined" sx={{ p: 1, overflow: "hidden" }}>
+          <Chart
+            bars={bars}
+            channel={channel}
+            signal={null}
+            overlays={link.overlays.overlays}
+            focusAtNs={link.atNs}
+            extrema={extrema}
+            mode={mode}
+            scheme={theme.palette.mode}
+            palette={{
+              background: theme.palette.background.paper,
+              text: theme.palette.text.secondary,
+              grid: theme.palette.divider,
+            }}
+          />
+        </Paper>
       )}
       {depth === null || refused ? null : (
         <DexBands
@@ -336,6 +352,6 @@ export function App(): JSX.Element {
         />
       )}
       <FlowPane points={points} feature={pane} onSelect={setPane} failure={paneFailure} />
-    </main>
+    </AppShell>
   );
 }

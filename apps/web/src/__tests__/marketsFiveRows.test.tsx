@@ -56,9 +56,12 @@ describe("the overview with five registered markets", () => {
     render(<Markets />);
 
     await screen.findByRole("list", { name: "Markets" });
-    expect(screen.getAllByText(/binance · spot/)).toHaveLength(3);
-    expect(screen.getByText(/bybit · perp/)).toBeInTheDocument();
-    expect(screen.getByText(/okx · perp/)).toBeInTheDocument();
+    // Venue and type are separate chips now (REQ-WP-083), so the text is looked for as two things.
+    expect(screen.getAllByText("binance")).toHaveLength(3);
+    expect(screen.getAllByText("spot")).toHaveLength(3);
+    expect(screen.getAllByText("perp")).toHaveLength(2);
+    expect(screen.getByText("bybit")).toBeInTheDocument();
+    expect(screen.getByText("okx")).toBeInTheDocument();
   });
 
   it("shows absent scores as absent and says nothing about an empty list", async () => {

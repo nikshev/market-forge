@@ -11,7 +11,7 @@
 // so a component test here would assert nothing about the picture -- which is
 // why the split exists.
 
-import { createChart, type IChartApi } from "lightweight-charts";
+import { createChart, type IChartApi, type ISeriesApi } from "lightweight-charts";
 import { useEffect, useRef } from "react";
 
 import { extremumMarkers } from "./extrema";
@@ -26,7 +26,7 @@ import type {
   SignalOut,
 } from "./types";
 import { profileBars } from "./volumeProfile";
-import { chartLayout, schemeNow, type Scheme } from "./theme";
+import { chartLayout, schemeNow, type ChartPalette, type Scheme } from "./theme";
 import type { Profile } from "./volumeProfile";
 
 const ZONE_COLOURS: Record<string, string> = {
@@ -49,6 +49,7 @@ export function Chart({
   extrema = { confirmed: [], candidates: [] },
   mode = AS_SEEN_THEN,
   scheme = schemeNow(),
+  palette,
 }: {
   bars: BarOut[];
   channel: ChannelOut | null;
@@ -61,6 +62,8 @@ export function Chart({
   mode?: ChannelMode;
   /** The colour scheme (REQ-WP-080). Light is what the chart always was. */
   scheme?: Scheme;
+  /** The interface's colours, so the canvas sits on the surface it is drawn on (REQ-WP-083). */
+  palette?: ChartPalette;
 }): JSX.Element {
   const container = useRef<HTMLDivElement>(null);
   const chart = useRef<IChartApi | null>(null);
@@ -71,15 +74,17 @@ export function Chart({
     }
     const instance = createChart(container.current, {
       height: 480,
+      // Follow the container's width, so the chart fits a phone and a resized window (REQ-WP-083).
+      autoSize: true,
       timeScale: { timeVisible: true, secondsVisible: false },
-      ...chartLayout(scheme),
+      ...chartLayout(scheme, palette),
     });
     chart.current = instance;
     return () => {
       instance.remove();
       chart.current = null;
     };
-  }, [scheme]);
+  }, [scheme, palette?.background, palette?.text, palette?.grid]);
 
   useEffect(() => {
     const instance = chart.current;
@@ -92,7 +97,12 @@ export function Chart({
     // setup was judged against, and saying nothing about the difference.
     const on = new Set(overlays);
 
+    // Every series this run creates, so the next run (and an unmount) can take them away. The effect
+    // runs again each time its data changes -- bars, then the channel, then the extrema -- and without this
+    // each run left its candles, lines and markers on the chart beside the next run's.
+    const created: ISeriesApi<"Candlestick" | "Line">[] = [];
     const candlestick = instance.addCandlestickSeries();
+    created.push(candlestick);
     candlestick.setData(on.has("candles") ? candles : []);
 
     // One `setMarkers` call: lightweight-charts replaces the whole set, so a
@@ -129,6 +139,7 @@ export function Chart({
         title: name,
       });
       line.setData(points);
+      created.push(line);
     }
 
     // Zones are drawn as price lines rather than filled areas: the library has
@@ -184,6 +195,15 @@ export function Chart({
       // REQ-US-002: "opens the chart at exactly the signal's timestamp".
       instance.timeScale().setVisibleLogicalRange(range);
     }
+    return () => {
+      // Not if the chart itself was removed first (unmount runs the other effect's cleanup before this one,
+      // and removing a series from a disposed chart throws). Price lines go with their series.
+      if (chart.current === instance) {
+        for (const series of created) {
+          instance.removeSeries(series);
+        }
+      }
+    };
   }, [bars, channel, signal, profile, overlays, focusAtNs, extrema, mode]);
 
   return <div ref={container} data-testid="chart" />;

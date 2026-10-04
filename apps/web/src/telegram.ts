@@ -1,3 +1,4 @@
+// @trace: REQ-WP-083
 // @trace: REQ-WP-080
 //
 // The page as a Telegram Mini App.
@@ -30,6 +31,8 @@ export interface TelegramWebApp {
   // Bot API 7.7 and later; an older client has none.
   disableVerticalSwipes?: () => void;
   BackButton?: BackButton;
+  onEvent?: (event: string, callback: () => void) => void;
+  offEvent?: (event: string, callback: () => void) => void;
 }
 
 const SCRIPT_URL = "https://telegram.org/js/telegram-web-app.js";

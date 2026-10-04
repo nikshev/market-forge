@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "§27, §27.1, §27.3; owner's direction 2026-10-04 (Material UI)"
 prd_lines: "4388-4405, 4423-4436"
 phase: null
-status: planned
+status: implemented
 depends_on: [REQ-WP-074, REQ-WP-075, REQ-WP-080, REQ-WP-082]
 tags: [web, ui, material-ui, theme]
 hard_gated: false
@@ -59,7 +59,33 @@ technology: every role and accessible name the existing tests use stays, and the
 
 <!-- trace:begin -->
 - **Specs:** [[SPEC-132-material-ui]]
-- **Outcomes:** [[OUT-2026-10-04-plan-material-ui]], [[OUT-2026-10-04-spec-material-ui]], [[OUT-2026-10-04-tasks-material-ui]]
+- **Tests:**
+    - `tests/unit/web/test_material_ui_artifacts.py::test_every_new_module_names_the_requirement_it_serves[AppShell.tsx]`
+    - `tests/unit/web/test_material_ui_artifacts.py::test_every_new_module_names_the_requirement_it_serves[MarketTypeChip.tsx]`
+    - `tests/unit/web/test_material_ui_artifacts.py::test_every_new_module_names_the_requirement_it_serves[muiTheme.ts]`
+    - `tests/unit/web/test_material_ui_artifacts.py::test_every_new_module_names_the_requirement_it_serves[useScheme.ts]`
+    - `tests/unit/web/test_material_ui_artifacts.py::test_no_screenshot_is_left_over_that_the_requirement_does_not_name`
+    - `tests/unit/web/test_material_ui_artifacts.py::test_the_logo_is_the_favicon_and_the_file_it_names_is_served`
+    - `tests/unit/web/test_material_ui_artifacts.py::test_the_material_dependencies_are_declared_where_npm_ci_reads_them`
+    - `tests/unit/web/test_material_ui_artifacts.py::test_there_is_a_screenshot_of_each_page_in_each_scheme_at_each_width[desktop-dark-chart]`
+    - `tests/unit/web/test_material_ui_artifacts.py::test_there_is_a_screenshot_of_each_page_in_each_scheme_at_each_width[desktop-dark-overview]`
+    - `tests/unit/web/test_material_ui_artifacts.py::test_there_is_a_screenshot_of_each_page_in_each_scheme_at_each_width[desktop-light-chart]`
+    - `tests/unit/web/test_material_ui_artifacts.py::test_there_is_a_screenshot_of_each_page_in_each_scheme_at_each_width[desktop-light-overview]`
+    - `tests/unit/web/test_material_ui_artifacts.py::test_there_is_a_screenshot_of_each_page_in_each_scheme_at_each_width[phone-dark-chart]`
+    - `tests/unit/web/test_material_ui_artifacts.py::test_there_is_a_screenshot_of_each_page_in_each_scheme_at_each_width[phone-dark-overview]`
+    - `tests/unit/web/test_material_ui_artifacts.py::test_there_is_a_screenshot_of_each_page_in_each_scheme_at_each_width[phone-light-chart]`
+    - `tests/unit/web/test_material_ui_artifacts.py::test_there_is_a_screenshot_of_each_page_in_each_scheme_at_each_width[phone-light-overview]`
+- **Code:**
+    - `apps/web/src/App.tsx`
+    - `apps/web/src/ChannelMode.tsx`
+    - `apps/web/src/FlowPane.tsx`
+    - `apps/web/src/LoadState.tsx`
+    - `apps/web/src/Markets.tsx`
+    - `apps/web/src/TimeframeControl.tsx`
+    - `apps/web/src/main.tsx`
+    - `apps/web/src/series.ts`
+    - `apps/web/src/telegram.ts`
+- **Outcomes:** [[OUT-2026-10-04-implement-material-ui]], [[OUT-2026-10-04-plan-material-ui]], [[OUT-2026-10-04-spec-material-ui]], [[OUT-2026-10-04-tasks-material-ui]]
 <!-- trace:end -->
 
 ## Notes

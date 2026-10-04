@@ -1,3 +1,4 @@
+// @trace: REQ-WP-083
 // @trace: REQ-WP-075
 //
 // PRD §27.1's overview route. The list is the state: one row per market from
@@ -8,7 +9,17 @@
 // timeframe. A link is what a reader can middle-click, copy or open in a new
 // tab, and its `href` is exactly the string the browser will use.
 
+import Alert from "@mui/material/Alert";
+import Box from "@mui/material/Box";
+import Card from "@mui/material/Card";
+import CardContent from "@mui/material/CardContent";
+import Chip from "@mui/material/Chip";
+import Link from "@mui/material/Link";
+import Typography from "@mui/material/Typography";
 import { useEffect, useState } from "react";
+
+import { AppShell } from "./AppShell";
+import { MarketTypeChip } from "./MarketTypeChip";
 
 import { fetchMarkets, fetchTimeframes } from "./api";
 import { LoadState } from "./LoadState";
@@ -69,33 +80,92 @@ export function Markets(): JSX.Element {
   const empty = markets !== null && markets.length === 0;
 
   return (
-    <main>
-      <h1>Market Forge</h1>
-      <h2>Markets</h2>
+    <AppShell>
+      <Typography variant="h5" component="h2" sx={{ mb: 2 }}>
+        Markets
+      </Typography>
       {offeredFailure === null ? null : <LoadState state="failed" detail={offeredFailure} />}
       {offered === null ? null : (
-        <TimeframeControl offered={offered} selected={timeframe} onSelect={setTimeframe} />
+        <Box sx={{ mb: 2 }}>
+          <TimeframeControl offered={offered} selected={timeframe} onSelect={setTimeframe} />
+        </Box>
       )}
       {failed ? <LoadState state="failed" detail={marketsFailure} /> : null}
-      {empty ? <p role="status">No markets are configured on this deployment.</p> : null}
+      {empty ? (
+        <Alert severity="info" role="status">
+          No markets are configured on this deployment.
+        </Alert>
+      ) : null}
       {markets === null || failed ? null : (
-        <ul aria-label="Markets">
+        <Box
+          component="ul"
+          aria-label="Markets"
+          sx={{
+            listStyle: "none",
+            p: 0,
+            m: 0,
+            display: "grid",
+            gap: 2,
+            gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", md: "repeat(3, 1fr)" },
+          }}
+        >
           {markets.map((market) => (
-            <li key={`${market.venue}:${market.symbol}`}>
-              <a href={marketHref(market.venue, market.symbol, timeframe)}>{market.symbol}</a>
-              <span>
-                {" "}
-                {market.venue} · {market.market_type}
-              </span>
-              <span>
-                {" "}
-                rank {scoreLabel(market.rank_score)} · setup {scoreLabel(market.setup_score)} ·
-                confidence {scoreLabel(market.confidence)}
-              </span>
-            </li>
+            <Box component="li" key={`${market.venue}:${market.symbol}`}>
+              <Card
+                sx={{
+                  height: "100%",
+                  position: "relative",
+                  transition: "box-shadow 120ms, border-color 120ms",
+                  "&:hover": { borderColor: "primary.main", boxShadow: 3 },
+                  "&:focus-within": { borderColor: "primary.main", boxShadow: 3 },
+                }}
+              >
+                <CardContent>
+                  {/* A stretched link: the link is the symbol alone, so its name (and its text) is exactly
+                      the symbol; its box is stretched over the whole card so the card is the target. A name
+                      that said everything on the card would make a screen reader read the card as a link. */}
+                  <Typography variant="h6" component="div" sx={{ overflowWrap: "anywhere" }}>
+                    <Link
+                      href={marketHref(market.venue, market.symbol, timeframe)}
+                      color="inherit"
+                      underline="none"
+                      sx={{ "&::after": { content: '""', position: "absolute", inset: 0 } }}
+                    >
+                      {market.symbol}
+                    </Link>
+                  </Typography>
+                  <Box sx={{ mt: 1, display: "flex", flexWrap: "wrap", gap: 1 }}>
+                    <Chip size="small" variant="outlined" label={market.venue} />
+                    <MarketTypeChip type={market.market_type} />
+                  </Box>
+                  <Box sx={{ mt: 1.5, display: "flex", flexWrap: "wrap", gap: 0.75 }}>
+                    {(
+                      [
+                        ["rank", market.rank_score],
+                        ["setup", market.setup_score],
+                        ["confidence", market.confidence],
+                      ] as const
+                    ).map(([name, value]) => (
+                      <Chip
+                        key={name}
+                        size="small"
+                        variant="outlined"
+                        label={`${name} ${scoreLabel(value)}`}
+                        sx={{
+                          color: "text.secondary",
+                          borderStyle: "dashed",
+                          height: 22,
+                          "& .MuiChip-label": { px: 0.75, fontSize: "0.7rem" },
+                        }}
+                      />
+                    ))}
+                  </Box>
+                </CardContent>
+              </Card>
+            </Box>
           ))}
-        </ul>
+        </Box>
       )}
-    </main>
+    </AppShell>
   );
 }
