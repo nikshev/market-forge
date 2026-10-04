@@ -2,7 +2,7 @@
 id: OUT-2026-10-04-implement-material-ui
 step: implement
 records: [REQ-WP-083]
-commit: null
+commit: 1b71e2c
 ---
 
 ## What was done

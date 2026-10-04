@@ -2,7 +2,7 @@
 id: OUT-2026-10-04-implement-channel-as-fitted
 step: implement
 records: [REQ-WP-082]
-commit: null
+commit: a569261
 ---
 
 ## What was done
