@@ -38,9 +38,12 @@ only attach them:
 (breaks §27.2's vocabulary and the Python mirror, or makes old links unreadable); `localStorage` (remembering
 "on" would reopen the noisy view the owner complained about).
 
-**D2. Filter candidates inside `extremumMarkers`**, with `includeCandidates` required (no default). Rejected:
-filtering in `Chart` after the call (the pure function would not be the thing under test); a default of `true`
-(the old behaviour would come back wherever a call forgot the argument).
+**D2. Filter candidates inside `extremumMarkers`**, with `includeCandidates` defaulting to `true`: the function
+describes what is *available* at the instant, and its 13 existing test call sites (11 in `extrema.test.ts`, 2 in
+`time.test.ts`) assert behaviour that must not change. `Chart`, the only production caller, always passes the
+switch explicitly, and a test fails if it forgets (T004). Rejected: a required parameter (13 edits to tests that
+are the regression contract; found by `speckit-analyze`, which caught this plan contradicting its own tasks);
+filtering in `Chart` after the call (the pure function would not be the thing under test).
 
 **D3. Availability from the loaded points, by `paneSeries`.** Rejected: asking `/features/snapshot` (one more
 request per page, and its answer is for one instant, not the visible range); a list of "built" features in the
@@ -72,8 +75,9 @@ data keeps its name and `aria-pressed`; `available=null` and absent leave every 
 calls back); `Chart` with the library mocked as in `chartSeriesCleanup.test.tsx` (default draws no candidate
 mark; `showCandidates` draws them; the markers set changes with the prop).
 
-Python (links the requirement to the graph, per [[REQ-WP-083]]'s precedent): the spec's screenshots exist, the
-new modules carry their `@trace`, and the pane list still names registered features.
+Python (links the requirement to the graph, per [[REQ-WP-083]]'s precedent): the spec's screenshots exist and the
+new modules carry their `@trace`. That the pane list names registered features is already pinned by
+`tests/unit/features/test_pane_features.py` and is not repeated.
 
 ## Constitution Check
 

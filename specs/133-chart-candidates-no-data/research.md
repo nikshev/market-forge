@@ -16,6 +16,8 @@ features (does not exist, would answer "ever", not "in this view"); a constant l
 **Decision**: `extremumMarkers({..., includeCandidates})`, called by `Chart` with the page's switch.
 **Why**: that function already withholds candidates not yet observed at the instant in AS-SEEN-THEN and those
 replaced by a shown confirmation. Hiding them there keeps one definition of "visible at t".
+**Default**: `includeCandidates` defaults to `true` in the pure function so its 13 existing call sites keep their
+meaning; `Chart` passes the page's switch explicitly and a test pins that.
 **Alternatives**: filtering `extrema.candidates` in `App` before it reaches `Chart` (works, but the pure
 function stops being the thing a test pins, and `Chart`'s effect deps would not see the intent).
 

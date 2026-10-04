@@ -60,7 +60,7 @@ a confirmation *is*, and nothing a test finds by role or name for a pane that ha
 
 <!-- trace:begin -->
 - **Specs:** [[SPEC-133-chart-candidates-no-data]]
-- **Outcomes:** [[OUT-2026-10-04-plan-chart-candidates-no-data]], [[OUT-2026-10-04-spec-chart-candidates-no-data]]
+- **Outcomes:** [[OUT-2026-10-04-plan-chart-candidates-no-data]], [[OUT-2026-10-04-spec-chart-candidates-no-data]], [[OUT-2026-10-04-tasks-chart-candidates-no-data]]
 <!-- trace:end -->
 
 ## Notes

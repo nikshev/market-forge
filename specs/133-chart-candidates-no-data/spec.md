@@ -75,8 +75,8 @@ chart; press the switch and read them again.
    switch is off; a link naming a candidates layer is still unreadable, because that is not a §27.2 name.
 5. **Given** no candidates in the response, **Then** the switch is still shown (it is a view option, not a
    report) and turning it on draws nothing extra.
-6. **Given** AS-SEEN-THEN, **Then** candidates that the mode would already withhold ([[REQ-NRT-A]] family: nothing
-   later than the instant) are still withheld when the switch is on: the switch widens the view, it never
+6. **Given** AS-SEEN-THEN, **Then** candidates that the mode would already withhold (the existing rule: a candidate
+   is shown only if observed at or before the instant; Principle I) are still withheld when the switch is on: the switch widens the view, it never
    looks ahead.
 
 ---
@@ -109,8 +109,9 @@ chart; press the switch and read them again.
 
 1. **Given** the first pane (CVD) has no data and another pane does, **When** the page loads, **Then** the
    first pane **with data** is selected.
-2. **Given** a pane the reader chose and which still has data, **Then** it stays chosen across a reload of the
-   same view: the page never overrides a valid choice.
+2. **Given** a pane the reader chose and which still has data, **When** the data is fetched again (the
+   timeframe changed and changed back, or the mode switched), **Then** it stays chosen: the page never
+   overrides a valid choice. (A page reload starts a new page; nothing is remembered, by design.)
 3. **Given** no pane has data, **Then** none is selected and the pane region says "No pane has data for this
    view", in the role the pane notes already use (`status`).
 

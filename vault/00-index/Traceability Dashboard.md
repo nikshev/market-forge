@@ -986,6 +986,7 @@ graph LR
   OUT_2026_10_04_spec_material_ui["OUT-2026-10-04-spec-material-ui"]
   OUT_2026_10_04_spec_pass_survives["OUT-2026-10-04-spec-pass-survives"]
   OUT_2026_10_04_tasks_channel_as_fitted["OUT-2026-10-04-tasks-channel-as-fitted"]
+  OUT_2026_10_04_tasks_chart_candidates_no_data["OUT-2026-10-04-tasks-chart-candidates-no-data"]
   OUT_2026_10_04_tasks_material_ui["OUT-2026-10-04-tasks-material-ui"]
   OUT_2026_10_04_tasks_pass_survives["OUT-2026-10-04-tasks-pass-survives"]
   PRD["PRD: ChannelFlow PRD"]
@@ -5864,6 +5865,7 @@ graph LR
   OUT_2026_10_04_spec_material_ui -.->|RECORDS| REQ_WP_083
   OUT_2026_10_04_spec_pass_survives -.->|RECORDS| REQ_INFRA_012
   OUT_2026_10_04_tasks_channel_as_fitted -.->|RECORDS| REQ_WP_082
+  OUT_2026_10_04_tasks_chart_candidates_no_data -.->|RECORDS| REQ_WP_084
   OUT_2026_10_04_tasks_material_ui -.->|RECORDS| REQ_WP_083
   OUT_2026_10_04_tasks_pass_survives -.->|RECORDS| REQ_INFRA_012
   SPEC_001_traceability_tooling ==>|SPECIFIES| REQ_INFRA_001
