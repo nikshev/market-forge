@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "§27.2, §27.3; owner's direction 2026-10-04 (after Material UI)"
 prd_lines: "4406-4436"
 phase: null
-status: specified
+status: planned
 depends_on: [REQ-WP-083, REQ-WP-027, REQ-WP-009]
 tags: [web, chart, panes, extrema]
 hard_gated: false
@@ -60,7 +60,7 @@ a confirmation *is*, and nothing a test finds by role or name for a pane that ha
 
 <!-- trace:begin -->
 - **Specs:** [[SPEC-133-chart-candidates-no-data]]
-- **Outcomes:** [[OUT-2026-10-04-spec-chart-candidates-no-data]]
+- **Outcomes:** [[OUT-2026-10-04-plan-chart-candidates-no-data]], [[OUT-2026-10-04-spec-chart-candidates-no-data]]
 <!-- trace:end -->
 
 ## Notes
