@@ -77,8 +77,15 @@ a confirmation *is*, and nothing a test finds by role or name for a pane that ha
     - `tests/unit/web/test_chart_candidates_artifacts.py::test_there_is_a_screenshot_of_each_state_in_each_scheme[chart-panes-some-data-light]`
 - **Code:**
     - `apps/web/src/App.tsx`
+    - `apps/web/src/CandidateSwitch.tsx`
     - `apps/web/src/Chart.tsx`
     - `apps/web/src/FlowPane.tsx`
+    - `apps/web/src/__tests__/candidateSwitch.test.tsx`
+    - `apps/web/src/__tests__/chartCandidates.test.tsx`
+    - `apps/web/src/__tests__/chartPanesLoading.test.tsx`
+    - `apps/web/src/__tests__/extremaCandidates.test.ts`
+    - `apps/web/src/__tests__/flowPaneAvailability.test.tsx`
+    - `apps/web/src/__tests__/paneAvailability.test.ts`
     - `apps/web/src/extrema.ts`
     - `apps/web/src/panes.ts`
 - **Outcomes:** [[OUT-2026-10-04-implement-chart-candidates-no-data]], [[OUT-2026-10-04-plan-chart-candidates-no-data]], [[OUT-2026-10-04-spec-chart-candidates-no-data]], [[OUT-2026-10-04-tasks-chart-candidates-no-data]]

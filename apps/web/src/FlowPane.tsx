@@ -1,6 +1,7 @@
 // @trace: REQ-WP-083
 // @trace: REQ-WP-027
 // @trace: REQ-WP-084
+// @trace: REQ-WP-085
 //
 // PRD section 27.3's lower pane, attached to the page.
 //
@@ -12,9 +13,9 @@ import Box from "@mui/material/Box";
 import ToggleButton from "@mui/material/ToggleButton";
 import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
 import Typography from "@mui/material/Typography";
-import { paneSeries, PANES } from "./panes";
+import { isBarPane, paneSeries, ROW, volumeSeries } from "./panes";
 import { chartMilliseconds } from "./time";
-import type { FeaturePointOut } from "./types";
+import type { BarOut, FeaturePointOut } from "./types";
 
 const WIDTH = 720;
 const HEIGHT = 120;
@@ -25,8 +26,14 @@ export function FlowPane({
   onSelect,
   failure = null,
   available,
+  bars = [],
+  barsLoaded = false,
 }: {
   points: readonly FeaturePointOut[];
+  /** The loaded bars: Volume is drawn from these, not from `points` (REQ-WP-085). */
+  bars?: readonly BarOut[];
+  /** True once the bars have answered, including with none: what tells "no bars yet" from "no bars". */
+  barsLoaded?: boolean;
   /** The selected pane, or `null` when none has data (REQ-WP-084). */
   feature: string | null;
   onSelect: (feature: string) => void;
@@ -39,8 +46,14 @@ export function FlowPane({
   /** A load that failed. Never drawn as an empty pane -- REQ-WP-009's FR-016. */
   failure?: string | null;
 }): JSX.Element {
-  const series = paneSeries(points, feature ?? "");
+  const onBars = feature !== null && isBarPane(feature);
+  const series = onBars ? volumeSeries(bars) : paneSeries(points, feature ?? "");
   const known = available !== undefined && available !== null;
+  // A failed feature load is the feature panes' failure: it neither hides Volume nor marks it "no data".
+  const failed = failure !== null && !onBars;
+  const volumeEmpty = barsLoaded && volumeSeries(bars).state !== "ok";
+  // Before the bars have answered Volume says nothing: "no finished bars" would be a claim about bars nobody has seen.
+  const unknownBars = onBars && !barsLoaded;
 
   return (
     <Box component="section" aria-label="Lower pane" sx={{ mt: 2 }}>
@@ -57,10 +70,12 @@ export function FlowPane({
             }
           }}
         >
-          {PANES.map((pane) => {
+          {ROW.map((pane) => {
             // Disabled, not hidden: the row keeps its shape as data arrives, and the reader learns what
             // exists. The name stays the visible text ("CVD no data"), so a pane with data is the button it was.
-            const empty = known && !available.has(pane.feature);
+            const empty = isBarPane(pane.feature)
+              ? volumeEmpty
+              : known && !available.has(pane.feature);
             return (
               <ToggleButton key={pane.feature} value={pane.feature} disabled={empty}>
                 {pane.label}
@@ -74,22 +89,34 @@ export function FlowPane({
           })}
         </ToggleButtonGroup>
       </Box>
-      {failure === null ? null : (
+      {!failed ? null : (
         <Typography role="status" aria-label="Pane load" color="error" sx={{ mt: 1 }}>
           Could not load this pane: {failure}
         </Typography>
       )}
-      {failure === null && feature === null && known && available.size === 0 ? (
+      {!failed && feature === null && known && available.size === 0 ? (
         <Typography role="status" aria-label="Pane contents" color="text.secondary" sx={{ mt: 1 }}>
           No pane has data for this view
         </Typography>
       ) : null}
-      {failure === null && feature !== null && series.state !== "ok" ? (
+      {!failed && !unknownBars && feature !== null && series.state !== "ok" ? (
         <Typography role="status" aria-label="Pane contents" color="text.secondary" sx={{ mt: 1 }}>
           {series.note}
         </Typography>
       ) : null}
-      {failure === null && feature !== null && series.state === "ok" ? (
+      {!failed && feature !== null && series.state === "ok" && onBars ? (
+        <svg
+          width={WIDTH}
+          height={HEIGHT}
+          role="img"
+          aria-label={`${feature} over ${series.points.length} point(s)`}
+        >
+          {volumeBars(series.points, WIDTH, HEIGHT).map((rect) => (
+            <rect key={rect.key} x={rect.x} y={rect.y} width={rect.width} height={rect.height} fill="currentColor" />
+          ))}
+        </svg>
+      ) : null}
+      {!failed && feature !== null && series.state === "ok" && !onBars ? (
         <svg
           width={WIDTH}
           height={HEIGHT}
@@ -132,4 +159,26 @@ function plot(
       return `${x.toFixed(2)},${y.toFixed(2)}`;
     })
     .join(" ");
+}
+
+/**
+ * One vertical bar per point, positioned by its time. A volume is an amount per bar, and a line through volumes
+ * would read as a trend. Heights are relative to the largest, so equal volumes draw equal bars; a volume of
+ * zero is a bar of no height, present as a point and not skipped.
+ */
+function volumeBars(
+  points: readonly { at_ns: bigint; value: number }[],
+  width: number,
+  height: number,
+): { key: string; x: number; y: number; width: number; height: number }[] {
+  const times = points.map((p) => chartMilliseconds(p.at_ns));
+  const [t0, t1] = [Math.min(...times), Math.max(...times)];
+  const top = Math.max(...points.map((p) => p.value));
+  const barWidth = Math.max(1, (width / points.length) * 0.7);
+  const span = t1 - t0;
+  return points.map((point, index) => {
+    const barHeight = top > 0 ? (point.value / top) * height : 0;
+    const x = span === 0 ? (width - barWidth) / 2 : ((times[index]! - t0) / span) * (width - barWidth);
+    return { key: String(point.at_ns), x, y: height - barHeight, width: barWidth, height: barHeight };
+  });
 }

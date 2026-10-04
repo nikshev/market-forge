@@ -2,6 +2,7 @@
 // @trace: REQ-WP-030
 // @trace: REQ-WP-063
 // @trace: REQ-WP-084
+// @trace: REQ-WP-085
 //
 // PRD section 27.3's lower panes, for the three Phase 2 has data for.
 //
@@ -15,7 +16,7 @@
 // a flat line through the middle of a CVD pane says "no net delta", which is a
 // claim about the market rather than about the data.
 
-import type { FeaturePointOut } from "./types";
+import type { BarOut, FeaturePointOut } from "./types";
 
 export interface Pane {
   /** The registered feature name, as the API returns it. */
@@ -24,21 +25,32 @@ export interface Pane {
   label: string;
 }
 
-// PRD section 27.3 lists nine panes, and all nine are here: the order-flow three
-// from [[REQ-WP-027]], Phase 3's four added by [[REQ-WP-030]], Phase 4's swap
-// imbalance added by [[REQ-WP-059]], and active liquidity added by
-// [[REQ-WP-063]] once [[REQ-WP-062]] gave `dex_state` a producer.
+// PRD section 27.3 lists nine panes: volume, CVD, OFI, OI, funding, basis, liquidations, DEX swap
+// imbalance and DEX active liquidity. This is how the page's row compares with it (REQ-WP-085):
 //
-// Each one arrived only when its feature existed. A pane naming a feature nobody
-// records renders "no readings of this feature" forever -- the message this app
-// produces honestly for a real absence -- so a reader cannot tell an unbuilt pane
-// from a quiet market.
+//   volume                 present, first, in `BAR_PANES` below -- read from the bars, not a feature;
+//   CVD, OFI (1m)          here, from [[REQ-WP-027]]; no producer writes them yet, so they read "no data";
+//   OI, funding, basis,
+//   liquidations           here, from [[REQ-WP-030]]; no producer writes them yet;
+//   DEX swap imbalance,
+//   DEX active liquidity   here, from [[REQ-WP-059]] and [[REQ-WP-063]]; the DEX ingest is not running in the
+//                          compose stack, so they read "no data";
+//   Depth imbalance (10)   **not in §27.3**: a pane this deployment added beyond the PRD's list, from
+//                          [[REQ-WP-027]]. Whether to keep it is the owner's call and it is left in place.
+//
+// An earlier version of this comment said all nine of §27.3 were here. They were not: volume was missing and
+// depth imbalance stood in its place.
+//
+// A pane naming a feature nobody records renders "no readings of this feature" forever -- the message this
+// app produces honestly for a real absence -- so a reader cannot tell an unbuilt pane from a quiet market.
+// That is what [[REQ-WP-084]]'s "no data" is for.
 //
 // Every entry's `feature` must be a name the registry knows. That is checked
 // from the Python suite (`tests/unit/features/test_pane_features.py`), because
 // this list and the registry are the two halves and neither can check itself: a
 // pane naming a feature nobody records shows "no readings of this feature"
-// forever, which reads as a quiet market rather than as a typo.
+// forever, which reads as a quiet market rather than as a typo. Volume is not a feature, which is why it is
+// not an entry here but in `BAR_PANES`.
 export const PANES: readonly Pane[] = [
   { feature: "cvd", label: "CVD" },
   { feature: "ofi_1m", label: "OFI (1m)" },
@@ -50,6 +62,18 @@ export const PANES: readonly Pane[] = [
   { feature: "dex_swap_imbalance", label: "DEX swap imbalance" },
   { feature: "dex_active_liquidity", label: "DEX active liquidity" },
 ];
+
+/**
+ * Panes whose values come from the loaded bars rather than the feature series (REQ-WP-085). Volume is a
+ * property of the bar -- every `BarOut` carries `volume_base` -- so it needs no producer, and it is listed
+ * apart from `PANES` because that list is checked against the feature registry.
+ */
+export const BAR_PANES: readonly Pane[] = [{ feature: "volume", label: "Volume" }];
+
+/** What the pane row renders and the selection walks: volume first, as §27.3 lists it, then the features. */
+export const ROW: readonly Pane[] = [...BAR_PANES, ...PANES];
+
+export const isBarPane = (feature: string): boolean => BAR_PANES.some((p) => p.feature === feature);
 
 export interface PanePoint {
   at_ns: bigint;
@@ -116,6 +140,31 @@ export function paneSeries(points: readonly FeaturePointOut[], feature: string):
 }
 
 /**
+ * Volume per bar, from the loaded bars (REQ-WP-085).
+ *
+ * Final bars only: a forming bar's volume will change, and the chart already declines to treat such a bar as
+ * finished. A final bar in which nothing traded has volume `0`, which is data -- the bar exists and was quiet
+ * -- and is a point at zero. A `volume_base` that is not a finite number is skipped, never drawn as zero: a
+ * zero is a claim about the market. Each value sits at the instant its bar starts, which is not when its
+ * volume became known (the bar's close).
+ */
+export function volumeSeries(bars: readonly BarOut[]): PaneSeries {
+  const drawn = bars
+    .filter((bar) => bar.is_final)
+    .flatMap((bar) => {
+      const value = Number(bar.volume_base);
+      return bar.volume_base.trim() !== "" && Number.isFinite(value)
+        ? [{ at_ns: bar.open_time_ns, value }]
+        : [];
+    })
+    .sort((a, b) => (a.at_ns < b.at_ns ? -1 : a.at_ns > b.at_ns ? 1 : 0));
+
+  return drawn.length === 0
+    ? { points: [], state: "empty", note: "No finished bars in this window." }
+    : { points: drawn, state: "ok", note: "" };
+}
+
+/**
  * Which of the panes have anything behind them, for the view the page loaded (REQ-WP-084).
  *
  * "Has data" is `paneSeries`'s own definition -- some point carries a number under the feature's name -- and
@@ -123,10 +172,17 @@ export function paneSeries(points: readonly FeaturePointOut[], feature: string):
  * added later makes its pane live with no change to the page, and no list of "built" features exists to drift.
  * A feature name that is not one of the panes gets no pane.
  */
-export function availablePanes(points: readonly FeaturePointOut[]): ReadonlySet<string> {
-  return new Set(
+export function availablePanes(
+  points: readonly FeaturePointOut[],
+  bars: readonly BarOut[] = [],
+): ReadonlySet<string> {
+  const available = new Set(
     PANES.filter((pane) => paneSeries(points, pane.feature).state === "ok").map((pane) => pane.feature),
   );
+  if (volumeSeries(bars).state === "ok") {
+    available.add("volume");
+  }
+  return available;
 }
 
 /**
@@ -146,5 +202,5 @@ export function chooseSelection(
   if (current !== null && available.has(current)) {
     return current;
   }
-  return PANES.find((pane) => available.has(pane.feature))?.feature ?? null;
+  return ROW.find((pane) => available.has(pane.feature))?.feature ?? null;
 }

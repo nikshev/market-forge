@@ -1,4 +1,5 @@
 // @trace: REQ-WP-084
+// @trace: REQ-WP-085
 //
 // The page, with its API replaced: what the pane row says before the feature series has answered, when it
 // failed, and after it answered with a series that carries only some features. The chart is stubbed (jsdom
@@ -83,29 +84,35 @@ describe("the pane row on the chart page", () => {
 
     render(<App />);
 
+    // The page opens on Volume, which does not depend on the features, so the failure is not shown until a
+    // feature pane is chosen (REQ-WP-085); until then nothing claims "no data" either.
+    fireEvent.click(await screen.findByRole("button", { name: "CVD" }));
     expect(await screen.findByRole("status", { name: "Pane load" })).toHaveTextContent("HTTP 503");
     expect(screen.queryByRole("button", { name: /no data/ })).toBeNull();
   });
 
-  it("offers one pane and eight 'no data' when the series carries only OFI, and selects the one", async () => {
+  it("offers OFI and Volume and eight 'no data' when the series carries only OFI", async () => {
     api.series = async () => series([{ ofi_1m: 1 }, { ofi_1m: 2 }]);
 
     render(<App />);
 
+    // Volume is first in the row and has data from the bars, so it is the pane the page opens on.
     const live = await screen.findByRole("button", { name: "OFI (1m)" });
-    await waitFor(() => expect(live).toHaveAttribute("aria-pressed", "true"));
+    expect(live).toBeEnabled();
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Volume" })).toHaveAttribute("aria-pressed", "true"),
+    );
     expect(screen.getAllByRole("button", { name: /no data$/ })).toHaveLength(8);
   });
 
-  it("says every pane has no data, and that no pane has any, for an empty series", async () => {
+  it("says every feature pane has no data for an empty series, and Volume is still live", async () => {
     api.series = async () => series([]);
 
     render(<App />);
 
     await waitFor(() => expect(screen.getAllByRole("button", { name: /no data$/ })).toHaveLength(9));
-    expect(screen.getByRole("status", { name: "Pane contents" })).toHaveTextContent(
-      "No pane has data for this view",
-    );
+    expect(screen.getByRole("button", { name: "Volume" })).toBeEnabled();
+    // ("No pane has data for this view" is for when Volume has none either: see chartVolumeOpens.)
   });
 
   it("does not take a valid choice away when the same data is fetched again", async () => {

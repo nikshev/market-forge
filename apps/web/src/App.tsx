@@ -3,6 +3,7 @@
 // @trace: REQ-WP-074
 // @trace: REQ-US-002
 // @trace: REQ-WP-084
+// @trace: REQ-WP-085
 // @trace: REQ-WP-083
 //
 // The page an alert's deep link opens. PRD section 27.1's route, and section
@@ -36,7 +37,7 @@ import { ChannelModeControl } from "./ChannelMode";
 import { FlowPane } from "./FlowPane";
 import { LoadState, type LoadStateKind } from "./LoadState";
 import { Markets } from "./Markets";
-import { availablePanes, chooseSelection, PANES } from "./panes";
+import { availablePanes, chooseSelection, ROW } from "./panes";
 import { parseDeepLink, withMode, withTimeframe } from "./deepLink";
 import { depthOverlay, type DepthOverlay } from "./dexDepth";
 import { RESTORATION_NOTICE } from "./overlays";
@@ -110,11 +111,13 @@ export function App(): JSX.Element {
   const [detail, setDetail] = useState<string | undefined>(undefined);
   // `null` when no pane has data for the view (REQ-WP-084). Starts on the first pane and moves once it is
   // known which panes have data.
-  const [pane, setPane] = useState<string | null>(PANES[0]!.feature);
+  const [pane, setPane] = useState<string | null>(ROW[0]!.feature);
   const [points, setPoints] = useState<FeaturePointOut[]>([]);
   // False from the start of a load until the feature series has answered, ok or failed. Before then `points`
   // is empty, which is not the same as "no pane has data".
   const [pointsLoaded, setPointsLoaded] = useState(false);
+  // True once the bars have answered, including with none. `state` cannot say it: it starts at "ok".
+  const [barsLoaded, setBarsLoaded] = useState(false);
   // Candidate extrema are the detector's unconfirmed turns; off on every load, and not part of the link.
   const [showCandidates, setShowCandidates] = useState(false);
   // A pane's own failure, kept apart from the page's: the chart can load while
@@ -162,6 +165,7 @@ export function App(): JSX.Element {
     const mine = ++loadId.current;
     const superseded = () => mine !== loadId.current;
     setPointsLoaded(false);
+    setBarsLoaded(false);
 
     const timeframeNs = option.timeframeNs;
     const barsResult = await fetchBars({
@@ -181,6 +185,7 @@ export function App(): JSX.Element {
       return;
     }
     setBars(barsResult.value.bars);
+    setBarsLoaded(true);
     setState(barsResult.value.bars.length === 0 ? "empty" : "ok");
 
     const atNs = link.atNs ?? barsResult.value.bars.at(-1)?.close_time_ns ?? null;
@@ -252,8 +257,8 @@ export function App(): JSX.Element {
   // Which panes have data: known only once the series has answered and did not fail. `null` is "not known",
   // and says nothing of any pane -- a load in flight, or a failed one, is not an absence.
   const available = useMemo(
-    () => (pointsLoaded && paneFailure === null ? availablePanes(points) : null),
-    [pointsLoaded, paneFailure, points],
+    () => (pointsLoaded && paneFailure === null ? availablePanes(points, bars) : null),
+    [pointsLoaded, paneFailure, points, bars],
   );
   useEffect(() => {
     setPane((current) => chooseSelection(current, available));
@@ -380,6 +385,8 @@ export function App(): JSX.Element {
         onSelect={setPane}
         failure={paneFailure}
         available={available}
+        bars={bars}
+        barsLoaded={barsLoaded}
       />
     </AppShell>
   );

@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "§27.3; owner's direction 2026-10-04"
 prd_lines: "4423-4436"
 phase: null
-status: draft
+status: implemented
 depends_on: [REQ-WP-027, REQ-WP-083, REQ-WP-084]
 tags: [web, chart, panes, volume]
 hard_gated: false
@@ -69,7 +69,19 @@ It changes nothing about the other panes' sources, about the API, or about how b
 ## Trace
 
 <!-- trace:begin -->
-_No linked artifacts yet._
+- **Specs:** [[SPEC-134-volume-pane]]
+- **Tests:**
+    - `tests/unit/web/test_volume_pane_artifacts.py::test_every_module_this_requirement_touches_names_it[App.tsx]`
+    - `tests/unit/web/test_volume_pane_artifacts.py::test_every_module_this_requirement_touches_names_it[FlowPane.tsx]`
+    - `tests/unit/web/test_volume_pane_artifacts.py::test_every_module_this_requirement_touches_names_it[panes.ts]`
+    - `tests/unit/web/test_volume_pane_artifacts.py::test_there_is_a_live_screenshot_of_the_volume_pane_in_each_scheme[dark]`
+    - `tests/unit/web/test_volume_pane_artifacts.py::test_there_is_a_live_screenshot_of_the_volume_pane_in_each_scheme[light]`
+- **Code:**
+    - `apps/web/src/App.tsx`
+    - `apps/web/src/FlowPane.tsx`
+    - `apps/web/src/__tests__/chartPanesLoading.test.tsx`
+    - `apps/web/src/panes.ts`
+- **Outcomes:** [[OUT-2026-10-04-implement-volume-pane]], [[OUT-2026-10-04-plan-volume-pane]], [[OUT-2026-10-04-spec-volume-pane]], [[OUT-2026-10-04-tasks-volume-pane]]
 <!-- trace:end -->
 
 ## Notes
