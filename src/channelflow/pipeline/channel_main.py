@@ -1,6 +1,7 @@
 """Periodic pass that produces channels, signals and extrema from bars.
 
 # @trace: REQ-WP-077
+# @trace: REQ-INFRA-012
 
 The process half of `channel_production`: it reads the bars table for each
 configured timeframe, calls `record_replay` (which already exists, is correct,
@@ -17,11 +18,11 @@ from __future__ import annotations
 
 import argparse
 import os
-import time
 from collections.abc import Sequence
 
 from channelflow.lakehouse import Catalog, IcebergTable
 from channelflow.lakehouse import catalog as open_catalog
+from channelflow.pipeline.passes import run_passes
 from channelflow.pipeline.replay import record_replay
 from channelflow.settings import MissingConfiguration, settings_from_env
 from channelflow.tables import bars as bars_table
@@ -156,12 +157,9 @@ def main(argv: list[str] | None = None) -> int:
     )
     interval = _interval_seconds(arguments.loop) if arguments.loop else None
 
-    while True:
-        run_pass(catalog, targets=targets)
-        if interval is None:
-            return 0
-        print(f"-- next pass in {interval:.0f}s", flush=True)
-        time.sleep(interval)
+    return run_passes(
+        "worker", lambda: run_pass(catalog, targets=targets), interval_seconds=interval
+    )
 
 
 if __name__ == "__main__":

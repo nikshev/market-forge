@@ -1,6 +1,7 @@
 """Produce bars at every configured timeframe from the one-minute series.
 
 # @trace: REQ-WP-073
+# @trace: REQ-INFRA-012
 
 The process half of `resample`: it reads the source series and what each target
 already holds, calls the pure resampler, and appends through `BarSink`. This is
@@ -22,6 +23,7 @@ from collections.abc import Sequence
 from channelflow.bars.models import Bar
 from channelflow.lakehouse import Catalog, IcebergTable
 from channelflow.lakehouse import catalog as open_catalog
+from channelflow.pipeline.passes import run_passes
 from channelflow.pipeline.resample import ResampleReport, report_for, resample
 from channelflow.settings import MissingConfiguration, settings_from_env
 from channelflow.tables import bars as bars_table
@@ -141,12 +143,11 @@ def main(argv: list[str] | None = None) -> int:
     )
     interval = _interval_seconds(arguments.loop) if arguments.loop else None
 
-    while True:
-        run_pass(catalog, targets=targets, source=source, now_ns=time.time_ns())
-        if interval is None:
-            return 0
-        print(f"-- next pass in {interval:.0f}s", flush=True)
-        time.sleep(interval)
+    return run_passes(
+        "resample",
+        lambda: run_pass(catalog, targets=targets, source=source, now_ns=time.time_ns()),
+        interval_seconds=interval,
+    )
 
 
 if __name__ == "__main__":

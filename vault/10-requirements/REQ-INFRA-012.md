@@ -5,7 +5,7 @@ type: infrastructure
 prd_ref: "none -- operational finding, 2026-10-03; repository practice (REQ-WP-079, REQ-WP-081)"
 prd_lines: "0-0"
 phase: null
-status: planned
+status: implemented
 depends_on: [REQ-WP-073, REQ-WP-077]
 tags: [reliability, worker, resample]
 hard_gated: false
@@ -53,7 +53,24 @@ pass, the failure must still end the process non-zero, as it does today. Anythin
 
 <!-- trace:begin -->
 - **Specs:** [[SPEC-130-pass-survives]]
-- **Outcomes:** [[OUT-2026-10-04-plan-pass-survives]], [[OUT-2026-10-04-spec-pass-survives]], [[OUT-2026-10-04-tasks-pass-survives]]
+- **Tests:**
+    - `tests/unit/pipeline/test_passes.py::test_a_failing_pass_is_reported_and_the_next_pass_runs`
+    - `tests/unit/pipeline/test_passes.py::test_a_healthy_loop_says_nothing_extra`
+    - `tests/unit/pipeline/test_passes.py::test_a_new_run_of_failures_prints_its_traceback_again`
+    - `tests/unit/pipeline/test_passes.py::test_an_interrupt_or_an_exit_is_not_swallowed[stop0]`
+    - `tests/unit/pipeline/test_passes.py::test_an_interrupt_or_an_exit_is_not_swallowed[stop1]`
+    - `tests/unit/pipeline/test_passes.py::test_in_once_mode_a_failing_pass_still_ends_the_process`
+    - `tests/unit/pipeline/test_passes.py::test_in_once_mode_a_successful_pass_returns_zero`
+    - `tests/unit/pipeline/test_passes.py::test_main_in_once_mode_still_fails_loudly[channelflow.pipeline.channel_main]`
+    - `tests/unit/pipeline/test_passes.py::test_main_in_once_mode_still_fails_loudly[channelflow.pipeline.resample_main]`
+    - `tests/unit/pipeline/test_passes.py::test_recovery_is_reported_with_how_many_passes_failed`
+    - `tests/unit/pipeline/test_passes.py::test_resample_survives_a_failed_pass_through_main`
+    - `tests/unit/pipeline/test_passes.py::test_the_traceback_is_printed_once_per_run_of_failures`
+    - `tests/unit/pipeline/test_passes.py::test_the_worker_survives_a_failed_pass_through_main`
+- **Code:**
+    - `src/channelflow/pipeline/channel_main.py`
+    - `src/channelflow/pipeline/resample_main.py`
+- **Outcomes:** [[OUT-2026-10-04-implement-pass-survives]], [[OUT-2026-10-04-plan-pass-survives]], [[OUT-2026-10-04-spec-pass-survives]], [[OUT-2026-10-04-tasks-pass-survives]]
 <!-- trace:end -->
 
 ## Notes

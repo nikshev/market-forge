@@ -1,0 +1,72 @@
+# The mutation sweep for REQ-INFRA-012: a background pass that fails is reported and tried again.
+#
+# Each mutation is a way a transient fault could still cost a process, or a loop could go quiet about it,
+# or get noisy about it.
+#
+# Patterns are TOML *literal* strings on purpose: the basic form treats a trailing
+# backslash as a line continuation and eats the next line's indentation.
+source = "src/channelflow/pipeline/passes.py"
+tests = ["tests/unit/pipeline/test_passes.py"]
+
+[[mutation]]
+name = "a failing pass in a loop is not survived"
+find = '''        except Exception as error:
+            if interval_seconds is None:
+                raise'''
+replace = '''        except Exception as error:
+            if True:
+                raise'''
+
+[[mutation]]
+name = "a failing pass in --once mode is survived, so a failure looks like success"
+find = '''            if interval_seconds is None:
+                raise
+            failed_in_a_row += 1'''
+replace = '''            if False:
+                raise
+            failed_in_a_row += 1'''
+
+[[mutation]]
+name = "an interrupt is swallowed along with the failures"
+find = '''        except Exception as error:'''
+replace = '''        except BaseException as error:'''
+
+[[mutation]]
+name = "the traceback is printed on every failure of a run"
+find = '''            if failed_in_a_row == 1:'''
+replace = '''            if True:'''
+
+[[mutation]]
+name = "the traceback is never printed"
+find = '''                print(traceback.format_exc(), flush=True)'''
+replace = '''                pass'''
+
+[[mutation]]
+name = "a later failure in a run is silent"
+find = '''            else:
+                print(
+                    f"-- {name}: pass failed again ({failed_in_a_row} in a row): {summary}",
+                    flush=True,
+                )'''
+replace = '''            else:
+                pass'''
+
+[[mutation]]
+name = "the recovery is not reported"
+find = '''                print(f"-- {name}: recovered after {failed_in_a_row} failed pass(es)", flush=True)'''
+replace = '''                pass'''
+
+[[mutation]]
+name = "the count of failures is not reset by a success, so a later run is not a new run"
+find = '''                failed_in_a_row = 0'''
+replace = '''                pass'''
+
+[[mutation]]
+name = "the loop does not wait its interval"
+find = '''        (sleep or time.sleep)(interval_seconds)'''
+replace = '''        pass'''
+
+[[mutation]]
+name = "the next-pass line is dropped"
+find = '''        print(f"-- next pass in {interval_seconds:.0f}s", flush=True)'''
+replace = '''        pass'''

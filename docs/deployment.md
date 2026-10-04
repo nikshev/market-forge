@@ -467,6 +467,19 @@ warning and not listed, rather than labelled by guess.
 Five services start together after a deploy, and the first of them to reach an empty catalog creates the
 table; the others find it already made and carry on.
 
+## When a pass fails
+
+[[REQ-INFRA-012]]. The `worker` and `resample` run in a loop: a pass over the stored bars, a sleep, another
+pass. A pass that fails (the object store answers 503 under load, a read races a writer) is reported with
+the job's name, the exception and, **once per run of failures**, its traceback; later failures of the same
+run are one line each with the count; and the first pass that succeeds says how many failed. The loop waits
+its usual interval and tries again: the next pass is the retry, and a pass is cheap against its interval. A
+pass over unchanged data writes nothing twice, so repeating it is safe.
+
+Before this a failure of a pass's first read ended the process and compose restarted it, which happened
+twice in one day for two unrelated reasons. A one-off run (`--once`) is not a loop and still fails loudly
+and exits non-zero. Compose's restart policy stays as the last resort.
+
 ## Logs
 
 An ingest service logs events and not traffic. INFO has connects, reconnects, recoveries
