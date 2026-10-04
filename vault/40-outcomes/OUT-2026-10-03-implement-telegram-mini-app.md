@@ -2,7 +2,7 @@
 id: OUT-2026-10-03-implement-telegram-mini-app
 step: implement
 records: [REQ-WP-080]
-commit: null
+commit: 26bd03d
 ---
 
 ## What was done

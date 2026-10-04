@@ -64,7 +64,7 @@ Single project: `src/channelflow/`, `tests/`, `tools/` at the repository root.
 ## Phase 7: Gate and close
 
 - [x] T012 `make lint`, `make typecheck`, `make test` (the suite runs with no services for this requirement: confirm `tests/unit/test_upsample_seam.py` passes with the stack stopped, or say which test it used a service for). Write the implement outcome note, set the requirement to `tested` **and** `implemented` in the one commit (the rung is passed through; the RED run is the proof), `make graph && make validate`, commit through the gate naming explicit paths
-- [ ] T013 **Deployment is deferred, on purpose**: the shared image rebuild recreates every service, including `resample` and `worker`, which would restart the 24-hour clock [[REQ-WP-079]] is being measured on (07:18 UTC 2026-10-03 to 2026-10-04) and reset the `RestartCount` it asks for. Deploy after that check, then confirm the resample log's `refused:` lines are unchanged in number against T001's. Not a precondition for this requirement's acceptance, which asks for a suite with no services and no network
+- [x] T013 **Deployment is deferred, on purpose**: the shared image rebuild recreates every service, including `resample` and `worker`, which would restart the 24-hour clock [[REQ-WP-079]] is being measured on (07:18 UTC 2026-10-03 to 2026-10-04) and reset the `RestartCount` it asks for. Deploy after that check, then confirm the resample log's `refused:` lines are unchanged in number against T001's. Not a precondition for this requirement's acceptance, which asks for a suite with no services and no network
 
 ---
 
@@ -100,3 +100,5 @@ T010 beside T009. T006 beside T005.
 **MVP is US1 and T012**: the two latent holes closed and the tests in. US2–US3 are guards that make
 the seam something that is tested; US4 is what makes a hard-gated constraint mean anything, and is
 the one most likely to find that a guard is weaker than it looks.
+
+*T013 done 2026-10-04 07:19 UTC, after the REQ-WP-079 check: see the implement outcome note.*

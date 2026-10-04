@@ -2,7 +2,7 @@
 id: OUT-2026-10-04-implement-pass-survives
 step: implement
 records: [REQ-INFRA-012]
-commit: null
+commit: e1ab98c
 ---
 
 ## What was done
@@ -34,15 +34,14 @@ Six failure lines in 40 s, one traceback, and the loop never left.
 
 ## What was decided
 
-- **Not deployed to the running `worker` and `resample` yet, on purpose.** Recreating them would restart the
-  24-hour measurement of [[REQ-WP-079]], which ends at 07:18 UTC. They are recreated after that check; the
-  new images are already built.
+- **Deployed to the running `worker` and `resample` at 07:19 UTC on 2026-10-04**, after the 24-hour
+  measurement of [[REQ-WP-079]] it had to wait for (recreating them earlier would have restarted it). Both run
+  with `RestartCount` 0 and the new module present.
 - **The sleep is injected** (`sleep=None` means `time.sleep` looked up at call time), so no test waits.
 - **`except Exception`**, because the two incidents' causes (a snapshot race, an object-store 503) share
   nothing, so no list of known causes would have covered both.
 
 ## What is still open
 
-- Deployment to the running services (above).
 - A failure that never clears prints a line every interval; alerting on it belongs with the observability
   work, not here.

@@ -63,7 +63,7 @@ module, `src/channelflow/lakehouse/iceberg.py`.
 - [x] T016 `make lint`, `make typecheck` (the helpers take `_IcebergTable`; `mypy --strict`), `make test`. And FR-007: `git diff --stat` for the change shows **no file under `src/` other than `lakehouse/iceberg.py`**, and `grep -rn "except NoSuchSnapshot" src` finds nothing (it finds nothing today); record both
 - [x] T017 Rebuild and recreate every service that imports the lakehouse (`worker`, `resample`, `api`, `maintenance`, the five `ingest-*`): `docker compose up -d --build`. The same costs as [[REQ-WP-078]]'s recreate apply (up to fifteen buffered bars per ingest process). Then record the **after** of T001: loads per call (expect 1 across the board) and the live timings of `current()` and `read()` on `bars`
 - [x] T018 Write the implement outcome note `vault/40-outcomes/OUT-2026-10-03-implement-snapshot-single-load.md` (before/after, the RED output, which US2 tests were green from the start, mutation survivors and reasons, mistakes). Set the requirement's status to **`tested`**, not `implemented`: the acceptance asks for a full day without `NoSuchSnapshot`, and that has not happened yet. `make graph && make validate`; commit through the gate
-- [ ] T019 **After at least 24 hours of the new build running** (SC-002): `docker compose logs worker resample | grep -c NoSuchSnapshot` is **0** in each, and `docker inspect -f '{{.RestartCount}}' channelflow-resample-1` is **0** since the recreate (SC-004), recorded with the date and the container start time in the outcome note. If it is not 0, stop: the single-load reading was not the whole cause, and the plan's R3 is wrong. If it is, set the status to `implemented`, `make graph && make validate`, commit
+- [x] T019 **After at least 24 hours of the new build running** (SC-002): `docker compose logs worker resample | grep -c NoSuchSnapshot` is **0** in each, and `docker inspect -f '{{.RestartCount}}' channelflow-resample-1` is **0** since the recreate (SC-004), recorded with the date and the container start time in the outcome note. If it is not 0, stop: the single-load reading was not the whole cause, and the plan's R3 is wrong. If it is, set the status to `implemented`, `make graph && make validate`, commit
 
 ---
 
@@ -106,3 +106,5 @@ T003 beside T004–T006; T011, T012 and T014 beside US1's tests.
 what must not change; US3 is the proof on the running stack and is the only task that waits on the
 clock. The status stays at `tested` between T018 and T019, on purpose: the requirement says a full
 day, and one day is not an hour.
+
+*T019 done 2026-10-04 07:19 UTC: see the implement outcome note.*

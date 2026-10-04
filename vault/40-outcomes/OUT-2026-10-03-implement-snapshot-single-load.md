@@ -93,3 +93,19 @@ No claim is made for it.
   INFO:** left as they are, on purpose. Both are one line or one traceback per event and sit inside
   the log budget of [[REQ-WP-078]].
 - **The `copy-trade` plan's `Co-Authored-By: Claude Fable 5` lines:** the user said to ignore them.
+
+## Closed (2026-10-04) — the day
+
+**Measured 2026-10-04 07:19 UTC, 24 h 1 min after the new build started (07:18 UTC on 2026-10-03):**
+`NoSuchSnapshot` in the `worker`, `resample`, `api` and `maintenance` logs: **0, 0, 0, 0** (before: worker 10
+and resample 5 in about 13 hours, 14 across both at the time of the requirement). `resample`
+`RestartCount` **0** since 07:18:10 (SC-004; before: it exited once at 01:02). The logs were checked to cover
+the whole day first: the oldest line of each is from 2026-10-03 07:18, and the files are 1 MB and 7.4 MB
+against a 60 MB cap, so no rotation hid an early occurrence.
+
+One thing the same day also showed, which this measurement does **not** count: the `worker` restarted twice at
+16:38 UTC on an object-store HTTP 503, under load an experiment of mine caused. That is a different failure and
+is [[REQ-INFRA-012]]'s subject, now fixed and deployed (07:19 UTC, 2026-10-04).
+
+The status is `implemented`. SC-002 and SC-004 are met by the numbers above; SC-001, SC-003 and the
+acceptance of single-load reads are met by the tests of 2026-10-03.

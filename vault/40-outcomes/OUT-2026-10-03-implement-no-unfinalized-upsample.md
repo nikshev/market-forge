@@ -2,7 +2,7 @@
 id: OUT-2026-10-03-implement-no-unfinalized-upsample
 step: implement
 records: [REQ-NRT-UPSAMPLE]
-commit: null
+commit: cc88c3c
 ---
 
 ## What was done
@@ -70,10 +70,11 @@ twice. It is now built once per module and the list holds **618**; the file runs
 
 ## What is still open
 
-- **Deployment (T013), on purpose.** The shared image rebuild recreates every service and would reset
-  the 24-hour measurement of [[REQ-WP-079]] (from 07:18 UTC on 2026-10-03) and the `RestartCount` it
-  asks for. Deploy after that check, then compare the resample log's `refused:` count with the
-  1,814 an hour recorded before.
+- **Deployment (T013): done 2026-10-04 07:19 UTC**, after the REQ-WP-079 check it had to wait for. In the
+  running `resample` the refusal lines now carry `missing […]` (cap 5, `NAMED_IN_A_REFUSAL = 5`); the first pass
+  printed **137** `refused:` lines against about 151 a pass in the hour recorded before (1,814 over about twelve
+  passes), and the longest was 205 characters. No `duplicated` or `not final` line appeared, as the differential
+  predicted for this data.
 - **§13A.17's extrema hierarchy and confluence features** still have no requirement note and no code;
   the "consumer" half of this requirement is guaranteed on the read path until they do.
 - **`read_bars` does not deduplicate.** `resample` no longer depends on that, but another reader of

@@ -2,7 +2,7 @@
 id: OUT-2026-10-03-implement-markets-registered
 step: implement
 records: [REQ-WP-081]
-commit: null
+commit: 9f25aed
 ---
 
 ## What was done

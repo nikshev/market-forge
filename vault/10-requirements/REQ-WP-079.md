@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "§6.4, §7"
 prd_lines: "600-642, 786"
 phase: null
-status: tested
+status: implemented
 depends_on: [REQ-WP-039]
 tags: [lakehouse, reliability]
 hard_gated: false
@@ -97,3 +97,5 @@ the failure. `read()` was the only operation that raised `NoSuchSnapshot`, and `
 one that returned a wrong answer silently — the snapshot of whichever writer committed last. The
 fix (one load per operation) covers all four; the correction is to what each was exposed to.
 Status is `tested` until a full day of the new build (from 07:18 UTC, 2026-10-03) has passed.
+
+Closed 2026-10-04 07:19 UTC: 0 `NoSuchSnapshot` in `worker` and `resample` over 24 h 1 min and 0 `resample` restarts; the status is `implemented`.

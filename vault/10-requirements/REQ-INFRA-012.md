@@ -69,6 +69,7 @@ pass, the failure must still end the process non-zero, as it does today. Anythin
     - `tests/unit/pipeline/test_passes.py::test_the_worker_survives_a_failed_pass_through_main`
 - **Code:**
     - `src/channelflow/pipeline/channel_main.py`
+    - `src/channelflow/pipeline/passes.py`
     - `src/channelflow/pipeline/resample_main.py`
 - **Outcomes:** [[OUT-2026-10-04-implement-pass-survives]], [[OUT-2026-10-04-plan-pass-survives]], [[OUT-2026-10-04-spec-pass-survives]], [[OUT-2026-10-04-tasks-pass-survives]]
 <!-- trace:end -->
