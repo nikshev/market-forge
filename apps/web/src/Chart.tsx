@@ -4,6 +4,7 @@
 // @trace: REQ-WP-084
 // @trace: REQ-WP-092
 // @trace: REQ-WP-086
+// @trace: REQ-WP-089
 //
 // PRD section 27.2's overlays, for the four layers REQ-WP-009's acceptance
 // names: candles, the channel's centre and boundaries, the setup zones, and a
@@ -29,7 +30,9 @@ import type {
   ExtremaResponse,
   Overlay,
   SignalOut,
+  VolumeProfileOut,
 } from "./types";
+import { ProfilePrimitive } from "./profilePrimitive";
 import { profileBars } from "./volumeProfile";
 import { chartLayout, schemeNow, type ChartPalette, type Scheme } from "./theme";
 import type { Profile } from "./volumeProfile";
@@ -49,6 +52,7 @@ export function Chart({
   channel,
   signal,
   profile = null,
+  volumeProfile = null,
   overlays = DEFAULT_OVERLAYS,
   focusAtNs = null,
   extrema = { confirmed: [], candidates: [] },
@@ -62,6 +66,8 @@ export function Chart({
   channel: ChannelOut | null;
   signal: SignalOut | null;
   profile?: Profile | null;
+  /** The profile by price level with the buy/sell split, drawn at the side of the chart (REQ-WP-089). */
+  volumeProfile?: VolumeProfileOut | null;
   overlays?: readonly Overlay[];
   focusAtNs?: bigint | null;
   extrema?: ExtremaResponse;
@@ -210,6 +216,12 @@ export function Chart({
       });
     }
 
+    // REQ-WP-089: the profile by price level, a primitive on the candle series so it follows the chart's price scale.
+    const primitive = on.has("volume_profile") && volumeProfile !== null ? new ProfilePrimitive(volumeProfile) : null;
+    if (primitive !== null) {
+      candlestick.attachPrimitive(primitive);
+    }
+
     const range = visibleRangeFor(bars, focusAtNs, FOCUS_SPAN);
     if (range === null) {
       // No instant named and a channel: open on its window so it fills the view (REQ-WP-082). Otherwise
@@ -232,12 +244,15 @@ export function Chart({
       // Not if the chart itself was removed first (unmount runs the other effect's cleanup before this one,
       // and removing a series from a disposed chart throws). Price lines go with their series.
       if (chart.current === instance) {
+        if (primitive !== null) {
+          candlestick.detachPrimitive(primitive);
+        }
         for (const series of created) {
           instance.removeSeries(series);
         }
       }
     };
-  }, [bars, channel, signal, profile, overlays, focusAtNs, extrema, showCandidates, mode]);
+  }, [bars, channel, signal, profile, volumeProfile, overlays, focusAtNs, extrema, showCandidates, mode]);
 
   return <div ref={container} data-testid="chart" />;
 }

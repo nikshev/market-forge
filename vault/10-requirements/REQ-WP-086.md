@@ -76,7 +76,13 @@ backfill anything.
 - **Code:**
     - `apps/web/src/App.tsx`
     - `apps/web/src/Chart.tsx`
+    - `apps/web/src/GapNotice.tsx`
     - `apps/web/src/PaneChart.tsx`
+    - `apps/web/src/__tests__/chartGapMarkers.test.tsx`
+    - `apps/web/src/__tests__/gapNotice.test.tsx`
+    - `apps/web/src/__tests__/gaps.test.ts`
+    - `apps/web/src/__tests__/paneChartGaps.test.tsx`
+    - `apps/web/src/gaps.ts`
 - **Outcomes:** [[OUT-2026-10-04-implement-bar-gaps]], [[OUT-2026-10-04-plan-bar-gaps]], [[OUT-2026-10-04-spec-bar-gaps]], [[OUT-2026-10-04-tasks-bar-gaps]]
 <!-- trace:end -->
 

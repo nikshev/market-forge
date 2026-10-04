@@ -1,4 +1,5 @@
 # @trace: REQ-WP-073
+import re
 from decimal import Decimal
 from pathlib import Path
 
@@ -100,6 +101,9 @@ class TestResampleReport:
         assert "refused=1" in report.line
 
 
+VOCABULARIES = {"timeframes.py", "volume_profile.py"}
+
+
 class TestMain:
     @pytest.mark.trace("REQ-WP-073")
     def test_once_writes_the_configured_timeframe(
@@ -156,7 +160,14 @@ class TestMain:
         sources = [
             path
             for path in (Path("src") / "channelflow").rglob("*.py")
-            if path.name not in {"timeframes.py"} and "__pycache__" not in path.parts
+            # `volume_profile.py` is the vocabulary of PRD section 14.1's profile windows: how
+            # far back a profile looks, not a bar size, so a table of its own like `timeframes.py`.
+            if path.name not in {"timeframes.py", "volume_profile.py"}
+            and "__pycache__" not in path.parts
         ]
-        offenders = [str(path) for path in sources if "4h" in path.read_text()]
+        # The literal token, quoted: prose that mentions a four-hour profile or a 24h window
+        # is not a hard-coded timeframe, and a bare "4h" substring also matched "24h".
+        offenders = [
+            str(path) for path in sources if re.search(r"""["']4h["']""", path.read_text())
+        ]
         assert offenders == []

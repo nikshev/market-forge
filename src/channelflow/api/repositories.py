@@ -3,6 +3,7 @@
 # @trace: REQ-API-001
 # @trace: REQ-US-001
 # @trace: REQ-US-004
+# @trace: REQ-WP-089
 
 PRD section 29 defines the storage -- Iceberg on object storage, Pinot for HOT
 serving, PostgreSQL for metadata. None of it is built, and REQ-WP-009's chart
@@ -35,6 +36,8 @@ from channelflow.signals import Candidate
 #: the API name the same signal -- a different namespace here would make every
 #: link a 404 while looking entirely correct.
 from channelflow.tables.dex_depth import DepthBand
+from channelflow.tables.volume_bins import BinsRead, select_bins, to_rows
+from channelflow.volume.bins import BinBlock
 
 
 @dataclass(frozen=True)
@@ -134,6 +137,10 @@ class Repository(Protocol):
 
     def dex_depth_at(self, *, chain_id: int, pool: str, at_ns: int) -> list[DepthBand]: ...
 
+    def volume_bins(
+        self, *, venue: str, symbol: str, as_of_ns: int | None, window_ns: int
+    ) -> BinsRead: ...
+
 
 @dataclass
 class InMemoryRepository:
@@ -152,6 +159,7 @@ class InMemoryRepository:
     _features: dict[tuple[str, str, int], list[FeaturePoint]] = field(default_factory=dict)
     _signals: list[Candidate] = field(default_factory=list)
     _depth_bands: list[DepthBand] = field(default_factory=list)
+    _bin_rows: list[dict[str, object]] = field(default_factory=list)
     #: One score per market, its latest. A history of scores is section 29's
     #: storage work; overwriting is honest about what this holds.
     _scores: dict[tuple[str, str], ScoredSetup] = field(default_factory=dict)
@@ -341,6 +349,16 @@ class InMemoryRepository:
             if signal_id_for(c) == signal_id:
                 return c
         return None
+
+    def add_bin_block(self, block: BinBlock) -> None:
+        self._bin_rows.extend(to_rows(block))
+
+    def volume_bins(
+        self, *, venue: str, symbol: str, as_of_ns: int | None, window_ns: int
+    ) -> BinsRead:
+        return select_bins(
+            self._bin_rows, venue=venue, symbol=symbol, as_of_ns=as_of_ns, window_ns=window_ns
+        )
 
     def add_depth_band(self, band: DepthBand) -> None:
         self._depth_bands.append(band)

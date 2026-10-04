@@ -2,6 +2,7 @@
 // @trace: REQ-WP-009
 // @trace: REQ-WP-074
 // @trace: REQ-WP-075
+// @trace: REQ-WP-089
 //
 // A typed client for PRD section 28. Every call reports a failure as a value
 // rather than throwing into a render: FR-016 says a failed load must never be
@@ -19,6 +20,7 @@ import type {
   ExtremaResponse,
   FeatureSeriesResponse,
   SignalOut,
+  VolumeProfileOut,
 } from "./types";
 import { BadTime, nanoseconds } from "./time";
 import { AS_SEEN_THEN } from "./types";
@@ -193,5 +195,24 @@ export function fetchDexDepth(params: {
     chain_id: params.chainId,
     pool: params.pool,
     at_ns: params.atNs,
+  });
+}
+
+/**
+ * The volume profile by price level with the buy/sell split (REQ-WP-089). A 404 is the server saying no price bins
+ * have been collected for this market yet; the caller states that, it does not draw an empty profile.
+ */
+export function fetchVolumeProfile(params: {
+  venue: string;
+  symbol: string;
+  window: string;
+  atNs: bigint | null;
+}): Promise<Result<VolumeProfileOut>> {
+  return get("/api/v1/volume-profile", {
+    venue: params.venue,
+    symbol: params.symbol,
+    window: params.window,
+    // Omitted rather than null when there is no instant: the profile is then "as of now", the newest block closed.
+    ...(params.atNs === null ? {} : { at_ns: params.atNs }),
   });
 }

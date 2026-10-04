@@ -448,6 +448,22 @@ WARNING quoting the venue's own words — OKX's `Subscribe failed …`, Bybit's 
 found`. Binance sends none that has been observed, so for Binance a refused request is
 silence.
 
+## The volume profile's price bins
+
+PRD §14.1 asks for volume by price level from the trades, split into aggressive buying and selling. A stored bar has that split for
+the whole bar and no price inside it, so the ingest collects the price bins itself, from the moment it is deployed: **there is no
+history**, and none is inferred from bars. A 4 h profile is complete four hours after deployment, a 24 h profile after a day, a 7 d
+profile after a week, and the API says how much of its window the data covers.
+
+Each ingest process aggregates its symbol's trades per five-minute block and per price bin (buy, sell and unknown base volume, by the
+trade's aggressor side only) and writes them to the `volume_bins` table with the bars. A block whose trade ids show missed trades
+(Binance, whose ids are sequential) is dropped and logged, not written.
+
+| Variable | Meaning |
+|---|---|
+| `CHANNELFLOW_PROFILE_BIN_WIDTHS` | quote units per bin, per symbol: `binance:BTCUSDT=20,okx:BTC-USDT-SWAP=10`. Empty derives each symbol's from its first trade (about two basis points of the price, rounded to 1-2-5, logged at start). The width is written on every row; a profile uses the latest width on record |
+| `CHANNELFLOW_PROFILE_BLOCK_SECONDS` | the block length, a whole number of minutes in seconds; empty is 300 |
+
 ## Which markets are listed
 
 [[REQ-WP-081]]. The overview (`/markets`, [[REQ-WP-075]]) lists what the markets table holds, and each

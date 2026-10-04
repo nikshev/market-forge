@@ -3,6 +3,7 @@
 # @trace: REQ-STORE-002
 # @trace: REQ-API-001
 # @trace: REQ-WP-081
+# @trace: REQ-WP-089
 
 [[ADR-019]] made the API depend on a protocol rather than a database, with a
 note saying the durable implementation "arrives with section 29 and replaces it
@@ -44,6 +45,7 @@ from channelflow.tables import dex_depth as dex_depth_table
 from channelflow.tables import extrema as extrema_table
 from channelflow.tables import features as features_table
 from channelflow.tables import signals as signals_table
+from channelflow.tables import volume_bins as volume_bins_table
 from channelflow.tables.rows import as_float, as_int, as_str
 
 
@@ -69,10 +71,12 @@ class LakehouseRepository:
     _candidates: IcebergTable = field(init=False)
     _transitions: IcebergTable = field(init=False)
     _dex_depth: IcebergTable = field(init=False)
+    _volume_bins: IcebergTable = field(init=False)
 
     def __post_init__(self) -> None:
         self._bars = bars_table.table_for(self.catalog)
         self._dex_depth = dex_depth_table.table_for(self.catalog)
+        self._volume_bins = volume_bins_table.table_for(self.catalog)
         self._channels = channels_table.table_for(self.catalog)
         self._features = features_table.features_table_for(self.catalog)
         self._markets = features_table.markets_table_for(self.catalog)
@@ -327,6 +331,15 @@ class LakehouseRepository:
             model_version=as_str(core, "model_version"),
             liquidity_factor=as_float(core, "liquidity_factor"),
             novelty_factor=as_float(core, "novelty_factor"),
+        )
+
+    def volume_bins(
+        self, *, venue: str, symbol: str, as_of_ns: int | None, window_ns: int
+    ) -> volume_bins_table.BinsRead:
+        """The price bins of a window as of an instant (REQ-WP-089), point-in-time on the block's
+        close."""
+        return volume_bins_table.read_bins(
+            self._volume_bins, venue=venue, symbol=symbol, as_of_ns=as_of_ns, window_ns=window_ns
         )
 
     def dex_depth_at(

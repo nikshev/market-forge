@@ -1,6 +1,7 @@
 """PRD §6.2's `ingest-binance`, as a process that can be run.
 
 # @trace: REQ-WP-066
+# @trace: REQ-WP-089
 # @trace: REQ-WP-078
 # @trace: REQ-WP-076
 
@@ -39,6 +40,7 @@ from channelflow.connectors.session import StreamSession
 from channelflow.connectors.venue import VenueConnector
 from channelflow.pipeline.archive import FrameArchive
 from channelflow.pipeline.venue_normalize import normalize_frames
+from channelflow.volume.bins import PriceBinBuilder
 
 logger = logging.getLogger(__name__)
 
@@ -107,6 +109,11 @@ class IngestDaemon:
     #: than a count kept here: it is the number of rows a commit would actually
     #: write, and a second counter would be a second answer to one question.
     bars_pending: Callable[[], int] = field(default=lambda: 0)
+    #: The price bins of the volume profile ([[REQ-WP-089]]), collected from the same trades
+    #: beside the bars. `None` collects nothing; the bars are the same either way.
+    bins: PriceBinBuilder | None = None
+    flush_bins: Callable[[], str | None] = field(default=lambda: None)
+    bins_pending: Callable[[], int] = field(default=lambda: 0)
 
     #: Frames whose stream this daemon does not turn into events. Counted, not
     #: dropped silently: a subscription nobody consumes is a cost with no
@@ -157,6 +164,7 @@ class IngestDaemon:
         flushed = None
         if self._should_flush(received_at):
             flushed = self.flush_bars()
+            self.flush_bins()
             self.archive.flush()
             self._last_flush_ns = received_at
 
@@ -191,6 +199,8 @@ class IngestDaemon:
         logger.debug("Normalized %d trade(s) for venue %s", len(trades), self.venue)
         for trade in trades:
             self.builder.add(trade)
+            if self.bins is not None:
+                self.bins.add(trade)
         return True
 
     def run(self, *, steps: int | None = None, pause_seconds: float = 0.2) -> list[StepReport]:
@@ -220,6 +230,7 @@ class IngestDaemon:
         like a gap in the data rather than a gap in the shutdown.
         """
         flushed = self.flush_bars()
+        self.flush_bins()
         archived = self.archive.flush()
         self.session.connector.close()
         return StepReport(

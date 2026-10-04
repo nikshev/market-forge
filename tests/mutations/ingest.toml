@@ -52,15 +52,18 @@ replace = '''            pass'''
 [[mutation]]
 name = "stopping closes before it commits"
 find = '''        flushed = self.flush_bars()
+        self.flush_bins()
         archived = self.archive.flush()
         self.session.connector.close()'''
 replace = '''        self.session.connector.close()
         flushed = self.flush_bars()
+        self.flush_bins()
         archived = self.archive.flush()'''
 
 [[mutation]]
 name = "stopping does not commit at all"
 find = '''        flushed = self.flush_bars()
+        self.flush_bins()
         archived = self.archive.flush()'''
 replace = '''        flushed = None
         archived = None'''

@@ -7,6 +7,7 @@
 // @trace: REQ-WP-092
 // @trace: REQ-WP-086
 // @trace: REQ-WP-083
+// @trace: REQ-WP-089
 //
 // The page an alert's deep link opens. PRD section 27.1's route, and section
 // 27.5's default: AS-SEEN-THEN, always, unless the link says otherwise in so
@@ -30,6 +31,7 @@ import {
   fetchExtrema,
   fetchFeatureSeries,
   fetchTimeframes,
+  fetchVolumeProfile,
 } from "./api";
 import { AppShell } from "./AppShell";
 import { CandidateSwitch } from "./CandidateSwitch";
@@ -39,6 +41,8 @@ import type { ChartHandle } from "./paneChart";
 import { DexBands } from "./DexBands";
 import { ChannelModeControl } from "./ChannelMode";
 import { FlowPane } from "./FlowPane";
+import { ProfileControls, type ProfileState } from "./ProfileControls";
+import { DEFAULT_PROFILE_WINDOW, type ProfileWindow } from "./profileWindows";
 import { LoadState, type LoadStateKind } from "./LoadState";
 import { Markets } from "./Markets";
 import { availablePanes, chooseSelection, ROW } from "./panes";
@@ -54,6 +58,7 @@ import {
   type ChannelOut,
   type ExtremaResponse,
   type FeaturePointOut,
+  type VolumeProfileOut,
 } from "./types";
 
 // The instant the chart is showing: the link's, or the last bar's close when the
@@ -137,6 +142,12 @@ export function App(): JSX.Element {
   const [paneFailure, setPaneFailure] = useState<string | null>(null);
   const [extrema, setExtrema] = useState<ExtremaResponse>({ confirmed: [], candidates: [] });
   const [depth, setDepth] = useState<DepthOverlay | null>(null);
+  // The volume profile by price level (REQ-WP-089): its own window, and its own state, because it is collected apart
+  // from the bars and a market can have bars and no price bins.
+  const [profileWindow, setProfileWindow] = useState<ProfileWindow>(DEFAULT_PROFILE_WINDOW);
+  const [profile, setProfile] = useState<VolumeProfileOut | null>(null);
+  const [profileState, setProfileState] = useState<ProfileState>("loading");
+  const [profileFailure, setProfileFailure] = useState("");
 
   // The offered set, read once. Until it arrives no series request goes out:
   // the duration each request needs is one of these options.
@@ -276,6 +287,53 @@ export function App(): JSX.Element {
     setPane((current) => chooseSelection(current, available));
   }, [available]);
 
+  const wantsProfile = link !== null && link.overlays.overlays.includes("volume_profile");
+  useEffect(() => {
+    if (link === null || !wantsProfile) {
+      return;
+    }
+    let live = true;
+    setProfileState("loading");
+    void (async () => {
+      // Whatever goes wrong here is the profile's alone: the chart and its panes do not wait for it, and a failed
+      // profile is stated as a failure, never drawn as an empty one (FR-016).
+      try {
+        const result = await fetchVolumeProfile({
+          venue: link.venue,
+          symbol: link.symbol,
+          window: profileWindow,
+          atNs: link.atNs,
+        });
+        if (!live) {
+          return;
+        }
+        if (result.ok && Array.isArray(result.value?.bins)) {
+          setProfile(result.value);
+          setProfileState("ok");
+        } else if (result.ok) {
+          // An answer that is not a profile is not drawn as one.
+          setProfile(null);
+          setProfileState("failed");
+          setProfileFailure("the response was not a volume profile");
+        } else {
+          setProfile(null);
+          // 404 is the server saying nothing has been collected for this market yet, which is not a failure.
+          setProfileState(result.error === "HTTP 404" ? "none" : "failed");
+          setProfileFailure(result.error);
+        }
+      } catch (cause) {
+        if (live) {
+          setProfile(null);
+          setProfileState("failed");
+          setProfileFailure(cause instanceof Error ? cause.message : String(cause));
+        }
+      }
+    })();
+    return () => {
+      live = false;
+    };
+  }, [link, wantsProfile, profileWindow]);
+
   useEffect(() => {
     void load();
     // Releasing the id on every dep change or unmount supersedes an in-flight
@@ -367,6 +425,7 @@ export function App(): JSX.Element {
             channel={channel}
             signal={null}
             overlays={link.overlays.overlays}
+            volumeProfile={profile}
             focusAtNs={link.atNs}
             extrema={extrema}
             showCandidates={showCandidates}
@@ -376,6 +435,15 @@ export function App(): JSX.Element {
             onReady={setMainChart}
           />
         </Paper>
+      )}
+      {refused || !wantsProfile ? null : (
+        <ProfileControls
+          window={profileWindow}
+          onWindow={setProfileWindow}
+          profile={profile}
+          state={profileState}
+          failure={profileFailure}
+        />
       )}
       {refused ? null : <GapNotice bars={bars} />}
       {depth === null || refused ? null : (

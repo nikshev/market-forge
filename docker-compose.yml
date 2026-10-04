@@ -230,6 +230,9 @@ services:
       # Empty means unset. Compose forwards only the variables a service names, so a
       # setting that is not listed here is unreachable on the host.
       CHANNELFLOW_INGEST_MAX_SILENCE_SECONDS: ${CHANNELFLOW_INGEST_MAX_SILENCE_SECONDS:-}
+      # The volume profile's price bins (REQ-WP-089); empty means unset.
+      CHANNELFLOW_PROFILE_BIN_WIDTHS: ${CHANNELFLOW_PROFILE_BIN_WIDTHS:-}
+      CHANNELFLOW_PROFILE_BLOCK_SECONDS: ${CHANNELFLOW_PROFILE_BLOCK_SECONDS:-}
       CHANNELFLOW_LOG_LEVEL: ${CHANNELFLOW_LOG_LEVEL:-}
       # The raw tier of §6.4.4, in the same bucket as the warehouse and beside
       # it rather than inside it: `raw/` and `warehouse/` are different zones.
@@ -274,6 +277,9 @@ services:
       # Empty means unset. Compose forwards only the variables a service names, so a
       # setting that is not listed here is unreachable on the host.
       CHANNELFLOW_INGEST_MAX_SILENCE_SECONDS: ${CHANNELFLOW_INGEST_MAX_SILENCE_SECONDS:-}
+      # The volume profile's price bins (REQ-WP-089); empty means unset.
+      CHANNELFLOW_PROFILE_BIN_WIDTHS: ${CHANNELFLOW_PROFILE_BIN_WIDTHS:-}
+      CHANNELFLOW_PROFILE_BLOCK_SECONDS: ${CHANNELFLOW_PROFILE_BLOCK_SECONDS:-}
       CHANNELFLOW_LOG_LEVEL: ${CHANNELFLOW_LOG_LEVEL:-}
       CHANNELFLOW_ARCHIVE_URI: s3://${MINIO_BUCKET}/raw/cex
       CHANNELFLOW_INGEST_VENUE: binance
@@ -305,6 +311,9 @@ services:
       # Empty means unset. Compose forwards only the variables a service names, so a
       # setting that is not listed here is unreachable on the host.
       CHANNELFLOW_INGEST_MAX_SILENCE_SECONDS: ${CHANNELFLOW_INGEST_MAX_SILENCE_SECONDS:-}
+      # The volume profile's price bins (REQ-WP-089); empty means unset.
+      CHANNELFLOW_PROFILE_BIN_WIDTHS: ${CHANNELFLOW_PROFILE_BIN_WIDTHS:-}
+      CHANNELFLOW_PROFILE_BLOCK_SECONDS: ${CHANNELFLOW_PROFILE_BLOCK_SECONDS:-}
       CHANNELFLOW_LOG_LEVEL: ${CHANNELFLOW_LOG_LEVEL:-}
       CHANNELFLOW_ARCHIVE_URI: s3://${MINIO_BUCKET}/raw/cex
       CHANNELFLOW_INGEST_VENUE: binance
@@ -339,6 +348,9 @@ services:
       # Empty means unset. Compose forwards only the variables a service names, so a
       # setting that is not listed here is unreachable on the host.
       CHANNELFLOW_INGEST_MAX_SILENCE_SECONDS: ${CHANNELFLOW_INGEST_MAX_SILENCE_SECONDS:-}
+      # The volume profile's price bins (REQ-WP-089); empty means unset.
+      CHANNELFLOW_PROFILE_BIN_WIDTHS: ${CHANNELFLOW_PROFILE_BIN_WIDTHS:-}
+      CHANNELFLOW_PROFILE_BLOCK_SECONDS: ${CHANNELFLOW_PROFILE_BLOCK_SECONDS:-}
       CHANNELFLOW_LOG_LEVEL: ${CHANNELFLOW_LOG_LEVEL:-}
       CHANNELFLOW_ARCHIVE_URI: s3://${MINIO_BUCKET}/raw/cex
       CHANNELFLOW_INGEST_VENUE: bybit
@@ -370,6 +382,9 @@ services:
       # Empty means unset. Compose forwards only the variables a service names, so a
       # setting that is not listed here is unreachable on the host.
       CHANNELFLOW_INGEST_MAX_SILENCE_SECONDS: ${CHANNELFLOW_INGEST_MAX_SILENCE_SECONDS:-}
+      # The volume profile's price bins (REQ-WP-089); empty means unset.
+      CHANNELFLOW_PROFILE_BIN_WIDTHS: ${CHANNELFLOW_PROFILE_BIN_WIDTHS:-}
+      CHANNELFLOW_PROFILE_BLOCK_SECONDS: ${CHANNELFLOW_PROFILE_BLOCK_SECONDS:-}
       CHANNELFLOW_LOG_LEVEL: ${CHANNELFLOW_LOG_LEVEL:-}
       CHANNELFLOW_ARCHIVE_URI: s3://${MINIO_BUCKET}/raw/cex
       CHANNELFLOW_INGEST_VENUE: okx

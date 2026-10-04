@@ -36,6 +36,9 @@ TIMESTAMP_FIELDS = {
     ("ExtremumCandidateOut", "candidate_time_ns"),
     ("ExtremumCandidateOut", "observed_at_ns"),
     ("FeatureSnapshotResponse", "at_ns"),
+    # REQ-WP-089: the instant a profile is as of, and where its data begins.
+    ("VolumeProfileOut", "as_of_ns"),
+    ("VolumeProfileOut", "covers_from_ns"),
     ("DexDepthResponse", "requested_at_ns"),
     ("DexDepthResponse", "state_time_ns"),
 }
@@ -47,6 +50,9 @@ DURATION_FIELDS = {
     # REQ-WP-074: the reported timeframe, matching the `timeframe_ns`
     # parameter §28.2's reads already take. A duration, not a moment.
     ("TimeframeOut", "timeframe_ns"),
+    # REQ-WP-089: how far back a profile looks, and how much of that its data covers.
+    ("VolumeProfileOut", "window_ns"),
+    ("VolumeProfileOut", "covered_ns"),
 }
 
 

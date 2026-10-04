@@ -36,6 +36,7 @@ from pydantic import BaseModel, ConfigDict, StringConstraints
 from channelflow.api.channels import AS_SEEN_THEN, CURRENT_REFIT
 from channelflow.api.comparison import ChannelComparison
 from channelflow.api.repositories import FeaturePoint, Market, ScoredSetup
+from channelflow.api.volume_profile import WindowedProfile
 from channelflow.bars import Bar
 from channelflow.channels import ChannelSnapshot
 from channelflow.extrema.models import ConfirmedExtremum, ExtremumCandidate
@@ -503,3 +504,81 @@ class DexDepthResponse(BaseModel):
     requested_at_ns: str
     state_time_ns: str | None
     bands: tuple[DexDepthBandOut, ...]
+
+
+class VolumeBinOut(BaseModel):
+    """One price bin of a volume profile: how much traded in it, and how much of that was aggressive
+    buying and selling.
+
+    Quantities are strings (volumes of an asset, like bars'); `unknown` is volume whose aggressor
+    side the venue did not say, counted to the bin and to neither side.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    low: str
+    high: str
+    buy: str
+    sell: str
+    unknown: str
+    trades: int
+
+
+class VolumeProfileOut(BaseModel):
+    """PRD section 14.1's volume profile for a window, as of an instant, with how much of the window
+    the data covers."""
+
+    model_config = ConfigDict(frozen=True)
+
+    venue: str
+    symbol: str
+    window: str
+    #: A duration, so an integer on the wire: seven days is 6e14 nanoseconds, well inside a double.
+    window_ns: int
+    as_of_ns: WireTime
+    covers_from_ns: WireTime
+    #: How much of the window the data covers. A profile is not the full window when this is shorter
+    #: than it.
+    covered_ns: int
+    complete: bool
+    bin_width: str
+    #: Stored rows of another bin width than the one used, which are not mixed in.
+    left_out_rows: int
+    bins: tuple[VolumeBinOut, ...]
+    poc_index: int
+    poc_tie: bool
+    value_area_low: str
+    value_area_high: str
+    value_area_is_whole_profile: bool
+
+    @classmethod
+    def of(cls, *, venue: str, symbol: str, window: str, view: WindowedProfile) -> VolumeProfileOut:
+        profile = view.profile
+        return cls(
+            venue=venue,
+            symbol=symbol,
+            window=window,
+            window_ns=view.window_ns,
+            as_of_ns=str(view.as_of_ns),
+            covers_from_ns=str(view.covers_from_ns),
+            covered_ns=view.covered_ns,
+            complete=view.complete,
+            bin_width=format(profile.bin_width.normalize(), "f"),
+            left_out_rows=view.left_out_rows,
+            bins=tuple(
+                VolumeBinOut(
+                    low=format(b.low.normalize(), "f"),
+                    high=format(b.high.normalize(), "f"),
+                    buy=format(b.buy_volume.normalize(), "f"),
+                    sell=format(b.sell_volume.normalize(), "f"),
+                    unknown=format((b.volume - b.buy_volume - b.sell_volume).normalize(), "f"),
+                    trades=b.trades,
+                )
+                for b in profile.bins
+            ),
+            poc_index=profile.poc_index,
+            poc_tie=profile.poc_tie,
+            value_area_low=format(profile.val.normalize(), "f"),
+            value_area_high=format(profile.vah.normalize(), "f"),
+            value_area_is_whole_profile=profile.value_area_is_whole_profile,
+        )

@@ -434,7 +434,8 @@ describe("US4: the control offers what the deployment reported", () => {
   it("keeps no timeframe token list in the frontend sources", () => {
     // An absence, which no runtime assertion can see -- the same argument
     // REQ-WP-073's T034 makes for the producer. The default is the one allowed
-    // literal, and it lives in timeframes.ts.
+    // literal, and it lives in timeframes.ts. The volume profile's windows are a different vocabulary -- how far back
+    // price bins are summed, not a bar width -- and live in profileWindows.ts (REQ-WP-089).
     const sources = import.meta.glob("../**/*.{ts,tsx}", {
       query: "?raw",
       import: "default",
@@ -442,7 +443,7 @@ describe("US4: the control offers what the deployment reported", () => {
     }) as Record<string, string>;
 
     const offenders = Object.entries(sources)
-      .filter(([path]) => !/\.test\.tsx?$/.test(path) && !path.endsWith("timeframes.ts"))
+      .filter(([path]) => !/\.test\.tsx?$/.test(path) && !path.endsWith("timeframes.ts") && !path.endsWith("profileWindows.ts"))
       .filter(([, source]) => /["'](1m|5m|30m|1h|4h|1d|1w)["']/.test(source))
       .map(([path]) => path);
 

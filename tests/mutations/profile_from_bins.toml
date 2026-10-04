@@ -1,0 +1,65 @@
+# The mutation sweep for REQ-WP-089, phase C: the profile as the stored price bins give it (`from_bins`).
+#
+# Each mutation is a way the sum over blocks could go wrong: a block's volume overwriting the last instead of adding to it, the
+# unknown volume dropped from a bin's total, the sell side read from the buy, a bin's edges or trade count wrong, the bins not
+# in price order.
+#
+# Patterns are TOML *literal* strings on purpose: the basic form treats a trailing
+# backslash as a line continuation and eats the next line's indentation.
+source = "src/channelflow/volume/profile.py"
+tests = ["tests/unit/volume/test_profile_from_bins.py"]
+
+[[mutation]]
+name = "a later block overwrites the buy volume instead of adding to it"
+find = '''        cell[0] = cell[0] + row.buy'''
+replace = '''        cell[0] = row.buy'''
+
+[[mutation]]
+name = "a later block overwrites the sell volume instead of adding to it"
+find = '''        cell[1] = cell[1] + row.sell'''
+replace = '''        cell[1] = row.sell'''
+
+[[mutation]]
+name = "the unknown volume is left out of a bin's total"
+find = '''            volume=Decimal(cell[0]) + Decimal(cell[1]) + Decimal(cell[2]),'''
+replace = '''            volume=Decimal(cell[0]) + Decimal(cell[1]),'''
+
+[[mutation]]
+name = "a bin's sell volume is read from its buy volume"
+find = '''            sell_volume=Decimal(cell[1]),
+            trades=int(cell[3]),
+        )
+        for position, (index, cell) in enumerate(sorted(sums.items()))'''
+replace = '''            sell_volume=Decimal(cell[0]),
+            trades=int(cell[3]),
+        )
+        for position, (index, cell) in enumerate(sorted(sums.items()))'''
+
+[[mutation]]
+name = "a bin's upper edge is half a width too high"
+find = '''            high=Decimal(index + 1) * bin_width,
+            volume=Decimal(cell[0]) + Decimal(cell[1]) + Decimal(cell[2]),'''
+replace = '''            high=Decimal(index + 1) * bin_width + bin_width / 2,
+            volume=Decimal(cell[0]) + Decimal(cell[1]) + Decimal(cell[2]),'''
+
+[[mutation]]
+name = "the trade count counts rows, not trades"
+find = '''        cell[3] = int(cell[3]) + row.trades'''
+replace = '''        cell[3] = int(cell[3]) + 1'''
+
+[[mutation]]
+name = "the bins are left in the order their rows arrived"
+find = '''        for position, (index, cell) in enumerate(sorted(sums.items()))
+    )
+    poc_index, poc_tie = _point_of_control(bins)
+    indices, whole = _value_area(bins, poc_index=poc_index, share=value_area_share)
+    return VolumeProfile(
+        bins=bins,
+        bin_width=bin_width,'''
+replace = '''        for position, (index, cell) in enumerate(reversed(list(sums.items())))
+    )
+    poc_index, poc_tie = _point_of_control(bins)
+    indices, whole = _value_area(bins, poc_index=poc_index, share=value_area_share)
+    return VolumeProfile(
+        bins=bins,
+        bin_width=bin_width,'''

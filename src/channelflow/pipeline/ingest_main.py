@@ -4,6 +4,7 @@
 # @trace: REQ-WP-078
 # @trace: REQ-WP-076
 # @trace: REQ-WP-081
+# @trace: REQ-WP-089
 
 The same shape as the read API's composition root, and for the same reasons: the
 environment is the only input, nothing defaults, and a missing variable refuses
@@ -17,7 +18,8 @@ import math
 import os
 import time
 from collections.abc import Mapping
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
+from decimal import Decimal
 from importlib import import_module
 from pathlib import Path
 from typing import Any
@@ -32,6 +34,8 @@ from channelflow.pipeline.ingest import IngestDaemon
 from channelflow.pipeline.market_registration import register_own_market
 from channelflow.settings import MissingConfiguration, settings_from_env
 from channelflow.tables import bars as bars_table
+from channelflow.tables import volume_bins
+from channelflow.volume.bins import DEFAULT_BLOCK_NS, PriceBinBuilder, parse_bin_widths
 
 LOG_LEVEL = "CHANNELFLOW_LOG_LEVEL"
 
@@ -90,6 +94,13 @@ RETIRED_SILENCE_MULTIPLIER = "CHANNELFLOW_SILENCE_WINDOW_MULTIPLIER"
 #: waiting to find out.
 DEFAULT_TIMEFRAME_NS = 60_000_000_000
 
+#: The price bins collected for the volume profile ([[REQ-WP-089]]). Widths are quote units per
+#: bin, per symbol: `binance:BTCUSDT=20,okx:BTC-USDT-SWAP=10`. Unset or empty derives each
+#: symbol's from its first trade (about two basis points, rounded to 1-2-5). The block length is
+#: in seconds, a whole number of minutes; unset is five minutes.
+PROFILE_BIN_WIDTHS = "CHANNELFLOW_PROFILE_BIN_WIDTHS"
+PROFILE_BLOCK_SECONDS = "CHANNELFLOW_PROFILE_BLOCK_SECONDS"
+
 SYMBOLS_BYBIT = "CHANNELFLOW_INGEST_SYMBOLS_BYBIT"
 SYMBOLS_OKX = "CHANNELFLOW_INGEST_SYMBOLS_OKX"
 
@@ -110,6 +121,9 @@ class IngestSettings:
     timeframe_ns: int
     #: `None` leaves the venue policy's own `max_silence_ns`.
     max_silence_ns: int | None = None
+    #: Bin width per `(venue, symbol)`; a symbol not named derives its own from its first trade.
+    profile_bin_widths: Mapping[tuple[str, str], Decimal] = field(default_factory=dict)
+    profile_block_ns: int = DEFAULT_BLOCK_NS
 
 
 def ingest_settings_from_env(environ: Mapping[str, str] | None = None) -> IngestSettings:
@@ -151,11 +165,27 @@ def ingest_settings_from_env(environ: Mapping[str, str] | None = None) -> Ingest
             )
         max_silence_ns = int(seconds * 1_000_000_000)
 
+    try:
+        profile_widths = parse_bin_widths(values.get(PROFILE_BIN_WIDTHS, ""))
+    except ValueError as error:
+        raise MissingConfiguration(f"{PROFILE_BIN_WIDTHS}: {error}") from error
+    raw_block = values.get(PROFILE_BLOCK_SECONDS, "").strip()
+    block_ns = DEFAULT_BLOCK_NS
+    if raw_block:
+        if not raw_block.isdigit() or int(raw_block) < 60 or int(raw_block) % 60 != 0:
+            raise MissingConfiguration(
+                f"{PROFILE_BLOCK_SECONDS} must be a whole number of minutes in seconds "
+                f"(60, 300, ...), got {raw_block!r}"
+            )
+        block_ns = int(raw_block) * 1_000_000_000
+
     return IngestSettings(
         symbols=symbols,
         archive_uri=values[ARCHIVE_URI].strip(),
         timeframe_ns=timeframe,
         max_silence_ns=max_silence_ns,
+        profile_bin_widths=profile_widths,
+        profile_block_ns=block_ns,
     )
 
 
@@ -221,6 +251,13 @@ def build_daemon(
     catalog = open_catalog(uri=catalog_uri, warehouse=warehouse, **dict(storage))
     sink = bars_table.BarSink(table=bars_table.table_for(catalog))
     builder = BarBuilder(timeframe_ns=settings.timeframe_ns, on_final=sink)
+    bin_sink = volume_bins.BinSink(table=volume_bins.table_for(catalog))
+    bins = PriceBinBuilder(
+        block_ns=settings.profile_block_ns,
+        bin_width=settings.profile_bin_widths.get((venue, symbol)),
+        sequential_ids=config.sequential_trade_ids,
+        on_final=bin_sink,
+    )
 
     streams = config.stream_builder([symbol])
     connector_cls = _resolve_connector(config.connector)
@@ -260,6 +297,9 @@ def build_daemon(
         venue=venue,
         flush_bars=sink.flush,
         bars_pending=lambda: sink.pending,
+        bins=bins,
+        flush_bins=bin_sink.flush,
+        bins_pending=lambda: bin_sink.pending,
         now_ns=lambda: time.time_ns(),
     )
 

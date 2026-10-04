@@ -1,6 +1,7 @@
 """PRD section 14.1's volume profile.
 
 # @trace: REQ-WP-012
+# @trace: REQ-WP-089
 
 The section opens with the rule that gives the family its meaning: "Compute
 true trade-based volume by price bins from exchange trades where available",
@@ -19,8 +20,10 @@ the name.
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 from decimal import Decimal
+from typing import Protocol
 
 from channelflow.domain import TradeEvent
 
@@ -132,6 +135,77 @@ def build(
         for position, index in enumerate(ordered)
     )
 
+    poc_index, poc_tie = _point_of_control(bins)
+    indices, whole = _value_area(bins, poc_index=poc_index, share=value_area_share)
+    return VolumeProfile(
+        bins=bins,
+        bin_width=bin_width,
+        poc_index=poc_index,
+        value_area_indices=indices,
+        value_area_is_whole_profile=whole,
+        poc_tie=poc_tie,
+    )
+
+
+class StoredBinLike(Protocol):
+    """What `from_bins` reads of a stored price bin (`tables.volume_bins.StoredBin` has it)."""
+
+    @property
+    def bin_index(self) -> int: ...
+
+    @property
+    def buy(self) -> Decimal: ...
+
+    @property
+    def sell(self) -> Decimal: ...
+
+    @property
+    def unknown(self) -> Decimal: ...
+
+    @property
+    def trades(self) -> int: ...
+
+
+def from_bins(
+    rows: Iterable[StoredBinLike],
+    *,
+    bin_width: Decimal,
+    value_area_share: float = DEFAULT_VALUE_AREA,
+) -> VolumeProfile:
+    """The profile of stored price bins ([[REQ-WP-089]]): the same definition as `build`, from the
+    bins the ingest kept.
+
+    Rows are summed per bin index over however many blocks they come from, on the grid `floor(price
+    / width)` from zero. The POC and the value area come from the same `_point_of_control` and
+    `_value_area` as `build`, so the two cannot disagree; `build(trades, anchor=Decimal(0))` over
+    the same trades gives the same bins (the test that says so is SC-002). A bin's volume is its
+    buy, sell and unknown volume together: an unknown aggressor moved volume and counts to neither
+    side.
+    """
+    sums: dict[int, list[Decimal | int]] = {}
+    for row in rows:
+        cell = sums.setdefault(row.bin_index, [Decimal(0), Decimal(0), Decimal(0), 0])
+        cell[0] = cell[0] + row.buy
+        cell[1] = cell[1] + row.sell
+        cell[2] = cell[2] + row.unknown
+        cell[3] = int(cell[3]) + row.trades
+    if not sums:
+        raise EmptyProfile("no price bins in the window")
+    if bin_width <= 0:
+        raise ValueError("bin_width must be positive")
+
+    bins = tuple(
+        Bin(
+            index=position,
+            low=Decimal(index) * bin_width,
+            high=Decimal(index + 1) * bin_width,
+            volume=Decimal(cell[0]) + Decimal(cell[1]) + Decimal(cell[2]),
+            buy_volume=Decimal(cell[0]),
+            sell_volume=Decimal(cell[1]),
+            trades=int(cell[3]),
+        )
+        for position, (index, cell) in enumerate(sorted(sums.items()))
+    )
     poc_index, poc_tie = _point_of_control(bins)
     indices, whole = _value_area(bins, poc_index=poc_index, share=value_area_share)
     return VolumeProfile(

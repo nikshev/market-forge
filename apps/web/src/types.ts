@@ -255,3 +255,40 @@ export interface DexDepthResponse {
   state_time_ns: bigint | null;
   bands: DexDepthBandOut[];
 }
+
+/**
+ * One price bin of the volume profile (REQ-WP-089). Volumes are decimal strings in base units: a price or a volume
+ * is never a float on the wire. `unknown` is the volume whose aggressor side the venue did not say.
+ */
+export interface VolumeBinOut {
+  low: string;
+  high: string;
+  buy: string;
+  sell: string;
+  unknown: string;
+  trades: number;
+}
+
+/**
+ * `GET /api/v1/volume-profile` (REQ-WP-089). `covered_ns` is how much of the window the stored blocks span, and
+ * `complete` says whether that is all of it: a profile over three hours is not a 24-hour profile and must not read
+ * as one. `window_ns` and `covered_ns` are durations; `as_of_ns` and `covers_from_ns` are instants.
+ */
+export interface VolumeProfileOut {
+  venue: string;
+  symbol: string;
+  window: string;
+  window_ns: number;
+  as_of_ns: bigint;
+  covers_from_ns: bigint;
+  covered_ns: number;
+  complete: boolean;
+  bin_width: string;
+  left_out_rows: number;
+  bins: VolumeBinOut[];
+  poc_index: number;
+  poc_tie: boolean;
+  value_area_low: string;
+  value_area_high: string;
+  value_area_is_whole_profile: boolean;
+}

@@ -1,0 +1,70 @@
+# The mutation sweep for REQ-WP-089, phase A: the price bins the ingest collects for the volume profile.
+#
+# Each mutation is a way a trade could land in the wrong bin or block, a side could be misread, a late trade could be folded
+# in, or a block with missed trades could be written.
+#
+# Patterns are TOML *literal* strings on purpose: the basic form treats a trailing
+# backslash as a line continuation and eats the next line's indentation.
+source = "src/channelflow/volume/bins.py"
+tests = ["tests/unit/volume/test_bins.py"]
+
+[[mutation]]
+name = "a price on a bin edge falls in the lower bin"
+find = '''        index = int(trade.price // self.bin_width)'''
+replace = '''        index = int((trade.price - Decimal("0.0000000001")) // self.bin_width)'''
+
+[[mutation]]
+name = "an unknown aggressor is counted as a buy"
+find = '''        side = {"buy": 0, "sell": 1}.get(trade.aggressor_side, 2)'''
+replace = '''        side = {"buy": 0, "sell": 1}.get(trade.aggressor_side, 0)'''
+
+[[mutation]]
+name = "a sell is counted as a buy"
+find = '''        side = {"buy": 0, "sell": 1}.get(trade.aggressor_side, 2)'''
+replace = '''        side = {"buy": 0, "sell": 0}.get(trade.aggressor_side, 2)'''
+
+[[mutation]]
+name = "a late trade is folded into the next block instead of discarded"
+find = '''        if start < self._finalized_before_ns:
+            self.late_trades += 1
+            return'''
+replace = '''        if start < self._finalized_before_ns:
+            self.late_trades += 1
+            start = self._finalized_before_ns'''
+
+[[mutation]]
+name = "a block with missed trades is written"
+find = '''                if block.id_max - block.id_min + 1 != block.trades:'''
+replace = '''                if block.id_max - block.id_min + 1 == -1:'''
+
+[[mutation]]
+name = "a venue without sequential ids is judged by them anyway"
+find = '''            if self.sequential_ids and block.ids_numeric and block.trades > 0:'''
+replace = '''            if block.ids_numeric and block.trades > 0:'''
+
+[[mutation]]
+name = "a block closes without waiting out the grace period"
+find = '''            s for s in self._open if self._watermark_ns >= s + self.block_ns + self.grace_ns'''
+replace = '''            s for s in self._open if self._watermark_ns >= s + self.block_ns'''
+
+[[mutation]]
+name = "the trade count of a bin is not counted"
+find = '''        cell[3] = int(cell[3]) + 1'''
+replace = '''        cell[3] = int(cell[3])'''
+
+[[mutation]]
+name = "the width is re-derived from every trade"
+find = '''        if self.bin_width is None:
+            self.bin_width = nice_bin_width(trade.price)'''
+replace = '''        if True:
+            self.bin_width = nice_bin_width(trade.price)'''
+
+[[mutation]]
+name = "the default width rounds up instead of to the nearest"
+find = '''    mantissa, power = min(candidates, key=lambda c: abs(math.log(raw / (c[0] * 10.0 ** c[1]))))'''
+replace = '''    mantissa, power = min((c for c in candidates if c[0] * 10.0 ** c[1] >= raw), key=lambda c: c[0] * 10.0 ** c[1])'''
+
+[[mutation]]
+name = "a duplicate width is accepted"
+find = '''        if pair in widths:'''
+replace = '''        if False:'''

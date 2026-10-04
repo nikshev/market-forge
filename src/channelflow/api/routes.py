@@ -48,6 +48,13 @@ from channelflow.api.schemas import (
     TimeframeOut,
     TimeframesResponse,
     TransitionOut,
+    VolumeProfileOut,
+)
+from channelflow.api.volume_profile import (
+    WINDOWS,
+    ProfileUnavailable,
+    ProfileWindow,
+    windowed_profile,
 )
 from channelflow.scoring import explain
 from channelflow.timeframes import offered
@@ -211,6 +218,35 @@ def get_feature_series(
         venue=venue, symbol=symbol, timeframe_ns=timeframe_ns, start_ns=start_ns, end_ns=end_ns
     )
     return FeatureSeriesResponse(points=tuple(FeaturePointOut.of(p) for p in points))
+
+
+@router.get("/volume-profile", response_model=VolumeProfileOut)
+def get_volume_profile(
+    request: Request,
+    venue: str,
+    symbol: str,
+    window: ProfileWindow,
+    at_ns: int | None = None,
+) -> VolumeProfileOut:
+    """PRD section 14.1's volume profile over a rolling window, as of an instant (REQ-WP-089).
+
+    Built from the price bins the ingest collects, over whole blocks closed at or before `at_ns`
+    (the latest closed block when omitted). It says how much of its window the data covers: the bins
+    exist only from the moment collection started, so a 24h profile from three hours of data reports
+    three hours and `complete` false. With no bins at all the answer is a 404 with a reason, never
+    an empty profile.
+    """
+    window_ns = WINDOWS[window]
+    read = _repository(request).volume_bins(
+        venue=venue, symbol=symbol, as_of_ns=at_ns, window_ns=window_ns
+    )
+    try:
+        view = windowed_profile(read, window_ns=window_ns)
+    except ProfileUnavailable as exc:
+        raise HTTPException(
+            status_code=404, detail=f"no price bins for {venue} {symbol}: {exc}"
+        ) from exc
+    return VolumeProfileOut.of(venue=venue, symbol=symbol, window=window, view=view)
 
 
 @router.get("/extrema", response_model=ExtremaResponse)
