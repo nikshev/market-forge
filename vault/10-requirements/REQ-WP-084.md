@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "§27.2, §27.3; owner's direction 2026-10-04 (after Material UI)"
 prd_lines: "4406-4436"
 phase: null
-status: draft
+status: specified
 depends_on: [REQ-WP-083, REQ-WP-027, REQ-WP-009]
 tags: [web, chart, panes, extrema]
 hard_gated: false
@@ -39,15 +39,18 @@ a confirmation *is*, and nothing a test finds by role or name for a pane that ha
 - A chart opened with no layer choice in the link draws confirmed extrema and **no** candidates. A control
   named for candidate extrema turns them on and off; its state is visible (pressed), and turning it on draws
   the candidates the API returned, unchanged.
-- A deep link that says candidates were on (or off) restores that, and a link that says nothing gets the
-  default off. A link naming a layer the page does not know is still handled as [[REQ-US-002]] decided:
-  discarded whole, with the notice.
+- The candidate switch is a **view option of the page**, not a deep-link layer: PRD §27.2's names are the
+  link's whole vocabulary (an existing test rejects a name outside it), so a link neither sets nor clears
+  the switch, a link's `overlays` list is read exactly as before ([[REQ-US-002]]), and a page opened or
+  reloaded always starts with candidates off.
 - For a pane whose feature has no stored data for the market and timeframe, the control row shows "no data"
   for it instead of an active button; pressing is not possible, and assistive technology is told it is
   unavailable (not merely styled grey). A pane that has data is a button exactly as today.
 - A pane that has data and later loses it (an empty response after a non-empty one) is shown as "no data",
   not as a live button with an empty chart. A failed load is still a failure, never "no data"
   ([[REQ-WP-009]] FR-016).
+- When no pane has been chosen yet, the page selects the first pane that has data instead of opening on one
+  that does not; when none has, it selects none and says that no pane has data for this view.
 - Which panes have data is decided from what the API reports, not from a list in the page: a feature
   producer added later makes its pane live with no change to the page.
 - **Looked at:** screenshots of the chart with the candidates off (default) and on, and of the pane row with
@@ -56,13 +59,12 @@ a confirmation *is*, and nothing a test finds by role or name for a pane that ha
 ## Trace
 
 <!-- trace:begin -->
-_No linked artifacts yet._
+- **Specs:** [[SPEC-133-chart-candidates-no-data]]
+- **Outcomes:** [[OUT-2026-10-04-spec-chart-candidates-no-data]]
 <!-- trace:end -->
 
 ## Notes
 
 Raised by the owner on 2026-10-04 after reading the Material UI screenshots; the follow-ups were agreed as
-"after MUI". The mechanism for "which panes have data" is the spec's to settle (the features snapshot of
-§28.4 is the likely source). The candidate toggle must not change the meaning of the deep link's `overlays`
-list silently: adding a layer name to it is a decision for the spec, because an older link would otherwise
-read as unreadable.
+"after MUI". Settled in the spec, not here: "has data" is read from the series the page already loads (no new API call),
+and the candidate switch stays out of the deep link, whose layer names are §27.2's and nothing else.
