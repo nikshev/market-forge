@@ -1,5 +1,6 @@
 // @trace: REQ-WP-083
 // @trace: REQ-WP-027
+// @trace: REQ-WP-084
 //
 // PRD section 27.3's lower pane, attached to the page.
 //
@@ -23,14 +24,23 @@ export function FlowPane({
   feature,
   onSelect,
   failure = null,
+  available,
 }: {
   points: readonly FeaturePointOut[];
-  feature: string;
+  /** The selected pane, or `null` when none has data (REQ-WP-084). */
+  feature: string | null;
   onSelect: (feature: string) => void;
+  /**
+   * The panes that have data in this view. A pane outside the set says "no data" and cannot be pressed.
+   * `null` means not known -- loading, or the load failed -- and says nothing of any pane; absent is the
+   * same, so a caller that does not know keeps the old behaviour exactly.
+   */
+  available?: ReadonlySet<string> | null;
   /** A load that failed. Never drawn as an empty pane -- REQ-WP-009's FR-016. */
   failure?: string | null;
 }): JSX.Element {
-  const series = paneSeries(points, feature);
+  const series = paneSeries(points, feature ?? "");
+  const known = available !== undefined && available !== null;
 
   return (
     <Box component="section" aria-label="Lower pane" sx={{ mt: 2 }}>
@@ -47,11 +57,21 @@ export function FlowPane({
             }
           }}
         >
-          {PANES.map((pane) => (
-            <ToggleButton key={pane.feature} value={pane.feature}>
-              {pane.label}
-            </ToggleButton>
-          ))}
+          {PANES.map((pane) => {
+            // Disabled, not hidden: the row keeps its shape as data arrives, and the reader learns what
+            // exists. The name stays the visible text ("CVD no data"), so a pane with data is the button it was.
+            const empty = known && !available.has(pane.feature);
+            return (
+              <ToggleButton key={pane.feature} value={pane.feature} disabled={empty}>
+                {pane.label}
+                {empty ? (
+                  <Typography component="span" variant="caption" sx={{ ml: 0.75, fontWeight: 400 }}>
+                    no data
+                  </Typography>
+                ) : null}
+              </ToggleButton>
+            );
+          })}
         </ToggleButtonGroup>
       </Box>
       {failure === null ? null : (
@@ -59,12 +79,17 @@ export function FlowPane({
           Could not load this pane: {failure}
         </Typography>
       )}
-      {failure === null && series.state !== "ok" ? (
+      {failure === null && feature === null && known && available.size === 0 ? (
+        <Typography role="status" aria-label="Pane contents" color="text.secondary" sx={{ mt: 1 }}>
+          No pane has data for this view
+        </Typography>
+      ) : null}
+      {failure === null && feature !== null && series.state !== "ok" ? (
         <Typography role="status" aria-label="Pane contents" color="text.secondary" sx={{ mt: 1 }}>
           {series.note}
         </Typography>
       ) : null}
-      {failure === null && series.state === "ok" ? (
+      {failure === null && feature !== null && series.state === "ok" ? (
         <svg
           width={WIDTH}
           height={HEIGHT}

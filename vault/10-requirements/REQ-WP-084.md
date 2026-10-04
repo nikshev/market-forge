@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "§27.2, §27.3; owner's direction 2026-10-04 (after Material UI)"
 prd_lines: "4406-4436"
 phase: null
-status: planned
+status: implemented
 depends_on: [REQ-WP-083, REQ-WP-027, REQ-WP-009]
 tags: [web, chart, panes, extrema]
 hard_gated: false
@@ -60,7 +60,28 @@ a confirmation *is*, and nothing a test finds by role or name for a pane that ha
 
 <!-- trace:begin -->
 - **Specs:** [[SPEC-133-chart-candidates-no-data]]
-- **Outcomes:** [[OUT-2026-10-04-plan-chart-candidates-no-data]], [[OUT-2026-10-04-spec-chart-candidates-no-data]], [[OUT-2026-10-04-tasks-chart-candidates-no-data]]
+- **Tests:**
+    - `tests/unit/web/test_chart_candidates_artifacts.py::test_every_module_this_requirement_touches_names_it[App.tsx]`
+    - `tests/unit/web/test_chart_candidates_artifacts.py::test_every_module_this_requirement_touches_names_it[CandidateSwitch.tsx]`
+    - `tests/unit/web/test_chart_candidates_artifacts.py::test_every_module_this_requirement_touches_names_it[Chart.tsx]`
+    - `tests/unit/web/test_chart_candidates_artifacts.py::test_every_module_this_requirement_touches_names_it[FlowPane.tsx]`
+    - `tests/unit/web/test_chart_candidates_artifacts.py::test_every_module_this_requirement_touches_names_it[extrema.ts]`
+    - `tests/unit/web/test_chart_candidates_artifacts.py::test_every_module_this_requirement_touches_names_it[panes.ts]`
+    - `tests/unit/web/test_chart_candidates_artifacts.py::test_there_is_a_screenshot_of_each_state_in_each_scheme[chart-candidates-off-dark]`
+    - `tests/unit/web/test_chart_candidates_artifacts.py::test_there_is_a_screenshot_of_each_state_in_each_scheme[chart-candidates-off-light]`
+    - `tests/unit/web/test_chart_candidates_artifacts.py::test_there_is_a_screenshot_of_each_state_in_each_scheme[chart-candidates-on-dark]`
+    - `tests/unit/web/test_chart_candidates_artifacts.py::test_there_is_a_screenshot_of_each_state_in_each_scheme[chart-candidates-on-light]`
+    - `tests/unit/web/test_chart_candidates_artifacts.py::test_there_is_a_screenshot_of_each_state_in_each_scheme[chart-panes-live-no-data-dark]`
+    - `tests/unit/web/test_chart_candidates_artifacts.py::test_there_is_a_screenshot_of_each_state_in_each_scheme[chart-panes-live-no-data-light]`
+    - `tests/unit/web/test_chart_candidates_artifacts.py::test_there_is_a_screenshot_of_each_state_in_each_scheme[chart-panes-some-data-dark]`
+    - `tests/unit/web/test_chart_candidates_artifacts.py::test_there_is_a_screenshot_of_each_state_in_each_scheme[chart-panes-some-data-light]`
+- **Code:**
+    - `apps/web/src/App.tsx`
+    - `apps/web/src/Chart.tsx`
+    - `apps/web/src/FlowPane.tsx`
+    - `apps/web/src/extrema.ts`
+    - `apps/web/src/panes.ts`
+- **Outcomes:** [[OUT-2026-10-04-implement-chart-candidates-no-data]], [[OUT-2026-10-04-plan-chart-candidates-no-data]], [[OUT-2026-10-04-spec-chart-candidates-no-data]], [[OUT-2026-10-04-tasks-chart-candidates-no-data]]
 <!-- trace:end -->
 
 ## Notes

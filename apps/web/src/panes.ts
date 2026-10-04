@@ -1,6 +1,7 @@
 // @trace: REQ-WP-027
 // @trace: REQ-WP-030
 // @trace: REQ-WP-063
+// @trace: REQ-WP-084
 //
 // PRD section 27.3's lower panes, for the three Phase 2 has data for.
 //
@@ -112,4 +113,38 @@ export function paneSeries(points: readonly FeaturePointOut[], feature: string):
     .sort((a, b) => (a.at_ns < b.at_ns ? -1 : a.at_ns > b.at_ns ? 1 : 0));
 
   return { points: drawn, state: "ok", note: "" };
+}
+
+/**
+ * Which of the panes have anything behind them, for the view the page loaded (REQ-WP-084).
+ *
+ * "Has data" is `paneSeries`'s own definition -- some point carries a number under the feature's name -- and
+ * not a second one written here. It is read from the series the page already loads, so a feature producer
+ * added later makes its pane live with no change to the page, and no list of "built" features exists to drift.
+ * A feature name that is not one of the panes gets no pane.
+ */
+export function availablePanes(points: readonly FeaturePointOut[]): ReadonlySet<string> {
+  return new Set(
+    PANES.filter((pane) => paneSeries(points, pane.feature).state === "ok").map((pane) => pane.feature),
+  );
+}
+
+/**
+ * Where the selection goes once it is known which panes have data.
+ *
+ * A choice that still has data is kept: the page never overrides a reader. Otherwise the first pane in the
+ * row that has data, and `null` when none does. While it is not known (`null`) the choice is left alone --
+ * a load in flight is not an absence.
+ */
+export function chooseSelection(
+  current: string | null,
+  available: ReadonlySet<string> | null,
+): string | null {
+  if (available === null) {
+    return current;
+  }
+  if (current !== null && available.has(current)) {
+    return current;
+  }
+  return PANES.find((pane) => available.has(pane.feature))?.feature ?? null;
 }

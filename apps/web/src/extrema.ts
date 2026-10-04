@@ -1,4 +1,5 @@
 // @trace: REQ-WP-028
+// @trace: REQ-WP-084
 //
 // PRD section 27.2's markers for candidate versus confirmed extrema, and the
 // rule PRD section 45's Phase 1A states about them:
@@ -31,11 +32,19 @@ export function extremumMarkers({
   candidates,
   mode,
   atNs,
+  includeCandidates = true,
 }: {
   confirmed: readonly ConfirmedExtremumOut[];
   candidates: readonly ExtremumCandidateOut[];
   mode: ChannelMode;
   atNs: bigint;
+  /**
+   * Whether candidates are drawn at all (REQ-WP-084). They go through the same filter either way, so asking
+   * for them widens the view and never looks ahead. Defaults to `true` because this function describes what
+   * is available at the instant and its older callers assert exactly that; the chart, its one production
+   * caller, always passes the page's switch.
+   */
+  includeCandidates?: boolean;
 }): ExtremumMarker[] {
   // In CURRENT REFIT the filter is deliberately absent. PRD section 27.5 makes
   // that mode the place where repaint-like differences are meant to be visible,
@@ -58,7 +67,7 @@ export function extremumMarkers({
       type: e.extremum_type,
       price: e.price,
     })),
-    ...candidates
+    ...(includeCandidates ? candidates : [])
       .filter((c) => (!knowable || c.observed_at_ns <= atNs) && !superseded.has(c.candidate_id))
       .map((c) => ({
         at_ns: c.candidate_time_ns,

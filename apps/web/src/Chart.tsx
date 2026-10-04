@@ -1,6 +1,7 @@
 // @trace: REQ-WP-080
 // @trace: REQ-WP-009
 // @trace: REQ-US-002
+// @trace: REQ-WP-084
 //
 // PRD section 27.2's overlays, for the four layers REQ-WP-009's acceptance
 // names: candles, the channel's centre and boundaries, the setup zones, and a
@@ -47,6 +48,7 @@ export function Chart({
   overlays = DEFAULT_OVERLAYS,
   focusAtNs = null,
   extrema = { confirmed: [], candidates: [] },
+  showCandidates = false,
   mode = AS_SEEN_THEN,
   scheme = schemeNow(),
   palette,
@@ -58,6 +60,8 @@ export function Chart({
   overlays?: readonly Overlay[];
   focusAtNs?: bigint | null;
   extrema?: ExtremaResponse;
+  /** Candidate extrema are unconfirmed turns; they are drawn only when asked (REQ-WP-084). */
+  showCandidates?: boolean;
   /** Which mode the chart is in. The extremum filter is AS-SEEN-THEN's only. */
   mode?: ChannelMode;
   /** The colour scheme (REQ-WP-080). Light is what the chart always was. */
@@ -112,6 +116,7 @@ export function Chart({
       ...extremumMarkers({
         confirmed: extrema.confirmed,
         candidates: extrema.candidates,
+        includeCandidates: showCandidates,
         mode,
         atNs: focusAtNs ?? bars.at(-1)?.close_time_ns ?? 0n,
       }).map((mark) => ({
@@ -204,7 +209,7 @@ export function Chart({
         }
       }
     };
-  }, [bars, channel, signal, profile, overlays, focusAtNs, extrema, mode]);
+  }, [bars, channel, signal, profile, overlays, focusAtNs, extrema, showCandidates, mode]);
 
   return <div ref={container} data-testid="chart" />;
 }

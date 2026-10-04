@@ -2,6 +2,7 @@
 // @trace: REQ-WP-009
 // @trace: REQ-WP-074
 // @trace: REQ-US-002
+// @trace: REQ-WP-084
 // @trace: REQ-WP-083
 //
 // The page an alert's deep link opens. PRD section 27.1's route, and section
@@ -17,7 +18,7 @@ import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
 import { useTheme } from "@mui/material/styles";
 import Typography from "@mui/material/Typography";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   fetchBars,
@@ -28,13 +29,14 @@ import {
   fetchTimeframes,
 } from "./api";
 import { AppShell } from "./AppShell";
+import { CandidateSwitch } from "./CandidateSwitch";
 import { Chart } from "./Chart";
 import { DexBands } from "./DexBands";
 import { ChannelModeControl } from "./ChannelMode";
 import { FlowPane } from "./FlowPane";
 import { LoadState, type LoadStateKind } from "./LoadState";
 import { Markets } from "./Markets";
-import { PANES } from "./panes";
+import { availablePanes, chooseSelection, PANES } from "./panes";
 import { parseDeepLink, withMode, withTimeframe } from "./deepLink";
 import { depthOverlay, type DepthOverlay } from "./dexDepth";
 import { RESTORATION_NOTICE } from "./overlays";
@@ -106,8 +108,15 @@ export function App(): JSX.Element {
   const [channel, setChannel] = useState<ChannelOut | null>(null);
   const [state, setState] = useState<LoadStateKind>("ok");
   const [detail, setDetail] = useState<string | undefined>(undefined);
-  const [pane, setPane] = useState<string>(PANES[0]!.feature);
+  // `null` when no pane has data for the view (REQ-WP-084). Starts on the first pane and moves once it is
+  // known which panes have data.
+  const [pane, setPane] = useState<string | null>(PANES[0]!.feature);
   const [points, setPoints] = useState<FeaturePointOut[]>([]);
+  // False from the start of a load until the feature series has answered, ok or failed. Before then `points`
+  // is empty, which is not the same as "no pane has data".
+  const [pointsLoaded, setPointsLoaded] = useState(false);
+  // Candidate extrema are the detector's unconfirmed turns; off on every load, and not part of the link.
+  const [showCandidates, setShowCandidates] = useState(false);
   // A pane's own failure, kept apart from the page's: the chart can load while
   // the features do not, and one message for both would blame the wrong thing.
   const [paneFailure, setPaneFailure] = useState<string | null>(null);
@@ -152,6 +161,7 @@ export function App(): JSX.Element {
     }
     const mine = ++loadId.current;
     const superseded = () => mine !== loadId.current;
+    setPointsLoaded(false);
 
     const timeframeNs = option.timeframeNs;
     const barsResult = await fetchBars({
@@ -204,6 +214,7 @@ export function App(): JSX.Element {
     }
     setPaneFailure(seriesResult.ok ? null : seriesResult.error);
     setPoints(seriesResult.ok ? seriesResult.value.points : []);
+    setPointsLoaded(true);
 
     const extremaResult = await fetchExtrema({
       instrumentId: `${link.venue}:${link.symbol}`,
@@ -237,6 +248,16 @@ export function App(): JSX.Element {
       setDepth(depthOverlay(depthResult));
     }
   }, [link, mode, option]);
+
+  // Which panes have data: known only once the series has answered and did not fail. `null` is "not known",
+  // and says nothing of any pane -- a load in flight, or a failed one, is not an absence.
+  const available = useMemo(
+    () => (pointsLoaded && paneFailure === null ? availablePanes(points) : null),
+    [pointsLoaded, paneFailure, points],
+  );
+  useEffect(() => {
+    setPane((current) => chooseSelection(current, available));
+  }, [available]);
 
   useEffect(() => {
     void load();
@@ -320,6 +341,7 @@ export function App(): JSX.Element {
           {notice}
         </Alert>
       )}
+      {refused ? null : <CandidateSwitch pressed={showCandidates} onChange={setShowCandidates} />}
       {refused ? null : (
         // The chart sits on the theme's surface and draws in its palette (REQ-WP-083).
         <Paper variant="outlined" sx={{ p: 1, overflow: "hidden" }}>
@@ -330,6 +352,7 @@ export function App(): JSX.Element {
             overlays={link.overlays.overlays}
             focusAtNs={link.atNs}
             extrema={extrema}
+            showCandidates={showCandidates}
             mode={mode}
             scheme={theme.palette.mode}
             palette={{
@@ -351,7 +374,13 @@ export function App(): JSX.Element {
           visible={link.overlays.overlays.includes("dex_liquidity_bands")}
         />
       )}
-      <FlowPane points={points} feature={pane} onSelect={setPane} failure={paneFailure} />
+      <FlowPane
+        points={points}
+        feature={pane}
+        onSelect={setPane}
+        failure={paneFailure}
+        available={available}
+      />
     </AppShell>
   );
 }

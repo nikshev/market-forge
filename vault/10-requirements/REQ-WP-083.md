@@ -64,7 +64,7 @@ technology: every role and accessible name the existing tests use stays, and the
     - `tests/unit/web/test_material_ui_artifacts.py::test_every_new_module_names_the_requirement_it_serves[MarketTypeChip.tsx]`
     - `tests/unit/web/test_material_ui_artifacts.py::test_every_new_module_names_the_requirement_it_serves[muiTheme.ts]`
     - `tests/unit/web/test_material_ui_artifacts.py::test_every_new_module_names_the_requirement_it_serves[useScheme.ts]`
-    - `tests/unit/web/test_material_ui_artifacts.py::test_no_screenshot_is_left_over_that_the_requirement_does_not_name`
+    - `tests/unit/web/test_material_ui_artifacts.py::test_no_screenshot_in_this_requirements_scheme_is_left_over_that_it_does_not_name`
     - `tests/unit/web/test_material_ui_artifacts.py::test_the_logo_is_the_favicon_and_the_file_it_names_is_served`
     - `tests/unit/web/test_material_ui_artifacts.py::test_the_material_dependencies_are_declared_where_npm_ci_reads_them`
     - `tests/unit/web/test_material_ui_artifacts.py::test_there_is_a_screenshot_of_each_page_in_each_scheme_at_each_width[desktop-dark-chart]`

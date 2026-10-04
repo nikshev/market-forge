@@ -57,10 +57,13 @@ def test_there_is_a_screenshot_of_each_page_in_each_scheme_at_each_width(
 
 
 @pytest.mark.trace("REQ-WP-083")
-def test_no_screenshot_is_left_over_that_the_requirement_does_not_name() -> None:
+def test_no_screenshot_in_this_requirements_scheme_is_left_over_that_it_does_not_name() -> None:
+    # Only files named in this requirement's own scheme (page-scheme-width). Other requirements keep
+    # screenshots here under their own names and must not break this one by arriving.
     expected = {f"{p}-{s}-{z}.png" for p in PAGES for s in SCHEMES for z in WIDTHS}
+    scheme = re.compile(rf"^({'|'.join(PAGES)})-({'|'.join(SCHEMES)})-[a-z]+\.png$")
 
-    assert {p.name for p in SHOTS.glob("*.png")} == expected
+    assert {p.name for p in SHOTS.glob("*.png") if scheme.match(p.name)} == expected
 
 
 @pytest.mark.trace("REQ-WP-083")
