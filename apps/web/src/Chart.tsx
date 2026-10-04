@@ -3,6 +3,7 @@
 // @trace: REQ-US-002
 // @trace: REQ-WP-084
 // @trace: REQ-WP-092
+// @trace: REQ-WP-086
 //
 // PRD section 27.2's overlays, for the four layers REQ-WP-009's acceptance
 // names: candles, the channel's centre and boundaries, the setup zones, and a
@@ -17,6 +18,7 @@ import { createChart, type IChartApi, type ISeriesApi } from "lightweight-charts
 import { useEffect, useRef } from "react";
 
 import { extremumMarkers } from "./extrema";
+import { findGaps, gapMarkers } from "./gaps";
 import { PRICE_SCALE_WIDTH, type ChartHandle } from "./paneChart";
 import { buildSeries, markerFor, toSeconds, visibleRangeFor, CHANNEL_STYLE, visibleRangeForChannel } from "./series";
 import { AS_SEEN_THEN, DEFAULT_OVERLAYS } from "./types";
@@ -147,8 +149,13 @@ export function Chart({
         text: mark.kind === "confirmed" ? "" : "?",
       })),
     ];
-    if (marks.length > 0) {
-      candlestick.setMarkers(marks);
+    // A hole in the bars is marked where it is (REQ-WP-086), in the same call and in time order: the library replaces
+    // the whole set, so a second call would drop the others.
+    const allMarks = [...marks, ...gapMarkers(findGaps(bars), bars)].sort(
+      (a, b) => (a.time as number) - (b.time as number),
+    );
+    if (allMarks.length > 0) {
+      candlestick.setMarkers(allMarks);
     }
 
     for (const [name, points] of Object.entries(channelLines)) {

@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "§32 Data Quality Layer; owner's direction 2026-10-04"
 prd_lines: "4752-4782"
 phase: null
-status: draft
+status: implemented
 depends_on: [REQ-WP-083, REQ-WP-009]
 tags: [web, chart, data-quality, bars]
 hard_gated: false
@@ -47,11 +47,13 @@ backfill anything.
 
 ## Acceptance
 
-- Given bars with a hole of N missing bars between two present ones, the chart shows one discontinuity marker
-  at that place stating N and the span; given contiguous bars, no marker.
+- Given bars with a hole of N missing bars between two present ones, the chart shows one marker at that place that
+  states N, and a notice lists the hole with N and the span it covers (for example "148 bars missing, 26.09 06:00 to
+  02.10 11:00"); given contiguous bars, neither appears. A marker is a few characters on a candle and cannot carry a
+  span, which is why the span is in the notice.
 - The marker count equals the number of timeframe steps absent, computed on a fixture (a hole of exactly one
   bar, of several, and two holes in one series).
-- A bar present with volume `0` shows no marker.
+- A bar present with volume `0` shows no marker and is not listed.
 - On the running stack, the ETHUSDT 1h chart shows the 148-bar hole as a hole; a screenshot, light and dark, is
   kept under `docs/ui/` and looked at.
 - The roles and names the existing tests find are unchanged; the marker is not announced as a data point.
@@ -60,7 +62,22 @@ backfill anything.
 ## Trace
 
 <!-- trace:begin -->
-_No linked artifacts yet._
+- **Specs:** [[SPEC-137-bar-gaps]]
+- **Tests:**
+    - `tests/unit/web/test_bar_gaps_artifacts.py::test_every_module_this_requirement_touches_names_it[App.tsx]`
+    - `tests/unit/web/test_bar_gaps_artifacts.py::test_every_module_this_requirement_touches_names_it[Chart.tsx]`
+    - `tests/unit/web/test_bar_gaps_artifacts.py::test_every_module_this_requirement_touches_names_it[GapNotice.tsx]`
+    - `tests/unit/web/test_bar_gaps_artifacts.py::test_every_module_this_requirement_touches_names_it[PaneChart.tsx]`
+    - `tests/unit/web/test_bar_gaps_artifacts.py::test_every_module_this_requirement_touches_names_it[gaps.ts]`
+    - `tests/unit/web/test_bar_gaps_artifacts.py::test_there_is_a_live_screenshot_of_each_series_in_each_scheme[btc15m-dark]`
+    - `tests/unit/web/test_bar_gaps_artifacts.py::test_there_is_a_live_screenshot_of_each_series_in_each_scheme[btc15m-light]`
+    - `tests/unit/web/test_bar_gaps_artifacts.py::test_there_is_a_live_screenshot_of_each_series_in_each_scheme[eth1h-dark]`
+    - `tests/unit/web/test_bar_gaps_artifacts.py::test_there_is_a_live_screenshot_of_each_series_in_each_scheme[eth1h-light]`
+- **Code:**
+    - `apps/web/src/App.tsx`
+    - `apps/web/src/Chart.tsx`
+    - `apps/web/src/PaneChart.tsx`
+- **Outcomes:** [[OUT-2026-10-04-implement-bar-gaps]], [[OUT-2026-10-04-plan-bar-gaps]], [[OUT-2026-10-04-spec-bar-gaps]], [[OUT-2026-10-04-tasks-bar-gaps]]
 <!-- trace:end -->
 
 ## Notes

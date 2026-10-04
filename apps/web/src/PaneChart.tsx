@@ -1,4 +1,5 @@
 // @trace: REQ-WP-092
+// @trace: REQ-WP-086
 //
 // The lower pane as a chart of the same library, under the main one, on its time axis (PRD section 27.3).
 //
@@ -20,6 +21,7 @@ import {
 } from "lightweight-charts";
 import { useEffect, useMemo, useRef } from "react";
 
+import { findGaps, gapMarkers } from "./gaps";
 import {
   backbone,
   PANE_HEIGHT,
@@ -89,6 +91,9 @@ export function PaneChart({
       return;
     }
     const created: ISeriesApi<"Line" | "Histogram">[] = [];
+    // Squares without text in the pane: the count is on the chart and in the notice, and in this short a pane the labels
+    // would lie on top of each other.
+    const gaps = gapMarkers(findGaps(bars), bars).map((mark) => ({ ...mark, text: "" }));
 
     const spine = pane.addLineSeries({
       lastValueVisible: false,
@@ -106,6 +111,11 @@ export function PaneChart({
         title,
       });
       histogram.setData(view.histogram);
+      // The chart's gap markers, at the bars that have a value (REQ-WP-086): the pane must not contradict the chart.
+      const here = gaps.filter((mark) => view.valueAt.has(mark.time as number));
+      if (here.length > 0) {
+        histogram.setMarkers(here);
+      }
       created.push(histogram);
       crosshairSeries.current = histogram;
     } else {
@@ -118,6 +128,12 @@ export function PaneChart({
           title: index === view.lines.length - 1 ? title : "",
         });
         series.setData(line);
+        // A run is marked when its first point is at a gap marker's time, not by its number: a run also starts after a
+        // trade-id break, where nothing is missing from the bars and no gap marker belongs.
+        const starts = gaps.filter((mark) => mark.time === line[0]?.time);
+        if (feature === "cvd_base" && starts.length > 0) {
+          series.setMarkers(starts);
+        }
         if (index === 0 && view.zeroLine) {
           series.createPriceLine({
             price: 0,

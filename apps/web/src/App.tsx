@@ -5,6 +5,7 @@
 // @trace: REQ-WP-084
 // @trace: REQ-WP-085
 // @trace: REQ-WP-092
+// @trace: REQ-WP-086
 // @trace: REQ-WP-083
 //
 // The page an alert's deep link opens. PRD section 27.1's route, and section
@@ -33,6 +34,7 @@ import {
 import { AppShell } from "./AppShell";
 import { CandidateSwitch } from "./CandidateSwitch";
 import { Chart } from "./Chart";
+import { GapNotice } from "./GapNotice";
 import type { ChartHandle } from "./paneChart";
 import { DexBands } from "./DexBands";
 import { ChannelModeControl } from "./ChannelMode";
@@ -375,6 +377,7 @@ export function App(): JSX.Element {
           />
         </Paper>
       )}
+      {refused ? null : <GapNotice bars={bars} />}
       {depth === null || refused ? null : (
         <DexBands
           overlay={depth}

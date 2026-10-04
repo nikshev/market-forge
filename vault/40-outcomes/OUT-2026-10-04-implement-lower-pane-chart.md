@@ -2,7 +2,7 @@
 id: OUT-2026-10-04-implement-lower-pane-chart
 step: implement
 records: [REQ-WP-092]
-commit: null
+commit: 4ec8b62
 ---
 
 ## What was done

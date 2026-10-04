@@ -84,6 +84,13 @@ does too.
     - `apps/web/src/App.tsx`
     - `apps/web/src/Chart.tsx`
     - `apps/web/src/FlowPane.tsx`
+    - `apps/web/src/PaneChart.tsx`
+    - `apps/web/src/__tests__/chartHandle.test.tsx`
+    - `apps/web/src/__tests__/flowPaneChart.test.tsx`
+    - `apps/web/src/__tests__/paneChartAlign.test.ts`
+    - `apps/web/src/__tests__/paneChartLifecycle.test.tsx`
+    - `apps/web/src/__tests__/paneChartSync.test.tsx`
+    - `apps/web/src/paneChart.ts`
 - **Outcomes:** [[OUT-2026-10-04-implement-lower-pane-chart]], [[OUT-2026-10-04-plan-lower-pane-chart]], [[OUT-2026-10-04-spec-lower-pane-chart]], [[OUT-2026-10-04-tasks-lower-pane-chart]]
 <!-- trace:end -->
 
