@@ -34,7 +34,7 @@ last candle of the chart.
 
 **D3. No usable slope draws nothing.** A flat line would be a boundary no model produced.
 
-**D4. The default view is three lookbacks.** Rejected: fitting the whole history (the cause); a fixed bar
+**D4. The default view is two lookbacks.** Rejected: fitting the whole history (the cause); a fixed bar
 count (the channel's own size is the right scale).
 
 **D5. Colours from the zones.** Upper red, lower green, centre blue; centre solid at width 3, the others

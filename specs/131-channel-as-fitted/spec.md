@@ -74,7 +74,7 @@ that do not mean what they look like), not the channel's history bar by bar, whi
 
 **Acceptance Scenarios**:
 
-1. **Given** no instant in the link and a channel, **Then** the view is the last three lookbacks of bars plus
+1. **Given** no instant in the link and a channel, **Then** the view is the last two lookbacks of bars plus
    a margin, and earlier history is reachable by scrolling.
 2. **Given** an instant in the link, **Then** the chart opens there, exactly as it did.
 3. **Given** no channel, **Then** the chart fits its content, as it did.

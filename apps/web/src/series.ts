@@ -180,8 +180,9 @@ export function visibleRangeFor(
   return { from: Math.max(0, from), to: Math.min(bars.length - 1, Math.max(0, from) + span) };
 }
 
-// Where the chart opens when no instant is named and a channel exists: the last three lookbacks of bars,
-// so the channel fills the view. Fitting the whole history (the first version) made a window of sixty bars
+// Where the chart opens when no instant is named and a channel exists: the last two lookbacks of bars,
+// so the channel fills the view. (Three was tried first and a screenshot showed it still took in a spike
+// a day and a half earlier, which stretched the axis until the channel was a thin ribbon again.) Fitting the whole history (the first version) made a window of sixty bars
 // a few pixels wide, and let a spike days earlier stretch the price axis until the channel was a hairline.
 // The history stays reachable by scrolling. `null` for no bars: the chart fits its content as before.
 export function visibleRangeForChannel(
@@ -193,5 +194,5 @@ export function visibleRangeForChannel(
     return null;
   }
   const last = bars.length - 1;
-  return { from: Math.max(0, last - 3 * lookback), to: last + margin };
+  return { from: Math.max(0, last - 2 * lookback), to: last + margin };
 }

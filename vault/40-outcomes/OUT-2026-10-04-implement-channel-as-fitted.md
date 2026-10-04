@@ -10,7 +10,7 @@ commit: null
 The chart now draws the channel as the model fitted it: three lines, `level_now * exp(slope * (i - last))`, over
 the **lookback window only**, ending at the last bar closing at or before the snapshot's instant. The API
 returns the missing `slope_log_per_bar` (additive; every earlier field unchanged). With no instant named the
-chart opens on the last three lookbacks of bars, so the channel fills the view and a spike days earlier no
+chart opens on the last two lookbacks of bars, so the channel fills the view and a spike days earlier no
 longer stretches the axis; the centre is solid and heavy and the bounds take the zones' colours.
 
 ## The cause, found by reading
@@ -59,3 +59,13 @@ touched).
   needs a range endpoint; out of scope.
 - A filled band: the library has no primitive for it.
 - Whether the colours read on a dark theme: the Material UI work that follows carries the theme.
+
+## Correction, same day: two lookbacks, not three
+
+A screenshot of the deployed page (headless Chromium, 15m, BTCUSDT) showed the channel now drawn as the spec
+says — blue centre, red and green bounds, over the last sixty bars — but the default view of **three** lookbacks
+(180 bars, 45 hours) still took in a spike from a day and a half earlier, so the axis ran 82,000-88,000 and the
+channel, a quarter of a percent wide, was still a thin ribbon. Two lookbacks (120 bars, 30 hours) leave the spike
+out. `visibleRangeForChannel` and its test now say two; the spec's "three lookbacks" was a guess that the picture
+refuted, and it is corrected rather than left standing. I had called the view "fixed" from the numbers alone before
+looking at it.

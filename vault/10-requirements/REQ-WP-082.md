@@ -47,7 +47,7 @@ as-seen-then view (§27.5) a channel stored at an earlier bar is drawn where it 
   offsets in log space).
 - A channel stored at an earlier bar ends there, whatever the chart's last bar is.
 - A response without a usable slope draws **no** lines: an absent channel is not a flat one.
-- With no instant named, the chart opens on the recent bars (three lookbacks) so the channel fills the view;
+- With no instant named, the chart opens on the recent bars (two lookbacks) so the channel fills the view;
   the history stays scrollable. With an instant named it opens there, as before.
 - The lines are legible: centre solid and thick, upper and lower in the zones' own colours.
 - On the live data, BTCUSDT 15m, most closes of the window lie inside the drawn band (the quantiles are 10 %

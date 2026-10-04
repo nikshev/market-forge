@@ -175,12 +175,12 @@ describe("what is not drawn", () => {
 });
 
 describe("the view opens on the channel", () => {
-  it("is the last three lookbacks of bars plus a margin, when there is more history", () => {
+  it("is the last two lookbacks of bars plus a margin, when there is more history", () => {
     const history = Array.from({ length: 800 }, (_, i) => bar(i));
 
     const range = visibleRangeForChannel(history, 60);
 
-    expect(range).toEqual({ from: 800 - 1 - 180, to: 800 - 1 + 5 });
+    expect(range).toEqual({ from: 800 - 1 - 120, to: 800 - 1 + 5 });
   });
 
   it("starts at the first bar when the history is shorter than that", () => {
