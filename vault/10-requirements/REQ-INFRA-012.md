@@ -5,7 +5,7 @@ type: infrastructure
 prd_ref: "none -- operational finding, 2026-10-03; repository practice (REQ-WP-079, REQ-WP-081)"
 prd_lines: "0-0"
 phase: null
-status: specified
+status: planned
 depends_on: [REQ-WP-073, REQ-WP-077]
 tags: [reliability, worker, resample]
 hard_gated: false
@@ -53,7 +53,7 @@ pass, the failure must still end the process non-zero, as it does today. Anythin
 
 <!-- trace:begin -->
 - **Specs:** [[SPEC-130-pass-survives]]
-- **Outcomes:** [[OUT-2026-10-04-spec-pass-survives]]
+- **Outcomes:** [[OUT-2026-10-04-plan-pass-survives]], [[OUT-2026-10-04-spec-pass-survives]]
 <!-- trace:end -->
 
 ## Notes
