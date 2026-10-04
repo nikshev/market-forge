@@ -2,7 +2,7 @@
 id: OUT-2026-10-04-implement-volume-profile
 step: implement
 records: [REQ-WP-089]
-commit: null
+commit: a4d188b
 ---
 
 ## What was done
@@ -83,4 +83,4 @@ chart of days. That is the honest picture and the point of the line: until histo
 - History: a profile is only as long as the collection has run; a 7d profile needs seven days. No backfill is planned.
 - Venues without sequential trade ids (Bybit, OKX) are not checked for missed trades; their blocks are written as seen.
 - The profile is not yet drawn for CURRENT-REFIT-style "as of" views beyond the deep link's `at`; [[REQ-WP-090]] (live refresh) is next.
-- Commit hash: filled after the commit.
+- Commit: a4d188b.

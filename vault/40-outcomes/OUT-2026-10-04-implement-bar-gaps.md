@@ -2,7 +2,7 @@
 id: OUT-2026-10-04-implement-bar-gaps
 step: implement
 records: [REQ-WP-086]
-commit: null
+commit: d694668
 ---
 
 ## What was done
