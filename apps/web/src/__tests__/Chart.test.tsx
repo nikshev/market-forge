@@ -39,6 +39,7 @@ const CHANNEL: ChannelOut = {
   upper_now: 113_000,
   lower_now: 111_000,
   slope_normalized: -0.0037,
+  slope_log_per_bar: 0,
   width_pct: 0.024,
   quality_score: 0.83,
   source_max_event_time_ns: BASE_NS + 3n * MINUTE_NS,
@@ -72,14 +73,17 @@ describe("chart series", () => {
     expect(times).toEqual([...times].sort((a, b) => a - b));
   });
 
-  it("draws the channel centre and both boundaries", () => {
+  it("draws the channel centre and both boundaries over the bars its window covers", () => {
     const { channelLines } = buildSeries({ bars: BARS, channel: CHANNEL });
 
     expect(Object.keys(channelLines)).toEqual(["center", "upper", "lower"]);
-    expect(channelLines.center[0].value).toBe(112_000);
-    expect(channelLines.upper[0].value).toBe(113_000);
-    expect(channelLines.lower[0].value).toBe(111_000);
-    expect(channelLines.center).toHaveLength(BARS.length);
+    // The last point of each line is the channel's `_now` value. (The first version repeated it for
+    // every bar of the history; that is the fault REQ-WP-082 fixes, and `channelWindow.test.ts` pins the
+    // real shape. The channel was stored after the third bar, so the window covers three bars, not four.)
+    expect(channelLines.center.at(-1)?.value).toBe(112_000);
+    expect(channelLines.upper.at(-1)?.value).toBe(113_000);
+    expect(channelLines.lower.at(-1)?.value).toBe(111_000);
+    expect(channelLines.center).toHaveLength(3);
   });
 
   it("draws the three zones as bands between the boundaries", () => {

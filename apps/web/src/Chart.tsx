@@ -15,7 +15,7 @@ import { createChart, type IChartApi } from "lightweight-charts";
 import { useEffect, useRef } from "react";
 
 import { extremumMarkers } from "./extrema";
-import { buildSeries, markerFor, toSeconds, visibleRangeFor } from "./series";
+import { buildSeries, markerFor, toSeconds, visibleRangeFor, CHANNEL_STYLE, visibleRangeForChannel } from "./series";
 import { AS_SEEN_THEN, DEFAULT_OVERLAYS } from "./types";
 import type {
   BarOut,
@@ -122,10 +122,9 @@ export function Chart({
       if (!on.has(name === "center" ? "channel_center" : "channel_bounds")) {
         continue;
       }
+      const style = CHANNEL_STYLE[name as keyof typeof CHANNEL_STYLE];
       const line = instance.addLineSeries({
-        color: name === "center" ? "#4c6ef5" : "#868e96",
-        lineWidth: name === "center" ? 2 : 1,
-        lineStyle: name === "center" ? 0 : 2,
+        ...style,
         priceLineVisible: false,
         title: name,
       });
@@ -172,7 +171,15 @@ export function Chart({
 
     const range = visibleRangeFor(bars, focusAtNs, FOCUS_SPAN);
     if (range === null) {
-      instance.timeScale().fitContent();
+      // No instant named and a channel: open on its window so it fills the view (REQ-WP-082). Otherwise
+      // fit everything, as before.
+      const recent =
+        focusAtNs === null && channel !== null ? visibleRangeForChannel(bars, channel.lookback) : null;
+      if (recent === null) {
+        instance.timeScale().fitContent();
+      } else {
+        instance.timeScale().setVisibleLogicalRange(recent);
+      }
     } else {
       // REQ-US-002: "opens the chart at exactly the signal's timestamp".
       instance.timeScale().setVisibleLogicalRange(range);

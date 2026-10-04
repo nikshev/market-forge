@@ -123,6 +123,11 @@ class ChannelOut(BaseModel):
     upper_now: float
     lower_now: float
     slope_normalized: float
+    #: The fit's slope in log price **per bar**, which is what a drawing of the channel needs:
+    #: `level(i) = level_now * exp(slope * (i - last))` over the lookback window. `slope_normalized`
+    #: is the same slope in units of the fit's own noise and cannot be turned back into this one
+    #: ([[REQ-WP-082]]). Rows stored before the column existed read as 0.0.
+    slope_log_per_bar: float
     width_pct: float
     quality_score: float
     source_max_event_time_ns: WireTime
@@ -142,6 +147,7 @@ class ChannelOut(BaseModel):
             upper_now=snapshot.upper_now,
             lower_now=snapshot.lower_now,
             slope_normalized=snapshot.slope_normalized,
+            slope_log_per_bar=snapshot.slope_log_per_bar,
             width_pct=snapshot.width_pct,
             quality_score=snapshot.quality.score,
             source_max_event_time_ns=str(snapshot.source_max_event_time_ns),

@@ -1,3 +1,4 @@
+// @trace: REQ-WP-082
 // @trace: REQ-WP-009
 // @trace: REQ-WP-075
 //
@@ -44,6 +45,8 @@ export interface ChannelOut {
   upper_now: number;
   lower_now: number;
   slope_normalized: number;
+  // The fit's slope in log price per bar (REQ-WP-082): what drawing the channel needs.
+  slope_log_per_bar: number;
   width_pct: number;
   quality_score: number;
   source_max_event_time_ns: bigint;

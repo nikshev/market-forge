@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "§13.2, §27.2, §27.5"
 prd_lines: "1082-1130, 4406-4421, 4448-4460"
 phase: null
-status: planned
+status: implemented
 depends_on: [REQ-WP-009, REQ-WP-006]
 tags: [chart, channels, web]
 hard_gated: false
@@ -57,7 +57,15 @@ as-seen-then view (§27.5) a channel stored at an earlier bar is drawn where it 
 
 <!-- trace:begin -->
 - **Specs:** [[SPEC-131-channel-as-fitted]]
-- **Outcomes:** [[OUT-2026-10-04-plan-channel-as-fitted]], [[OUT-2026-10-04-spec-channel-as-fitted]], [[OUT-2026-10-04-tasks-channel-as-fitted]]
+- **Tests:**
+    - `tests/unit/api/test_channel_slope.py::test_a_snapshot_stored_before_the_slope_existed_serves_zero_not_an_error`
+    - `tests/unit/api/test_channel_slope.py::test_every_field_the_response_carried_before_is_still_there_and_unchanged`
+    - `tests/unit/api/test_channel_slope.py::test_the_refit_view_serves_its_own_slope_not_the_stored_one`
+    - `tests/unit/api/test_channel_slope.py::test_the_stored_slope_is_served_in_the_as_seen_then_view`
+- **Code:**
+    - `apps/web/src/series.ts`
+    - `apps/web/src/types.ts`
+- **Outcomes:** [[OUT-2026-10-04-implement-channel-as-fitted]], [[OUT-2026-10-04-plan-channel-as-fitted]], [[OUT-2026-10-04-spec-channel-as-fitted]], [[OUT-2026-10-04-tasks-channel-as-fitted]]
 <!-- trace:end -->
 
 ## Notes

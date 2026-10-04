@@ -1,4 +1,5 @@
 // @trace: REQ-WP-009
+// @trace: REQ-WP-082
 //
 // What the chart draws, decided here rather than inside a component.
 //
@@ -42,6 +43,15 @@ export interface Marker {
   text: string;
 }
 
+// How the channel's lines look (REQ-WP-082). The first version was grey, thin and dashed, and the owner
+// wrote "I do not see the channel". The centre is solid and heavy; the bounds take the zones' own colours
+// (upper is where a short is rejected, so red), so a line and the zone it bounds read as one thing.
+export const CHANNEL_STYLE = {
+  center: { color: "#1c7ed6", lineWidth: 4, lineStyle: 0 },
+  upper: { color: "#d64545", lineWidth: 2, lineStyle: 2 },
+  lower: { color: "#2f9e44", lineWidth: 2, lineStyle: 2 },
+} as const;
+
 export interface Series {
   candles: Candle[];
   channelLines: Record<string, LinePoint[]>;
@@ -83,8 +93,27 @@ export function buildSeries({
     return { candles, channelLines: {}, zones: {} };
   }
 
-  const at = (value: number): LinePoint[] =>
-    candles.map((candle) => ({ time: candle.time, value }));
+  // The channel as the model fitted it: a log-linear band over its **lookback window**, ending at the bar
+  // the snapshot was taken at (REQ-WP-082, PRD 13.2 and 27.5). `level(i) = level_now * exp(slope *
+  // (i - last))` for the bars of the window -- exact, because the fit is least squares in log price and
+  // its bounds are fixed residual offsets in log space. The first version repeated the *current* levels
+  // for every bar of the history, so a channel fitted to the last fifteen hours was drawn as a flat
+  // stripe across nine days it says nothing about.
+  //
+  // The window ends at `as_of_ns`, not at the last bar on the chart: a channel stored at an earlier
+  // bar is drawn where it was (AS-SEEN-THEN), and no bar after it is used.
+  const slope = channel.slope_log_per_bar;
+  const window = Number.isFinite(slope)
+    ? [...bars]
+        .sort((a, b) => (a.close_time_ns < b.close_time_ns ? -1 : a.close_time_ns > b.close_time_ns ? 1 : 0))
+        .filter((bar) => bar.close_time_ns <= channel.as_of_ns)
+        .slice(-Math.max(0, Math.floor(channel.lookback)))
+    : [];
+  const along = (level: number): LinePoint[] =>
+    window.map((bar, i) => ({
+      time: toSeconds(bar.close_time_ns),
+      value: level * Math.exp(slope * (i - (window.length - 1))),
+    }));
 
   const width = channel.upper_now - channel.lower_now;
   const band = ([low, high]: readonly [number, number]): Band => ({
@@ -94,11 +123,15 @@ export function buildSeries({
 
   return {
     candles,
-    channelLines: {
-      center: at(channel.center_now),
-      upper: at(channel.upper_now),
-      lower: at(channel.lower_now),
-    },
+    // No usable slope, or no bar in the window: no lines. An absent channel is not a flat one.
+    channelLines:
+      window.length === 0
+        ? {}
+        : {
+            center: along(channel.center_now),
+            upper: along(channel.upper_now),
+            lower: along(channel.lower_now),
+          },
     zones: {
       upper: band(ZONES.upper),
       middle: band(ZONES.middle),
@@ -145,4 +178,20 @@ export function visibleRangeFor(
   // data rather than as the edge of the history.
   const from = Math.max(0, Math.min(index - half, bars.length - 1 - span));
   return { from: Math.max(0, from), to: Math.min(bars.length - 1, Math.max(0, from) + span) };
+}
+
+// Where the chart opens when no instant is named and a channel exists: the last three lookbacks of bars,
+// so the channel fills the view. Fitting the whole history (the first version) made a window of sixty bars
+// a few pixels wide, and let a spike days earlier stretch the price axis until the channel was a hairline.
+// The history stays reachable by scrolling. `null` for no bars: the chart fits its content as before.
+export function visibleRangeForChannel(
+  bars: BarOut[],
+  lookback: number,
+  margin = 5,
+): { from: number; to: number } | null {
+  if (bars.length === 0) {
+    return null;
+  }
+  const last = bars.length - 1;
+  return { from: Math.max(0, last - 3 * lookback), to: last + margin };
 }
