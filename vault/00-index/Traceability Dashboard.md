@@ -961,6 +961,7 @@ graph LR
   OUT_2026_10_03_tasks_telegram_mini_app["OUT-2026-10-03-tasks-telegram-mini-app"]
   OUT_2026_10_04_plan_pass_survives["OUT-2026-10-04-plan-pass-survives"]
   OUT_2026_10_04_spec_pass_survives["OUT-2026-10-04-spec-pass-survives"]
+  OUT_2026_10_04_tasks_pass_survives["OUT-2026-10-04-tasks-pass-survives"]
   PRD["PRD: ChannelFlow PRD"]
   REQ_API_001["REQ-API-001: Read API for bars, channel snapshots, signals and live updates"]
   REQ_ASSET_001["REQ-ASSET-001: Asset identity and cross-venue instrument registry"]
@@ -5755,6 +5756,7 @@ graph LR
   OUT_2026_10_03_tasks_telegram_mini_app -.->|RECORDS| REQ_WP_080
   OUT_2026_10_04_plan_pass_survives -.->|RECORDS| REQ_INFRA_012
   OUT_2026_10_04_spec_pass_survives -.->|RECORDS| REQ_INFRA_012
+  OUT_2026_10_04_tasks_pass_survives -.->|RECORDS| REQ_INFRA_012
   SPEC_001_traceability_tooling ==>|SPECIFIES| REQ_INFRA_001
   SPEC_002_project_bootstrap ==>|SPECIFIES| REQ_WP_001
   SPEC_003_ci_full_gate ==>|SPECIFIES| REQ_INFRA_002

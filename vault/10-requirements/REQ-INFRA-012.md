@@ -53,7 +53,7 @@ pass, the failure must still end the process non-zero, as it does today. Anythin
 
 <!-- trace:begin -->
 - **Specs:** [[SPEC-130-pass-survives]]
-- **Outcomes:** [[OUT-2026-10-04-plan-pass-survives]], [[OUT-2026-10-04-spec-pass-survives]]
+- **Outcomes:** [[OUT-2026-10-04-plan-pass-survives]], [[OUT-2026-10-04-spec-pass-survives]], [[OUT-2026-10-04-tasks-pass-survives]]
 <!-- trace:end -->
 
 ## Notes
