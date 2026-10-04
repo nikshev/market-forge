@@ -77,14 +77,24 @@ technology: every role and accessible name the existing tests use stays, and the
     - `tests/unit/web/test_material_ui_artifacts.py::test_there_is_a_screenshot_of_each_page_in_each_scheme_at_each_width[phone-light-overview]`
 - **Code:**
     - `apps/web/src/App.tsx`
+    - `apps/web/src/AppShell.tsx`
     - `apps/web/src/ChannelMode.tsx`
     - `apps/web/src/FlowPane.tsx`
     - `apps/web/src/LoadState.tsx`
+    - `apps/web/src/MarketTypeChip.tsx`
     - `apps/web/src/Markets.tsx`
     - `apps/web/src/TimeframeControl.tsx`
+    - `apps/web/src/__tests__/channelModeChip.test.tsx`
+    - `apps/web/src/__tests__/chartSeriesCleanup.test.tsx`
+    - `apps/web/src/__tests__/marketsCards.test.tsx`
+    - `apps/web/src/__tests__/materialShell.test.tsx`
+    - `apps/web/src/__tests__/muiTheme.test.ts`
+    - `apps/web/src/__tests__/useScheme.test.tsx`
     - `apps/web/src/main.tsx`
+    - `apps/web/src/muiTheme.ts`
     - `apps/web/src/series.ts`
     - `apps/web/src/telegram.ts`
+    - `apps/web/src/useScheme.ts`
 - **Outcomes:** [[OUT-2026-10-04-implement-material-ui]], [[OUT-2026-10-04-plan-material-ui]], [[OUT-2026-10-04-spec-material-ui]], [[OUT-2026-10-04-tasks-material-ui]]
 <!-- trace:end -->
 
