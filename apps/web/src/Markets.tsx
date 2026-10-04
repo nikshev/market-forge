@@ -70,7 +70,7 @@ export function Markets(): JSX.Element {
 
   return (
     <main>
-      <h1>ChannelFlow</h1>
+      <h1>Market Forge</h1>
       <h2>Markets</h2>
       {offeredFailure === null ? null : <LoadState state="failed" detail={offeredFailure} />}
       {offered === null ? null : (

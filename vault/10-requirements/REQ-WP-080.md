@@ -185,3 +185,14 @@ Reference implementation: `/opt/lexa-reader` (`web/src/telegram.ts`, `backend/ap
 `docs/DEPLOY.md`, `web/scripts/gen-dev-initdata.mjs`). It exchanges `initData` for tokens once; this
 requirement verifies it per request instead, because the API here has no user store and a read-only
 market view needs none — a decision for the plan to confirm or reverse.
+
+### 2026-10-04: browser first, no token — the owner's decision
+
+The owner chose to run the product in a browser for now, without a bot token or a tunnel. That is already
+supported and is the default: `CHANNELFLOW_TELEGRAM_AUTH` is `off`, the page behaves exactly as it does
+outside Telegram, and the web service is reachable at `http://127.0.0.1:8081/` on the host (from another
+machine, through an SSH tunnel: `ssh -L 8081:127.0.0.1:8081 <host>`). It is bound to loopback on purpose:
+with authentication off the API is open, and nothing here opens it to the network.
+
+So the acceptance line "shown on a phone, from a bot" is **deferred, not waived**: the status stays `tested`.
+The page's heading and title now say "Market Forge", the product's name.

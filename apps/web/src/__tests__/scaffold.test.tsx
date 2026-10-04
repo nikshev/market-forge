@@ -12,6 +12,6 @@ import { App } from "../App";
 describe("the frontend test harness", () => {
   it("renders a component and can query it", () => {
     render(<App />);
-    expect(screen.getByRole("heading", { name: "ChannelFlow" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Market Forge" })).toBeInTheDocument();
   });
 });

@@ -249,7 +249,7 @@ export function App(): JSX.Element {
   if (link === null) {
     return (
       <main>
-        <h1>ChannelFlow</h1>
+        <h1>Market Forge</h1>
         <p>Open a chart at /chart/&lt;venue&gt;/&lt;symbol&gt;.</p>
       </main>
     );
@@ -261,7 +261,7 @@ export function App(): JSX.Element {
     // failure.
     return (
       <main>
-        <h1>ChannelFlow</h1>
+        <h1>Market Forge</h1>
         <h2>
           {link.symbol} · {link.venue} · {timeframe}
         </h2>
@@ -286,7 +286,7 @@ export function App(): JSX.Element {
 
   return (
     <main>
-      <h1>ChannelFlow</h1>
+      <h1>Market Forge</h1>
       <h2>
         {link.symbol} · {link.venue} · {timeframe}
       </h2>

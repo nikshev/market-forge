@@ -97,10 +97,12 @@ continues. The registration is retried the next time the process starts, and not
     - `tests/unit/pipeline/test_market_registration.py::test_the_row_is_exactly_what_the_repository_writes_for_a_market_without_rules`
     - `tests/unit/pipeline/test_market_registration.py::test_two_symbols_of_one_venue_are_both_registered`
 - **Code:**
+    - `apps/web/src/__tests__/marketsFiveRows.test.tsx`
     - `src/channelflow/api/lakehouse_repository.py`
     - `src/channelflow/connectors/venue.py`
     - `src/channelflow/lakehouse/iceberg.py`
     - `src/channelflow/pipeline/ingest_main.py`
+    - `src/channelflow/pipeline/market_registration.py`
     - `src/channelflow/tables/features.py`
 - **Outcomes:** [[OUT-2026-10-03-implement-markets-registered]], [[OUT-2026-10-03-plan-markets-registered]], [[OUT-2026-10-03-spec-markets-registered]], [[OUT-2026-10-03-tasks-markets-registered]]
 <!-- trace:end -->
