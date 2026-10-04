@@ -4,6 +4,7 @@
 // @trace: REQ-US-002
 // @trace: REQ-WP-084
 // @trace: REQ-WP-085
+// @trace: REQ-WP-092
 // @trace: REQ-WP-083
 //
 // The page an alert's deep link opens. PRD section 27.1's route, and section
@@ -32,6 +33,7 @@ import {
 import { AppShell } from "./AppShell";
 import { CandidateSwitch } from "./CandidateSwitch";
 import { Chart } from "./Chart";
+import type { ChartHandle } from "./paneChart";
 import { DexBands } from "./DexBands";
 import { ChannelModeControl } from "./ChannelMode";
 import { FlowPane } from "./FlowPane";
@@ -84,6 +86,12 @@ function writeAddress(search: string): void {
 
 export function App(): JSX.Element {
   const theme = useTheme();
+  // The chart's and the pane's colours, from the theme, so both sit on the surface they are drawn on.
+  const chartPalette = {
+    background: theme.palette.background.paper,
+    text: theme.palette.text.secondary,
+    grid: theme.palette.divider,
+  };
   // Parsed once, at mount. The address is an input on the way in and an output
   // afterwards: re-parsing it every render re-created this object, re-created
   // `load` with it, and refired the effect -- measured 2026-09-23 as 316 bars
@@ -118,6 +126,8 @@ export function App(): JSX.Element {
   const [pointsLoaded, setPointsLoaded] = useState(false);
   // True once the bars have answered, including with none. `state` cannot say it: it starts at "ok".
   const [barsLoaded, setBarsLoaded] = useState(false);
+  // The main chart's handle, for the pane under it to line up with (REQ-WP-092); null until it exists.
+  const [mainChart, setMainChart] = useState<ChartHandle | null>(null);
   // Candidate extrema are the detector's unconfirmed turns; off on every load, and not part of the link.
   const [showCandidates, setShowCandidates] = useState(false);
   // A pane's own failure, kept apart from the page's: the chart can load while
@@ -360,11 +370,8 @@ export function App(): JSX.Element {
             showCandidates={showCandidates}
             mode={mode}
             scheme={theme.palette.mode}
-            palette={{
-              background: theme.palette.background.paper,
-              text: theme.palette.text.secondary,
-              grid: theme.palette.divider,
-            }}
+            palette={chartPalette}
+            onReady={setMainChart}
           />
         </Paper>
       )}
@@ -387,6 +394,9 @@ export function App(): JSX.Element {
         available={available}
         bars={bars}
         barsLoaded={barsLoaded}
+        chart={mainChart}
+        scheme={theme.palette.mode}
+        palette={chartPalette}
       />
     </AppShell>
   );

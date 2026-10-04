@@ -3,6 +3,7 @@
 // @trace: REQ-WP-084
 // @trace: REQ-WP-085
 // @trace: REQ-WP-088
+// @trace: REQ-WP-092
 //
 // PRD section 27.3's lower pane, attached to the page.
 //
@@ -14,7 +15,10 @@ import Box from "@mui/material/Box";
 import ToggleButton from "@mui/material/ToggleButton";
 import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
 import Typography from "@mui/material/Typography";
+import { PaneChart } from "./PaneChart";
+import type { ChartHandle } from "./paneChart";
 import { isBarPane, paneSeries, ROW, segments, volumeSeries } from "./panes";
+import type { ChartPalette, Scheme } from "./theme";
 import { chartMilliseconds } from "./time";
 import type { BarOut, FeaturePointOut } from "./types";
 
@@ -29,12 +33,23 @@ export function FlowPane({
   available,
   bars = [],
   barsLoaded = false,
+  chart = null,
+  scheme = "light",
+  palette,
 }: {
   points: readonly FeaturePointOut[];
   /** The loaded bars: Volume is drawn from these, not from `points` (REQ-WP-085). */
   bars?: readonly BarOut[];
   /** True once the bars have answered, including with none: what tells "no bars yet" from "no bars". */
   barsLoaded?: boolean;
+  /**
+   * The main chart's handle (REQ-WP-092). With it the pane is a chart on the main chart's own time axis; without
+   * it -- before the chart exists, or in a test -- it is the SVG it always was, so a missing chart is never an
+   * empty pane.
+   */
+  chart?: ChartHandle | null;
+  scheme?: Scheme;
+  palette?: ChartPalette;
   /** The selected pane, or `null` when none has data (REQ-WP-084). */
   feature: string | null;
   onSelect: (feature: string) => void;
@@ -105,7 +120,22 @@ export function FlowPane({
           {series.note}
         </Typography>
       ) : null}
-      {!failed && feature !== null && series.state === "ok" && onBars ? (
+      {!failed && feature !== null && series.state === "ok" && chart !== null ? (
+        // The same horizontal inset as the main chart's surface (its padding and border), so equal price-scale
+        // widths mean equal plot areas.
+        <Box sx={{ px: "9px" }}>
+          <PaneChart
+            chart={chart}
+            bars={bars}
+            feature={feature}
+            points={points}
+            title={ROW.find((pane) => pane.feature === feature)?.label ?? feature}
+            scheme={scheme}
+            palette={palette}
+          />
+        </Box>
+      ) : null}
+      {!failed && chart === null && feature !== null && series.state === "ok" && onBars ? (
         <svg
           width={WIDTH}
           height={HEIGHT}
@@ -117,7 +147,7 @@ export function FlowPane({
           ))}
         </svg>
       ) : null}
-      {!failed && feature !== null && series.state === "ok" && !onBars ? (
+      {!failed && chart === null && feature !== null && series.state === "ok" && !onBars ? (
         <svg
           width={WIDTH}
           height={HEIGHT}

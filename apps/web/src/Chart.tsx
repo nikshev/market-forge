@@ -2,6 +2,7 @@
 // @trace: REQ-WP-009
 // @trace: REQ-US-002
 // @trace: REQ-WP-084
+// @trace: REQ-WP-092
 //
 // PRD section 27.2's overlays, for the four layers REQ-WP-009's acceptance
 // names: candles, the channel's centre and boundaries, the setup zones, and a
@@ -16,6 +17,7 @@ import { createChart, type IChartApi, type ISeriesApi } from "lightweight-charts
 import { useEffect, useRef } from "react";
 
 import { extremumMarkers } from "./extrema";
+import { PRICE_SCALE_WIDTH, type ChartHandle } from "./paneChart";
 import { buildSeries, markerFor, toSeconds, visibleRangeFor, CHANNEL_STYLE, visibleRangeForChannel } from "./series";
 import { AS_SEEN_THEN, DEFAULT_OVERLAYS } from "./types";
 import type {
@@ -52,6 +54,7 @@ export function Chart({
   mode = AS_SEEN_THEN,
   scheme = schemeNow(),
   palette,
+  onReady,
 }: {
   bars: BarOut[];
   channel: ChannelOut | null;
@@ -68,9 +71,17 @@ export function Chart({
   scheme?: Scheme;
   /** The interface's colours, so the canvas sits on the surface it is drawn on (REQ-WP-083). */
   palette?: ChartPalette;
+  /**
+   * Gives a pane under the chart what it needs to line up with it (REQ-WP-092): the chart, and a getter for the
+   * current candle series, which is replaced as the data changes. `null` when the chart goes away.
+   */
+  onReady?: (handle: ChartHandle | null) => void;
 }): JSX.Element {
   const container = useRef<HTMLDivElement>(null);
   const chart = useRef<IChartApi | null>(null);
+  const candlesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
+  const onReadyRef = useRef(onReady);
+  onReadyRef.current = onReady;
 
   useEffect(() => {
     if (container.current === null) {
@@ -81,10 +92,14 @@ export function Chart({
       // Follow the container's width, so the chart fits a phone and a resized window (REQ-WP-083).
       autoSize: true,
       timeScale: { timeVisible: true, secondsVisible: false },
+      // The same minimum width as the pane under it, so the two plot areas begin and end together.
+      rightPriceScale: { minimumWidth: PRICE_SCALE_WIDTH },
       ...chartLayout(scheme, palette),
     });
     chart.current = instance;
+    onReadyRef.current?.({ api: instance, candles: () => candlesRef.current });
     return () => {
+      onReadyRef.current?.(null);
       instance.remove();
       chart.current = null;
     };
@@ -107,7 +122,10 @@ export function Chart({
     const created: ISeriesApi<"Candlestick" | "Line">[] = [];
     const candlestick = instance.addCandlestickSeries();
     created.push(candlestick);
-    candlestick.setData(on.has("candles") ? candles : []);
+    candlesRef.current = candlestick;
+    // With the candles layer off the series still holds every bar time, as whitespace: the pane under the chart
+    // lines up by index, and its axis must not depend on which layers are on (REQ-WP-092).
+    candlestick.setData(on.has("candles") ? candles : candles.map((candle) => ({ time: candle.time })));
 
     // One `setMarkers` call: lightweight-charts replaces the whole set, so a
     // second call for the extrema would silently drop the signal's marker.
@@ -201,6 +219,9 @@ export function Chart({
       instance.timeScale().setVisibleLogicalRange(range);
     }
     return () => {
+      if (candlesRef.current === candlestick) {
+        candlesRef.current = null;
+      }
       // Not if the chart itself was removed first (unmount runs the other effect's cleanup before this one,
       // and removing a series from a disposed chart throws). Price lines go with their series.
       if (chart.current === instance) {

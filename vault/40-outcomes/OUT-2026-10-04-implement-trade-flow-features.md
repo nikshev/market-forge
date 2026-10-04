@@ -2,7 +2,7 @@
 id: OUT-2026-10-04-implement-trade-flow-features
 step: implement
 records: [REQ-WP-088]
-commit: null
+commit: 9c04931
 ---
 
 ## What was done

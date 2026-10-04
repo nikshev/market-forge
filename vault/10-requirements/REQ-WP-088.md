@@ -106,9 +106,11 @@ pane draws a line.
     - `tests/unit/web/test_cvd_pane_artifacts.py::test_there_is_a_live_screenshot_of_the_cvd_pane_in_each_scheme[light]`
 - **Code:**
     - `apps/web/src/FlowPane.tsx`
+    - `apps/web/src/__tests__/cvdBasePane.test.tsx`
     - `apps/web/src/panes.ts`
     - `src/channelflow/connectors/venue.py`
     - `src/channelflow/features/__init__.py`
+    - `src/channelflow/features/flow_bars.py`
     - `src/channelflow/pipeline/channel_main.py`
     - `src/channelflow/tables/features.py`
 - **Outcomes:** [[OUT-2026-10-04-implement-trade-flow-features]], [[OUT-2026-10-04-plan-trade-flow-features]], [[OUT-2026-10-04-spec-trade-flow-features]], [[OUT-2026-10-04-tasks-trade-flow-features]]
