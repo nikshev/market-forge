@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "§27, §28.7; owner's direction 2026-10-04"
 prd_lines: "4382-4462, 4526-4540"
 phase: null
-status: draft
+status: specified
 depends_on: [REQ-WP-009, REQ-API-001, REQ-WP-083]
 tags: [web, chart, live, polling]
 hard_gated: false
@@ -57,7 +57,8 @@ change, only add to what is on record (Principle III).
 ## Trace
 
 <!-- trace:begin -->
-_No linked artifacts yet._
+- **Specs:** [[SPEC-139-live-refresh]]
+- **Outcomes:** [[OUT-2026-10-05-spec-live-refresh]]
 <!-- trace:end -->
 
 ## Notes

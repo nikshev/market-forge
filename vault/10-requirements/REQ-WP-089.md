@@ -141,11 +141,24 @@ This requirement puts the profile on the chart:
 - **Code:**
     - `apps/web/src/App.tsx`
     - `apps/web/src/Chart.tsx`
+    - `apps/web/src/ProfileControls.tsx`
+    - `apps/web/src/__tests__/appProfile.test.tsx`
+    - `apps/web/src/__tests__/chartProfile.test.tsx`
+    - `apps/web/src/__tests__/profileControls.test.tsx`
+    - `apps/web/src/__tests__/profileGeometry.test.ts`
+    - `apps/web/src/__tests__/profilePrimitive.test.ts`
+    - `apps/web/src/__tests__/volumeProfileApi.test.ts`
     - `apps/web/src/api.ts`
+    - `apps/web/src/profilePrimitive.ts`
+    - `apps/web/src/profileView.ts`
+    - `apps/web/src/profileWindows.ts`
     - `src/channelflow/api/lakehouse_repository.py`
     - `src/channelflow/api/repositories.py`
+    - `src/channelflow/api/volume_profile.py`
     - `src/channelflow/pipeline/ingest.py`
     - `src/channelflow/pipeline/ingest_main.py`
+    - `src/channelflow/tables/volume_bins.py`
+    - `src/channelflow/volume/bins.py`
     - `src/channelflow/volume/profile.py`
 - **Outcomes:** [[OUT-2026-10-04-implement-volume-profile]], [[OUT-2026-10-04-plan-volume-profile]], [[OUT-2026-10-04-spec-volume-profile]], [[OUT-2026-10-04-tasks-volume-profile]]
 <!-- trace:end -->
