@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "§27, §28.7; owner's direction 2026-10-04"
 prd_lines: "4382-4462, 4526-4540"
 phase: null
-status: specified
+status: planned
 depends_on: [REQ-WP-009, REQ-API-001, REQ-WP-083]
 tags: [web, chart, live, polling]
 hard_gated: false
