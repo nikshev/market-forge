@@ -5,6 +5,7 @@
 // @trace: REQ-WP-092
 // @trace: REQ-WP-086
 // @trace: REQ-WP-089
+// @trace: REQ-WP-090
 //
 // PRD section 27.2's overlays, for the four layers REQ-WP-009's acceptance
 // names: candles, the channel's centre and boundaries, the setup zones, and a
@@ -50,7 +51,7 @@ const FOCUS_SPAN = 60;
 export function Chart({
   bars,
   channel,
-  signal,
+  signal = null,
   profile = null,
   volumeProfile = null,
   overlays = DEFAULT_OVERLAYS,
@@ -61,6 +62,7 @@ export function Chart({
   scheme = schemeNow(),
   palette,
   onReady,
+  isInitialLoad = true,
 }: {
   bars: BarOut[];
   channel: ChannelOut | null;
@@ -84,6 +86,8 @@ export function Chart({
    * current candle series, which is replaced as the data changes. `null` when the chart goes away.
    */
   onReady?: (handle: ChartHandle | null) => void;
+  /** True for initial load (mount or timeframe/mode change), false for timer refresh (REQ-WP-090). */
+  isInitialLoad?: boolean;
 }): JSX.Element {
   const container = useRef<HTMLDivElement>(null);
   const chart = useRef<IChartApi | null>(null);
@@ -223,19 +227,23 @@ export function Chart({
     }
 
     const range = visibleRangeFor(bars, focusAtNs, FOCUS_SPAN);
-    if (range === null) {
-      // No instant named and a channel: open on its window so it fills the view (REQ-WP-082). Otherwise
-      // fit everything, as before.
-      const recent =
-        focusAtNs === null && channel !== null ? visibleRangeForChannel(bars, channel.lookback) : null;
-      if (recent === null) {
-        instance.timeScale().fitContent();
+    // REQ-WP-090: only set the visible range on initial load (mount or timeframe/mode change).
+    // On refresh (isInitialLoad=false), the library keeps the reader's pan/zoom.
+    if (isInitialLoad) {
+      if (range === null) {
+        // No instant named and a channel: open on its window so it fills the view (REQ-WP-082). Otherwise
+        // fit everything, as before.
+        const recent =
+          focusAtNs === null && channel !== null ? visibleRangeForChannel(bars, channel.lookback) : null;
+        if (recent === null) {
+          instance.timeScale().fitContent();
+        } else {
+          instance.timeScale().setVisibleLogicalRange(recent);
+        }
       } else {
-        instance.timeScale().setVisibleLogicalRange(recent);
+        // REQ-US-002: "opens the chart at exactly the signal's timestamp".
+        instance.timeScale().setVisibleLogicalRange(range);
       }
-    } else {
-      // REQ-US-002: "opens the chart at exactly the signal's timestamp".
-      instance.timeScale().setVisibleLogicalRange(range);
     }
     return () => {
       if (candlesRef.current === candlestick) {

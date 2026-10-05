@@ -463,6 +463,7 @@ trade's aggressor side only) and writes them to the `volume_bins` table with the
 |---|---|
 | `CHANNELFLOW_PROFILE_BIN_WIDTHS` | quote units per bin, per symbol: `binance:BTCUSDT=20,okx:BTC-USDT-SWAP=10`. Empty derives each symbol's from its first trade (about two basis points of the price, rounded to 1-2-5, logged at start). The width is written on every row; a profile uses the latest width on record |
 | `CHANNELFLOW_PROFILE_BLOCK_SECONDS` | the block length, a whole number of minutes in seconds; empty is 300 |
+| `VITE_CHART_REFRESH_MS` | the chart's live refresh interval in milliseconds (REQ-WP-090, Principle X). Default 60000 (60 s). <=0 or unparseable disables the timer |
 
 ## Which markets are listed
 

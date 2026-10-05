@@ -8,6 +8,7 @@
 // @trace: REQ-WP-086
 // @trace: REQ-WP-083
 // @trace: REQ-WP-089
+// @trace: REQ-WP-090
 //
 // The page an alert's deep link opens. PRD section 27.1's route, and section
 // 27.5's default: AS-SEEN-THEN, always, unless the link says otherwise in so
@@ -149,6 +150,19 @@ export function App(): JSX.Element {
   const [profileState, setProfileState] = useState<ProfileState>("loading");
   const [profileFailure, setProfileFailure] = useState("");
 
+  // Live refresh (REQ-WP-090): timer, in-flight guard, visibility, failure state
+  const refreshIntervalMs = (() => {
+    const raw = import.meta.env.VITE_CHART_REFRESH_MS;
+    const parsed = raw === undefined ? 60_000 : Number(raw);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+  })();
+  const timerId = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isLoading = useRef(false);
+  const [lastRefreshFailed, setLastRefreshFailed] = useState(false);
+  const [lastRefreshError, setLastRefreshError] = useState<string | null>(null);
+  // isInitialLoad: true for mount and timeframe/mode change, false for timer refresh
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
+
   // The offered set, read once. Until it arrives no series request goes out:
   // the duration each request needs is one of these options.
   useEffect(() => {
@@ -181,10 +195,11 @@ export function App(): JSX.Element {
   const option = offered === null ? null : matchTimeframe(offered, timeframe);
   const refused = offered !== null && option === null;
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (initial = false) => {
     if (link === null || option === null) {
       return;
     }
+    setIsInitialLoad(initial);
     const mine = ++loadId.current;
     const superseded = () => mine !== loadId.current;
     setPointsLoaded(false);
@@ -203,13 +218,22 @@ export function App(): JSX.Element {
     if (!barsResult.ok) {
       // FR-016: a failed load is stated, never rendered as an empty chart that
       // could be mistaken for a quiet market.
+      const detail = initial ? barsResult.error : `Refresh failed: ${barsResult.error}`;
       setState("failed");
-      setDetail(barsResult.error);
+      setDetail(detail);
+      if (!initial) {
+        setLastRefreshFailed(true);
+        setLastRefreshError(barsResult.error);
+      }
       return;
     }
     setBars(barsResult.value.bars);
     setBarsLoaded(true);
     setState(barsResult.value.bars.length === 0 ? "empty" : "ok");
+    if (!initial) {
+      setLastRefreshFailed(false);
+      setLastRefreshError(null);
+    }
 
     const atNs = link.atNs ?? barsResult.value.bars.at(-1)?.close_time_ns ?? null;
     if (atNs === null) {
@@ -335,13 +359,71 @@ export function App(): JSX.Element {
   }, [link, wantsProfile, profileWindow]);
 
   useEffect(() => {
-    void load();
+    void load(true); // initial load is "initial"
     // Releasing the id on every dep change or unmount supersedes an in-flight
     // load, so its remaining requests stop and its answers are ignored.
     return () => {
       loadId.current += 1;
     };
   }, [load]);
+
+  // Live refresh timer (REQ-WP-090): runs on interval while page is visible, unpinned, enabled, and not loading
+  useEffect(() => {
+    if (refreshIntervalMs <= 0 || link === null || link.atNs !== null) {
+      return; // disabled, no link, or pinned chart
+    }
+    const tick = () => {
+      if (isLoading.current) {
+        return; // skip if previous load still in flight
+      }
+      isLoading.current = true;
+      void load(false).finally(() => {
+        isLoading.current = false;
+      });
+    };
+    timerId.current = window.setInterval(tick, refreshIntervalMs);
+    return () => {
+      if (timerId.current !== null) {
+        window.clearInterval(timerId.current);
+        timerId.current = null;
+      }
+    };
+  }, [refreshIntervalMs, link]);
+
+  // Visibility change: pause on hidden, one immediate refresh on visible (REQ-WP-090)
+  useEffect(() => {
+    if (refreshIntervalMs <= 0 || link === null || link.atNs !== null) {
+      return;
+    }
+    const onVisibilityChange = () => {
+      if (document.hidden) {
+        if (timerId.current !== null) {
+          window.clearInterval(timerId.current);
+          timerId.current = null;
+        }
+      } else if (!isLoading.current) {
+        // One immediate refresh when becoming visible
+        isLoading.current = true;
+        void load(false).finally(() => {
+          isLoading.current = false;
+        });
+        // Restart interval
+        timerId.current = window.setInterval(() => {
+          if (isLoading.current) {
+            return;
+          }
+          isLoading.current = true;
+          void load(false).finally(() => {
+            isLoading.current = false;
+          });
+        }, refreshIntervalMs);
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
+  }, [refreshIntervalMs, link]);
 
   if (path === "/" || path === "/markets") {
     // The overview route (PRD §27.1). The PRD names no `/` route; serving the
@@ -433,6 +515,7 @@ export function App(): JSX.Element {
             scheme={theme.palette.mode}
             palette={chartPalette}
             onReady={setMainChart}
+            isInitialLoad={isInitialLoad}
           />
         </Paper>
       )}
