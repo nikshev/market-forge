@@ -68,7 +68,14 @@ def consensus_mid(
     at_ns: int,
     staleness_ns: int = DEFAULT_STALENESS_NS,
 ) -> Consensus:
-    """The median of the contributing venues' mids (section 17.1)."""
+    """The median of the contributing venues' mids (section 17.1).
+
+    Acceptance (REQ-WP-091 US1, pinned by tests/unit/crossvenue/test_consensus_091.py):
+    two venues give the interpolated median; three give the middle; a quote
+    older than staleness_ns or later than at_ns is excluded with its reason;
+    one venue is refused; appending later quotes leaves the consensus at an
+    earlier instant unchanged.
+    """
     excluded: dict[str, str] = {}
     eligible: list[VenueQuote] = []
 
