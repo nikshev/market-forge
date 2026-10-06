@@ -4,6 +4,7 @@
 // @trace: REQ-WP-084
 // @trace: REQ-WP-085
 // @trace: REQ-WP-088
+// @trace: REQ-WP-091
 //
 // PRD section 27.3's lower panes, for the three Phase 2 has data for.
 //
@@ -35,6 +36,11 @@ export interface Pane {
 //   OFI (1m)               here, from [[REQ-WP-027]]; needs a book subscription nobody has, so "no data";
 //   OI, funding, basis,
 //   liquidations           here, from [[REQ-WP-030]]; no producer writes them yet;
+//   venue basis            here as `venue_basis_bps`, from [[REQ-WP-091]]: the viewed venue's basis to the
+//                          market-type consensus, `10000 * (mid_i / consensus_mid - 1)`. Its own name because
+//                          `basis_bps` above is a different quantity (perp against spot), and not §27.3's list
+//                          either, like the depth imbalance pane. Producer: the consensus worker, which does
+//                          not write yet -- the pane reads "no data" until it does ([[REQ-WP-084]]);
 //   DEX swap imbalance,
 //   DEX active liquidity   here, from [[REQ-WP-059]] and [[REQ-WP-063]]; the DEX ingest is not running in the
 //                          compose stack, so they read "no data";
@@ -61,6 +67,7 @@ export const PANES: readonly Pane[] = [
   { feature: "open_interest_usd", label: "Open interest" },
   { feature: "funding_z", label: "Funding (z)" },
   { feature: "basis_bps", label: "Basis (bps)" },
+  { feature: "venue_basis_bps", label: "Venue basis (bps)" },
   { feature: "liquidation_imbalance_5m", label: "Liquidations (5m)" },
   { feature: "dex_swap_imbalance", label: "DEX swap imbalance" },
   { feature: "dex_active_liquidity", label: "DEX active liquidity" },

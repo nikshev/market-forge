@@ -23,7 +23,9 @@ describe("the pane list", () => {
   it("offers the panes whose phases have finished their data", () => {
     // All nine of PRD section 27.3's panes: order flow from [[REQ-WP-027]],
     // derivatives from [[REQ-WP-030]], swap imbalance from [[REQ-WP-059]] and
-    // active liquidity from [[REQ-WP-063]], each when its feature existed.
+    // active liquidity from [[REQ-WP-063]], each when its feature existed, plus
+    // the cross-venue basis [[REQ-WP-091]] adds beside the derivatives one
+    // (`basis_bps` is the perp-against-spot quantity, a different number).
     expect(PANES.map((p) => p.feature)).toEqual([
       "cvd_base",
       "ofi_1m",
@@ -31,6 +33,7 @@ describe("the pane list", () => {
       "open_interest_usd",
       "funding_z",
       "basis_bps",
+      "venue_basis_bps",
       "liquidation_imbalance_5m",
       "dex_swap_imbalance",
       "dex_active_liquidity",
@@ -38,9 +41,11 @@ describe("the pane list", () => {
   });
 
   it("covers every pane PRD section 27.3 lists", () => {
-    // Nine, and the count is asserted so a tenth cannot be added without a
-    // reason and a feature behind it.
-    expect(PANES).toHaveLength(9);
+    // Ten, and the count is asserted so an eleventh cannot be added without a
+    // reason and a feature behind it. The tenth is `venue_basis_bps`
+    // ([[REQ-WP-091]]), which is not §27.3's own list -- like the depth imbalance
+    // pane this deployment added beyond it.
+    expect(PANES).toHaveLength(10);
     expect(PANES.map((p) => p.feature).filter((f) => f.startsWith("dex_"))).toEqual([
       "dex_swap_imbalance",
       "dex_active_liquidity",

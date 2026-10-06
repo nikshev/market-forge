@@ -76,7 +76,8 @@ describe("the pane row on the chart page", () => {
     expect(screen.queryByRole("button", { name: /no data/ })).toBeNull();
 
     release(series([{ ofi_1m: 1 }]));
-    await waitFor(() => expect(screen.getAllByRole("button", { name: /no data$/ })).toHaveLength(8));
+    // REQ-WP-091: 10th pane venue_basis_bps
+    await waitFor(() => expect(screen.getAllByRole("button", { name: /no data$/ })).toHaveLength(9));
   });
 
   it("claims nothing of any pane when the feature load failed, and says it failed", async () => {
@@ -102,7 +103,8 @@ describe("the pane row on the chart page", () => {
     await waitFor(() =>
       expect(screen.getByRole("button", { name: "Volume" })).toHaveAttribute("aria-pressed", "true"),
     );
-    expect(screen.getAllByRole("button", { name: /no data$/ })).toHaveLength(8);
+    // REQ-WP-091: 10th pane venue_basis_bps
+    expect(screen.getAllByRole("button", { name: /no data$/ })).toHaveLength(9);
   });
 
   it("says every feature pane has no data for an empty series, and Volume is still live", async () => {
@@ -110,7 +112,8 @@ describe("the pane row on the chart page", () => {
 
     render(<App />);
 
-    await waitFor(() => expect(screen.getAllByRole("button", { name: /no data$/ })).toHaveLength(9));
+    // REQ-WP-091: 10th pane venue_basis_bps
+    await waitFor(() => expect(screen.getAllByRole("button", { name: /no data$/ })).toHaveLength(10));
     expect(screen.getByRole("button", { name: "Volume" })).toBeEnabled();
     // ("No pane has data for this view" is for when Volume has none either: see chartVolumeOpens.)
   });

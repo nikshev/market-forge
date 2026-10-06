@@ -99,8 +99,9 @@ def test_the_active_liquidity_pane_is_offered() -> None:
 
 @pytest.mark.trace("REQ-WP-063")
 def test_every_pane_prd_section_27_3_lists_is_offered() -> None:
-    """Nine panes, and the count asserted: a tenth needs a reason and a feature."""
-    assert len(offered_features()) == 9
+    """Ten panes, and the count asserted: an eleventh needs a reason and a feature.
+    The tenth is `venue_basis_bps`, registered by [[REQ-WP-091]]."""
+    assert len(offered_features()) == 10  # REQ-WP-091: 10th pane venue_basis_bps
 
 
 @pytest.mark.trace("REQ-WP-030")

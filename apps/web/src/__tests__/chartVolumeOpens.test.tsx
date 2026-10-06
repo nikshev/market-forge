@@ -71,7 +71,8 @@ describe("Volume on the chart page", () => {
 
     expect(await screen.findByRole("img", { name: /volume over 3 point/ })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Volume" })).toHaveAttribute("aria-pressed", "true");
-    await waitFor(() => expect(screen.getAllByRole("button", { name: /no data$/ })).toHaveLength(9));
+    // REQ-WP-091: 10th pane venue_basis_bps
+    await waitFor(() => expect(screen.getAllByRole("button", { name: /no data$/ })).toHaveLength(10));
     expect(screen.queryByRole("status", { name: "Pane contents" })).toBeNull();
   });
 
@@ -109,7 +110,8 @@ describe("Volume on the chart page", () => {
         "No pane has data for this view",
       ),
     );
-    expect(screen.getAllByRole("button", { name: /no data$/ })).toHaveLength(10);
+    // REQ-WP-091: 10th pane venue_basis_bps
+    expect(screen.getAllByRole("button", { name: /no data$/ })).toHaveLength(11);
   });
 
   it("does not say 'no finished bars' of Volume before the bars have answered", async () => {

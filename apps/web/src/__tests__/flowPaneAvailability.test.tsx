@@ -44,7 +44,8 @@ describe("the pane row with some panes empty", () => {
 
     const cvd = screen.getByRole("button", { name: "CVD (base) no data" });
     expect(cvd).toBeDisabled();
-    expect(screen.getAllByRole("button", { name: /no data$/ })).toHaveLength(8);
+    // REQ-WP-091: 10th pane venue_basis_bps
+    expect(screen.getAllByRole("button", { name: /no data$/ })).toHaveLength(9);
   });
 
   it("cannot be pressed into a selection", () => {
@@ -73,7 +74,8 @@ describe("the pane row with some panes empty", () => {
     expect(screen.getByRole("status", { name: "Pane contents" })).toHaveTextContent(
       "No pane has data for this view",
     );
-    expect(screen.getAllByRole("button", { name: /no data$/ })).toHaveLength(9);
+    // REQ-WP-091: 10th pane venue_basis_bps
+    expect(screen.getAllByRole("button", { name: /no data$/ })).toHaveLength(10);
   });
 });
 

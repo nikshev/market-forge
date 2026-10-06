@@ -38,7 +38,7 @@ describe("the volume pane", () => {
     const names = screen.getAllByRole("button").map((b) => b.textContent);
     expect(names[0]).toBe("Volume");
     expect(names).toContain("CVD (base)");
-    expect(names).toHaveLength(10);
+    expect(names).toHaveLength(11); // REQ-WP-091: 10th pane venue_basis_bps
     expect(screen.getByRole("button", { name: "Volume" })).toHaveAttribute("aria-pressed", "true");
   });
 
