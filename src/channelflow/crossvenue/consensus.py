@@ -1,6 +1,7 @@
 """PRD section 17.1's consensus price, and section 17.3's basis.
 
 # @trace: REQ-WP-016
+# @trace: REQ-WP-091
 
     "Create robust consensus mid from selected high-liquidity venues."
     `basis_bps(venue_i) = 10000 * (mid_i / consensus_mid - 1)`
