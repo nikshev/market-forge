@@ -7,7 +7,7 @@ status: draft
 
 ## Summary
 
-The extremum detector and channel fit must not straddle gaps in the bar series. On a hole (> `gap_threshold` missing bars, default 1), the detector resets its state (direction, running extreme, candidate) and the channel fits only to bars after the hole. No confirmation straddles a hole; channel snapshot is absent until `lookback` contiguous bars exist. `gap_threshold` is configuration (default 1). Confirmed extremum carries `confirmation_lag_ns` (time) in addition to bars. Policy 2 (restart at gap) assumed per requirement recommendation; owner confirmation needed.
+The extremum detector and channel fit must not straddle gaps in the bar series. On a hole (> `gap_threshold` missing bars, default 1), the detector resets its state and the channel fits only to bars after the hole. No confirmation straddles a hole; channel snapshot absent until `lookback` contiguous bars exist. `gap_threshold` config (default 1). Confirmation lag adds `confirmation_lag_ns`. Policy 2 assumed per requirement recommendation; owner confirmation needed.
 
 ## Links
 

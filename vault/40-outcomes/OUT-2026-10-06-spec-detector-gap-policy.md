@@ -13,7 +13,7 @@ Read `vault/10-requirements/REQ-WP-087.md` (no `ACCEPTANCE-NOT-SPECIFIED`), cons
 
 - **Policy 2 (restart at gap) assumed** per requirement's recommendation. Owner confirmation needed — spec stays `draft` until confirmed.
 - **Detector**: resets state on hole (> `gap_threshold` missing bars); no confirmation straddles hole.
-- **Channel**: fits only to bars after hole; snapshot absent/short until `lookback` contiguous bars.
+- **Channel**: fits only to bars after hole; snapshot absent until `lookback` contiguous bars.
 - **Threshold**: `gap_threshold` config (default 1); threshold=0 any gap restarts.
 - **Confirmation lag**: adds `confirmation_lag_ns` (time) to extremum; no straddling records.
 - **Built on**: REQ-WP-086 (gap marking), REQ-WP-006 (channel), REQ-WP-019 (detector).
