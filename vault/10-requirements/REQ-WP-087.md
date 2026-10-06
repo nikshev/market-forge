@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "§13A, §13.1, §32; the stateful-feature gap rule of §15/§18 acceptance"
 prd_lines: "4752-4782, 6750-6758, 6806-6812"
 phase: null
-status: specified
+status: planned
 depends_on: [REQ-WP-086, REQ-WP-006, REQ-WP-019]
 tags: [channels, extrema, data-quality, no-look-ahead]
 hard_gated: false
