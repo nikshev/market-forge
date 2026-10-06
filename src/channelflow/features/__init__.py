@@ -2,6 +2,7 @@
 
 # @trace: REQ-WP-011
 # @trace: REQ-WP-088
+# @trace: REQ-WP-091
 
 PRD section 15. Scope is REQ-WP-011's acceptance list: queue and depth
 imbalance, microprice, OFI, cumulative volume delta, wall persistence. Section
@@ -24,7 +25,7 @@ def exposed_feature_names() -> tuple[str, ...]:
     """
     from channelflow import derivatives, volume
     from channelflow.channels import features as channel_features
-    from channelflow.features import dex, flow, flow_bars, instant, ofi, walls
+    from channelflow.features import crossvenue_basis, dex, flow, flow_bars, instant, ofi, walls
 
     names: list[str] = []
     for module in (
@@ -33,6 +34,7 @@ def exposed_feature_names() -> tuple[str, ...]:
         flow,
         flow_bars,
         walls,
+        crossvenue_basis,
         dex,
         derivatives,
         volume,

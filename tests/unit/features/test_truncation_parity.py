@@ -8,12 +8,12 @@
 
 **Why this is worth the work.** `FeatureSpec` carries
 `point_in_time_safe: Literal[True]`, so the type makes any other value
-unregisterable: all 61 registered features *declare* point-in-time safety, and
+unregisterable: all 62 registered features *declare* point-in-time safety, and
 the only test that touches that field asserts it is a `bool` — which the type
 guarantees before the test runs. The promise is extracted by the type and
 verified by nothing. This is its verification.
 
-**`NOT_YET_COVERED` is a debt register, not a permission.** The 61 features share
+**`NOT_YET_COVERED` is a debt register, not a permission.** The 62 features share
 no interface — some take events with a window, some a book service, some a
 stateful tracker — so each case is written by hand against its own signature.
 [[REQ-NRT-LEAK]] stays at `specified` until that list is empty. What the list
@@ -31,6 +31,14 @@ import pytest
 
 import channelflow.features.instant
 import channelflow.volume.shape
+from channelflow.assets import (
+    Absence,
+    Asset,
+    AssetRegistry,
+    AssetRepresentation,
+    Venue,
+    VenueKind,
+)
 from channelflow.bars import Bar
 from channelflow.book import BookService
 from channelflow.channels import RollingOLSChannel
@@ -40,6 +48,8 @@ from channelflow.channels.features import (
     channel_slope_normalized,
     channel_width_pct,
 )
+from channelflow.crossvenue.consensus import consensus_mid
+from channelflow.crossvenue.models import VenueQuote
 from channelflow.derivatives.funding import (
     funding_acceleration,
     funding_z,
@@ -63,6 +73,7 @@ from channelflow.derivatives.positioning import (
 from channelflow.derivatives.state import state_at
 from channelflow.domain import BookDelta, DerivativesState, LiquidationEvent
 from channelflow.features import REGISTRY, exposed_feature_names
+from channelflow.features.crossvenue_basis import venue_basis_bps
 from channelflow.features.dex import (
     LiquidityReading,
     active_liquidity_at,
@@ -511,6 +522,87 @@ def _defi_cases() -> list[TruncationCase]:
     ]
 
 
+def _cross_venue_cases() -> list[TruncationCase]:
+    """`cross_venue`: `consensus_mid` names a moment, so it earns a real case.
+
+    `consensus_mid(quotes, *, registry, at_ns, staleness_ns)` takes the data
+    and the moment separately -- the shape that made the wall leak findable.
+    The full run hands it every quote, including one observed after `t`
+    (a 70000 print that would drag the median to 65150 had it leaked in),
+    and still names `t`. Agreement proves the future quote was excluded
+    rather than absorbed.
+    """
+    registry = AssetRegistry()
+    registry.add_asset(Asset(asset_id="BTCUSDT", name="Bitcoin against Tether"))
+    for venue_id in ("binance", "bybit", "okx"):
+        registry.add_venue(Venue(venue_id=venue_id, kind=VenueKind.ORDER_BOOK))
+    for chain_id, priority in ((0, 0), (1, 1), (2, 2)):
+        registry.add_representation(
+            AssetRepresentation(
+                canonical_asset_id="BTCUSDT",
+                chain_id=chain_id,
+                address=None,
+                is_native=True,
+                ticker="BTC",
+                decimals=8,
+                bridge_issuer=Absence.NOT_APPLICABLE,
+                stablecoin_family=Absence.NOT_APPLICABLE,
+                pricing_source_priority=priority,
+                confidence=1.0,
+            )
+        )
+    at_ns = BASE_NS + 10 * SECOND_NS
+    #: An hour: the quotes are seconds old, so any disagreement the case reports
+    #: comes from the moment's selection rather than from staleness.
+    staleness_ns = 3600 * SECOND_NS
+    quotes = [
+        VenueQuote(
+            venue_id="binance",
+            kind=VenueKind.ORDER_BOOK,
+            representation_key="0:native",
+            mid=Decimal("65000"),
+            observed_at_ns=at_ns - SECOND_NS,
+        ),
+        VenueQuote(
+            venue_id="bybit",
+            kind=VenueKind.ORDER_BOOK,
+            representation_key="1:native",
+            mid=Decimal("65100"),
+            observed_at_ns=at_ns,
+        ),
+        VenueQuote(
+            venue_id="okx",
+            kind=VenueKind.ORDER_BOOK,
+            representation_key="2:native",
+            mid=Decimal("65200"),
+            observed_at_ns=at_ns,
+        ),
+        #: The leak candidate: after `t`, far from the median.
+        VenueQuote(
+            venue_id="bybit",
+            kind=VenueKind.ORDER_BOOK,
+            representation_key="1:native",
+            mid=Decimal("70000"),
+            observed_at_ns=at_ns + SECOND_NS,
+        ),
+    ]
+    #: The viewed venue's own mid, held fixed: only the consensus may move.
+    viewed = Decimal("65000")
+
+    def basis(rows: list[VenueQuote]) -> float:
+        consensus = consensus_mid(rows, registry=registry, at_ns=at_ns, staleness_ns=staleness_ns)
+        return venue_basis_bps(viewed, consensus.mid)
+
+    return [
+        TruncationCase(
+            feature="venue_basis_bps",
+            at_ns=at_ns,
+            truncated=lambda: basis([q for q in quotes if q.observed_at_ns <= at_ns]),
+            full=lambda: basis(quotes),
+        ),
+    ]
+
+
 CASES: list[TruncationCase] = (
     _channel_cases()
     + _flow_cases()
@@ -519,6 +611,7 @@ CASES: list[TruncationCase] = (
     + _derivatives_cases()
     + _order_book_cases()
     + _defi_cases()
+    + _cross_venue_cases()
 )
 
 #: The eleven `order_book` instant features. Their path holds no API that takes
@@ -578,6 +671,7 @@ COVERED_FAMILIES = frozenset(
         "order_book",
         "volume_structure",
         "defi",
+        "cross_venue",
     }
 )
 
@@ -600,7 +694,7 @@ def test_the_registry_is_fully_imported_before_anything_is_counted() -> None:
     complete and is half.
     """
     names = exposed_feature_names()
-    assert len(names) == 61
+    assert len(names) == 62
     assert sorted(names) == sorted(REGISTRY)
 
 
@@ -617,15 +711,15 @@ def test_every_registered_feature_is_covered_or_declared_outstanding() -> None:
 def test_every_feature_is_accounted_for() -> None:
     """The debt register is empty, which is what lets REQ-NRT-LEAK complete.
 
-    45 cases and 16 refusals. The refusals are not a shortfall: they are the
+    46 cases and 16 refusals. The refusals are not a shortfall: they are the
     features whose producers name no moment, so §35.4's second run cannot be
     expressed for them at all. `test_a_refusal_is_only_available_to_a_feature_
     that_names_no_moment` is what stops that being a way out.
     """
     assert NOT_YET_COVERED == frozenset()
-    assert len(CASES) == 45
+    assert len(CASES) == 46
     assert len(REFUSALS) == 16
-    assert len(CASES) + len(REFUSALS) == 61 == len(REGISTRY)
+    assert len(CASES) + len(REFUSALS) == 62 == len(REGISTRY)
     assert {case.feature for case in CASES} & {r.feature for r in REFUSALS} == set()
 
 
