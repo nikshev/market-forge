@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "US-002, §26.1, §27.1, §27.5, §0 secrets rule"
 prd_lines: "255-257, 4319-4335, 4388-4405, 4826-4830"
 phase: null
-status: tested
+status: implemented
 depends_on: [REQ-WP-064, REQ-WP-074, REQ-WP-075]
 tags: [telegram, web, mini-app]
 hard_gated: false
