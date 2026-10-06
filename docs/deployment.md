@@ -288,6 +288,7 @@ secret; `.env` is not committed and never should be.
 | `CHANNELFLOW_TIMEFRAMES`, `CHANNELFLOW_RESAMPLE_INTERVAL` | which timeframes the resampler builds from the one-minute series, and how often it runs ([[REQ-WP-073]]); `1M` is refused. The read API reads the same variable and reports the set at `GET /api/v1/timeframes` ([[REQ-WP-074]]) — one value for both processes, so what a chart offers cannot disagree with what exists |
 | `CHANNELFLOW_MAINTENANCE_INTERVAL`, `CHANNELFLOW_KEEP_DAYS` | how often maintenance runs, and what it may expire |
 | `CHANNELFLOW_CHANNEL_INTERVAL` | how often the channel worker re-fits over the stored bars ([[REQ-WP-077]]) |
+| `CHANNELFLOW_CONSENSUS_INTERVAL`, `CHANNELFLOW_CONSENSUS_STALENESS_NS` | how often the cross-venue consensus pass runs (5m, the same grammar as `CHANNELFLOW_CHANNEL_INTERVAL`) and how old a quote may be at a bar's close and still count toward the median, in nanoseconds (60000000000 is 60 s; a staler one is excluded with its reason) ([[REQ-WP-091]]) |
 | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` | alert delivery, empty unless alerting is wanted |
 | `CHANNELFLOW_CHART_BASE_URL` | where an alert's chart link points |
 
