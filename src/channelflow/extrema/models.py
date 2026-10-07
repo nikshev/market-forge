@@ -1,6 +1,7 @@
 """PRD section 13A.19's canonical models.
 
 # @trace: REQ-WP-019
+# @trace: REQ-WP-087
 # @trace: REQ-NRT-B
 # @trace: REQ-NRT-C
 
@@ -124,6 +125,14 @@ class ConfirmedExtremum(BaseModel):
     price: Decimal = Field(gt=0)
     confirmation_method: str = Field(min_length=1)
     confirmation_lag_bars: int = Field(ge=0)
+    #: Confirmation lag in time: confirming_bar.close_time_ns minus
+    #: turn_bar.close_time_ns, in nanoseconds (REQ-WP-087 FR-007). It
+    #: complements `confirmation_lag_bars`, which is only meaningful on a
+    #: contiguous series -- across a hole, ten bars can be a week (PRD section
+    #: 32 makes missing bars a health metric). Defaults to 0 for a producer
+    #: that does not hold both bar timestamps at its call site; 0 there means
+    #: "not measured at this call site", not a measured lag of zero.
+    confirmation_lag_ns: int = Field(default=0, ge=0)
     reversal_bps: float = Field(ge=0.0)
     #: The threshold in force at `known_at`, stored rather than recomputable.
     #: Recomputing it later -- for a report, a chart or a backtest -- is how a

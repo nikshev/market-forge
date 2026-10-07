@@ -60,6 +60,24 @@ stays `draft` until then.
 
 <!-- trace:begin -->
 - **Specs:** [[SPEC-141-detector-gap-policy]]
+- **Tests:**
+    - `tests/unit/extrema/test_gap_fields.py::test_a_confirmed_extremum_states_its_confirmation_lag_in_time`
+    - `tests/unit/extrema/test_gap_fields.py::test_confirmation_lag_ns_defaults_to_zero_when_a_producer_has_not_computed_it`
+    - `tests/unit/test_settings_gap.py::test_a_blank_threshold_is_the_default_not_a_parse_failure`
+    - `tests/unit/test_settings_gap.py::test_a_deployment_that_sets_nothing_gets_one_missing_bar`
+    - `tests/unit/test_settings_gap.py::test_a_negative_threshold_is_refused_naming_the_variable[-148]`
+    - `tests/unit/test_settings_gap.py::test_a_negative_threshold_is_refused_naming_the_variable[-1]`
+    - `tests/unit/test_settings_gap.py::test_something_that_is_not_a_whole_number_is_refused[1.5]`
+    - `tests/unit/test_settings_gap.py::test_something_that_is_not_a_whole_number_is_refused[1_0]`
+    - `tests/unit/test_settings_gap.py::test_something_that_is_not_a_whole_number_is_refused[abc]`
+    - `tests/unit/test_settings_gap.py::test_something_that_is_not_a_whole_number_is_refused[two]`
+    - `tests/unit/test_settings_gap.py::test_the_threshold_is_a_whole_number_of_missing_bars[0-0]`
+    - `tests/unit/test_settings_gap.py::test_the_threshold_is_a_whole_number_of_missing_bars[1-1]`
+    - `tests/unit/test_settings_gap.py::test_the_threshold_is_a_whole_number_of_missing_bars[3-3]`
+    - `tests/unit/test_settings_gap.py::test_zero_is_a_threshold_not_a_mistake`
+- **Code:**
+    - `src/channelflow/extrema/models.py`
+    - `src/channelflow/settings.py`
 - **Outcomes:** [[OUT-2026-10-06-spec-detector-gap-policy]], [[OUT-2026-10-06-tasks-detector-gap-policy]]
 <!-- trace:end -->
 
