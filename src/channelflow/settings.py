@@ -5,6 +5,7 @@
 # @trace: REQ-WP-072
 # @trace: REQ-WP-080
 # @trace: REQ-WP-074
+# @trace: REQ-WP-087
 
 Shared by every process that reaches the canonical plane -- the read API and the
 ingest daemon -- because they reach the same plane and a second reader of the
@@ -83,6 +84,13 @@ SILENCE_WINDOW_MULTIPLIER = "CHANNELFLOW_SILENCE_WINDOW_MULTIPLIER"
 #: unit rate limits are usually quoted in, and it is overridable like everything
 #: else here.
 DEFAULT_RATE_WINDOW_SECONDS = 60.0
+
+#: How large a hole in the bar series makes the extremum detector and the channel
+#: fit restart at it ([[REQ-WP-087]], Principle X). One missing bar, the default
+#: written in `.env.example`, is bridged and two or more restart; 0 restarts on
+#: any gap; a larger value bridges up to that many missing bars.
+GAP_THRESHOLD = "CHANNELFLOW_GAP_THRESHOLD"
+DEFAULT_GAP_THRESHOLD = 1
 
 #: What a credential renders as. Short, and obviously not a value.
 MASK = "***"
@@ -185,6 +193,9 @@ class Settings:
     #: Never rendered: see `_rendered`.
     telegram_bot_token: str = ""
     telegram_max_age_seconds: int = DEFAULT_TELEGRAM_MAX_AGE_SECONDS
+    #: How many missing bars are still contiguous ([[REQ-WP-087]]). 0 is a chosen
+    #: value -- any gap restarts -- not an unset one.
+    gap_threshold: int = DEFAULT_GAP_THRESHOLD
 
     def _rendered(self) -> str:
         storage = {
@@ -198,7 +209,8 @@ class Settings:
             f"timeframes={tuple(tf.token for tf in self.timeframes)!r}, "
             f"telegram_auth={self.telegram_auth!r}, "
             f"telegram_bot_token={MASK if self.telegram_bot_token else ''!r}, "
-            f"telegram_max_age_seconds={self.telegram_max_age_seconds!r})"
+            f"telegram_max_age_seconds={self.telegram_max_age_seconds!r}, "
+            f"gap_threshold={self.gap_threshold!r})"
         )
 
     def __repr__(self) -> str:
@@ -241,7 +253,38 @@ def settings_from_env(environ: Mapping[str, str] | None = None) -> Settings:
         telegram_auth=telegram_auth,
         telegram_bot_token=telegram_token,
         telegram_max_age_seconds=telegram_max_age,
+        gap_threshold=_gap_threshold(values),
     )
+
+
+def _gap_threshold(values: Mapping[str, str]) -> int:
+    """How large a hole the detector and the channel restart at (Principle X).
+
+    Unset or blank is one missing bar, the documented default. Zero is a chosen value
+    rather than an unset one -- it means any gap restarts the models -- so it is read,
+    not refused. Negative is refused naming the variable: no hole is smaller than zero,
+    so a negative count names nothing, and reading it as its unsigned sibling would
+    silently turn "impossible" into "restart on any gap".
+    """
+    raw = values.get(GAP_THRESHOLD, "").strip()
+    if not raw:
+        return DEFAULT_GAP_THRESHOLD
+    if raw.startswith("-"):
+        raise MissingConfiguration(
+            f"{GAP_THRESHOLD} is {raw!r}; a threshold cannot be below zero -- 0 already "
+            "means any gap restarts, so no negative count has a meaning here. Use 0 to "
+            "restart on any gap, 1 (the default) to bridge a single missing bar, or a "
+            "larger number to bridge up to that many"
+        )
+    if not (raw.isascii() and raw.isdigit()):
+        # `isdigit()` alone is not enough: `"²".isdigit()` is true and `int("²")` is a
+        # ValueError, which would escape naming nothing.
+        raise MissingConfiguration(
+            f"{GAP_THRESHOLD} is {raw!r}; it must be a whole number of missing bars: "
+            "0 restarts on any gap, 1 (the default) bridges a single missing bar, and a "
+            "larger value bridges up to that many"
+        )
+    return int(raw)
 
 
 def _telegram(values: Mapping[str, str]) -> tuple[str, str, int]:
