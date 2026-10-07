@@ -72,6 +72,9 @@ and the book subscription itself (below).
     - `tests/unit/api/test_consensus_endpoint.py::test_consensus_returns_per_bar_mids_with_venue_counts`
     - `tests/unit/api/test_consensus_endpoint.py::test_consensus_unknown_market_404`
     - `tests/unit/api/test_consensus_endpoint.py::test_consensus_window_validation`
+    - `tests/unit/api/test_consensus_mixed_types.py::test_single_venue_type_refuses`
+    - `tests/unit/api/test_consensus_mixed_types.py::test_spot_and_perp_consensus_are_separate`
+    - `tests/unit/api/test_consensus_mixed_types.py::test_viewed_venue_uses_its_own_type`
     - `tests/unit/api/test_venue_basis_endpoint.py::test_venue_basis_empty_window`
     - `tests/unit/api/test_venue_basis_endpoint.py::test_venue_basis_requires_feature_param[empty]`
     - `tests/unit/api/test_venue_basis_endpoint.py::test_venue_basis_requires_feature_param[missing]`
@@ -102,6 +105,9 @@ and the book subscription itself (below).
 - **Code:**
     - `apps/web/src/App.tsx`
     - `apps/web/src/Chart.tsx`
+    - `apps/web/src/__tests__/appConsensus.test.tsx`
+    - `apps/web/src/__tests__/consensus.test.tsx`
+    - `apps/web/src/__tests__/venueBasis.test.tsx`
     - `apps/web/src/api.ts`
     - `apps/web/src/panes.ts`
     - `apps/web/src/types.ts`
@@ -114,7 +120,7 @@ and the book subscription itself (below).
     - `src/channelflow/features/crossvenue_basis.py`
     - `src/channelflow/tables/consensus.py`
     - `src/channelflow/tables/quotes.py`
-- **Outcomes:** [[OUT-2026-10-06-plan-cross-venue-consensus]], [[OUT-2026-10-06-spec-cross-venue-consensus]], [[OUT-2026-10-06-tasks-cross-venue-consensus]]
+- **Outcomes:** [[OUT-2026-10-06-plan-cross-venue-consensus]], [[OUT-2026-10-06-spec-cross-venue-consensus]], [[OUT-2026-10-06-tasks-cross-venue-consensus]], [[OUT-2026-10-07-implement-cross-venue-consensus]]
 <!-- trace:end -->
 
 ## Notes
