@@ -5,6 +5,7 @@
 # @trace: REQ-NRT-A
 # @trace: REQ-NRT-C
 # @trace: REQ-NRT-E
+# @trace: REQ-WP-087
 
 "Maintain a running high during an upswing and a running low during a
 downswing. A high becomes confirmed only after price reverses by a threshold
@@ -32,6 +33,7 @@ from decimal import Decimal
 from typing import Literal
 
 from channelflow.bars import Bar
+from channelflow.bars.gaps import is_gap
 from channelflow.extrema.models import (
     CandidateInvalidation,
     ConfirmedExtremum,
@@ -60,6 +62,9 @@ class DirectionalChangeDetector:
     thresholds: ThresholdPolicy = field(default_factory=ThresholdPolicy)
     prominence: ProminenceRule = field(default_factory=ProminenceRule)
 
+    # REQ-WP-087: gap threshold for detecting holes in the bar series.
+    gap_threshold: int = 1
+
     #: Everything emitted, in order. Append-only: PRD section 13A.2's lifecycle
     #: and Test B both require that a record, once made, is never edited.
     candidates: list[ExtremumCandidate] = field(default_factory=list)
@@ -79,6 +84,19 @@ class DirectionalChangeDetector:
     _last_confirmed_index: int | None = None
     _seen: list[Bar] = field(default_factory=list)
 
+    def _reset_state_after_gap(self) -> None:
+        """Reset detector state after a gap, as if starting fresh after the hole."""
+        self._direction = None
+        self._running_high = None
+        self._running_low = None
+        self._extreme_price = None
+        self._extreme_time_ns = None
+        self._extreme_index = None
+        self._swing_start_price = None
+        self._last_confirmed_index = None
+        # Candidates are kept for history but not used after gap
+        # The next bar will start fresh as if the detector just initialized.
+
     def on_bar(
         self, bar: Bar, *, channel_width_pct: float | None = None
     ) -> ConfirmedExtremum | None:
@@ -94,6 +112,15 @@ class DirectionalChangeDetector:
         computed, and every computation reads only that history -- so a later
         bar cannot participate in this bar's decision.
         """
+        # REQ-WP-087: Check for a gap before the current bar and reset state if needed.
+        if self._seen:
+            prev_bar = self._seen[-1]
+            # Use the configured gap threshold.
+            gap_threshold = self.gap_threshold
+            if is_gap(prev_bar, bar, bar.timeframe_ns, gap_threshold):
+                # Hole detected: reset state as if starting fresh after the gap.
+                self._reset_state_after_gap()
+
         self._seen.append(bar)
         index = len(self._seen) - 1
         close = float(bar.close)
