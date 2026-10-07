@@ -268,6 +268,7 @@ class DirectionalChangeDetector:
             price=Decimal(str(extreme)),
             confirmation_method=METHOD,
             confirmation_lag_bars=index - extreme_index,
+            confirmation_lag_ns=bar.close_time_ns - extreme_time,
             reversal_bps=reversal,
             threshold_bps=threshold,
             prominence_bps=prom_bps,

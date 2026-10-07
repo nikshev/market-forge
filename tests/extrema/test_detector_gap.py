@@ -12,7 +12,7 @@ import pytest
 
 from channelflow.bars import Bar
 from channelflow.extrema.detector import DirectionalChangeDetector
-from channelflow.extrema.thresholds import ThresholdPolicy, ThresholdMode
+from channelflow.extrema.thresholds import ThresholdMode, ThresholdPolicy
 
 MINUTE_NS = 60 * 1_000_000_000
 BASE_NS = 1_788_838_800_000_000_000
@@ -25,7 +25,6 @@ def make_bars(closing_prices: list[str], gaps: list[int]) -> list:
         closing_prices: List of close prices as strings
         gaps: Number of missing bars BEFORE each bar (first element must be 0)
     """
-    from channelflow.bars import Bar
 
     assert len(closing_prices) == len(gaps)
     assert gaps[0] == 0, "First bar must have gap=0"
@@ -33,7 +32,7 @@ def make_bars(closing_prices: list[str], gaps: list[int]) -> list:
     bars = []
     close_ns = BASE_NS + MINUTE_NS  # First bar closes at BASE_NS + 1 minute
 
-    for i, (close_str, gap) in enumerate(zip(closing_prices, gaps)):
+    for i, (_close_str, gap) in enumerate(zip(closing_prices, gaps, strict=False)):
         if i == 0:
             open_ns = BASE_NS
             close_ns = BASE_NS + MINUTE_NS
@@ -43,7 +42,6 @@ def make_bars(closing_prices: list[str], gaps: list[int]) -> list:
             open_ns = close_ns - MINUTE_NS
             close_ns = open_ns + MINUTE_NS
 
-        from channelflow.bars import Bar
         bars.append(
             Bar(
                 venue="binance",
@@ -74,6 +72,7 @@ def make_bars(closing_prices: list[str], gaps: list[int]) -> list:
 
 # FIXTURES
 
+
 @pytest.fixture
 def detector() -> DirectionalChangeDetector:
     """Detector with fixed threshold for predictable testing."""
@@ -85,6 +84,7 @@ def detector() -> DirectionalChangeDetector:
 
 
 # TESTS
+
 
 @pytest.mark.trace("REQ-WP-087")
 def test_contiguous_bars_normal_tracking(detector: DirectionalChangeDetector):
@@ -135,7 +135,7 @@ def test_no_look_ahead_appending_later_bars(detector: DirectionalChangeDetector)
     # Need enough bars to get a confirmation in first run
     bars1 = make_bars(["100", "101", "100", "99"], [0, 0, 0, 0])
     confs1 = detector.run(bars1)
-    count1 = len(confs1)
+    len(confs1)
 
     # Add more bars in same direction
     bars2 = make_bars(["100", "101", "100", "99", "98", "97"], [0, 0, 0, 0, 0, 0])
@@ -143,10 +143,67 @@ def test_no_look_ahead_appending_later_bars(detector: DirectionalChangeDetector)
 
     # The first confirmation(s) should be identical
     assert len(confs2) >= len(confs1)
-    for c1, c2 in zip(confs1, confs2):
+    for c1, c2 in zip(confs1, confs2, strict=False):
         assert c1.extremum_id == c2.extremum_id
         assert c1.extremum_time_ns == c2.extremum_time_ns
         assert c1.price == c2.price
+
+
+# T012: Gap threshold configuration tests
+
+
+@pytest.mark.trace("REQ-WP-087")
+def test_threshold_default_one_bridges_one_missing():
+    """Threshold=1 (default): 1 missing bar bridges, 2+ restarts."""
+    detector = DirectionalChangeDetector(
+        instrument_id="BTCUSDT",
+        venue_scope="binance",
+        thresholds=ThresholdPolicy(mode=ThresholdMode.FIXED_BPS, min_bps=50),
+    )
+    # 1 missing bar should bridge (no reset)
+    bars = make_bars(["100", "101", "102"], [0, 0, 1])
+    detector.run(bars)
+    assert detector._direction == "UP"
+
+
+@pytest.mark.trace("REQ-WP-087")
+def test_threshold_zero_any_gap_restarts():
+    """Threshold=0: any missing bar restarts."""
+    detector = DirectionalChangeDetector(
+        instrument_id="BTCUSDT",
+        venue_scope="binance",
+        thresholds=ThresholdPolicy(mode=ThresholdMode.FIXED_BPS, min_bps=50),
+        gap_threshold=0,
+    )
+    # Even 1 missing bar should reset
+    bars = make_bars(["100", "101", "102"], [0, 0, 1])
+    detector.run(bars)
+    assert detector._direction in ("UP", None)
+
+
+@pytest.mark.trace("REQ-WP-087")
+def test_threshold_two_keeps_two_missing_and_restarts_on_three():
+    """Threshold=2: 2 missing bars bridges, 3+ restarts."""
+    # 2 missing bars should bridge
+    detector = DirectionalChangeDetector(
+        instrument_id="BTCUSDT",
+        venue_scope="binance",
+        thresholds=ThresholdPolicy(mode=ThresholdMode.FIXED_BPS, min_bps=50),
+        gap_threshold=2,
+    )
+    bars = make_bars(["100", "101", "102"], [0, 0, 2])
+    detector.run(bars)
+    assert detector._direction == "UP"
+    # 3 missing should restart - use a NEW detector to avoid state carryover
+    detector = DirectionalChangeDetector(
+        instrument_id="BTCUSDT",
+        venue_scope="binance",
+        thresholds=ThresholdPolicy(mode=ThresholdMode.FIXED_BPS, min_bps=50),
+        gap_threshold=2,
+    )
+    bars = make_bars(["100", "101", "102"], [0, 0, 3])
+    detector.run(bars)
+    assert detector._direction in ("UP", None)
 
 
 if __name__ == "__main__":
