@@ -65,7 +65,52 @@ and the book subscription itself (below).
 ## Trace
 
 <!-- trace:begin -->
-_No linked artifacts yet._
+- **Specs:** [[SPEC-140-cross-venue-consensus]]
+- **Tests:**
+    - `tests/unit/api/test_consensus_endpoint.py::test_consensus_point_in_time`
+    - `tests/unit/api/test_consensus_endpoint.py::test_consensus_refusal_carries_reason`
+    - `tests/unit/api/test_consensus_endpoint.py::test_consensus_returns_per_bar_mids_with_venue_counts`
+    - `tests/unit/api/test_consensus_endpoint.py::test_consensus_unknown_market_404`
+    - `tests/unit/api/test_consensus_endpoint.py::test_consensus_window_validation`
+    - `tests/unit/api/test_venue_basis_endpoint.py::test_venue_basis_empty_window`
+    - `tests/unit/api/test_venue_basis_endpoint.py::test_venue_basis_requires_feature_param[empty]`
+    - `tests/unit/api/test_venue_basis_endpoint.py::test_venue_basis_requires_feature_param[missing]`
+    - `tests/unit/api/test_venue_basis_endpoint.py::test_venue_basis_returns_points`
+    - `tests/unit/api/test_venue_basis_endpoint.py::test_venue_basis_unknown_feature_unchanged`
+    - `tests/unit/crossvenue/test_consensus_091.py::test_consensus_unchanged_when_later_quotes_appended`
+    - `tests/unit/crossvenue/test_consensus_091.py::test_future_quote_excluded`
+    - `tests/unit/crossvenue/test_consensus_091.py::test_one_venue_refuses`
+    - `tests/unit/crossvenue/test_consensus_091.py::test_stale_quote_excluded_with_reason`
+    - `tests/unit/crossvenue/test_consensus_091.py::test_three_venues_median`
+    - `tests/unit/crossvenue/test_consensus_091.py::test_two_venues_median_is_interpolated`
+    - `tests/unit/features/test_crossvenue_basis.py::test_a_consensus_that_is_not_a_price_is_refused`
+    - `tests/unit/features/test_crossvenue_basis.py::test_the_basis_is_the_hand_computed_formula`
+    - `tests/unit/features/test_crossvenue_basis.py::test_the_feature_is_exposed_by_the_package`
+    - `tests/unit/features/test_crossvenue_basis.py::test_the_module_exposes_exactly_the_basis_feature`
+    - `tests/unit/features/test_crossvenue_basis.py::test_the_registration_points_at_this_file`
+    - `tests/unit/features/test_crossvenue_basis.py::test_the_registry_carries_the_spec`
+    - `tests/unit/tables/test_consensus_table.py::test_a_refused_bar_stores_the_reason_and_no_price`
+    - `tests/unit/tables/test_consensus_table.py::test_the_consensus_mid_is_decimal_and_never_float`
+    - `tests/unit/tables/test_consensus_table.py::test_the_refusal_reason_is_a_column_and_empty_means_none`
+    - `tests/unit/tables/test_consensus_table.py::test_the_schema_is_exactly_the_six_columns_with_the_bar_close_as_event_time`
+    - `tests/unit/tables/test_consensus_table.py::test_the_table_is_named_consensus`
+    - `tests/unit/tables/test_consensus_table.py::test_to_row_maps_the_consensus_in_the_schemas_own_column_order`
+    - `tests/unit/tables/test_quotes.py::test_prices_are_decimal_and_never_float`
+    - `tests/unit/tables/test_quotes.py::test_the_schema_is_exactly_the_seven_columns_with_exchange_time_as_event_time`
+    - `tests/unit/tables/test_quotes.py::test_the_table_is_named_quotes`
+    - `tests/unit/tables/test_quotes.py::test_to_row_maps_the_quote_with_exchange_time_and_receive_time_apart`
+- **Code:**
+    - `apps/web/src/panes.ts`
+    - `src/channelflow/api/lakehouse_repository.py`
+    - `src/channelflow/api/repositories.py`
+    - `src/channelflow/api/routes.py`
+    - `src/channelflow/api/schemas.py`
+    - `src/channelflow/crossvenue/consensus.py`
+    - `src/channelflow/features/__init__.py`
+    - `src/channelflow/features/crossvenue_basis.py`
+    - `src/channelflow/tables/consensus.py`
+    - `src/channelflow/tables/quotes.py`
+- **Outcomes:** [[OUT-2026-10-06-plan-cross-venue-consensus]], [[OUT-2026-10-06-spec-cross-venue-consensus]], [[OUT-2026-10-06-tasks-cross-venue-consensus]]
 <!-- trace:end -->
 
 ## Notes

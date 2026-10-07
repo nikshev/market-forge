@@ -59,7 +59,8 @@ stays `draft` until then.
 ## Trace
 
 <!-- trace:begin -->
-_No linked artifacts yet._
+- **Specs:** [[SPEC-141-detector-gap-policy]]
+- **Outcomes:** [[OUT-2026-10-06-spec-detector-gap-policy]], [[OUT-2026-10-06-tasks-detector-gap-policy]]
 <!-- trace:end -->
 
 ## Notes

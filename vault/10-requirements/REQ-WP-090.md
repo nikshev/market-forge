@@ -58,7 +58,17 @@ change, only add to what is on record (Principle III).
 
 <!-- trace:begin -->
 - **Specs:** [[SPEC-139-live-refresh]]
-- **Outcomes:** [[OUT-2026-10-05-spec-live-refresh]]
+- **Tests:**
+    - `tests/unit/web/test_live_refresh_artifacts.py::test_modules_trace`
+    - `tests/unit/web/test_live_refresh_markers.py::test_python_modules_carry_trace_marker`
+    - `tests/unit/web/test_live_refresh_markers.py::test_typescript_modules_carry_trace_marker`
+- **Code:**
+    - `apps/web/src/App.tsx`
+    - `apps/web/src/Chart.tsx`
+    - `apps/web/src/__tests__/appRefresh.test.tsx`
+    - `apps/web/src/__tests__/chartRangePreserved.test.tsx`
+    - `apps/web/src/__tests__/loadStateRefresh.test.tsx`
+- **Outcomes:** [[OUT-2026-10-05-implement-live-refresh]], [[OUT-2026-10-05-plan-live-refresh]], [[OUT-2026-10-05-spec-live-refresh]], [[OUT-2026-10-05-tasks-live-refresh]]
 <!-- trace:end -->
 
 ## Notes

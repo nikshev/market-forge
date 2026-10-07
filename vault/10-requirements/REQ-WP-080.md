@@ -174,7 +174,7 @@ alert sender exists, [[REQ-WP-008]]), and the on-chain link an alert may later c
     - `src/channelflow/api/main.py`
     - `src/channelflow/api/telegram_auth.py`
     - `src/channelflow/settings.py`
-- **Outcomes:** [[OUT-2026-10-03-implement-telegram-mini-app]], [[OUT-2026-10-03-plan-telegram-mini-app]], [[OUT-2026-10-03-spec-telegram-mini-app]], [[OUT-2026-10-03-tasks-telegram-mini-app]]
+- **Outcomes:** [[OUT-2026-10-03-implement-telegram-mini-app]], [[OUT-2026-10-03-plan-telegram-mini-app]], [[OUT-2026-10-03-spec-telegram-mini-app]], [[OUT-2026-10-03-tasks-telegram-mini-app]], [[OUT-2026-10-06-implement-telegram-mini-app]]
 <!-- trace:end -->
 
 ## Notes

@@ -146,6 +146,7 @@ failure that names the feature.
     - `tests/unit/features/test_truncation_parity.py::test_the_truncated_and_full_runs_agree[price_oi_regime]`
     - `tests/unit/features/test_truncation_parity.py::test_the_truncated_and_full_runs_agree[time_since_liquidation_spike]`
     - `tests/unit/features/test_truncation_parity.py::test_the_truncated_and_full_runs_agree[top_trader_long_short_ratio]`
+    - `tests/unit/features/test_truncation_parity.py::test_the_truncated_and_full_runs_agree[venue_basis_bps]`
     - `tests/unit/features/test_truncation_parity.py::test_the_truncated_and_full_runs_agree[wall_cancelled_size_est]`
     - `tests/unit/features/test_truncation_parity.py::test_the_truncated_and_full_runs_agree[wall_executed_size_est]`
     - `tests/unit/features/test_truncation_parity.py::test_the_truncated_and_full_runs_agree[wall_persistence_ns]`

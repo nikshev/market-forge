@@ -4,6 +4,7 @@
 # @trace: REQ-US-001
 # @trace: REQ-US-004
 # @trace: REQ-US-003
+# @trace: REQ-WP-091
 
 Separate from the domain models deliberately. A wire format that *is* a domain
 model makes every domain change an API change, and PRD section 0.5's
@@ -582,3 +583,66 @@ class VolumeProfileOut(BaseModel):
             value_area_high=format(profile.vah.normalize(), "f"),
             value_area_is_whole_profile=profile.value_area_is_whole_profile,
         )
+
+
+class ConsensusBarOut(BaseModel):
+    """One bar's cross-venue consensus mid, or the reason there is none (REQ-WP-091).
+
+    PRD §17.1's median over the venues that had a fresh mid at this bar's close.
+    `consensus_mid` travels as a string decimal like every other price on this
+    wire -- a JSON number is a float64 and would lose the cents on the way out --
+    and is `None` where the consensus was refused, so no reader can mistake a
+    refusal for a price.
+
+    **A refused bar is a row with a reason, never an absence.** The chart's gap
+    has to say *why* there is no line there (`one_venue`, `no_quotes`, `stale`,
+    `future`), and only the stored reason can say it; `venue_count` alone would
+    leave a reader guessing between "one venue had a mid" and "no quote arrived".
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    #: When the bar closed, as a string: a nanosecond epoch count is around
+    #: 1.8e18 against JavaScript's 9.0e15 safe maximum ([[REQ-WP-061]]).
+    bar_close_ns: WireTime
+    #: The median of the fresh mids, or `None` when the consensus was refused.
+    consensus_mid: str | None
+    #: How many venues stood behind this bar -- fewer than two is a refusal.
+    venue_count: int
+    #: Why there is no consensus here, and `None` where there is one.
+    refusal_reason: str | None
+
+
+class ConsensusResponse(BaseModel):
+    """`GET /api/v1/consensus`: a window of bars, and the instant it answers for.
+
+    `at_ns` comes back with the rows for the reason `ChannelOut` carries `mode`:
+    a cached or forwarded response must still say which instant it describes,
+    which matters more here because `at_ns` is what makes the answer
+    point-in-time (Principle I) rather than merely a slice of stored rows.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    consensus: tuple[ConsensusBarOut, ...]
+    #: One of the window's own tokens (`4h`, `24h`, `7d`), not a duration.
+    window: str
+    at_ns: WireTime
+
+
+class VenueBasisPointOut(BaseModel):
+    """PRD §17.3's basis of one venue to the consensus at one bar (REQ-WP-091).
+
+    `10000 * (mid_i / consensus_mid - 1)`, under the name `venue_basis_bps` so it
+    never collides with `basis_bps` -- REQ-WP-030's *derivatives* basis, perp
+    against spot, which is a different quantity (REQ-WP-091).
+
+    **The value is a float, not a string decimal**: a price is money and travels
+    as a string everywhere else on this wire, but PRD §19 registers a *feature*
+    as float64 and this is a feature -- the pane plots it as a number.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    bar_close_ns: WireTime
+    venue_basis_bps: float

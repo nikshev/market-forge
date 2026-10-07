@@ -4,6 +4,7 @@
 # @trace: REQ-API-001
 # @trace: REQ-WP-081
 # @trace: REQ-WP-089
+# @trace: REQ-WP-091
 
 [[ADR-019]] made the API depend on a protocol rather than a database, with a
 note saying the durable implementation "arrives with section 29 and replaces it
@@ -31,7 +32,14 @@ from __future__ import annotations
 import uuid
 from dataclasses import dataclass, field
 
-from channelflow.api.repositories import Extrema, FeaturePoint, Market, ScoredSetup
+from channelflow.api.repositories import (
+    Extrema,
+    FeaturePoint,
+    Market,
+    ScoredSetup,
+    select_consensus,
+    select_venue_basis,
+)
 from channelflow.bars import Bar
 from channelflow.channels import ChannelSnapshot
 from channelflow.domain import Instrument
@@ -41,9 +49,11 @@ from channelflow.scoring import SignalScore
 from channelflow.signals import Candidate
 from channelflow.tables import bars as bars_table
 from channelflow.tables import channels as channels_table
+from channelflow.tables import consensus as consensus_table
 from channelflow.tables import dex_depth as dex_depth_table
 from channelflow.tables import extrema as extrema_table
 from channelflow.tables import features as features_table
+from channelflow.tables import quotes as quotes_table
 from channelflow.tables import signals as signals_table
 from channelflow.tables import volume_bins as volume_bins_table
 from channelflow.tables.rows import as_float, as_int, as_str
@@ -72,11 +82,15 @@ class LakehouseRepository:
     _transitions: IcebergTable = field(init=False)
     _dex_depth: IcebergTable = field(init=False)
     _volume_bins: IcebergTable = field(init=False)
+    _consensus: IcebergTable = field(init=False)
+    _quotes: IcebergTable = field(init=False)
 
     def __post_init__(self) -> None:
         self._bars = bars_table.table_for(self.catalog)
         self._dex_depth = dex_depth_table.table_for(self.catalog)
         self._volume_bins = volume_bins_table.table_for(self.catalog)
+        self._consensus = consensus_table.table_for(self.catalog)
+        self._quotes = quotes_table.table_for(self.catalog)
         self._channels = channels_table.table_for(self.catalog)
         self._features = features_table.features_table_for(self.catalog)
         self._markets = features_table.markets_table_for(self.catalog)
@@ -340,6 +354,54 @@ class LakehouseRepository:
         close."""
         return volume_bins_table.read_bins(
             self._volume_bins, venue=venue, symbol=symbol, as_of_ns=as_of_ns, window_ns=window_ns
+        )
+
+    def get_consensus(
+        self,
+        *,
+        asset: str,
+        market_type: str,
+        timeframe_ns: int,
+        window_ns: int,
+        at_ns: int | None,
+    ) -> list[dict[str, object]]:
+        """One asset's consensus rows in `(at - window, at]`, never past `at_ns` (REQ-WP-091).
+
+        Same shared read as the in-memory repository (`repositories.select_consensus`),
+        so the two implementations cannot disagree about "as of".
+        """
+        _ = timeframe_ns
+        return select_consensus(
+            self._consensus.read().to_pylist(),
+            asset=asset,
+            market_type=market_type,
+            window_ns=window_ns,
+            at_ns=at_ns,
+        )
+
+    def get_venue_basis(
+        self,
+        *,
+        asset: str,
+        market_type: str,
+        venue: str,
+        timeframe_ns: int,
+        start_ns: int,
+        end_ns: int,
+    ) -> list[dict[str, object]]:
+        """The viewed venue's `venue_basis_bps` per bar, as of each bar's close (REQ-WP-091).
+
+        Same shared read as the in-memory repository (`repositories.select_venue_basis`).
+        """
+        _ = timeframe_ns
+        return select_venue_basis(
+            self._consensus.read().to_pylist(),
+            self._quotes.read().to_pylist(),
+            asset=asset,
+            market_type=market_type,
+            venue=venue,
+            start_ns=start_ns,
+            end_ns=end_ns,
         )
 
     def dex_depth_at(

@@ -5,6 +5,7 @@
 # @trace: REQ-US-004
 # @trace: REQ-US-003
 # @trace: REQ-WP-074
+# @trace: REQ-WP-091
 
 Read-only, every one of them: Principle IX says phases 1-3 form signals and
 alerts and the system does not open positions, and an API with no write path
@@ -18,6 +19,7 @@ fitter rather than a copy of it (FR-010).
 from __future__ import annotations
 
 import uuid
+from collections.abc import Mapping
 
 from fastapi import APIRouter, HTTPException, Query, Request
 
@@ -32,6 +34,8 @@ from channelflow.api.schemas import (
     ChannelComparisonOut,
     ChannelOut,
     ConfirmedExtremumOut,
+    ConsensusBarOut,
+    ConsensusResponse,
     DexDepthBandOut,
     DexDepthResponse,
     ExplanationOut,
@@ -57,6 +61,7 @@ from channelflow.api.volume_profile import (
     windowed_profile,
 )
 from channelflow.scoring import explain
+from channelflow.tables.rows import as_float, as_int
 from channelflow.timeframes import offered
 
 router = APIRouter(prefix="/api/v1")
@@ -64,6 +69,26 @@ router = APIRouter(prefix="/api/v1")
 
 def _repository(request: Request) -> Repository:
     return request.app.state.repository  # type: ignore[no-any-return]
+
+
+def _market_type(repository: Repository, *, venue: str, symbol: str) -> str | None:
+    """The market type the registry gives this venue's symbol, or nothing.
+
+    The consensus table is keyed by `(asset, market_type)`
+    (`tables/consensus.py`), while the chart asks for a `venue` and a
+    `symbol`. For every market this API serves the asset *is* the symbol --
+    `repositories.select_venue_basis` reads it that way too -- and the market
+    type is what the registry says, never an assumption of `"spot"`: FR-006
+    keeps spot and perpetual consensuses apart, and guessing the type here is
+    how a spot mid would end up measured against a perpetual's consensus.
+
+    `None` is "no market row names this symbol", which every caller below
+    turns into a stated refusal rather than a default.
+    """
+    for market in repository.markets(venue=venue, market_type=None):
+        if market.symbol == symbol:
+            return market.market_type
+    return None
 
 
 @router.get("/timeframes", response_model=TimeframesResponse)
@@ -214,10 +239,185 @@ def get_feature_series(
     start_ns: int,
     end_ns: int,
 ) -> FeatureSeriesResponse:
-    points = _repository(request).feature_points(
-        venue=venue, symbol=symbol, timeframe_ns=timeframe_ns, start_ns=start_ns, end_ns=end_ns
+    """The stored feature series for one market, with REQ-WP-091's basis merged in.
+
+    The shape is the one the chart already calls: five query parameters and
+    every point carrying all of its values (`apps/web/src/api.ts`'s
+    `fetchFeatureSeries` sends exactly `venue`, `symbol`, `timeframe_ns`,
+    `start_ns`, `end_ns`). **There is no `feature` parameter and none is
+    added** -- a caller that sends one gets its request ignored, not a
+    filter, because a required `feature` would break every existing caller of
+    an endpoint that has always answered with the whole point.
+
+    `venue_basis_bps` therefore arrives as one more key in `values`, at the
+    bar closes the consensus pass stored it for, merged into the point that
+    already closed then (or appended as a point of its own where the feature
+    snapshots hold nothing at that instant).
+
+    **Best effort, deliberately.** The basis is an enrichment of an endpoint
+    that already answers: a venue no market row names, or a read that raises,
+    leaves the plain series unchanged rather than turning a working chart into
+    a 500 for an optional layer (REQ-WP-091, FR-003).
+    """
+    repository = _repository(request)
+    points = [
+        FeaturePointOut.of(p)
+        for p in repository.feature_points(
+            venue=venue, symbol=symbol, timeframe_ns=timeframe_ns, start_ns=start_ns, end_ns=end_ns
+        )
+    ]
+    index = {int(point.at_ns): position for position, point in enumerate(points)}
+    for row in _venue_basis_or_nothing(
+        repository,
+        venue=venue,
+        symbol=symbol,
+        timeframe_ns=timeframe_ns,
+        start_ns=start_ns,
+        end_ns=end_ns,
+    ):
+        # The bar's close is the feature's instant: `FeaturePointOut.at_ns` and
+        # the consensus row's `bar_close_ns` are the same moment under two
+        # names, which is why they merge instead of sitting side by side.
+        close_ns = as_int(row, "bar_close_ns")
+        value = as_float(row, "venue_basis_bps")
+        position = index.get(close_ns)
+        if position is None:
+            points.append(FeaturePointOut(at_ns=str(close_ns), values={"venue_basis_bps": value}))
+            index[close_ns] = len(points) - 1
+            continue
+        existing = points[position]
+        # A new model rather than a mutation: `FeaturePointOut` is frozen, and
+        # rebuilding keeps every other value of that point exactly as the
+        # stored snapshot wrote it.
+        points[position] = FeaturePointOut(
+            at_ns=existing.at_ns,
+            values={**existing.values, "venue_basis_bps": value},
+        )
+    points.sort(key=lambda point: int(point.at_ns))
+    return FeatureSeriesResponse(points=tuple(points))
+
+
+def _venue_basis_or_nothing(
+    repository: Repository,
+    *,
+    venue: str,
+    symbol: str,
+    timeframe_ns: int,
+    start_ns: int,
+    end_ns: int,
+) -> list[dict[str, object]]:
+    """The viewed venue's `venue_basis_bps` rows, or none if this read cannot have them.
+
+    `_market_type` returning nothing is not an error the caller should see --
+    the series is still the series. A raised read is swallowed the same way,
+    for the reason stated on `get_feature_series`: an optional enrichment may
+    fail, the endpoint's own answer may not.
+    """
+    try:
+        market_type = _market_type(repository, venue=venue, symbol=symbol)
+        if market_type is None:
+            return []
+        return repository.get_venue_basis(
+            asset=symbol,
+            market_type=market_type,
+            venue=venue,
+            timeframe_ns=timeframe_ns,
+            start_ns=start_ns,
+            end_ns=end_ns,
+        )
+    except Exception:  # noqa: BLE001 -- deliberately total: see the docstring.
+        return []
+
+
+def _consensus_bar(row: Mapping[str, object]) -> ConsensusBarOut:
+    """One stored consensus row as the wire shapes it.
+
+    `consensus_mid` travels as the decimal text it was stored as -- a JSON
+    number is a float64 and would lose the cents on the way out -- and stays
+    `None` where the consensus was refused, so no reader can mistake a
+    refusal for a price. An empty `refusal_reason` is the plane's "no
+    refusal" (`tables/consensus.py`) and travels as `None`, the wire's.
+    """
+    mid = row.get("consensus_mid")
+    reason = row.get("refusal_reason")
+    return ConsensusBarOut(
+        bar_close_ns=str(as_int(row, "bar_close_ns")),
+        consensus_mid=None if mid is None else str(mid),
+        venue_count=as_int(row, "venue_count"),
+        refusal_reason=None if not reason else str(reason),
     )
-    return FeatureSeriesResponse(points=tuple(FeaturePointOut.of(p) for p in points))
+
+
+@router.get("/consensus", response_model=ConsensusResponse)
+def get_consensus(
+    request: Request,
+    venue: str,
+    symbol: str,
+    timeframe_ns: int,
+    # Refused by the request validator for any token outside `ProfileWindow`
+    # (422), the same `Literal` `get_volume_profile` takes. `None` is only
+    # "the caller named no window", which is refused below.
+    window: ProfileWindow | None = None,
+    at_ns: int | None = None,
+) -> ConsensusResponse:
+    """PRD §17.1's consensus mid, one row per bar, over a rolling window (REQ-WP-091).
+
+    What the chart draws over its candles as an optional layer: the median of
+    the venues that had a fresh mid at each bar's close, with `venue_count`
+    behind it and -- where fewer than two venues contributed -- no mid at all
+    but the stored `refusal_reason`, so a gap in the line says *why* rather
+    than leaving a reader to guess between "one venue had a mid" and "no
+    quote arrived" (FR-002).
+
+    **Point-in-time (Principle I).** With `at_ns`, a bar that closed after
+    that instant has not happened yet and stays out of the answer however the
+    stored row would look -- `repositories.select_consensus` filters on
+    `bar_close_ns <= at_ns` and this route adds nothing to it, so live and
+    replay read one rule. Omitting `at_ns` asks about the latest stored bar's
+    close, which is what "the latest" means for a table whose only clock is
+    `bar_close_ns`, and the response says which instant it answered for.
+
+    **Which consensus is meant comes from the registry, not the request.**
+    The table is keyed by asset and market type, so `_market_type` decides it
+    (FR-006: spot against spot, perps against perps, never blended). A symbol
+    no market row names is a 404 saying so -- the convention
+    `get_volume_profile` sets with `ProfileUnavailable` -- never an empty 200
+    a chart would draw as a flat line at nothing; so is a window the stored
+    rows never reach. The market lookup answers before the absent-`window`
+    refusal below, so such a request is still told what is missing rather
+    than only what it failed to say.
+    """
+    repository = _repository(request)
+    market_type = _market_type(repository, venue=venue, symbol=symbol)
+    if market_type is None:
+        raise HTTPException(status_code=404, detail=f"unknown market: {venue} {symbol}")
+    if window is None:
+        raise HTTPException(status_code=422, detail="window is required: one of 4h, 24h, 7d")
+
+    rows = repository.get_consensus(
+        asset=symbol,
+        market_type=market_type,
+        timeframe_ns=timeframe_ns,
+        window_ns=WINDOWS[window],
+        at_ns=at_ns,
+    )
+    if not rows:
+        raise HTTPException(
+            status_code=404, detail=f"no consensus for {venue} {symbol} in {window}"
+        )
+
+    # The instant the answer describes: the one asked about, or -- when none
+    # was -- the close of the newest bar in it, which is the effective instant
+    # `select_consensus` windows from. Never a clock reading: the same stored
+    # rows answer a historical chart and a live one (Principle VII).
+    effective_at_ns = (
+        at_ns if at_ns is not None else max(as_int(row, "bar_close_ns") for row in rows)
+    )
+    return ConsensusResponse(
+        consensus=tuple(_consensus_bar(row) for row in rows),
+        window=window,
+        at_ns=str(effective_at_ns),
+    )
 
 
 @router.get("/volume-profile", response_model=VolumeProfileOut)

@@ -41,6 +41,10 @@ TIMESTAMP_FIELDS = {
     ("VolumeProfileOut", "covers_from_ns"),
     ("DexDepthResponse", "requested_at_ns"),
     ("DexDepthResponse", "state_time_ns"),
+    # REQ-WP-091: the bar close a consensus is as of, and the instant asked about.
+    ("ConsensusBarOut", "bar_close_ns"),
+    ("ConsensusResponse", "at_ns"),
+    ("VenueBasisPointOut", "bar_close_ns"),
 }
 
 #: Spans, not moments. Bounded by the timeframes this system supports.
