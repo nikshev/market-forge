@@ -289,6 +289,7 @@ secret; `.env` is not committed and never should be.
 | `CHANNELFLOW_MAINTENANCE_INTERVAL`, `CHANNELFLOW_KEEP_DAYS` | how often maintenance runs, and what it may expire |
 | `CHANNELFLOW_CHANNEL_INTERVAL` | how often the channel worker re-fits over the stored bars ([[REQ-WP-077]]) |
 | `CHANNELFLOW_CONSENSUS_INTERVAL`, `CHANNELFLOW_CONSENSUS_STALENESS_NS` | how often the cross-venue consensus pass runs (5m, the same grammar as `CHANNELFLOW_CHANNEL_INTERVAL`) and how old a quote may be at a bar's close and still count toward the median, in nanoseconds (60000000000 is 60 s; a staler one is excluded with its reason) ([[REQ-WP-091]]) |
+| `CHANNELFLOW_GAP_THRESHOLD` | how large a hole in the bar series the extremum detector and the channel fit treat as contiguous before they restart at it — 1 (the default) bridges a single missing bar and restarts on two or more, 0 restarts on any gap, a larger value bridges up to that many ([[REQ-WP-087]]) |
 | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` | alert delivery, empty unless alerting is wanted |
 | `CHANNELFLOW_CHART_BASE_URL` | where an alert's chart link points |
 
