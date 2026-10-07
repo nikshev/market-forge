@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "§17.1, §17.3, §17.2, §44A.15; owner's direction 2026-10-04"
 prd_lines: "2520-2552, 5910-5925"
 phase: null
-status: planned
+status: implemented
 depends_on: [REQ-WP-016, REQ-WP-083]
 tags: [web, chart, cross-venue, consensus, basis]
 hard_gated: false
