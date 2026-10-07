@@ -6,10 +6,11 @@
 // @trace: REQ-WP-086
 // @trace: REQ-WP-089
 // @trace: REQ-WP-090
+// @trace: REQ-WP-091
 //
 // PRD section 27.2's overlays, for the four layers REQ-WP-009's acceptance
 // names: candles, the channel's centre and boundaries, the setup zones, and a
-// marker at the signal.
+// marker at the signal -- plus REQ-WP-091's optional consensus line over them.
 //
 // The decision about *what* to draw lives in `series.ts`, where it can be
 // tested; this attaches it to the library. jsdom cannot lay out a container,
@@ -28,6 +29,7 @@ import type {
   BarOut,
   ChannelMode,
   ChannelOut,
+  ConsensusPointOut,
   ExtremaResponse,
   Overlay,
   SignalOut,
@@ -54,6 +56,7 @@ export function Chart({
   signal = null,
   profile = null,
   volumeProfile = null,
+  consensus = null,
   overlays = DEFAULT_OVERLAYS,
   focusAtNs = null,
   extrema = { confirmed: [], candidates: [] },
@@ -70,6 +73,13 @@ export function Chart({
   profile?: Profile | null;
   /** The profile by price level with the buy/sell split, drawn at the side of the chart (REQ-WP-089). */
   volumeProfile?: VolumeProfileOut | null;
+  /**
+   * The cross-venue consensus, one point per bar (REQ-WP-091): the median mid where at least two
+   * venues contributed, the refusal reason where they did not -- the `consensus` array of a
+   * `ConsensusOut`. `null` (the default) draws nothing and says nothing; the line itself is a
+   * layer, so it is drawn only when `overlays` names it.
+   */
+  consensus?: ConsensusPointOut[] | null;
   overlays?: readonly Overlay[];
   focusAtNs?: bigint | null;
   extrema?: ExtremaResponse;
@@ -182,6 +192,27 @@ export function Chart({
       created.push(line);
     }
 
+    // REQ-WP-091 (PRD §17.1): the cross-venue consensus mid as one violet line over the candles.
+    // A bar whose consensus was refused has no point, so the library breaks the line there -- the
+    // gap *is* the refusal, never a one-venue "consensus" stretched across it. The gap's reason is
+    // said beside the chart (below), not written into the line.
+    if (on.has("consensus") && consensus !== null) {
+      const line = instance.addLineSeries({
+        // Violet, distinct from the channel's centre (#7c5cff) so the two never read as one line.
+        color: "#7048e8",
+        lineWidth: 2,
+        lineStyle: 0,
+        priceLineVisible: false,
+        title: "consensus",
+      });
+      line.setData(
+        consensus
+          .filter((point): point is ConsensusPointOut & { consensus_mid: string } => point.consensus_mid !== null)
+          .map((point) => ({ time: toSeconds(point.bar_close_ns), value: Number(point.consensus_mid) })),
+      );
+      created.push(line);
+    }
+
     // Zones are drawn as price lines rather than filled areas: the library has
     // no band primitive, and faking one with two stacked areas would put a
     // shape on the chart whose edges do not mean what they look like.
@@ -260,7 +291,27 @@ export function Chart({
         }
       }
     };
-  }, [bars, channel, signal, profile, volumeProfile, overlays, focusAtNs, extrema, showCandidates, mode]);
+  }, [bars, channel, signal, profile, volumeProfile, consensus, overlays, focusAtNs, extrema, showCandidates, mode]);
 
-  return <div ref={container} data-testid="chart" />;
+  // REQ-WP-091 / FR-004: the gap in the line is not silent. The distinct reasons the consensus was
+  // refused in the data on screen, said once each beside the chart -- only while the layer is on
+  // and only when there is something to say, so a complete consensus (or none at all) adds no notice.
+  const refusalReasons = [
+    ...new Set(
+      (consensus ?? [])
+        .map((point) => point.refusal_reason)
+        .filter((reason): reason is string => reason !== null),
+    ),
+  ];
+  const notice =
+    overlays.includes("consensus") && refusalReasons.length > 0 ? (
+      <div role="status">Consensus not drawn for every bar: {refusalReasons.join(", ")}</div>
+    ) : null;
+
+  return (
+    <>
+      <div ref={container} data-testid="chart" />
+      {notice}
+    </>
+  );
 }

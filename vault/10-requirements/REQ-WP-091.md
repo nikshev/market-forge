@@ -100,7 +100,11 @@ and the book subscription itself (below).
     - `tests/unit/tables/test_quotes.py::test_the_table_is_named_quotes`
     - `tests/unit/tables/test_quotes.py::test_to_row_maps_the_quote_with_exchange_time_and_receive_time_apart`
 - **Code:**
+    - `apps/web/src/App.tsx`
+    - `apps/web/src/Chart.tsx`
+    - `apps/web/src/api.ts`
     - `apps/web/src/panes.ts`
+    - `apps/web/src/types.ts`
     - `src/channelflow/api/lakehouse_repository.py`
     - `src/channelflow/api/repositories.py`
     - `src/channelflow/api/routes.py`

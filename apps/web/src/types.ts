@@ -1,6 +1,7 @@
 // @trace: REQ-WP-082
 // @trace: REQ-WP-009
 // @trace: REQ-WP-075
+// @trace: REQ-WP-091
 //
 // The wire shapes of PRD section 28, mirrored. Prices arrive as strings --
 // the API sends Decimals that way on purpose, because a price round-tripped
@@ -121,6 +122,11 @@ export const OVERLAYS = [
   "lob_walls",
   "dex_liquidity_bands",
   "liquidation_levels",
+  // Not in PRD section 27.2's twelve: REQ-WP-091's own optional layer (FR-004),
+  // named here so the deep link can carry it and `overlays.ts` recognises it.
+  // The alert's `channelflow.alerting.Overlay` does not have it yet, so no alert
+  // writes it -- a chart link can.
+  "consensus",
 ] as const;
 export type Overlay = (typeof OVERLAYS)[number];
 
@@ -291,4 +297,39 @@ export interface VolumeProfileOut {
   value_area_low: string;
   value_area_high: string;
   value_area_is_whole_profile: boolean;
+}
+
+/**
+ * One bar's cross-venue consensus mid, or the reason there is none (REQ-WP-091, PRD §17.1: the
+ * median of the fresh mids of at least two venues at this bar's close).
+ *
+ * `consensus_mid` stays a **string** for the reason every price on this wire is one — a Decimal
+ * round-tripped through a JSON float is a different price. The chart converts it with `Number()`
+ * at draw time, where it stops being a price and becomes a coordinate. `null` is a refusal, never
+ * a price: `refusal_reason` says why, and `venue_count` below two is what makes it one.
+ */
+export interface ConsensusPointOut {
+  /** When the bar closed — a `bigint`, because `api.ts`'s `convertTimes` parses every `_ns`
+   * instant from the string the API sends (a nanosecond epoch count is around 1.8e18 against
+   * JavaScript's 9.0e15 safe maximum, [[REQ-WP-061]]). */
+  bar_close_ns: bigint;
+  /** The median of the fresh mids, or `null` where the consensus was refused. */
+  consensus_mid: string | null;
+  /** How many venues stood behind this bar — fewer than two is a refusal. */
+  venue_count: number;
+  /** Why there is no consensus here, and `null` where there is one. A refused bar is a row with
+   * a reason, never an absence: the chart's gap has to say *why*. */
+  refusal_reason: string | null;
+}
+
+/** `GET /api/v1/consensus` (REQ-WP-091): a window of bars, and the instant the answer describes.
+ *
+ * `window` is one of the window's own tokens (`4h`, `24h`, `7d`), not a duration. `at_ns` travels
+ * for the reason `ChannelOut` carries `mode`: a cached or forwarded response must still say which
+ * instant it answers for, which is what makes the answer point-in-time (Principle I) rather than
+ * merely a slice of stored rows. */
+export interface ConsensusOut {
+  consensus: ConsensusPointOut[];
+  window: string;
+  at_ns: bigint;
 }

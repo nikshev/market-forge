@@ -9,6 +9,7 @@
 // @trace: REQ-WP-083
 // @trace: REQ-WP-089
 // @trace: REQ-WP-090
+// @trace: REQ-WP-091
 //
 // The page an alert's deep link opens. PRD section 27.1's route, and section
 // 27.5's default: AS-SEEN-THEN, always, unless the link says otherwise in so
@@ -28,6 +29,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   fetchBars,
   fetchChannel,
+  fetchConsensus,
   fetchDexDepth,
   fetchExtrema,
   fetchFeatureSeries,
@@ -57,6 +59,7 @@ import {
   type BarOut,
   type ChannelMode,
   type ChannelOut,
+  type ConsensusOut,
   type ExtremaResponse,
   type FeaturePointOut,
   type VolumeProfileOut,
@@ -68,6 +71,11 @@ import {
 function atNsForDepth(linkAtNs: bigint | null, bars: readonly BarOut[]): bigint {
   return linkAtNs ?? bars.at(-1)?.close_time_ns ?? 0n;
 }
+
+// What a 404 from `/consensus` means (REQ-WP-091): the server has collected no quotes for this
+// market yet, which is an answer rather than a failure -- the same distinction the volume profile
+// makes. It is said in its own words and never as an error.
+const NO_CONSENSUS_YET = "no consensus yet";
 
 function asOptions(reported: readonly { token: string; timeframe_ns: number }[]): TimeframeOption[] {
   return reported.map((entry) => ({ token: entry.token, timeframeNs: entry.timeframe_ns }));
@@ -149,6 +157,13 @@ export function App(): JSX.Element {
   const [profile, setProfile] = useState<VolumeProfileOut | null>(null);
   const [profileState, setProfileState] = useState<ProfileState>("loading");
   const [profileFailure, setProfileFailure] = useState("");
+  // The cross-venue consensus, in the window the chart is showing (REQ-WP-091). Its own state,
+  // like the profile's: the chart is drawn whether or not the consensus answered, and an absent
+  // consensus is a gap in the line rather than an empty page.
+  const [consensus, setConsensus] = useState<ConsensusOut | null>(null);
+  // Why there is no consensus when one was asked for: null while there is one, or when nothing was
+  // asked. The per-bar refusals are `Chart`'s to say; this is the whole request's answer.
+  const [consensusFailure, setConsensusFailure] = useState<string | null>(null);
 
   // Live refresh (REQ-WP-090): timer, in-flight guard, visibility, failure state
   const refreshIntervalMs = (() => {
@@ -358,6 +373,59 @@ export function App(): JSX.Element {
     };
   }, [link, wantsProfile, profileWindow]);
 
+  // The cross-venue consensus (REQ-WP-091, PRD §17.1): asked for only when the link turned the
+  // layer on, for the market in the link, as of the link's instant, in the timeframe in force.
+  // The same shape as the profile's effect above: it never holds up the chart, and a request that
+  // fails is stated rather than drawn as an absent line that could read as a quiet market.
+  const wantsConsensus = link !== null && link.overlays.overlays.includes("consensus");
+  useEffect(() => {
+    if (link === null || !wantsConsensus) {
+      setConsensus(null);
+      setConsensusFailure(null);
+      return;
+    }
+    if (option === null) {
+      // The offered set has not answered yet, so there is no timeframe to ask with. Nothing has
+      // been asked, so there is nothing to clear either.
+      return;
+    }
+    let live = true;
+    setConsensus(null);
+    setConsensusFailure(null);
+    void (async () => {
+      try {
+        const result = await fetchConsensus({
+          venue: link.venue,
+          symbol: link.symbol,
+          timeframeNs: option.timeframeNs,
+          // The profile's window, for the same reason: how far back to read, chosen once here
+          // rather than carried in the link.
+          window: "24h",
+          atNs: link.atNs,
+        });
+        if (!live) {
+          return;
+        }
+        if (result.ok) {
+          setConsensus(result.value);
+        } else {
+          setConsensus(null);
+          // 404 is the server saying no quotes have been collected for this market yet -- an
+          // answer, not a failure (FR-016 states the difference in the words it uses).
+          setConsensusFailure(result.error === "HTTP 404" ? NO_CONSENSUS_YET : result.error);
+        }
+      } catch (cause) {
+        if (live) {
+          setConsensus(null);
+          setConsensusFailure(cause instanceof Error ? cause.message : String(cause));
+        }
+      }
+    })();
+    return () => {
+      live = false;
+    };
+  }, [link, wantsConsensus, option]);
+
   useEffect(() => {
     void load(true); // initial load is "initial"
     // Releasing the id on every dep change or unmount supersedes an in-flight
@@ -508,6 +576,10 @@ export function App(): JSX.Element {
             signal={null}
             overlays={link.overlays.overlays}
             volumeProfile={profile}
+            // The `consensus` array of the envelope, not the envelope: `Chart`'s prop is one point
+            // per bar (T017's test pins the shape), and the envelope's window and instant are the
+            // request's own, not something the chart draws.
+            consensus={consensus?.consensus ?? null}
             focusAtNs={link.atNs}
             extrema={extrema}
             showCandidates={showCandidates}
@@ -518,6 +590,20 @@ export function App(): JSX.Element {
             isInitialLoad={isInitialLoad}
           />
         </Paper>
+      )}
+      {refused || !wantsConsensus || consensusFailure === null ? null : (
+        // Said above the panes, never left as a gap: with no consensus at all the chart would look
+        // exactly like a layer nobody switched on (FR-016).
+        <Alert
+          severity={consensusFailure === NO_CONSENSUS_YET ? "info" : "warning"}
+          role="status"
+          aria-label="Consensus"
+          sx={{ my: 1 }}
+        >
+          {consensusFailure === NO_CONSENSUS_YET
+            ? "No consensus collected for this market yet."
+            : `Could not load the consensus: ${consensusFailure}`}
+        </Alert>
       )}
       {refused || !wantsProfile ? null : (
         <ProfileControls

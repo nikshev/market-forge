@@ -3,6 +3,7 @@
 // @trace: REQ-WP-074
 // @trace: REQ-WP-075
 // @trace: REQ-WP-089
+// @trace: REQ-WP-091
 //
 // A typed client for PRD section 28. Every call reports a failure as a value
 // rather than throwing into a render: FR-016 says a failed load must never be
@@ -21,6 +22,7 @@ import type {
   FeatureSeriesResponse,
   SignalOut,
   VolumeProfileOut,
+  ConsensusOut,
 } from "./types";
 import { BadTime, nanoseconds } from "./time";
 import { AS_SEEN_THEN } from "./types";
@@ -213,6 +215,29 @@ export function fetchVolumeProfile(params: {
     symbol: params.symbol,
     window: params.window,
     // Omitted rather than null when there is no instant: the profile is then "as of now", the newest block closed.
+    ...(params.atNs === null ? {} : { at_ns: params.atNs }),
+  });
+}
+
+/**
+ * The cross-venue consensus mid per bar (REQ-WP-091, PRD §17.1): the median of the fresh mids of the
+ * venues that have one at each bar's close, with `venue_count` and a `refusal_reason` where fewer than
+ * two contributed -- so the caller draws a gap that says why, never a one-venue "consensus".
+ */
+export function fetchConsensus(params: {
+  venue: string;
+  symbol: string;
+  timeframeNs: number;
+  window: string;
+  atNs: bigint | null;
+}): Promise<Result<ConsensusOut>> {
+  return get("/api/v1/consensus", {
+    venue: params.venue,
+    symbol: params.symbol,
+    timeframe_ns: params.timeframeNs,
+    window: params.window,
+    // Omitted rather than null when there is no instant: without `at_ns` the endpoint answers for
+    // the newest closed bars, which keeps the answer point-in-time either way (Principle I).
     ...(params.atNs === null ? {} : { at_ns: params.atNs }),
   });
 }
