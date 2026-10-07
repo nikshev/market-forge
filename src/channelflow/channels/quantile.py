@@ -1,6 +1,7 @@
 """Baseline C: quantile regression channel (PRD section 13.4).
 
 # @trace: REQ-CHAN-001
+# @trace: REQ-WP-087
 
     "Fit conditional quantiles directly: q10 lower; q50 center; q90 upper.
      This supports asymmetric channels.
@@ -91,6 +92,9 @@ class QuantileChannel:
             model_name=MODEL_NAME,
             model_version=MODEL_VERSION,
             lookback=self.lookback,
+            # The window this fit actually used (REQ-WP-087).
+            window_bars=len(window),
+            window_short=len(window) < self.lookback,
             center_now=center_now,
             upper_now=upper_now,
             lower_now=lower_now,

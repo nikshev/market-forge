@@ -1,6 +1,7 @@
 """Baseline A: rolling OLS on log price (PRD section 13.2).
 
 # @trace: REQ-WP-006
+# @trace: REQ-WP-087
 # @trace: REQ-EXP-001
 
 The filtering comes before the fitting, deliberately. PRD section 13.1 states
@@ -103,6 +104,11 @@ class RollingOLSChannel:
             model_name=MODEL_NAME if self.bands == "residual_quantiles" else STD_MODEL_NAME,
             model_version=MODEL_VERSION,
             lookback=self.lookback,
+            # The window this fit actually used (REQ-WP-087). Stated rather
+            # than left to the model's default so the count is the fit's own,
+            # not a claim inferred from the lookback it asked for.
+            window_bars=len(window),
+            window_short=len(window) < self.lookback,
             center_now=center_now,
             upper_now=upper_now,
             lower_now=lower_now,

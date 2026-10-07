@@ -1,6 +1,7 @@
 """Baseline B: robust regression channel (PRD section 13.3).
 
 # @trace: REQ-CHAN-001
+# @trace: REQ-WP-087
 
     "Candidate estimators: Huber regression; Theil-Sen; RANSAC only as
      experimental due discontinuous model changes.
@@ -87,6 +88,9 @@ class HuberChannel:
             model_name=MODEL_NAME,
             model_version=MODEL_VERSION,
             lookback=self.lookback,
+            # The window this fit actually used (REQ-WP-087).
+            window_bars=len(window),
+            window_short=len(window) < self.lookback,
             center_now=center_now,
             upper_now=upper_now,
             lower_now=lower_now,

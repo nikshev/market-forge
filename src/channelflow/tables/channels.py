@@ -1,6 +1,7 @@
 """PRD §29.6's `channel_snapshots`, as a canonical table.
 
 # @trace: REQ-STORE-002
+# @trace: REQ-WP-087
 
     ## 29.6. `channel_snapshots`
     Immutable append-only.
@@ -99,11 +100,23 @@ def to_row(
 
 
 def from_row(row: dict[str, object]) -> ChannelSnapshot:
+    # The window fields (REQ-WP-087) are not columns in this schema yet, and a
+    # row holds nothing to derive them from. What it does hold is `lookback`,
+    # and every row written so far came from a fitter whose `fit_window`
+    # refuses to fit on fewer than `lookback` bars -- so "full window, not
+    # short, no gap in it" is the truth about those rows, not a guess. The
+    # moment a producer can fit a short window, these three need columns to
+    # round-trip through storage; until then inventing anything else here would
+    # be the snapshot claiming a window it did not have.
+    lookback = as_int(row, "lookback")
     return ChannelSnapshot(
         as_of_ns=as_int(row, "as_of_ns"),
         model_name=as_str(row, "model_name"),
         model_version=as_str(row, "model_version"),
-        lookback=as_int(row, "lookback"),
+        lookback=lookback,
+        window_bars=lookback,
+        window_short=False,
+        first_bar_after_gap_ns=None,
         center_now=as_float(row, "center_now"),
         upper_now=as_float(row, "upper_now"),
         lower_now=as_float(row, "lower_now"),
