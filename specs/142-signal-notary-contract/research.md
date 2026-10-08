@@ -71,3 +71,15 @@ measured on testnet in [[REQ-INFRA-007]], not assumed here.
 Account `0x2A3b97f9e0454Ed44d016FE92ccBCEcF8Cf02131` holds 5 MON (read back from chain 10143 on 2026-10-08).
 A create plus a smoke commit and resolve costs a small fraction of that; the balance is re-read immediately
 before broadcasting.
+
+## R5 — finding (T002, 2026-10-08, Foundry 1.7.1)
+
+`forge create` and `cast send` accept `--account <NAME>` with `--password-file <FILE>` (also the environment
+variables `ETH_KEYSTORE_ACCOUNT` and `ETH_PASSWORD`), so a deploy needs no key on the command line. The one
+awkward step is *importing* the key: `cast wallet import` takes the key only as `--private-key <hex>`
+(argv) or from a hidden prompt (`-i`), which wants a terminal. It was imported once through a pty so the key
+never appeared in an argument list: account `notary-deployer`, password in a mode-600 file
+(`/root/.monad/keystore.pass`) outside the repository, resulting address read back and equal to the funded
+account (`0x2A3b…2131`). The plain-text `/root/.monad/deployer.env` still holds the key and can be deleted
+once the keystore is the only path; the tools read the account *name* and the password-file *path*, never a
+key.

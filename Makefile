@@ -3,7 +3,7 @@ PY   := $(VENV)/bin/python
 PIP  := uv pip install --python $(PY)
 
 .PHONY: venv install test lint markers trace validate dashboard graph clean index mutate \
-	web-install web-typecheck web-test web-build
+	web-install web-typecheck web-test web-build contracts-test notary-verify
 
 venv:
 	uv venv $(VENV) --python 3.12 --no-python-downloads
@@ -23,6 +23,18 @@ test:
 # runs in CI. See REQ-INFRA-002.
 test-fast:
 	$(PY) -m pytest -q -m "not integration"
+
+# The Solidity suite of the signal notary (REQ-INFRA-006). It also runs inside `make test`
+# through tests/contracts, which is what makes it visible to the trace graph; this target is
+# the quick way to see forge's own output. Needs Foundry (`foundryup`).
+contracts-test:
+	cd contracts && forge test
+
+# Re-read the recorded Monad deployment from the public RPC and compare it with the record and
+# with a fresh compile. Exits 1 and says which check differs. Needs MONAD_SIGNER_* only to
+# resolve the configuration; it sends nothing.
+notary-verify:
+	$(PY) -m tools.notary.verify
 
 lint:
 	$(VENV)/bin/ruff check tools tests src

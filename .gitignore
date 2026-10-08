@@ -19,3 +19,7 @@ apps/web/dist/
 # The stack's data directory (REQ-WP-065). A bind mount, not a named volume,
 # so it is visible and copyable -- and therefore must never be committed.
 /data/
+
+# Foundry build output
+contracts/out/
+contracts/cache/

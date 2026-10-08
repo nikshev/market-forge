@@ -553,6 +553,49 @@ says so in words rather than drawing them as empty graphs. A flat line at the
 bottom of a chart reads as "nothing is going wrong", which is precisely what
 nobody knows. See `REQ-WP-055`.
 
+## The signal notary (Monad testnet)
+
+[REQ-INFRA-006] A small contract, `contracts/src/SignalNotary.sol`, records that a hash was committed
+and later what became of it. It is a notary of this system's own decisions: one account writes, a hash
+is committed once and resolved once, and nothing can be edited afterwards. What is hashed and when is
+[REQ-INFRA-007]; this section is only the contract and how to deploy and check it.
+
+A commit proves the hash existed **no later than its block**. It does not prove a signal came before a
+price move, and the contract keeps the bar's close time (as claimed by the committer) and the block time
+as two separate values.
+
+    make contracts-test                         # the Solidity suite, offline once solc is cached
+    python -m tools.notary.deploy               # dry run: what would be sent; nothing is
+    python -m tools.notary.deploy --broadcast   # deploy; writes deployments/monad-testnet.json last
+    make notary-verify                          # re-read the deployment from the chain
+    python -m tools.notary.smoke                # one real commit and resolve
+
+Configuration is in `.env.example` under "signal notary". The signer is a Foundry keystore account and
+a file holding its password; the key is never on a command line and never in the environment:
+
+    cast wallet import notary-deployer -i       # once, at a terminal; the key is typed, not passed
+    export MONAD_SIGNER_ACCOUNT=notary-deployer
+    export MONAD_SIGNER_PASSWORD_FILE=/path/outside/the/repo/keystore.pass   # mode 600
+
+| Variable | Meaning |
+|---|---|
+| `MONAD_RPC_URL` | The node to talk to; defaults to the published Monad testnet endpoint |
+| `MONAD_CHAIN_ID` | The chain id the node must report (10143 for Monad testnet); anything else is refused |
+| `MONAD_EXPLORER_URL` | Base for transaction links, `<base>/tx/<hash>` |
+| `MONAD_SIGNER_ACCOUNT` | Name of the Foundry keystore account that signs (required) |
+| `MONAD_SIGNER_PASSWORD_FILE` | Path of the file holding that keystore's password (required) |
+| `MONAD_NOTARY_OWNER` | The one account the contract lets write; empty means the signer's own address |
+| `MONAD_NOTARY_ADDRESS` | The deployed contract; set only after a deployment was read back from the chain |
+
+The deploy refuses to run against a chain id other than `MONAD_CHAIN_ID`, refuses `--broadcast` with
+uncommitted changes in `contracts/`, and writes the record only after the receipt, the created address,
+the on-chain code (hashed and compared with a fresh local compile) and `owner()` have all been read
+back. If the testnet is reset the recorded address stops resolving and `make notary-verify` says so;
+the contract is then redeployed from the same source.
+
+The owner key cannot be rotated. A leaked key is remedied by a new contract and a retired old one, not
+by a feature.
+
 ## What this stack deliberately does not run
 
 PRD §6.2's MVP list names services this deployment does not have, each for a

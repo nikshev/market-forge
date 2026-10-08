@@ -1,0 +1,11 @@
+[profile.default]
+src = "src"
+test = "test"
+out = "out"
+cache_path = "cache"
+solc_version = "0.8.28"
+evm_version = "cancun"
+libs = []
+# Stable bytecode: the deployed runtime code is compared byte for byte with a local compile.
+bytecode_hash = "ipfs"
+cbor_metadata = true

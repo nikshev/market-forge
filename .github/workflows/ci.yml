@@ -167,6 +167,14 @@ jobs:
       - name: Type check
         run: make typecheck
 
+      # The signal notary's Solidity suite (REQ-INFRA-006) runs inside `make test` through
+      # tests/contracts, and that test FAILS, not skips, without `forge`. Pinned to the version
+      # the contract was developed with. The first compile fetches solc 0.8.28.
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: v1.7.1
+
       - name: Tests (including integration)
         run: make test
 
