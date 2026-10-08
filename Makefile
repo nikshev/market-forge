@@ -37,15 +37,18 @@ contracts-test:
 notary-verify:
 	$(PY) -m tools.notary.verify
 
-# What the notary needs from the build and the deploy (REQ-INFRA-007): the commit the images are
-# built from, whether that tree was clean, and the instant the notary starts counting. Use as
+# What the notary needs from a build (REQ-INFRA-007): the commit the images are built from and
+# whether that tree was clean. Use as
 #     eval "$(make -s notary-build-info)" && docker compose up -d --no-deps --build worker notary
 # A dirty tree prints CHANNELFLOW_CODE_DIRTY=true, and the notary then stores its records as
 # unnotarizable rather than hash a commit that names code that exists nowhere.
+#
+# It deliberately does NOT print the epoch (CHANNELFLOW_NOTARY_FROM). That is set once, in `.env`,
+# when the notary is first enabled: printing it here let an exported value override `.env` on every
+# deploy and move the epoch forward, leaving a permanent hole of records that were never registered.
 notary-build-info:
 	@echo "export CHANNELFLOW_CODE_COMMIT=$$(git rev-parse HEAD)"
 	@if [ -z "$$(git status --porcelain)" ]; then echo "export CHANNELFLOW_CODE_DIRTY=false"; else echo "export CHANNELFLOW_CODE_DIRTY=true"; fi
-	@echo "export CHANNELFLOW_NOTARY_FROM=$$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
 lint:
 	$(VENV)/bin/ruff check tools tests src

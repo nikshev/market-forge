@@ -600,14 +600,14 @@ The `worker` registers each snapshot and decision it computes and holds no key; 
 batches them, signs one root per window and sends it. What a commit proves, and the measured delay, are
 in [notary.md](notary.md). It is off until switched on, and a stack without keys never runs it.
 
-    eval "$(make -s notary-build-info)"        # the commit, whether the tree was clean, and the epoch
+    eval "$(make -s notary-build-info)"        # the commit and whether the tree was clean, for this build
     docker compose up -d --no-deps --build worker notary
     docker compose exec notary python -m channelflow.notary.main outbox     # what waits, and why
 
 | Variable | Meaning |
 |---|---|
 | `CHANNELFLOW_NOTARY_ENABLED` | the worker registers records only when this is true |
-| `CHANNELFLOW_NOTARY_FROM` | the instant from which records are notarized (ISO-8601 with a timezone); required when enabled, no default |
+| `CHANNELFLOW_NOTARY_FROM` | the instant from which records are notarized (ISO-8601 with a timezone); required when enabled, no default; set **once** in `.env` — a value exported at deploy time overrides it and moves the epoch, leaving records unregistered |
 | `CHANNELFLOW_CODE_COMMIT` | the commit the images were built from (a build argument; the container has no `.git`) |
 | `CHANNELFLOW_CODE_DIRTY` | `false` if the tree was clean; anything else makes records unnotarizable, visibly |
 | `MONAD_KEYSTORE_FILE` | host path of the Foundry keystore the `notary` service signs with; read-only, owned by uid 10001, mode 400, outside the repository |

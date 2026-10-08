@@ -76,9 +76,12 @@ def test_the_commit_is_baked_in_at_build_for_the_worker_and_the_notary() -> None
 
 
 @pytest.mark.trace("REQ-INFRA-007")
-def test_the_build_info_target_prints_the_commit_the_dirty_flag_and_the_epoch() -> None:
+def test_the_build_info_target_prints_the_commit_and_the_dirty_flag_but_never_the_epoch() -> None:
+    """The epoch is set once, in `.env`. Printed here, an exported value overrides `.env` on every
+    deploy and moves the epoch forward -- which happened on 2026-10-08 and left a hole."""
     makefile = (ROOT / "Makefile").read_text()
     target = makefile.split("notary-build-info:")[1].split("\n\n")[0]
-    for needle in ("CHANNELFLOW_CODE_COMMIT", "CHANNELFLOW_CODE_DIRTY", "CHANNELFLOW_NOTARY_FROM"):
+    for needle in ("CHANNELFLOW_CODE_COMMIT", "CHANNELFLOW_CODE_DIRTY"):
         assert needle in target
+    assert "export CHANNELFLOW_NOTARY_FROM" not in target
     assert "git rev-parse HEAD" in target and "git status --porcelain" in target

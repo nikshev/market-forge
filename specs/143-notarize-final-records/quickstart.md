@@ -2,7 +2,7 @@
 
 ```sh
 # build the images with the commit baked in (a dirty tree produces only unnotarizable records)
-make notary-build-info                       # prints the CHANNELFLOW_CODE_COMMIT / _DIRTY exports
+make notary-build-info                       # prints the CHANNELFLOW_CODE_COMMIT / _DIRTY exports (not the epoch: that is set once, in .env)
 
 # run the pass as before; the worker now registers what it writes (no key, no chain access)
 docker compose up -d --no-deps --build worker notary
