@@ -5,7 +5,7 @@ type: infrastructure
 prd_ref: "none -- user-directed integration, 2026-10-03; touches §0.13 (reproducibility), §26.4 (alerting), §29.B (dataset identity)"
 prd_lines: "0-0"
 phase: null
-status: draft
+status: specified
 depends_on: []
 tags: [monad, notary, onchain]
 hard_gated: false
@@ -47,7 +47,8 @@ close", with N measured, not "before the move".
 ## Trace
 
 <!-- trace:begin -->
-_No linked artifacts yet._
+- **Specs:** [[SPEC-142-signal-notary-contract]]
+- **Outcomes:** [[OUT-2026-10-08-spec-signal-notary-contract]]
 <!-- trace:end -->
 
 ## Notes
