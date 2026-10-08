@@ -123,3 +123,96 @@ def test_channel_no_look_ahead():
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
+
+
+# ---- a hole leaves a window too short to fit (found in production, 2026-10-08) ------------------
+#
+# REQ-WP-087 let a channel restart at a hole and fit "whatever follows". On the real series every
+# hole leaves a window of exactly one bar -- and a line cannot be fitted through one point:
+# `np.polyfit` divides by a zero column and raises `LinAlgError`, which nothing catches, so one hole
+# in the history ended the replay of the whole series. The code had never been run against a hole in
+# real data; the rebuilt worker image was the first to carry it there.
+
+
+def _series_with_a_hole(before: int, missing: int, after: int) -> list:
+    gaps = [0] * before + [missing] + [0] * (after - 1)
+    prices = [str(100 + (i % 7)) for i in range(len(gaps))]
+    return list(_make_bars(prices, gaps))
+
+
+@pytest.mark.trace("REQ-WP-087")
+def test_a_window_of_one_bar_after_a_hole_is_refused_not_crashed() -> None:
+    from channelflow.channels.rolling_ols import RollingOLSChannel
+
+    bars = _series_with_a_hole(before=8, missing=3, after=6)
+    first_after_hole = bars[8]
+    model = RollingOLSChannel(lookback=5, min_window_bars=3)
+
+    with pytest.raises(ChannelFitError, match="after a hole"):
+        model.fit(bars[:9], as_of_ns=first_after_hole.close_time_ns)
+
+
+@pytest.mark.trace("REQ-WP-087")
+def test_the_channel_returns_at_the_configured_minimum_and_says_it_is_short() -> None:
+    from channelflow.channels.rolling_ols import RollingOLSChannel
+
+    bars = _series_with_a_hole(before=8, missing=3, after=6)
+    model = RollingOLSChannel(lookback=5, min_window_bars=3)
+
+    refused = [i for i in range(8, len(bars)) if _fits(model, bars[: i + 1]) is None]
+    fitted = {i: _fits(model, bars[: i + 1]) for i in range(8, len(bars))}
+
+    assert refused == [8, 9]  # one and two bars after the hole: below the minimum of three
+    assert fitted[10] is not None and fitted[10].window_bars == 3 and fitted[10].window_short
+    assert fitted[13] is not None and fitted[13].window_bars == 5 and not fitted[13].window_short
+
+
+def _fits(model, prefix):  # type: ignore[no-untyped-def]
+    try:
+        return model.fit(prefix, as_of_ns=prefix[-1].close_time_ns)
+    except ChannelFitError:
+        return None
+
+
+@pytest.mark.trace("REQ-WP-087")
+def test_a_series_with_a_hole_replays_to_the_end_with_the_default_runner() -> None:
+    """The regression itself, with nothing configured: one hole must not end a series' replay.
+
+    This is the production shape -- the default runner (lookback 60), a long series, one hole. On
+    the code as deployed on 2026-10-08 it raised `LinAlgError` from `np.polyfit` at the first bar
+    after the hole.
+    """
+    from channelflow.backtest import BacktestRunner
+
+    bars = _series_with_a_hole(before=80, missing=4, after=40)
+
+    report = BacktestRunner().run(bars)  # must not raise
+
+    assert report is not None
+
+
+@pytest.mark.trace("REQ-WP-087")
+def test_the_minimum_must_be_a_line_and_no_more_than_the_lookback() -> None:
+    from channelflow.channels.rolling_ols import RollingOLSChannel
+
+    with pytest.raises(ValueError, match="min_window_bars"):
+        RollingOLSChannel(lookback=10, min_window_bars=1)  # a line needs two points
+    with pytest.raises(ValueError, match="min_window_bars"):
+        RollingOLSChannel(
+            lookback=10, min_window_bars=11
+        )  # more than the lookback can never be met
+    RollingOLSChannel(
+        lookback=10, min_window_bars=10
+    )  # equal is the old behaviour: full or nothing
+
+
+@pytest.mark.trace("REQ-WP-087")
+def test_fit_window_enforces_the_floor_only_after_a_hole() -> None:
+    bars = _series_with_a_hole(before=8, missing=3, after=6)
+    after_one = bars[8].close_time_ns
+    with pytest.raises(ChannelFitError, match="after a hole"):
+        fit_window(bars[:9], as_of_ns=after_one, lookback=5, min_bars=3)
+    assert len(fit_window(bars[:11], as_of_ns=bars[10].close_time_ns, lookback=5, min_bars=3)) == 3
+    # No hole: the full lookback is required, as it always was, whatever the floor says.
+    with pytest.raises(ChannelFitError, match="need 5"):
+        fit_window(bars[:4], as_of_ns=bars[3].close_time_ns, lookback=5, min_bars=2)

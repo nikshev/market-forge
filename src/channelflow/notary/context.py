@@ -33,6 +33,7 @@ from channelflow.signals.rejection import CloseBackInside
 CONFIG_FIELDS: dict[type, tuple[str, ...]] = {
     RollingOLSChannel: (
         "lookback",
+        "min_window_bars",
         "quantile_low",
         "quantile_high",
         "weights",

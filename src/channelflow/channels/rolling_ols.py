@@ -51,6 +51,14 @@ class RollingOLSChannel:
     """Fit a log-linear channel over the most recent `lookback` finalized bars."""
 
     lookback: int = 60
+    #: The fewest bars a channel may be fitted on after a hole (REQ-WP-087), below which it is
+    #: absent for that bar. `None` resolves to 10 (or the lookback if that is smaller): ten is the
+    #: number of points at which the 10th percentile of the residuals stops being their minimum,
+    #: so the bands are quantiles of something. Two is the arithmetic minimum for a line and the
+    #: lowest accepted; a window of one bar cannot be fitted at all. A choice, not a derivation --
+    #: stated here so it is not mistaken for one, and part of the config hash so changing it is
+    #: visible in every record it affects.
+    min_window_bars: int | None = None
     quantile_low: float = 0.10
     quantile_high: float = 0.90
     weights: dict[str, float] | None = None
@@ -62,6 +70,16 @@ class RollingOLSChannel:
     #: Only read when `bands` is `std`. The normal 90th percentile, so the two
     #: width options target the same coverage.
     band_sigmas: float = 1.2816
+
+    def __post_init__(self) -> None:
+        floor = min(10, self.lookback) if self.min_window_bars is None else self.min_window_bars
+        if not 2 <= floor <= self.lookback:
+            raise ValueError(
+                f"min_window_bars is {floor}: it must be at least 2 (a line needs two points) "
+                f"and at most the lookback ({self.lookback})"
+            )
+        # Resolved in place, so what is configured (and hashed) is the value in force.
+        object.__setattr__(self, "min_window_bars", floor)
 
     def fit(self, bars: list[Bar], *, as_of_ns: int) -> ChannelSnapshot:
         window = self._window(bars, as_of_ns=as_of_ns)
@@ -127,4 +145,9 @@ class RollingOLSChannel:
         )
 
     def _window(self, bars: list[Bar], *, as_of_ns: int) -> list[Bar]:
-        return fit_window(bars, as_of_ns=as_of_ns, lookback=self.lookback)
+        return fit_window(
+            bars,
+            as_of_ns=as_of_ns,
+            lookback=self.lookback,
+            min_bars=self.min_window_bars or 2,
+        )

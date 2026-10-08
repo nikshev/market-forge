@@ -53,7 +53,7 @@ def _find_gap_boundary(bars: list[Bar], lookback: int) -> int:
     return 0
 
 
-def fit_window(bars: list[Bar], *, as_of_ns: int, lookback: int) -> list[Bar]:
+def fit_window(bars: list[Bar], *, as_of_ns: int, lookback: int, min_bars: int = 2) -> list[Bar]:
     """The most recent `lookback` finalized bars at or before `as_of_ns`.
 
     Three filters, each one a requirement rather than a precaution: finalized
@@ -62,7 +62,12 @@ def fit_window(bars: list[Bar], *, as_of_ns: int, lookback: int) -> list[Bar]:
 
     If a gap is detected within the lookback window, the window starts at the
     first bar after the gap. If fewer than `lookback` bars are available after
-    the gap, the window is shortened accordingly (REQ-WP-087).
+    the gap, the window is shortened accordingly (REQ-WP-087) -- but never below
+    `min_bars`. A window of one bar cannot be fitted at all (a line through one
+    point is a zero column), and on real data every hole leaves exactly such a
+    window: the first version of this let it through and one hole ended the
+    replay of a whole series. Below the floor the channel is *absent* for that
+    bar, which `BacktestRunner` already treats as "no channel yet".
     """
     eligible = sorted(
         (b for b in bars if b.is_final and b.close_time_ns <= as_of_ns),
@@ -81,8 +86,12 @@ def fit_window(bars: list[Bar], *, as_of_ns: int, lookback: int) -> list[Bar]:
     # Otherwise, require full lookback (original behavior for no-gap case).
     if len(window) < lookback:
         if gap_detected:
-            # Short window allowed due to gap (REQ-WP-087)
-            pass
+            # Short window allowed due to gap (REQ-WP-087), down to the floor.
+            if len(window) < min_bars:
+                raise ChannelFitError(
+                    f"only {len(window)} finalized bar(s) after a hole at or before as_of; "
+                    f"a channel needs {min_bars} -- it is absent until they exist"
+                )
         else:
             raise ChannelFitError(
                 f"need {lookback} finalized bars at or before as_of, found {len(window)}; "

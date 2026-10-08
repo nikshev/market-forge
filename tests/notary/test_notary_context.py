@@ -64,6 +64,7 @@ def _variants() -> list[tuple[str, BacktestRunner]]:
 
     return [
         ("channel.lookback", with_channel(lookback=61)),
+        ("channel.min_window_bars", with_channel(min_window_bars=20)),
         ("channel.quantile_low", with_channel(quantile_low=0.2)),
         ("channel.quantile_high", with_channel(quantile_high=0.8)),
         ("channel.bands", with_channel(bands="sigma")),
