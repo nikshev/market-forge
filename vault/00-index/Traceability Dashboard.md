@@ -1082,6 +1082,7 @@ graph LR
   OUT_2026_10_07_implement_gap_policy["OUT-2026-10-07-implement-gap-policy"]
   OUT_2026_10_08_plan_signal_notary_contract["OUT-2026-10-08-plan-signal-notary-contract"]
   OUT_2026_10_08_spec_signal_notary_contract["OUT-2026-10-08-spec-signal-notary-contract"]
+  OUT_2026_10_08_tasks_signal_notary_contract["OUT-2026-10-08-tasks-signal-notary-contract"]
   PRD["PRD: ChannelFlow PRD"]
   REQ_API_001["REQ-API-001: Read API for bars, channel snapshots, signals and live updates"]
   REQ_ASSET_001["REQ-ASSET-001: Asset identity and cross-venue instrument registry"]
@@ -6363,6 +6364,7 @@ graph LR
   OUT_2026_10_07_implement_gap_policy -.->|RECORDS| REQ_WP_087
   OUT_2026_10_08_plan_signal_notary_contract -.->|RECORDS| REQ_INFRA_006
   OUT_2026_10_08_spec_signal_notary_contract -.->|RECORDS| REQ_INFRA_006
+  OUT_2026_10_08_tasks_signal_notary_contract -.->|RECORDS| REQ_INFRA_006
   SPEC_001_traceability_tooling ==>|SPECIFIES| REQ_INFRA_001
   SPEC_002_project_bootstrap ==>|SPECIFIES| REQ_WP_001
   SPEC_003_ci_full_gate ==>|SPECIFIES| REQ_INFRA_002

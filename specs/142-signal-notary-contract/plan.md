@@ -141,10 +141,9 @@ client; that belongs in `src/channelflow/` and is planned there, not pre-built h
    succeeded, the created address matched, the on-chain code matched, and `owner()` matched. A test with a
    fake `cast` proves a failing read-back leaves no record. `.env.example` carries the same address under
    `MONAD_NOTARY_ADDRESS`; `test_record.py` fails if exactly one of the two exists or they disagree.
-8. **The key never reaches argv.** `forge create`/`cast send` take it from an encrypted keystore account
-   (`--account` with a password file), or from an environment variable the tool reads and passes through
-   `ETH_PRIVATE_KEY`-style environment, never `--private-key <hex>`. Which of the two the installed Foundry
-   supports is confirmed in the first task; the test asserts on the argv the tool builds, whichever it is.
+8. **The key never reaches argv.** `forge create`/`cast send` use an encrypted Foundry keystore account
+   (`--account`, with a password file kept outside the repository), never `--private-key <hex>`. The first task
+   confirms the flags on the installed Foundry; the test asserts on the argv the tool builds.
 
 ## Risks
 

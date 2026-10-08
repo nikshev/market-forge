@@ -35,5 +35,6 @@ No function deletes or overwrites a stored value (FR-005).
 | `test_non_owner_cannot_commit` | FR-006 |
 | `test_non_owner_cannot_resolve` | FR-006 |
 | `test_constructor_rejects_zero_owner` | FR-006 |
+| `test_owner_is_the_constructor_argument` | FR-007 / FR-006: `owner()` returns the constructor argument |
 | `test_value_is_rejected` | FR-008: call with value and plain transfer both revert |
 | `test_block_time_is_not_bar_time` | FR-007 / Principle II: warp the chain, commit an old `barTs`; the two fields differ and each is what was set |

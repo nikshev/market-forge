@@ -178,8 +178,8 @@ recorded address, the deployed code and the owner with the repository's contract
 
 - **SC-001**: Every behaviour in FR-001…FR-008 has at least one test that fails on a contract lacking
   it, and the whole contract suite passes with the network disabled.
-- **SC-002**: The six reverts the requirement names (duplicate commit, uncommitted resolve, double
-  resolve, non-owner write, out-of-range outcome — plus zero hash) each have their own test.
+- **SC-002**: The reverts the requirement names (duplicate commit, uncommitted resolve, double resolve, non-owner
+  write, out-of-range outcome) and the zero hash each have their own test.
 - **SC-003**: A reviewer, from the repository alone, can run one command that reads the recorded
   deployment from the public testnet RPC and gets a pass/fail with the reason.
 - **SC-004**: The deployed address on testnet shows one successful commit and one successful resolve of a
