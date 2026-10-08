@@ -4,20 +4,37 @@
 import json
 import re
 import subprocess
+import tempfile
 
 import pytest
+
+
+def _debug_config() -> subprocess.CompletedProcess[str]:
+    """`opencode debug config`, with stdout captured through a file.
+
+    opencode 1.18.35 exits before it has drained a pipe, so a captured stdout is cut at
+    exactly 64 KiB (65536 bytes) and the JSON is unterminated, while the same command
+    writing to a file produces the whole 107 931 bytes. Reading through a file is what
+    makes this a test of the config rather than of the pipe.
+    """
+    with tempfile.TemporaryFile("w+") as out:
+        result = subprocess.run(
+            ["opencode", "debug", "config"],
+            stdout=out,
+            stderr=subprocess.PIPE,
+            text=True,
+            cwd="/opt/market-forge",
+            timeout=60,
+        )
+        out.seek(0)
+        stdout = out.read()
+    return subprocess.CompletedProcess(result.args, result.returncode, stdout, result.stderr)
 
 
 @pytest.mark.trace("REQ-INFRA-005")
 def test_opencode_config_validates():
     """OpenCode project config must validate against published schema."""
-    result = subprocess.run(
-        ["opencode", "debug", "config"],
-        capture_output=True,
-        text=True,
-        cwd="/opt/market-forge",
-        timeout=60,
-    )
+    result = _debug_config()
     assert result.returncode == 0, f"Config validation failed: {result.stderr}"
     config = json.loads(result.stdout)
     assert config.get("$schema") == "https://opencode.ai/config.json"
@@ -82,13 +99,7 @@ def test_opencode_has_four_custom_agents():
 @pytest.mark.trace("REQ-INFRA-005")
 def test_opencode_has_six_sdd_commands():
     """OpenCode must have all six SDD command entry points."""
-    result = subprocess.run(
-        ["opencode", "debug", "config"],
-        capture_output=True,
-        text=True,
-        cwd="/opt/market-forge",
-        timeout=60,
-    )
+    result = _debug_config()
     assert result.returncode == 0
     config = json.loads(result.stdout)
     commands = config.get("command", {})

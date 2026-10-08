@@ -61,8 +61,32 @@ stays `draft` until then.
 <!-- trace:begin -->
 - **Specs:** [[SPEC-141-detector-gap-policy]]
 - **Tests:**
+    - `tests/channels/test_channel_gap.py::test_channel_no_look_ahead`
+    - `tests/channels/test_channel_gap.py::test_channel_window_absent_when_no_bars_after_gap`
+    - `tests/channels/test_channel_gap.py::test_channel_window_short_after_gap`
+    - `tests/channels/test_channel_gap.py::test_channel_window_starts_after_gap`
+    - `tests/extrema/test_detector_gap.py::test_confirmation_lag_only_from_bars_after_hole`
+    - `tests/extrema/test_detector_gap.py::test_contiguous_bars_normal_tracking`
+    - `tests/extrema/test_detector_gap.py::test_no_look_ahead_appending_later_bars`
+    - `tests/extrema/test_detector_gap.py::test_one_missing_bar_bridges_at_default_threshold`
+    - `tests/extrema/test_detector_gap.py::test_threshold_default_one_bridges_one_missing`
+    - `tests/extrema/test_detector_gap.py::test_threshold_two_keeps_two_missing_and_restarts_on_three`
+    - `tests/extrema/test_detector_gap.py::test_threshold_zero_any_gap_restarts`
+    - `tests/extrema/test_detector_gap.py::test_turn_before_hole_confirm_after_gives_no_confirmation`
+    - `tests/extrema/test_detector_gap.py::test_two_missing_bars_resets_state`
+    - `tests/unit/channels/test_gap_fields.py::test_the_snapshot_states_how_many_bars_its_window_held`
+    - `tests/unit/channels/test_gap_fields.py::test_window_short_says_whether_the_window_is_shorter_than_the_lookback`
     - `tests/unit/extrema/test_gap_fields.py::test_a_confirmed_extremum_states_its_confirmation_lag_in_time`
     - `tests/unit/extrema/test_gap_fields.py::test_confirmation_lag_ns_defaults_to_zero_when_a_producer_has_not_computed_it`
+    - `tests/unit/extrema/test_is_gap.py::test_a_corrected_bar_reissued_on_the_previous_timestamps_is_not_a_gap`
+    - `tests/unit/extrema/test_is_gap.py::test_a_distance_that_is_not_whole_steps_is_rounded_not_floored`
+    - `tests/unit/extrema/test_is_gap.py::test_a_non_positive_timeframe_is_refused_naming_the_variable[-60000000000]`
+    - `tests/unit/extrema/test_is_gap.py::test_a_non_positive_timeframe_is_refused_naming_the_variable[0]`
+    - `tests/unit/extrema/test_is_gap.py::test_contiguous_bars_are_not_a_gap`
+    - `tests/unit/extrema/test_is_gap.py::test_one_missing_bar_bridges_at_the_default_threshold`
+    - `tests/unit/extrema/test_is_gap.py::test_threshold_two_keeps_two_missing_bars_and_restarts_on_three`
+    - `tests/unit/extrema/test_is_gap.py::test_threshold_zero_restarts_on_any_missing_bar`
+    - `tests/unit/extrema/test_is_gap.py::test_two_missing_bars_are_a_gap_at_the_default_threshold`
     - `tests/unit/test_settings_gap.py::test_a_blank_threshold_is_the_default_not_a_parse_failure`
     - `tests/unit/test_settings_gap.py::test_a_deployment_that_sets_nothing_gets_one_missing_bar`
     - `tests/unit/test_settings_gap.py::test_a_negative_threshold_is_refused_naming_the_variable[-148]`
@@ -76,9 +100,18 @@ stays `draft` until then.
     - `tests/unit/test_settings_gap.py::test_the_threshold_is_a_whole_number_of_missing_bars[3-3]`
     - `tests/unit/test_settings_gap.py::test_zero_is_a_threshold_not_a_mistake`
 - **Code:**
+    - `src/channelflow/bars/gaps.py`
+    - `src/channelflow/channels/huber.py`
+    - `src/channelflow/channels/kalman.py`
+    - `src/channelflow/channels/models.py`
+    - `src/channelflow/channels/quantile.py`
+    - `src/channelflow/channels/rolling_ols.py`
+    - `src/channelflow/channels/window.py`
+    - `src/channelflow/extrema/detector.py`
     - `src/channelflow/extrema/models.py`
     - `src/channelflow/settings.py`
-- **Outcomes:** [[OUT-2026-10-06-spec-detector-gap-policy]], [[OUT-2026-10-06-tasks-detector-gap-policy]]
+    - `src/channelflow/tables/channels.py`
+- **Outcomes:** [[OUT-2026-10-06-spec-detector-gap-policy]], [[OUT-2026-10-06-tasks-detector-gap-policy]], [[OUT-2026-10-07-implement-gap-policy]]
 <!-- trace:end -->
 
 ## Notes

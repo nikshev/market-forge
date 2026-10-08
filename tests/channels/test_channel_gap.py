@@ -70,30 +70,28 @@ def make_bars(closing_prices: list[str], gaps: list[int]) -> list:
 @pytest.mark.trace("REQ-WP-087")
 def test_channel_window_starts_after_gap():
     """Channel window starts at first bar after a gap."""
-    # 10 bars, gap of 2 before bar 5, lookback=5
-    # Bars: 0,1,2,3, [gap of 2], 5,6,7,8,9
-    # Window at bar 9 (last) should start at bar 5 (first after gap)
+    # Ten bars; two minutes are missing before index 4, so the closes are at minutes
+    # 1, 2, 3, 4, 7, 8, 9, 10, 11, 12 from BASE_NS. With lookback=8 the eight most
+    # recent bars would reach back over the hole; the window must stop at it instead,
+    # leaving indices 4..9 -- six bars -- so the cut, not the count, decides.
     bars = list(_make_bars(["100"] * 10, [0, 0, 0, 0, 2, 0, 0, 0, 0, 0]))
-    as_of_ns = BASE_NS + 10 * MINUTE_NS  # at bar 9 close
-    window = fit_window(bars, as_of_ns=as_of_ns, lookback=5)
-    assert len(window) == 5
-    # First bar in window should be bar 5 (index 5 in original)
-    assert window[0].close == Decimal("100")
-    # Window should start at bar 5 (first after gap)
-    assert window[0].close_time_ns == BASE_NS + 6 * MINUTE_NS + 2 * 60_000_000_000  # bar 5 close
+    as_of_ns = BASE_NS + 12 * MINUTE_NS  # at the last bar's close
+    window = fit_window(bars, as_of_ns=as_of_ns, lookback=8)
+    assert len(window) == 6  # indices 4..9: the bars after the hole, not 8
+    # The first bar in the window is the first one after the hole (closes at minute 7).
+    assert window[0].close_time_ns == BASE_NS + 7 * MINUTE_NS
 
 
 @pytest.mark.trace("REQ-WP-087")
 def test_channel_window_short_after_gap():
     """Window is marked short until lookback contiguous bars exist after gap."""
-    # 7 bars, gap of 2 before bar 5, only 3 bars after gap (5,6,7)
-    # Window at bar 7 should have window_bars=3, window_short=True
+    # Eight bars, two minutes missing before index 4: closes at minutes
+    # 1, 2, 3, 4, 7, 8, 9, 10. Four bars (4..7) exist after the hole.
     bars = list(_make_bars(["100"] * 8, [0, 0, 0, 0, 2, 0, 0, 0]))
-    as_of_ns = BASE_NS + 8 * MINUTE_NS + 2 * MINUTE_NS  # at bar 7 close
+    as_of_ns = BASE_NS + 10 * MINUTE_NS  # at the last bar's close
     window = fit_window(bars, as_of_ns=as_of_ns, lookback=5)
-    assert len(window) == 3  # only 3 bars after gap
-    # The fit_window function doesn't return window_short flag directly,
-    # but the window size tells us it's short
+    assert len(window) == 4  # fewer than lookback: short, because of the hole
+    assert window[0].close_time_ns == BASE_NS + 7 * MINUTE_NS
 
 
 @pytest.mark.trace("REQ-WP-087")

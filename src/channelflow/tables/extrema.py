@@ -145,6 +145,10 @@ def confirmed_from_row(row: dict[str, object]) -> ConfirmedExtremum:
         price=as_decimal(row, "price"),
         confirmation_method=as_str(row, "confirmation_method"),
         confirmation_lag_bars=as_int(row, "confirmation_lag_bars"),
+        # Not a column: the detector sets it to `known_at_ns - extremum_time_ns`
+        # (REQ-WP-087), so the stored pair already holds it, and adding a column would
+        # change the schema of a table the running worker writes.
+        confirmation_lag_ns=as_int(row, "known_at_ns") - as_int(row, "extremum_time_ns"),
         reversal_bps=as_float(row, "reversal_bps"),
         threshold_bps=as_float(row, "threshold_bps"),
         prominence_bps=_read_optional(row, "prominence_bps"),

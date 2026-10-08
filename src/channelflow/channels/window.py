@@ -89,9 +89,7 @@ def fit_window(bars: list[Bar], *, as_of_ns: int, lookback: int) -> list[Bar]:
                 "fitting on fewer would silently be a different model"
             )
     if not window:
-        raise ChannelFitError(
-            f"need at least 1 finalized bar at or before as_of, found 0"
-        )
+        raise ChannelFitError("need at least 1 finalized bar at or before as_of, found 0")
     for bar in window:
         if bar.close <= 0:
             raise ChannelFitError(

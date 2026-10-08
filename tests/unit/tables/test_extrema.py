@@ -33,6 +33,9 @@ def confirmed(
         price=Decimal("112000.10"),
         confirmation_method="directional_change",
         confirmation_lag_bars=known_at - turn_at,
+        # What the detector sets (REQ-WP-087); the table does not store it, it is read
+        # back as `known_at_ns - extremum_time_ns`.
+        confirmation_lag_ns=(known_at - turn_at) * SECOND,
         reversal_bps=45.0,
         threshold_bps=30.0,
         prominence_bps=prominence,
