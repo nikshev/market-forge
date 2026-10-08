@@ -56,6 +56,11 @@ dependencies = [
     # The pycryptodome backend rather than `safe-pysha3`: it ships binary
     # wheels, so CI needs no build toolchain (REQ-WP-045).
     "eth-hash[pycryptodome]>=0.7",
+    # The notary's signer (REQ-INFRA-007): it opens the Foundry keystore the deploy
+    # tooling wrote (a standard Web3 Secret Storage file) and signs one kind of
+    # transaction. Chosen over `web3.py`: the service needs nine JSON-RPC calls and one
+    # signature, and `httpx` already makes the calls. Not a hand-rolled secp256k1/RLP.
+    "eth-account>=0.13",
 ]
 
 [project.optional-dependencies]

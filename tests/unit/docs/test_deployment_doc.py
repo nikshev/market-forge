@@ -40,7 +40,8 @@ def _make_targets() -> set[str]:
 def _compose_services() -> set[str]:
     # The two-space-indented keys under `services:`; enough for this file's
     # shape and not a YAML parser, which would be a dependency for one check.
-    body = COMPOSE.read_text().split("\nservices:\n", 1)[1].split("\nvolumes:", 1)[0]
+    # It stops at the first top-level section after `services:` -- `volumes:` or `secrets:`.
+    body = re.split(r"\n(?:volumes|secrets):", COMPOSE.read_text().split("\nservices:\n", 1)[1])[0]
     return set(re.findall(r"^  ([a-z][a-z_]*):", body, re.M))
 
 

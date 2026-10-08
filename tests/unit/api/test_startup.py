@@ -232,7 +232,11 @@ def test_no_credential_is_written_into_the_compose_file() -> None:
 
     for line in service.splitlines():
         if "PASSWORD" in line or "SECRET" in line or "ACCESS_KEY" in line:
-            assert "${" in line, f"a literal credential in the compose file: {line.strip()}"
+            # A reference is either an environment reference or the path of a mounted secret
+            # (`/run/secrets/...`, REQ-INFRA-007): a file is not the credential it holds.
+            assert "${" in line or "/run/secrets/" in line, (
+                f"a literal credential in the compose file: {line.strip()}"
+            )
 
 
 @pytest.mark.trace("REQ-WP-064")

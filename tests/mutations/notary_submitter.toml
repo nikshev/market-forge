@@ -1,0 +1,77 @@
+# The outbox (REQ-INFRA-007).
+#
+# This is the part that must not lose a commit, send one twice, call something confirmed that is
+# not final, or spend past a limit. Each mutation removes one of the rules that stop that, and
+# each must be caught.
+#
+# Patterns are TOML *literal* strings on purpose.
+source = "src/channelflow/notary/submitter.py"
+tests = ["tests/notary/test_notary_submitter.py", "tests/notary/test_notary_pass.py"]
+
+[[mutation]]
+name = "the chain is not asked before sending, so a lost acknowledgement means a second send"
+find = '''        if self.chain.commit_of(root) is not None:
+            return self._confirm_if_final(root, root_hex, state, attempt, sent_before, report)'''
+replace = '''        if False:
+            return self._confirm_if_final(root, root_hex, state, attempt, sent_before, report)'''
+
+[[mutation]]
+name = "a root that is only visible, not finalized, is called confirmed"
+find = '''        final = self.chain.commit_of(root, finalized=True)
+        if final is None:
+            return False  # visible, not yet final'''
+replace = '''        final = self.chain.commit_of(root)
+        if final is None:
+            return False  # visible, not yet final'''
+
+[[mutation]]
+name = "a transaction in flight is sent again before its timeout"
+find = '''            if receipt is None and waited < self.config.submit_timeout_ns:
+                return False  # still in flight; asking again is free, sending again is not'''
+replace = '''            if False:
+                return False'''
+
+[[mutation]]
+name = "a reverted transaction is not noticed"
+find = '''            if receipt is not None and receipt.status != 1:
+                report.failed += 1
+                self._event(root_hex, "failed", attempt=attempt, detail="transaction reverted")
+                return False'''
+replace = '''            if False:
+                return False'''
+
+[[mutation]]
+name = "the balance floor is not enforced"
+find = '''        if balance < self.config.min_balance_wei:'''
+replace = '''        if False:'''
+
+[[mutation]]
+name = "the gas-price ceiling is not enforced"
+find = '''        if price > self.config.max_gas_price_wei:'''
+replace = '''        if False:'''
+
+[[mutation]]
+name = "a held batch records its reason on every tick"
+find = '''            if not (event == "held" and state["detail"] == reason):
+                self._event(root_hex, "held", attempt=attempt, detail=reason)'''
+replace = '''            self._event(root_hex, "held", attempt=attempt, detail=reason)'''
+
+[[mutation]]
+name = "a batch behind a stuck one is sent first"
+find = '''                break  # in order: whatever is behind this waits'''
+replace = '''                continue'''
+
+[[mutation]]
+name = "a confirmation found on the chain loses the fact that it was found there"
+find = '''            detail="" if sent_before else "found on chain",'''
+replace = '''            detail="",'''
+
+[[mutation]]
+name = "the chain's block time is replaced by the local clock"
+find = '''            block_time_s=block_time,'''
+replace = '''            block_time_s=self.now_ns() // SECOND_NS,'''
+
+[[mutation]]
+name = "a failure in one batch ends the whole tick with an exception"
+find = '''        except Exception as error:  # noqa: BLE001 -- one batch's trouble is not the loop's'''
+replace = '''        except KeyboardInterrupt as error:'''

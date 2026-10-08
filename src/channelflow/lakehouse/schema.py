@@ -222,6 +222,12 @@ def _length_prefixed(payload: bytes) -> bytes:
     return struct.pack("<I", len(payload)) + payload
 
 
+#: The framing every canonical encoding here uses, public so that another encoding (the
+#: notary's envelope, REQ-INFRA-007) frames its values identically instead of
+#: re-implementing it a third time.
+length_prefixed = _length_prefixed
+
+
 def _encode(column_type: str, value: object) -> bytes:
     """One value's canonical bytes.
 

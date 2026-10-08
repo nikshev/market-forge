@@ -1,0 +1,55 @@
+# The context a record is bound to (REQ-INFRA-007).
+#
+# A context with a doubtful commit, or a config hash that omits a parameter, produces hashes that
+# look like provenance and are not. Each mutation weakens one of the rules, and each must be caught.
+#
+# Patterns are TOML *literal* strings on purpose.
+source = "src/channelflow/notary/context.py"
+tests = ["tests/notary/test_notary_context.py"]
+
+[[mutation]]
+name = "a dirty working tree is accepted"
+find = '''    elif code_dirty != "false":'''
+replace = '''    elif False:'''
+
+[[mutation]]
+name = "an upper-case commit is accepted"
+find = '''_COMMIT = re.compile(r"^[0-9a-f]{40}$")'''
+replace = '''_COMMIT = re.compile(r"^[0-9a-fA-F]{40}$")'''
+
+[[mutation]]
+name = "a doubtful commit is passed through beside the reason"
+find = '''    if reason is not None:
+        commit = ""'''
+replace = '''    if reason is not None:
+        commit = code_commit or ""'''
+
+[[mutation]]
+name = "the gap threshold is not part of the config"
+find = '''        "gap_threshold": gap_threshold,'''
+replace = ''''''
+
+[[mutation]]
+name = "a configuration field is dropped from the machine's list"
+find = '''        "expiry_bars",
+        "opens",'''
+replace = '''        "opens",'''
+
+[[mutation]]
+name = "the machine's state is treated as configuration"
+find = '''        "opens",
+        "detector",
+    ),
+    CloseBackInside'''
+replace = '''        "opens",
+        "detector",
+        "candidate",
+    ),
+    CloseBackInside'''
+
+[[mutation]]
+name = "an unclassified component is silently accepted"
+find = '''    if cls not in CONFIG_FIELDS:
+        raise UnhashableConfig('''
+replace = '''    if False:
+        raise UnhashableConfig('''

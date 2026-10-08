@@ -44,6 +44,16 @@ ENV PATH=/opt/venv/bin:$PATH \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
+# The commit this image was built from, for the signal notary (REQ-INFRA-007). Build arguments,
+# because the runtime image has no `.git` and `git` at run time would name nothing. `false` in
+# CHANNELFLOW_CODE_DIRTY says the tree was clean; anything else -- including unset -- makes the
+# notary store its records as unnotarizable rather than hash a commit it cannot vouch for.
+# `make notary-build-info` prints the values.
+ARG CHANNELFLOW_CODE_COMMIT=""
+ARG CHANNELFLOW_CODE_DIRTY=""
+ENV CHANNELFLOW_CODE_COMMIT=$CHANNELFLOW_CODE_COMMIT \
+    CHANNELFLOW_CODE_DIRTY=$CHANNELFLOW_CODE_DIRTY
+
 USER channelflow
 WORKDIR /home/channelflow
 

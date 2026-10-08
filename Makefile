@@ -3,7 +3,8 @@ PY   := $(VENV)/bin/python
 PIP  := uv pip install --python $(PY)
 
 .PHONY: venv install test lint markers trace validate dashboard graph clean index mutate \
-	web-install web-typecheck web-test web-build contracts-test notary-verify
+	web-install web-typecheck web-test web-build contracts-test notary-verify \
+	notary-build-info
 
 venv:
 	uv venv $(VENV) --python 3.12 --no-python-downloads
@@ -35,6 +36,16 @@ contracts-test:
 # resolve the configuration; it sends nothing.
 notary-verify:
 	$(PY) -m tools.notary.verify
+
+# What the notary needs from the build and the deploy (REQ-INFRA-007): the commit the images are
+# built from, whether that tree was clean, and the instant the notary starts counting. Use as
+#     eval "$(make -s notary-build-info)" && docker compose up -d --no-deps --build worker notary
+# A dirty tree prints CHANNELFLOW_CODE_DIRTY=true, and the notary then stores its records as
+# unnotarizable rather than hash a commit that names code that exists nowhere.
+notary-build-info:
+	@echo "export CHANNELFLOW_CODE_COMMIT=$$(git rev-parse HEAD)"
+	@if [ -z "$$(git status --porcelain)" ]; then echo "export CHANNELFLOW_CODE_DIRTY=false"; else echo "export CHANNELFLOW_CODE_DIRTY=true"; fi
+	@echo "export CHANNELFLOW_NOTARY_FROM=$$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
 lint:
 	$(VENV)/bin/ruff check tools tests src

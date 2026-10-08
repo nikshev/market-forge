@@ -413,6 +413,10 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        # The commit is baked in so a record can say which code produced it ([[REQ-INFRA-007]]).
+        CHANNELFLOW_CODE_COMMIT: ${CHANNELFLOW_CODE_COMMIT:-}
+        CHANNELFLOW_CODE_DIRTY: ${CHANNELFLOW_CODE_DIRTY:-}
     command:
       - python
       - -m
@@ -428,12 +432,67 @@ services:
       CHANNELFLOW_S3_REGION: us-east-1
       CHANNELFLOW_TIMEFRAMES: ${CHANNELFLOW_TIMEFRAMES}
       CHANNELFLOW_CHANNEL_INTERVAL: ${CHANNELFLOW_CHANNEL_INTERVAL}
+      # Registers each record it computes for the notary ([[REQ-INFRA-007]]). It holds no key and
+      # touches no chain: signing is the `notary` service's alone.
+      CHANNELFLOW_NOTARY_ENABLED: ${CHANNELFLOW_NOTARY_ENABLED:-false}
+      CHANNELFLOW_NOTARY_FROM: ${CHANNELFLOW_NOTARY_FROM:-}
     depends_on:
       postgres:
         condition: service_healthy
       minio:
         condition: service_healthy
       api:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # The signal notary ([[REQ-INFRA-007]]): forms batches of registered records, commits one Merkle
+  # root per batch through the SignalNotary contract, confirms it, and keeps an outbox that drains
+  # when the chain returns. The ONLY service given the signing keystore, mounted read-only from
+  # files outside the repository. Starts only when asked for (`docker compose up -d notary`):
+  # a stack without keys must not run a service that crash-loops.
+  notary:
+    profiles: ["notary"]
+    logging: *default-logging
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        CHANNELFLOW_CODE_COMMIT: ${CHANNELFLOW_CODE_COMMIT:-}
+        CHANNELFLOW_CODE_DIRTY: ${CHANNELFLOW_CODE_DIRTY:-}
+    command:
+      - python
+      - -m
+      - channelflow.notary.main
+    environment:
+      CHANNELFLOW_CATALOG_URI: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      CHANNELFLOW_WAREHOUSE: s3://${MINIO_BUCKET}/warehouse
+      CHANNELFLOW_S3_ENDPOINT: http://minio:9000
+      CHANNELFLOW_S3_ACCESS_KEY_ID: ${MINIO_ROOT_USER}
+      CHANNELFLOW_S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
+      CHANNELFLOW_S3_REGION: us-east-1
+      MONAD_RPC_URL: ${MONAD_RPC_URL:-https://testnet-rpc.monad.xyz}
+      MONAD_CHAIN_ID: ${MONAD_CHAIN_ID:-10143}
+      MONAD_NOTARY_ADDRESS: ${MONAD_NOTARY_ADDRESS:-}
+      MONAD_NOTARY_DEPLOY_BLOCK: ${MONAD_NOTARY_DEPLOY_BLOCK:-}
+      # Paths inside the container; the files are the secrets below, never environment values.
+      CHANNELFLOW_NOTARY_KEYSTORE: /run/secrets/notary_keystore
+      CHANNELFLOW_NOTARY_PASSWORD_FILE: /run/secrets/notary_password
+      CHANNELFLOW_NOTARY_INTERVAL: ${CHANNELFLOW_NOTARY_INTERVAL:-}
+      CHANNELFLOW_NOTARY_BATCH_WINDOW: ${CHANNELFLOW_NOTARY_BATCH_WINDOW:-}
+      CHANNELFLOW_NOTARY_MAX_BATCH: ${CHANNELFLOW_NOTARY_MAX_BATCH:-}
+      CHANNELFLOW_NOTARY_MIN_BALANCE: ${CHANNELFLOW_NOTARY_MIN_BALANCE:-}
+      CHANNELFLOW_NOTARY_MAX_GAS_PRICE: ${CHANNELFLOW_NOTARY_MAX_GAS_PRICE:-}
+      CHANNELFLOW_NOTARY_GAS_MARGIN: ${CHANNELFLOW_NOTARY_GAS_MARGIN:-}
+      CHANNELFLOW_NOTARY_SUBMIT_TIMEOUT: ${CHANNELFLOW_NOTARY_SUBMIT_TIMEOUT:-}
+    secrets:
+      - notary_keystore
+      - notary_password
+    ports:
+      - "${CHANNELFLOW_BIND_ADDRESS:-127.0.0.1}:${NOTARY_METRICS_PORT:-8001}:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
         condition: service_healthy
     restart: unless-stopped
 
@@ -603,3 +662,13 @@ services:
 # creates each one and gives it to the user its service runs as, and checks it
 # **as that user** -- a check run as the operator would pass everywhere and
 # prove nothing.
+
+# The signal notary's signing material ([[REQ-INFRA-007]]). Named by variable, never by a literal
+# path, and defaulting to /dev/null so `docker compose config` works on a stack that has no keys.
+# Only the `notary` service mounts them; the files live outside the repository and are readable
+# by the unprivileged user the container runs as (uid 10001, mode 400).
+secrets:
+  notary_keystore:
+    file: ${MONAD_KEYSTORE_FILE:-/dev/null}
+  notary_password:
+    file: ${MONAD_SIGNER_PASSWORD_FILE:-/dev/null}

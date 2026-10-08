@@ -1,0 +1,65 @@
+# Batch formation (REQ-INFRA-007).
+#
+# A batch's root is its identity, so what goes into it, in what order, and whether a record can
+# land in two of them decides whether a commit means what it says. Each mutation breaks one of
+# those, and each must be caught.
+#
+# Patterns are TOML *literal* strings on purpose.
+source = "src/channelflow/notary/batcher.py"
+tests = ["tests/notary/test_notary_batcher.py", "tests/notary/test_notary_submitter.py"]
+
+[[mutation]]
+name = "a window that has not elapsed forms a batch anyway"
+find = '''    if now_ns - oldest < window_ns:
+        return None'''
+replace = '''    if False:
+        return None'''
+
+[[mutation]]
+name = "the window is measured from the newest record, not the oldest"
+find = '''    oldest = min(int(str(r["registered_at_ns"])) for r in waiting)'''
+replace = '''    oldest = max(int(str(r["registered_at_ns"])) for r in waiting)'''
+
+[[mutation]]
+name = "the cap is ignored, so a backlog becomes one unbounded batch"
+find = '''    chosen = waiting[:max_batch]'''
+replace = '''    chosen = waiting'''
+
+[[mutation]]
+name = "a bar close that is not a whole second is rounded instead of refused"
+find = '''        if int(str(row["bar_close_time_ns"])) % SECOND_NS:'''
+replace = '''        if False:'''
+
+[[mutation]]
+name = "the batch's barTs is its earliest leaf, not its latest"
+find = '''        return self.max_bar_close_time_ns // SECOND_NS'''
+replace = '''        return self.min_bar_close_time_ns // SECOND_NS'''
+
+[[mutation]]
+name = "the root is taken over the leaves in the wrong order"
+find = '''    root = merkle_root([leaf.record_hash for leaf in leaves])'''
+replace = '''    root = merkle_root([leaf.record_hash for leaf in reversed(leaves)])'''
+
+[[mutation]]
+name = "a leaf's ordinal is off by one, so its proof points at the wrong place"
+find = '''            ordinal=ordinal,
+        )
+        for ordinal, row in enumerate(chosen)'''
+replace = '''            ordinal=ordinal + 1,
+        )
+        for ordinal, row in enumerate(chosen)'''
+
+[[mutation]]
+name = "an orphaned batch is rebuilt without checking that it hashes to its root"
+find = '''        if merkle_root([leaf.record_hash for leaf in leaves]).hex() != root:
+            continue'''
+replace = '''        if False:
+            continue'''
+
+[[mutation]]
+name = "an orphaned batch with missing leaves is rebuilt anyway"
+survives = '''An equivalent mutant. With a leaf missing, the remaining leaves cannot hash to the root they carry, so the very next guard (the root check, which the neighbouring mutation shows is tested) refuses the repair. The contiguity check names the cause early and is not the check that protects anything.'''
+find = '''        if [int(str(r["ordinal"])) for r in ordered] != list(range(len(ordered))):
+            continue'''
+replace = '''        if False:
+            continue'''

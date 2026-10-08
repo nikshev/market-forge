@@ -1,0 +1,55 @@
+# What is notarized, and what is refused (REQ-INFRA-007).
+#
+# The one that matters most is the silence: a candidate that ends without ever having alerted is
+# a NO ALERT. Each mutation here removes a way the notary refuses what it must not commit, or
+# mislabels a decision, and each must be caught.
+#
+# Patterns are TOML *literal* strings on purpose.
+source = "src/channelflow/notary/records.py"
+tests = ["tests/notary/test_notary_records.py"]
+
+[[mutation]]
+name = "a snapshot whose bar is not final is registered"
+find = '''    if not bar_final:'''
+replace = '''    if False:'''
+
+[[mutation]]
+name = "a snapshot that saw the future is registered"
+find = '''    if snapshot.source_max_event_time_ns > snapshot.as_of_ns:'''
+replace = '''    if False:'''
+
+[[mutation]]
+name = "an invalidation after an alert is called a NO ALERT"
+find = '''        elif transition.to_state in TERMINAL and not alerted:'''
+replace = '''        elif transition.to_state in TERMINAL:'''
+
+[[mutation]]
+name = "a terminal outcome of a never-alerted candidate is only a step"
+find = '''        elif transition.to_state in TERMINAL and not alerted:
+            verdict = NO_ALERT'''
+replace = '''        elif transition.to_state in TERMINAL and not alerted:
+            verdict = STEP'''
+
+[[mutation]]
+name = "the alert is never remembered, so alerted_before stays no"
+find = '''        if transition.to_state == CandidateState.ALERTED:
+            alerted = True'''
+replace = '''        if False:
+            alerted = True'''
+
+[[mutation]]
+name = "decisions are numbered from one, so identity moves when the history is extended"
+find = '''            "ordinal": ordinal,'''
+replace = '''            "ordinal": ordinal + 1,'''
+
+[[mutation]]
+name = "a delivered alert is accepted as a suppression"
+find = '''    if audit.status != "suppressed":'''
+replace = '''    if False:'''
+
+[[mutation]]
+name = "a decision's bar time is the wrong transition's"
+find = '''                bar_close_time_ns=transition.bar_close_time_ns,
+                venue=candidate.venue,'''
+replace = '''                bar_close_time_ns=candidate.opened_at_ns,
+                venue=candidate.venue,'''

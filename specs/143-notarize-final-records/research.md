@@ -65,15 +65,30 @@ verification in one family. The tree is RFC 6962 (Certificate Transparency) gene
 separated leaf and node prefixes, no duplication of the last node, and a published inclusion-proof algorithm.
 Tested against the RFC's published tree shapes (sizes 1–8) in the tasks.
 
-## R8. What is "the config" a snapshot depends on?
+## R8. What is "the config" a snapshot depends on? (inventory done in T004, 2026-10-08)
 
-`BacktestRunner` is composed of `RollingOLSChannel` (a frozen dataclass: model name/version, lookback, …) and
-`SignalMachine` (a dataclass holding its detector and thresholds), plus the gap threshold setting
-(`CHANNELFLOW_GAP_THRESHOLD`) and the timeframe. The config hash is taken over the components' own declared
-fields (recursively, via `dataclasses.fields`), the class names, and the settings that influence the pass, so
-adding a parameter to a component changes the hash without anyone remembering to list it. The first task
-enumerates the fields as they are today and fails loudly on a value `config_hash` cannot encode
-(`UnhashableConfig`) rather than skipping it.
+The pass runs `BacktestRunner()` with its defaults. Read from the live objects:
+
+* `RollingOLSChannel` (frozen dataclass; **all configuration**): `lookback=60`, `quantile_low=0.1`,
+  `quantile_high=0.9`, `weights=None`, `bands='residual_quantiles'`, `band_sigmas=1.2816`.
+* `SignalMachine` (mutable dataclass; **configuration and state mixed**). Configuration: `zone_upper`,
+  `zone_lower`, `zone_middle`, `overshoot_tolerance`, `min_quality`, `slope_threshold`, `expiry_bars`, `opens`,
+  and `detector`. **State, which must never enter a hash:** `candidate` and `_awaiting_zone_exit` (they change on
+  every bar; a hash that included them would differ for every record and mean nothing).
+* `detector` is a plain class, not a dataclass (`CloseBackInside(min_distance_pct_of_width=0.15)`): it is
+  configuration through its `name` and its public attributes.
+* `CHANNELFLOW_GAP_THRESHOLD` (`Settings.gap_threshold`, default 1). The channel's own
+  `_find_gap_boundary` passes the literal `threshold=1` to `is_gap` rather than reading the setting, so changing the
+  setting does not change the channel window today; it is included anyway because it is the configured value, and
+  the discrepancy is noted for the owner of REQ-WP-087.
+* The extremum detector (`DirectionalChangeDetector`) is out of scope: extrema are not notarized here.
+
+**Consequence for the design.** Walking `dataclasses.fields` recursively (what the plan first said) would include
+the machine's state. The config hash is taken over an **explicit list of configuration fields per component**,
+and a completeness test enumerates every field of every component and fails unless it is classified as
+configuration or as state/observer. A parameter added tomorrow without being classified fails the suite; it does
+not silently stay out of the hash. A value `config_hash` cannot encode (`UnhashableConfig`) makes the pass's
+records unnotarizable with that reason; it is never skipped.
 
 ## R9. Code commit at run time
 
@@ -94,3 +109,37 @@ The service logs the signing *address* and refuses to start when it is not the c
 `dataset_reference({"bars": (snapshot_id, content_hash)})` gives one string over the pinned bars snapshot. The
 `bars` table was chosen because every record in this feature is computed from bars alone; if a later record also
 reads flow features or quotes, their snapshots join the mapping and the scheme version moves.
+
+## R4 — finding (T002, 2026-10-08): Monad charges the gas limit
+
+One real `commit` of a throw-away hash sent with a deliberately raised limit: estimate **79,455**, limit
+**111,237** (+40 %), price 103 gwei. The receipt reports `gasUsed = 111,237` — the limit, not what the call
+needed — and the balance fell by exactly `111,237 × price` (0.011457 MON; the ratio of the balance difference to
+`limit × price` is 1.0000). So on this chain **the limit is the price**: every unit of margin is paid. The
+service sets the limit to the estimate times a small configured margin (default 1.05, ≈ +0.0004 MON a commit),
+and a transaction that runs out of gas still costs its whole limit, so the margin is a trade between a
+redundant 5 % and a failed commit that costs 100 % and must be repeated. Earlier receipts could not show this
+because `cast` had set limit = estimate.
+
+## R12. How often does a record actually reach the lakehouse? (T001, 2026-10-08)
+
+Read from `docker logs -t` of the worker over three hours. A cycle is: the flow step (`flow rows written`), then
+every `(series, timeframe)` — 5 series × 7 timeframes, 20–50 s each, `1w` skipped for lack of bars — then `next
+pass in 300s`. Measured: the channel part of a pass takes **1,012–1,290 s (17–21 min)**; the flow step before it
+takes about **10–14 min**; plus the 5-minute sleep, so one **start-to-start cycle is 28–35 min**. The cost is
+dominated by work that repeats every cycle regardless of what is new: each series replays its whole bar history
+and `watermark()` reads whole tables.
+
+Consequences for this feature:
+
+1. Records arrive in clumps, once per cycle. A 5-minute snapshot is in the lakehouse up to ~35 minutes after its
+   bar closed — before the notary adds anything. The claim the product can make is therefore minutes-to-an-hour,
+   and the measured figure will say so.
+2. A batch window much shorter than the cycle cannot reduce latency (nothing new arrives between clumps); 30
+   minutes is roughly one cycle, so about one root per cycle (≈ 45 a day, inside the 48 estimated).
+3. The registrar must not add a full read to a pass that is already dominated by full reads: the tracker's
+   registered-identity set is read once per pass, and snapshots are registered from the recorder's own buffer.
+4. A pass-time bound cannot be a comparison with "last week": durations moved 1,012 → 1,290 s within five passes
+   and the cause (history growing, and my own read-only measurements running in the same container) is not
+   separable from here. The bound is therefore two-part (plan): a deterministic A/B on a fixture, and on the live
+   stack 110 % of the *longest* of the five most recent passes before the change.

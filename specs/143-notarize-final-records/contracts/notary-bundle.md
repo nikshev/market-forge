@@ -10,7 +10,7 @@ record_hash = SHA-256(
     ‖ frame(kind) ‖ frame(record_bytes) ‖ frame(config_hash)
     ‖ frame(dataset_ref) ‖ frame(code_commit)
 )
-frame(x) = uint32_be(len(x)) ‖ x            # x is UTF-8 text, or raw bytes for record_bytes
+frame(x) = uint32_le(len(x)) ‖ x            # little-endian, as the lakehouse frames values; x is UTF-8 text, or raw bytes for record_bytes
 ```
 
 * `kind`: `snapshot`, `decision` or `suppression`.

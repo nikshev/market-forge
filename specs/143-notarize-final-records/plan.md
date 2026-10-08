@@ -33,9 +33,14 @@ No `web3.py`: of its surface the service needs nine JSON-RPC calls.
 
 **Target Platform**: the existing compose stack; one new service (`notary`); changes to `worker`, `Dockerfile`.
 
-**Performance Goals**: with the notary enabled a worker pass takes no more than **110 % of the baseline pass time**
-recorded before the change (registration is local appends and one pinned read), including with the chain
-unreachable (SC-003); chain traffic ≈ 48 transactions a day.
+**Performance Goals**: with the notary enabled a worker pass adds **at most one read** (of `notary_records`) and **at
+most one commit per `(series, timeframe)` that had something to register**, reads no other table more often than it
+did, and is unchanged when the chain is unreachable (the pass never touches the chain) — SC-003, asserted in
+operations, which cannot be noisy. Time is measured, not asserted: a 120-bar fixture ran 0.38 s without and 0.45 s
+with the notary (ratio 1.17, **+66 ms per series-timeframe**: one commit and one read, a fixed cost that looks large
+against a tiny fixture and is ≈ 2.3 s on the ≈ 35 series-timeframes of a live pass, **≈ 0.2 %**). The live bound is
+110 % of the *longest* of the five passes before the change (1,290 s → **1,419 s**). A 110 % bound on the fixture was
+the wrong shape and was dropped. Chain traffic ≈ 45–48 transactions a day.
 
 **Constraints**: the worker never holds a key; a chain outage delays notarization only; Principle I and III.
 
@@ -66,10 +71,12 @@ Measured in the worker container on 2026-10-08, read-only; per-transaction cost 
 | **One root per 30 min** | **≤ 48** | **0.39** | **12.5 days** | **chosen default** |
 | One root per hour | ≤ 24 | 0.20 | 25 days | available by configuration |
 
-The cost of batching is latency, stated plainly: a record waits for the end of its window. Its bar-close-to-block
-interval is *bar close → pass that records it (≤ 5 min) → end of the window (≤ 30 min) → block*; the claim the
-product makes is the measured figure for exactly that path (US5), not a promise about speed. Empty windows send
-nothing, so a quiet market costs nothing.
+The cost of batching is latency, stated plainly, and it is smaller than the pass's own. Measured (research R12): a
+worker cycle is **28–35 minutes**, and records reach the lakehouse in clumps once per cycle, so a 5-minute snapshot
+is recorded up to ~35 minutes after its bar closed *before* the notary acts. The path is *bar close → the cycle
+that records it (≤ ~35 min) → the end of the batch window (≤ 30 min, about one cycle) → block (< 1 s)*. The claim
+the product makes is the measured figure for exactly that path (US5): minutes to about an hour, not seconds.
+Empty windows send nothing, so a quiet market costs nothing.
 
 ## Constitution Check
 
@@ -152,10 +159,17 @@ worker imports; everything that touches the chain or the key lives behind the `n
    terminal outcome of an already-recorded candidate, i.e. most NO ALERTs); fixing `SignalRecorder` here (a
    defect of its own, REQ-WP-0xx material, recorded in the outcome note and left alone — the notary does not
    depend on it).
-2. **Register at write time, from the recorder, not by scanning the table afterwards.** `ChannelRecorder`
-   already knows exactly which rows survived its watermark. A hook (`on_written`) hands them to the registrar
-   after the append succeeded. *Rejected:* a scan of `channel_snapshots` for rows above a notary watermark (a
-   second watermark that can disagree with the first, plus another full read per pass).
+2. **Register from the event bus, by identity, not from the recorder and not by scanning.** (Revised during
+   implementation; the first version of this decision hooked the recorder.) The pass replays the whole bar
+   history every cycle and publishes `ChannelFitted` and `CandidateUpdated` for all of it, and `record_replay`
+   already takes a caller's `EventBus`. A `ChannelFitted` subscriber registers a snapshot, and a
+   `DecisionTracker` registers each new transition; both skip what is already registered (a set of record ids
+   read once per pass) and what is before the epoch. This needs **no change to `replay.py`**, and it heals
+   itself: a crash between the lakehouse write and the registration cannot lose a record, because the next
+   cycle re-derives it (non-repainting makes the re-derived snapshot identical). *Rejected:* a hook on
+   `ChannelRecorder.flush` (a registration failure after the append would be unrecoverable, since the recorder's
+   watermark has already moved); a scan of `channel_snapshots` above a notary watermark (a second watermark that
+   can disagree with the first, plus another full read per pass).
 3. **The input dataset is pinned per pass.** `run_pass` reads `bars_table.current()` once, and every read in
    the pass uses that snapshot id; the pinned id and content hash are the record's dataset reference. Today
    `run_series` calls `read_bars` per series against whatever is current, and the bars table gains a snapshot
@@ -201,9 +215,10 @@ worker imports; everything that touches the chain or the key lives behind the `n
 13. **No sending below a floor.** If the balance is under `CHANNELFLOW_NOTARY_MIN_BALANCE` (or the gas price
     over `…_MAX_GAS_PRICE`) the service does not send, the outbox grows, a gauge and a log line say why.
     It never tops up.
-14. **Gas limit is the estimate with a small fixed margin.** Monad charges the gas *limit* rather than the gas
-    used (to be confirmed against the receipt in the first chain task); the margin is therefore a cost, and the
-    measured 79,491 gas per commit is the figure the sizing used.
+14. **Gas limit is the estimate times a small configured margin (default 1.05).** Measured (research R4 finding):
+    Monad charges the gas **limit** — a commit sent with a limit 40 % over the estimate cost 40 % more and the
+    receipt reports the limit as gas used. The margin is therefore a cost, and a transaction that runs out of gas
+    still costs its whole limit. The sizing used the measured 79,491 gas per commit.
 15. **The code commit is a build argument.** `CHANNELFLOW_CODE_COMMIT` and `CHANNELFLOW_CODE_DIRTY` are set at
     image build; absent, malformed or dirty means the registrar stores the record as unnotarizable with the
     reason (FR-010). `make notary-build-info` prints the exports so a deploy cannot forget them.
@@ -229,7 +244,11 @@ worker imports; everything that touches the chain or the key lives behind the `n
 - **The pass already replays the full bar history for every series each time** (the recorders skip by
   watermark). The registrar must not add a third full read; `DecisionTracker` loads its registered-identity set
   once per pass, not per series.
-- **Latency is honest and large:** minutes, not seconds, by design (sizing). The product may not claim more.
+- **Latency is honest and large:** the worker cycle alone is 28–35 minutes (R12), the window up to 30 more. The
+  product may not claim more than what the measurement shows.
+- **The pass is slow and does repeated whole-history work** (20–50 s per series-timeframe, a 10–14 minute flow
+  step). Not this feature's to fix, and the notary is built not to add to it; but a pass that grows with history
+  will eventually exceed any fixed interval, and that is a finding the user should have (outcome note).
 - **CI is red for an unrelated reason** (MinIO image pull); new tests run in the fast gate regardless.
 - **Faucet dependence:** the 12.5-day runway is a property of one faucet claim; running out stops commits, not
   signals, visibly.

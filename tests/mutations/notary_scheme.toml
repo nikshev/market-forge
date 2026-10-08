@@ -1,0 +1,111 @@
+# The record hash and the batch tree (REQ-INFRA-007).
+#
+# A notary that can be made to commit the wrong thing without a test noticing is worse than
+# none: its output looks like proof. Each mutation here removes one of the things that make the
+# hash bind what it says it binds, or the tree prove what it says it proves, and each must be
+# caught -- by the hand-built envelope, the pinned vector, the eight input-change tests, or the
+# independent RFC 9162 implementation in the tree tests.
+#
+# Patterns are TOML *literal* strings on purpose: the basic form treats a trailing
+# backslash as a line continuation and eats the next line's indentation.
+source = "src/channelflow/notary/scheme.py"
+tests = ["tests/notary/test_notary_scheme.py", "tests/notary/test_notary_tree.py"]
+
+[[mutation]]
+name = "the kind is not part of the hash"
+find = '''    digest.update(length_prefixed(kind.encode()))
+'''
+replace = ''''''
+
+[[mutation]]
+name = "the scheme version is not part of the hash"
+find = '''    digest.update(bytes([version]))
+'''
+replace = ''''''
+
+[[mutation]]
+name = "the magic prefix is not part of the hash"
+find = '''    digest.update(_MAGIC)
+'''
+replace = ''''''
+
+[[mutation]]
+name = "the config hash is not part of the hash"
+find = '''    digest.update(length_prefixed(context.config_hash.encode()))
+'''
+replace = ''''''
+
+[[mutation]]
+name = "the dataset reference is not part of the hash"
+find = '''    digest.update(length_prefixed(context.dataset_ref.encode()))
+'''
+replace = ''''''
+
+[[mutation]]
+name = "the code commit is not part of the hash"
+find = '''    digest.update(length_prefixed(context.code_commit.encode()))
+'''
+replace = ''''''
+
+[[mutation]]
+name = "the record is concatenated without a length, so a value can be shifted across a boundary"
+find = '''    digest.update(length_prefixed(record))'''
+replace = '''    digest.update(record)'''
+
+[[mutation]]
+name = "the config hash is concatenated without a length"
+find = '''    digest.update(length_prefixed(context.config_hash.encode()))'''
+replace = '''    digest.update(context.config_hash.encode())'''
+
+[[mutation]]
+name = "a leaf is hashed with the interior-node prefix"
+find = '''_LEAF = b"\x00"'''
+replace = '''_LEAF = b"\x01"'''
+
+[[mutation]]
+name = "an interior node is hashed with the leaf prefix"
+find = '''_NODE = b"\x01"'''
+replace = '''_NODE = b"\x00"'''
+
+[[mutation]]
+name = "the tree splits at the largest power of two not above n, not strictly below it"
+find = '''    while k * 2 < n:'''
+replace = '''    while k * 2 <= n:'''
+
+[[mutation]]
+name = "an empty tree has a root"
+find = '''    if not items:
+        raise ValueError("an empty tree has no root; a batch holds at least one record")
+'''
+replace = '''    if not items:
+        return hashlib.sha256(b"").digest()
+'''
+
+[[mutation]]
+name = "a proof is taken from the wrong half at the split"
+find = '''    if index < k:
+        return [*inclusion_proof(items[:k], index), merkle_root(items[k:])]'''
+replace = '''    if index <= k:
+        return [*inclusion_proof(items[:k], index), merkle_root(items[k:])]'''
+
+[[mutation]]
+name = "a leaf index outside the tree is accepted by the verifier"
+survives = '''An equivalent mutant. The guard rejects a structurally impossible claim early; without it the loop runs on the claimed index and size and ends with a root that differs from the real one, because no choice of path makes a different position hash to the same root short of a SHA-256 collision. The tree tests assert the rejection (index 11 of 11), which still holds through the root comparison; the guard is defence in depth, not the check.'''
+find = '''    if size < 1 or not 0 <= index < size:
+        return False'''
+replace = '''    if size < 1:
+        return False'''
+
+[[mutation]]
+name = "a path longer than the tree is accepted"
+survives = '''An equivalent mutant, for the same reason: past the point where the tree is exhausted every further sibling is hashed in, the result differs from the root, and the verifier returns False at the final comparison. The early return only saves the work and states the malformation.'''
+find = '''        if sn == 0:
+            return False
+        if fn & 1 or fn == sn:'''
+replace = '''        if fn & 1 or fn == sn:'''
+
+[[mutation]]
+name = "the verifier accepts a proof that does not exhaust the tree"
+survives = '''An equivalent mutant. A path that stops short leaves the accumulated hash at an interior node's value, which differs from the root; the final `result == root` rejects it. The `sn == 0` condition states the structural fact.'''
+find = '''    return sn == 0 and result == root'''
+replace = '''    return result == root'''

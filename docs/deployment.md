@@ -28,6 +28,7 @@ Thirteen services, started together:
 | `resample` | builds every configured timeframe from the one-minute series, on a loop ([[REQ-WP-073]]) |
 | `maintenance` | prunes metadata, compacts and optionally expires, on a loop ([[REQ-WP-070]]) |
 | `worker` | fits channels, signals and extrema over the stored bars, on a loop ([[REQ-WP-077]]) |
+| `notary` | **only when asked for** (`docker compose up -d notary`): commits a Merkle root of the records the worker registered to the SignalNotary contract on Monad testnet, and is the one service given the signing keystore ([[REQ-INFRA-007]]) |
 | `cloudflared` | **only with `--profile telegram`**: an outbound tunnel that gives the web service an HTTPS address for the Telegram Mini App ([[REQ-WP-080]]) |
 
 All eight application services build from this repository ([[REQ-WP-064]],
@@ -592,6 +593,36 @@ uncommitted changes in `contracts/`, and writes the record only after the receip
 the on-chain code (hashed and compared with a fresh local compile) and `owner()` have all been read
 back. If the testnet is reset the recorded address stops resolving and `make notary-verify` says so;
 the contract is then redeployed from the same source.
+
+### Notarizing the records ([[REQ-INFRA-007]])
+
+The `worker` registers each snapshot and decision it computes and holds no key; the `notary` service
+batches them, signs one root per window and sends it. What a commit proves, and the measured delay, are
+in [notary.md](notary.md). It is off until switched on, and a stack without keys never runs it.
+
+    eval "$(make -s notary-build-info)"        # the commit, whether the tree was clean, and the epoch
+    docker compose up -d --no-deps --build worker notary
+    docker compose exec notary python -m channelflow.notary.main outbox     # what waits, and why
+
+| Variable | Meaning |
+|---|---|
+| `CHANNELFLOW_NOTARY_ENABLED` | the worker registers records only when this is true |
+| `CHANNELFLOW_NOTARY_FROM` | the instant from which records are notarized (ISO-8601 with a timezone); required when enabled, no default |
+| `CHANNELFLOW_CODE_COMMIT` | the commit the images were built from (a build argument; the container has no `.git`) |
+| `CHANNELFLOW_CODE_DIRTY` | `false` if the tree was clean; anything else makes records unnotarizable, visibly |
+| `MONAD_KEYSTORE_FILE` | host path of the Foundry keystore the `notary` service signs with; read-only, owned by uid 10001, mode 400, outside the repository |
+| `MONAD_NOTARY_DEPLOY_BLOCK` | the block the contract was deployed in, where the log search for a commit begins |
+| `CHANNELFLOW_NOTARY_BATCH_WINDOW` | how long a record may wait before its batch is formed (default `30m`) |
+| `CHANNELFLOW_NOTARY_INTERVAL` | how often the service ticks (default 60 seconds) |
+| `CHANNELFLOW_NOTARY_MAX_BATCH` | the most records in one batch (default 5000) |
+| `CHANNELFLOW_NOTARY_MIN_BALANCE` | in wei; below it nothing is sent and the batch is held with the reason |
+| `CHANNELFLOW_NOTARY_MAX_GAS_PRICE` | in wei; above it nothing is sent |
+| `CHANNELFLOW_NOTARY_GAS_MARGIN` | the gas limit is the estimate times this; Monad bills the limit, so slack is paid for |
+| `CHANNELFLOW_NOTARY_SUBMIT_TIMEOUT` | how long a sent transaction may go without a receipt before it is looked at again |
+| `NOTARY_METRICS_PORT` | the host port for the notary's `/metrics` (loopback only, like the others) |
+
+The service starts only if the node is on `MONAD_CHAIN_ID` and the signing address is the contract's
+owner; otherwise it exits saying why. It never tops up its own balance.
 
 The owner key cannot be rotated. A leaked key is remedied by a new contract and a retired old one, not
 by a feature.
