@@ -23,11 +23,20 @@ holds it, and the figure below says how long that took.
 
 ## How long it takes
 
-A record reaches the chain after the worker's cycle has recorded it (28–35 minutes, measured) and the
-batch window has closed (up to 30 minutes), and the block follows within a second. The figure the
-product may quote is measured on the running system, per record, from the chain's time:
+A record reaches the chain after four waits in a row: the bar is built into its timeframe by `resample`
+(the 5-minute series was about 45 minutes behind the clock when measured), the worker's cycle records
+it (28–35 minutes), the batch window closes (up to 30 minutes), and the block follows within a second.
+Only the last two are the notary's. The figure the product may quote is measured on the running system,
+per record, from the chain's own time, and it is the whole path:
 
-Not yet measured.
+Measured: median 5653 s, p95 6553 s, max 6870 s over 168 records.
+
+That is a median of about 94 minutes, from the close of a bar to the block that holds it. The sample is
+168 records across 5 series over 65 minutes of block times, on 2026-10-08, after the first batch was
+set aside: its records had been registered late because of an unrelated failure of the worker that day.
+The numbers are in `deployments/monad-testnet-latency.json`, and a test makes this paragraph quote that file
+exactly. A faster path means a faster pipeline upstream (the notary adds at most its window), not a faster
+notary.
 
 ## What is not covered
 

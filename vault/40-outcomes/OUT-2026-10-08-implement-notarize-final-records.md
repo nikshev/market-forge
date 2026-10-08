@@ -17,7 +17,7 @@ specs in `tests/mutations/`, the compose `notary` service with its secrets, the 
 Prometheus job, `make notary-build-info`, `docs/notary.md` and the deployment section. The worker's pass now
 registers what it computes; nothing else about the pass changed.
 
-**Stage 2 -- the live deployment (T035–T042):** _not yet performed when this stage was committed._
+**Stage 2 -- the live deployment (T035–T042), `status: implemented`.** Done on 2026-10-08 against the running stack and Monad testnet; the evidence and what went wrong on the way are below.
 
 ### RED, before the code
 
@@ -95,10 +95,76 @@ Changes to the plan made while implementing, each because something was measured
 4. **`window.py` passes the literal `threshold=1` to `is_gap`**, so `CHANNELFLOW_GAP_THRESHOLD` does not change
    the channel window; it is in the config hash because it is the configured value.
 
+## Live deployment (stage 2)
+
+**Setup (T035, T036).** The keystore and its password were copied to `/root/.monad/runtime/` owned by uid 10001, mode
+400, outside the repository, and mounted by compose as files; read back as that uid. The images were built from clean
+committed trees with the commit baked in. Only `worker` and `notary` were recreated; the start times of every other
+container were identical before and after (a diff of `docker inspect`). The worker has no `/run/secrets`; the notary
+logs its signing address, equal to the contract's `owner()` (it refuses to start otherwise). The stable settings
+(`CHANNELFLOW_NOTARY_ENABLED`, the epoch, the key paths, the contract address and deploy block) were appended to the
+local `.env` after a backup; **the commit and the dirty flag are deliberately not in it** -- a stale value there would
+label new records with code they were not produced by.
+
+**First real batch (T037).** Block 69321381, tx
+[`0x32b1f746…3a00`](https://testnet.monadvision.com/tx/0x32b1f7461ef153e582a3fff61a6436ee2c5468efe0713843be0cbb9037323a00),
+root `e8b9b461…efbdf9`, 113 records. A snapshot and a decision from it were verified with `verify check` (committed,
+bar close to block, the "no later than" sentence). A bundle exported for the snapshot was then verified **in an empty
+environment** with nothing but the file and the public node: `committed`; with one byte of the record changed:
+`not committed -- the record hash does not match the record and its context`.
+
+**Measurement (T038).** `deployments/monad-testnet-latency.json`: **168 records, 5 series, 3,917 s of block times**
+(the criterion was 50+, 3+, 3,600 s). Per record, bar close to block: **median 5,653 s (94 minutes), p95 6,553 s,
+max 6,870 s.** The first batch was set aside: its records had been registered about 1.5 hours late because of the
+worker failure below, which is not what the path costs in steady state. The delay is the whole path, not the
+notary's: `resample` leaves the 5-minute series about 45 minutes behind the clock, the worker's cycle is 28–35
+minutes, the batch window adds up to 30. `docs/notary.md` quotes the file; a test enforces it.
+
+**Outage drill (T039).** `notary` was stopped at 19:41:51 for 30 minutes while the worker kept running. During it:
+the outbox grew from 9 to 72 unbatched records and the oldest waited 1,932 s (visible from the `outbox` command, no
+chain and no key needed); the worker completed a pass with 0 `FAILED`; **no transaction was sent** (account nonce
+8 -> 8). After the restart the backlog became **one** batch of 72 records, **one** transaction (nonce 8 -> 9),
+confirmed at block 69347060. Across all five batches every root was submitted exactly once and no record is in two
+batches (353 unique ids in 353 leaves). This drill stops the *process*; "the chain is unreachable while the process
+runs" is covered by the submitter tests and the end-to-end outage test, not by this drill.
+
+**Cost (T040).** Five batch commits took the balance from 4.912557 to 4.869990 MON: **0.00851 MON each** (79,455
+estimated gas x 1.05 margin x ~103 gwei). At the configured ceiling of 48 commits a day that is 0.41 MON a day, so
+the 4.87 MON now held lasts about **12 days**, as planned. The gas-limit experiment (T002) cost 0.0115 MON.
+
+## What went wrong on the way (all found by looking at the running system, none by the suite)
+
+1. **I broke production channel output for about 70 minutes.** Rebuilding the `worker` image shipped REQ-WP-087's
+   gap policy -- implemented on 7 October and never deployed -- and on real data every hole leaves a window of one
+   bar, which `np.polyfit` cannot fit. Every series then failed with `LinAlgError`. I noticed after thirty minutes
+   of silence from the notary, not from the worker's log, which is where the first sign was. Fixed by a floor on
+   the window (`min_window_bars`, default 10), verified on the real lakehouse before deploying; see
+   [[OUT-2026-10-08-implement-gap-window-floor]]. The deploy procedure now says to read the worker's log for
+   `FAILED` first.
+2. **`eth_getLogs` is limited to 100 blocks on the public node.** The first real commit succeeded and could not be
+   confirmed, because the evidence search started at the deployment block, 104,000 blocks back. The test chain had
+   no such limit, so every test passed. Evidence is now found from the commit's own time by bisection, in windows of
+   at most 100 blocks (39 calls against the real chain); a transaction the service sent itself is confirmed from
+   its receipt and needs no search; and the test node enforces the limit.
+3. **My own deploy command moved the epoch.** `make notary-build-info` printed `CHANNELFLOW_NOTARY_FROM`, so
+   evaluating it exported a value that overrode `.env` and moved the epoch forward by over an hour, which would
+   have left those records unregistered for good. The epoch was restored from `.env` before it cost any, and the
+   target no longer prints it; a test asserts that.
+4. **Two of my own monitoring commands were silently wrong** (`cut` buffering a pipe; `docker exec` without `-i`
+   dropping a script's stdin). Both reported silence where there was information. Silence from a monitor is now
+   treated as a reason to look, not a reason to wait.
+
 ## What is still open
 
-- The live phase: the secrets directory for uid 10001, the build from a clean committed tree, starting the
-  `notary`, the first confirmed batch, the measurement (50+ records, 3+ series, 1+ hour), the outage drill.
-- `docs/notary.md` says "not yet measured"; a test makes that true until `deployments/monad-testnet-latency.json`
-  exists and then makes the text quote it exactly.
-- The suppression kind has no live producer (the worker delivers no alerts); its schema and tests exist.
+- **Latency is minutes-to-hours and mostly not the notary's.** If the product wants "within minutes" the work is
+  upstream: `resample` lag and the worker cycle (each series replays its whole history, `watermark()` reads whole
+  tables). A shorter batch window cannot help while records arrive in clumps once per cycle.
+- **The floor of 10 bars** after a hole is a choice (see the gap-floor note); the owner may want another.
+- **`SignalRecorder` freezes a candidate at first sight** (finding 1 of stage 1); the notary does not depend on it.
+- **The suppression kind has no live producer**: the worker delivers no alerts, which also means [[REQ-INFRA-008]]
+  (an alert that links to its transaction) starts from "there is no alert yet".
+- **The owner key is one key on one host**, and the plain-text copy `/root/.monad/deployer.env` still exists
+  (outside the repository, never read by the tools). Testnet only; deleting it is the key owner's decision.
+- **CI is red for an unrelated reason** (the MinIO image pull); the new tests run in the fast gate regardless.
+- The anvil rehearsal and the live deployment produced the same contract address (it is a function of deployer and
+  nonce); nothing from the rehearsal reached the repository.

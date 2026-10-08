@@ -5,7 +5,7 @@ type: infrastructure
 prd_ref: "none -- user-directed integration, 2026-10-03; touches §0.13 (reproducibility), §26.4 (alerting), §29.B (dataset identity)"
 prd_lines: "0-0"
 phase: null
-status: tested
+status: implemented
 depends_on: [REQ-INFRA-006]
 tags: [monad, notary, reproducibility]
 hard_gated: false
@@ -57,19 +57,22 @@ Principle I is unaffected: the hash is computed from data already final at bar c
     - `tests/notary/test_notary_chain.py::test_a_commit_is_read_at_the_requested_block_tag_and_zero_means_absent`
     - `tests/notary/test_notary_chain.py::test_a_foundry_keystore_decrypts_to_the_account_that_was_put_in`
     - `tests/notary/test_notary_chain.py::test_a_receipt_is_decoded_and_a_missing_one_is_none`
+    - `tests/notary/test_notary_chain.py::test_a_root_the_chain_does_not_hold_has_no_evidence_and_costs_no_log_query`
     - `tests/notary/test_notary_chain.py::test_a_wrong_password_or_a_missing_file_fails_without_saying_either_secret`
     - `tests/notary/test_notary_chain.py::test_an_unreachable_node_is_a_chain_down`
+    - `tests/notary/test_notary_chain.py::test_blocks_that_share_a_second_are_all_searched`
     - `tests/notary/test_notary_chain.py::test_every_way_the_node_can_fail_is_a_chain_down[http 500]`
     - `tests/notary/test_notary_chain.py::test_every_way_the_node_can_fail_is_a_chain_down[not json]`
     - `tests/notary/test_notary_chain.py::test_every_way_the_node_can_fail_is_a_chain_down[rpc error]`
     - `tests/notary/test_notary_chain.py::test_neither_the_key_nor_the_password_nor_a_provider_token_reaches_any_message`
     - `tests/notary/test_notary_chain.py::test_startup_refuses_a_wrong_chain_or_a_signer_that_is_not_the_owner`
     - `tests/notary/test_notary_chain.py::test_the_commit_calldata_is_what_cast_produces`
-    - `tests/notary/test_notary_chain.py::test_the_commit_evidence_comes_from_the_committed_log`
+    - `tests/notary/test_notary_chain.py::test_the_commit_evidence_is_found_by_time_and_never_asks_for_more_than_a_hundred_blocks`
     - `tests/notary/test_notary_chain.py::test_the_http_transport_speaks_json_rpc`
     - `tests/notary/test_notary_chain.py::test_the_signed_transaction_recovers_to_the_signer_with_chain_nonce_and_tight_gas`
     - `tests/notary/test_notary_claim.py::test_no_user_facing_text_claims_a_commit_precedes_a_price_move`
     - `tests/notary/test_notary_claim.py::test_the_checker_flags_an_overclaim_and_lets_a_negation_through`
+    - `tests/notary/test_notary_claim.py::test_the_checker_follows_a_sentence_across_a_line_break_but_not_across_a_full_stop`
     - `tests/notary/test_notary_claim.py::test_the_documentation_quotes_the_recorded_figure_or_says_it_has_none`
     - `tests/notary/test_notary_config.py::test_an_unset_commit_is_carried_as_absent_not_defaulted`
     - `tests/notary/test_notary_config.py::test_switched_on_it_needs_an_explicit_epoch`
@@ -87,6 +90,7 @@ Principle I is unaffected: the hash is computed from data already final at bar c
     - `tests/notary/test_notary_context.py::test_changing_any_configuration_field_changes_the_config_hash[channel.band_sigmas]`
     - `tests/notary/test_notary_context.py::test_changing_any_configuration_field_changes_the_config_hash[channel.bands]`
     - `tests/notary/test_notary_context.py::test_changing_any_configuration_field_changes_the_config_hash[channel.lookback]`
+    - `tests/notary/test_notary_context.py::test_changing_any_configuration_field_changes_the_config_hash[channel.min_window_bars]`
     - `tests/notary/test_notary_context.py::test_changing_any_configuration_field_changes_the_config_hash[channel.quantile_high]`
     - `tests/notary/test_notary_context.py::test_changing_any_configuration_field_changes_the_config_hash[channel.quantile_low]`
     - `tests/notary/test_notary_context.py::test_changing_any_configuration_field_changes_the_config_hash[detector.min_distance]`
@@ -107,6 +111,7 @@ Principle I is unaffected: the hash is computed from data already final at bar c
     - `tests/notary/test_notary_latency.py::test_a_sample_that_meets_the_criterion_says_so`
     - `tests/notary/test_notary_latency.py::test_latency_is_per_record_from_its_own_bar_close_not_per_batch`
     - `tests/notary/test_notary_latency.py::test_only_confirmed_batches_count_and_the_window_filters_by_the_chains_time`
+    - `tests/notary/test_notary_latency.py::test_the_latency_command_prints_the_report_as_json`
     - `tests/notary/test_notary_latency.py::test_the_percentile_is_nearest_rank_and_never_interpolated`
     - `tests/notary/test_notary_main.py::test_a_malformed_value_names_its_variable[CHANNELFLOW_NOTARY_BATCH_WINDOW-soon]`
     - `tests/notary/test_notary_main.py::test_a_malformed_value_names_its_variable[CHANNELFLOW_NOTARY_GAS_MARGIN-0.9]`
@@ -162,9 +167,11 @@ Principle I is unaffected: the hash is computed from data already final at bar c
     - `tests/notary/test_notary_scheme.py::test_the_hash_is_a_function_of_its_inputs_alone`
     - `tests/notary/test_notary_scheme.py::test_the_kind_and_the_scheme_version_are_part_of_the_hash`
     - `tests/notary/test_notary_submitter.py::test_a_balance_under_the_floor_holds_the_batch_once_and_sends_nothing`
+    - `tests/notary/test_notary_submitter.py::test_a_commit_we_sent_is_confirmed_from_its_receipt_without_searching_logs`
     - `tests/notary/test_notary_submitter.py::test_a_failure_after_the_chain_accepted_the_transaction_is_reconciled_not_resent`
     - `tests/notary/test_notary_submitter.py::test_a_formed_batch_is_sent_once_and_confirmed_from_the_chain`
     - `tests/notary/test_notary_submitter.py::test_a_gas_price_over_the_ceiling_holds_the_batch`
+    - `tests/notary/test_notary_submitter.py::test_a_log_search_that_the_node_refuses_leaves_the_batch_pending_not_lost`
     - `tests/notary/test_notary_submitter.py::test_a_process_that_died_before_recording_anything_finds_its_root_on_chain`
     - `tests/notary/test_notary_submitter.py::test_a_reverted_transaction_is_a_failure_and_is_retried`
     - `tests/notary/test_notary_submitter.py::test_a_transaction_still_in_flight_is_not_sent_again_before_its_timeout`
@@ -230,14 +237,30 @@ Principle I is unaffected: the hash is computed from data already final at bar c
     - `tests/notary/test_notary_verify.py::test_any_altered_field_is_not_committed_and_says_why[path]`
     - `tests/notary/test_notary_verify.py::test_any_altered_field_is_not_committed_and_says_why[record]`
     - `tests/notary/test_notary_verify.py::test_any_altered_field_is_not_committed_and_says_why[root]`
+    - `tests/notary/test_notary_verify.py::test_export_then_bundle_round_trips_through_a_file_with_no_lakehouse`
     - `tests/notary/test_notary_verify.py::test_the_bar_close_is_read_from_the_records_own_bytes`
+    - `tests/notary/test_notary_verify.py::test_the_check_command_exits_nonzero_for_pending_and_for_not_committed`
+    - `tests/notary/test_notary_verify.py::test_the_check_command_reports_committed_with_the_block_and_the_honest_claim`
     - `tests/unit/deploy/test_notary_compose.py::test_no_environment_value_in_the_compose_file_is_or_names_a_key`
     - `tests/unit/deploy/test_notary_compose.py::test_only_the_notary_is_given_the_keystore_and_its_password`
-    - `tests/unit/deploy/test_notary_compose.py::test_the_build_info_target_prints_the_commit_the_dirty_flag_and_the_epoch`
+    - `tests/unit/deploy/test_notary_compose.py::test_the_build_info_target_prints_the_commit_and_the_dirty_flag_but_never_the_epoch`
     - `tests/unit/deploy/test_notary_compose.py::test_the_commit_is_baked_in_at_build_for_the_worker_and_the_notary`
     - `tests/unit/deploy/test_notary_compose.py::test_the_worker_holds_no_key_and_no_chain_setting`
     - `tests/unit/deploy/test_notary_compose.py::test_there_is_a_notary_service_that_starts_only_when_asked_for`
 - **Code:**
+    - `src/channelflow/notary/__init__.py`
+    - `src/channelflow/notary/batcher.py`
+    - `src/channelflow/notary/chain.py`
+    - `src/channelflow/notary/config.py`
+    - `src/channelflow/notary/context.py`
+    - `src/channelflow/notary/latency.py`
+    - `src/channelflow/notary/main.py`
+    - `src/channelflow/notary/records.py`
+    - `src/channelflow/notary/registrar.py`
+    - `src/channelflow/notary/scheme.py`
+    - `src/channelflow/notary/submitter.py`
+    - `src/channelflow/notary/tables.py`
+    - `src/channelflow/notary/verify.py`
     - `src/channelflow/pipeline/channel_main.py`
 - **Outcomes:** [[OUT-2026-10-08-implement-notarize-final-records]], [[OUT-2026-10-08-plan-notarize-final-records]], [[OUT-2026-10-08-spec-notarize-final-records]], [[OUT-2026-10-08-tasks-notarize-final-records]]
 <!-- trace:end -->

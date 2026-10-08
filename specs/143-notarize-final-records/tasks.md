@@ -126,7 +126,7 @@ audit, `make mutate`).
 
 - [X] T032 `main.py` (loop, `outbox`, metrics) and the settings in `src/channelflow/settings.py`
 - [X] T033 [P] `.env.example` (documented `CHANNELFLOW_NOTARY_*`), `docs/deployment.md` (a section; every variable named in backticks, which a repository test requires), `Makefile` (`notary-build-info`), `Dockerfile` (build args → env), `docker-compose.yml` (`notary` service, secrets, worker environment)
-- [ ] T034 Gate: `make lint`, `make typecheck` (the new package is under `mypy --strict`), `make test-fast`; `make graph` once; `status: tested`; commit with explicit paths (pre-commit ≈ 7 minutes; do not edit the tree while it runs). **No live deployment in this commit**
+- [X] T034 Gate: `make lint`, `make typecheck` (the new package is under `mypy --strict`), `make test-fast`; `make graph` once; `status: tested`; commit with explicit paths (pre-commit ≈ 7 minutes; do not edit the tree while it runs). **No live deployment in this commit**
 
 **Checkpoint**: everything that needs no running stack is green and committed from a clean tree.
 
@@ -134,19 +134,19 @@ audit, `make mutate`).
 
 ## Phase 8: Live (outward-facing, in order)
 
-- [ ] T035 Prepare the secrets directory outside the repository: copies of the keystore and password file owned by uid 10001, mode 400; record the paths in the local `.env` only (never in a tracked file); check by reading them as that uid
-- [ ] T036 Build from the clean committed tree with the commit baked in (`make notary-build-info`), then `docker compose up -d --no-deps --build worker notary` — **only** those two services. Check: the worker's start time changed and no other container's did; the `notary` log shows the signing **address** equal to `owner()` and nothing else secret; the first worker pass after restart completes within the live bound of T018 (1,419 s) **After starting, read the worker's log for `FAILED` before doing anything else** (2026-10-08: a rebuilt image shipped an undeployed change and every series failed; the first sign was thirty minutes of silence from the notary). Do not export `CHANNELFLOW_NOTARY_FROM`: it overrides `.env`.
-- [ ] T037 Let it run until at least one batch is `confirmed` on testnet; open the transaction on the explorer; run `verify` on a snapshot and on a decision from that batch; `export` one and `verify bundle` it with only the public RPC
-- [ ] T038 Measurement (SC-006): leave the stack running for at least one hour and until at least 50 records from at least 3 series are confirmed; run `latency`; write `deployments/monad-testnet-latency.json`; update `docs/notary.md` to quote it exactly
-- [ ] T039 Outage drill on the live stack (SC-003, SC-004): block the notary's RPC for one window (stop the `notary` container; do **not** touch the worker); confirm worker passes continue and the outbox grows and is visible; restart the notary; confirm the backlog drains once each and that `commitOf` shows no duplicate; record the evidence
-- [ ] T040 Balance and runway: record the balance now and the cost per day actually observed; compare with the plan's 0.39 MON / day; state the remaining runway
+- [X] T035 Prepare the secrets directory outside the repository: copies of the keystore and password file owned by uid 10001, mode 400; record the paths in the local `.env` only (never in a tracked file); check by reading them as that uid
+- [X] T036 Build from the clean committed tree with the commit baked in (`make notary-build-info`), then `docker compose up -d --no-deps --build worker notary` — **only** those two services. Check: the worker's start time changed and no other container's did; the `notary` log shows the signing **address** equal to `owner()` and nothing else secret; the first worker pass after restart completes within the live bound of T018 (1,419 s) **After starting, read the worker's log for `FAILED` before doing anything else** (2026-10-08: a rebuilt image shipped an undeployed change and every series failed; the first sign was thirty minutes of silence from the notary). Do not export `CHANNELFLOW_NOTARY_FROM`: it overrides `.env`.
+- [X] T037 Let it run until at least one batch is `confirmed` on testnet; open the transaction on the explorer; run `verify` on a snapshot and on a decision from that batch; `export` one and `verify bundle` it with only the public RPC
+- [X] T038 Measurement (SC-006): leave the stack running for at least one hour and until at least 50 records from at least 3 series are confirmed; run `latency`; write `deployments/monad-testnet-latency.json`; update `docs/notary.md` to quote it exactly
+- [X] T039 Outage drill on the live stack (SC-003, SC-004): block the notary's RPC for one window (stop the `notary` container; do **not** touch the worker); confirm worker passes continue and the outbox grows and is visible; restart the notary; confirm the backlog drains once each and that `commitOf` shows no duplicate; record the evidence
+- [X] T040 Balance and runway: record the balance now and the cost per day actually observed; compare with the plan's 0.39 MON / day; state the remaining runway
 
 ---
 
 ## Phase 9: Close-out
 
-- [ ] T041 Record **after** and the implementation outcome note: RED output (T005…T008, T013…), the mutation tables, the T002 gas finding, pass times before/after, the live evidence (T037…T040) with explorer links, the measured latency, the `signal_transitions` defect as a candidate requirement, and what was not done (the suppression kind has no live producer; alert links are 008)
-- [ ] T042 `make graph` once, then `.venv/bin/python -m tools.trace.cli validate`; set `status: implemented`; commit with explicit paths
+- [X] T041 Record **after** and the implementation outcome note: RED output (T005…T008, T013…), the mutation tables, the T002 gas finding, pass times before/after, the live evidence (T037…T040) with explorer links, the measured latency, the `signal_transitions` defect as a candidate requirement, and what was not done (the suppression kind has no live producer; alert links are 008)
+- [X] T042 `make graph` once, then `.venv/bin/python -m tools.trace.cli validate`; set `status: implemented`; commit with explicit paths
 
 ---
 

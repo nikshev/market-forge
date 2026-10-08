@@ -1,0 +1,17 @@
+{
+  "sample": 168,
+  "series": 5,
+  "window_s": 3917,
+  "median_s": 5653,
+  "p95_s": 6553,
+  "max_s": 6870,
+  "meets_criterion": true,
+  "verdict": "meets the success criterion (50+ records, 3+ series, 1+ h)",
+  "measured_at": "2026-10-08T19:41:04Z",
+  "block_time_from": "2026-10-08T18:10:00Z",
+  "chain": "Monad testnet (10143)",
+  "contract": "0x4a0963b8B35311411Bf17497F0CAeD20d5596682",
+  "unit": "seconds, per record: the chain block time minus the record bar close time",
+  "excluded": "the first batch (block 69321381, 2026-10-08T18:03:04Z): its records were registered ~1.5 hours late because the worker was failing from 15:45 until the fix was deployed at about 16:55 (REQ-WP-087 gap window floor); not representative",
+  "path": "bar close -> bars table (resample, ~45 min behind) -> worker cycle (28-35 min) -> batch window (30 min) -> block (<1 s)"
+}

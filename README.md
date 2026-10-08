@@ -35,6 +35,21 @@ version, config and commit hash. Signal families can be compared by ablation
 
 The MVP is analytics and alerts only. There is no automatic trading.
 
+## On-chain notary (Monad testnet)
+
+Every final channel snapshot and every decision, including a decision *not* to alert, is hashed together
+with the configuration, the input dataset and the code commit that produced it. A Merkle root of each
+30-minute batch is written to a small contract on Monad testnet,
+[`0x4a09…6682`](https://testnet.monadvision.com/address/0x4a0963b8B35311411Bf17497F0CAeD20d5596682),
+so "this signal existed in exactly this form" can be checked by anyone without trusting this system:
+
+    python -m channelflow.notary.verify export <record_id> > bundle.json
+    python -m channelflow.notary.verify bundle bundle.json      # needs only the file and a public node
+
+A commit proves a record existed **no later than** its block; it does not prove that it preceded a price
+move. Measured on the running system, the median from a bar's close to the block that holds it is about
+94 minutes (most of that is the pipeline upstream of the notary). See [docs/notary.md](docs/notary.md).
+
 ## Repository layout
 
 | Path | What it holds |
