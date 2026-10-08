@@ -5,7 +5,7 @@ type: infrastructure
 prd_ref: "none -- user-directed integration, 2026-10-03; touches §0.13 (reproducibility), §26.4 (alerting), §29.B (dataset identity)"
 prd_lines: "0-0"
 phase: null
-status: specified
+status: planned
 depends_on: [REQ-INFRA-006]
 tags: [monad, notary, reproducibility]
 hard_gated: false
@@ -44,7 +44,7 @@ Principle I is unaffected: the hash is computed from data already final at bar c
 
 <!-- trace:begin -->
 - **Specs:** [[SPEC-143-notarize-final-records]]
-- **Outcomes:** [[OUT-2026-10-08-spec-notarize-final-records]]
+- **Outcomes:** [[OUT-2026-10-08-plan-notarize-final-records]], [[OUT-2026-10-08-spec-notarize-final-records]]
 <!-- trace:end -->
 
 ## Notes
