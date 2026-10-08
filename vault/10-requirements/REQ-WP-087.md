@@ -61,10 +61,15 @@ stays `draft` until then.
 <!-- trace:begin -->
 - **Specs:** [[SPEC-141-detector-gap-policy]]
 - **Tests:**
+    - `tests/channels/test_channel_gap.py::test_a_series_with_a_hole_replays_to_the_end_with_the_default_runner`
+    - `tests/channels/test_channel_gap.py::test_a_window_of_one_bar_after_a_hole_is_refused_not_crashed`
     - `tests/channels/test_channel_gap.py::test_channel_no_look_ahead`
     - `tests/channels/test_channel_gap.py::test_channel_window_absent_when_no_bars_after_gap`
     - `tests/channels/test_channel_gap.py::test_channel_window_short_after_gap`
     - `tests/channels/test_channel_gap.py::test_channel_window_starts_after_gap`
+    - `tests/channels/test_channel_gap.py::test_fit_window_enforces_the_floor_only_after_a_hole`
+    - `tests/channels/test_channel_gap.py::test_the_channel_returns_at_the_configured_minimum_and_says_it_is_short`
+    - `tests/channels/test_channel_gap.py::test_the_minimum_must_be_a_line_and_no_more_than_the_lookback`
     - `tests/extrema/test_detector_gap.py::test_confirmation_lag_only_from_bars_after_hole`
     - `tests/extrema/test_detector_gap.py::test_contiguous_bars_normal_tracking`
     - `tests/extrema/test_detector_gap.py::test_no_look_ahead_appending_later_bars`
@@ -111,7 +116,7 @@ stays `draft` until then.
     - `src/channelflow/extrema/models.py`
     - `src/channelflow/settings.py`
     - `src/channelflow/tables/channels.py`
-- **Outcomes:** [[OUT-2026-10-06-spec-detector-gap-policy]], [[OUT-2026-10-06-tasks-detector-gap-policy]], [[OUT-2026-10-07-implement-gap-policy]]
+- **Outcomes:** [[OUT-2026-10-06-spec-detector-gap-policy]], [[OUT-2026-10-06-tasks-detector-gap-policy]], [[OUT-2026-10-07-implement-gap-policy]], [[OUT-2026-10-08-implement-gap-window-floor]]
 <!-- trace:end -->
 
 ## Notes
