@@ -8,6 +8,7 @@ import pytest
 from channelflow.lakehouse import Catalog
 from channelflow.notary import tables
 from channelflow.notary.batcher import Batch, Leaf, write_batch
+from channelflow.notary.chain import ChainDown
 from channelflow.notary.scheme import merkle_root
 from channelflow.notary.submitter import Submitter, SubmitterConfig, outbox_summary
 from tests.notary.conftest import SECOND, FakeNotaryChain, record_row, register
@@ -381,3 +382,43 @@ def test_orphaned_leaves_that_do_not_hash_to_their_root_are_not_turned_into_a_ba
 
     assert tables.batches_table(catalog).read().num_rows == 0
     assert chain.sent == []
+
+
+@pytest.mark.trace("REQ-INFRA-007")
+def test_a_commit_we_sent_is_confirmed_from_its_receipt_without_searching_logs(
+    catalog: Catalog, chain: FakeNotaryChain, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The log search is for a commit found on the chain that we never recorded; our own
+    transaction's block is in its receipt, and the public node limits log queries to a hundred
+    blocks."""
+    one_record(catalog)
+
+    def forbidden(root: bytes) -> object:
+        raise AssertionError("a log search for a transaction whose receipt we hold")
+
+    monkeypatch.setattr(chain, "committed_event", forbidden)
+    submitter(catalog, chain).tick()
+
+    state = tables.batch_states(tables.events_table(catalog))[chain.sent[0][0].hex()]
+    assert state["event"] == "confirmed" and state["block_number"] == chain.block_number
+    assert str(state["tx_hash"]).startswith("0x") and state["detail"] == ""
+
+
+@pytest.mark.trace("REQ-INFRA-007")
+def test_a_log_search_that_the_node_refuses_leaves_the_batch_pending_not_lost(
+    catalog: Catalog, chain: FakeNotaryChain, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    one_record(catalog)
+    chain.crash_after_send = True
+    sub = submitter(catalog, chain)
+    sub.tick()  # sent, then the process "died": only `failed` is recorded
+    monkeypatch.setattr(
+        chain, "committed_event", lambda root: (_ for _ in ()).throw(ChainDown("413"))
+    )
+
+    sub.tick()  # found on the chain; the evidence lookup is refused
+    assert events(catalog)[-1][0] == "failed" and len(chain.sent) == 1
+
+    monkeypatch.undo()
+    sub.tick()  # the node answers again: confirmed, and still not sent twice
+    assert events(catalog)[-1] == ("confirmed", "found on chain") and len(chain.sent) == 1

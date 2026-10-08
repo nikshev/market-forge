@@ -254,9 +254,17 @@ class Submitter:
         if final is None:
             return False  # visible, not yet final
         _bar_ts, block_time, _committer = final
-        evidence = self.chain.committed_event(root)
-        tx_hash = str(state["tx_hash"]) if sent_before else (evidence.tx_hash if evidence else "")
-        block_number = evidence.block_number if evidence is not None else -1
+        if sent_before:
+            # Our own transaction: its block is in its receipt. No log search -- that is for a
+            # commit found on the chain that this process never recorded, and the public node
+            # limits it.
+            receipt = self.chain.receipt(str(state["tx_hash"]))
+            tx_hash = str(state["tx_hash"])
+            block_number = receipt.block_number if receipt is not None else -1
+        else:
+            evidence = self.chain.committed_event(root)
+            tx_hash = evidence.tx_hash if evidence else ""
+            block_number = evidence.block_number if evidence is not None else -1
         self._event(
             root_hex,
             "confirmed",

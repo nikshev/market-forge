@@ -56,6 +56,7 @@ class FakeNode:
         self.raw: list[str] = []
         self.estimate = 79_455
         self.fail: Exception | None = None
+        self.log_ranges: list[tuple[int, int]] = []
 
     def __call__(self, method: str, params: list[object]) -> object:
         self.calls.append((method, params))
@@ -93,14 +94,31 @@ class FakeNode:
             return "0x" + word(bar_ts) + word(block_time) + addr_word(committer)
         raise AssertionError(f"unexpected call {data[:10]}")
 
+    #: Blocks arrive three to a second, as on Monad: many blocks share one timestamp.
+    BASE_BLOCK = 69_218_030
+    BASE_TIME = 1_791_450_000
+    HEAD = 69_330_000
+
+    def block_timestamp(self, number: int) -> int:
+        return self.BASE_TIME + (number - self.BASE_BLOCK) // 3
+
+    def rpc_eth_blockNumber(self) -> str:
+        return hex(self.HEAD)
+
     def rpc_eth_getLogs(self, query: dict[str, object]) -> list[dict[str, object]]:
-        return self.logs
+        start, end = int(str(query["fromBlock"]), 16), int(str(query["toBlock"]), 16)
+        if end - start + 1 > 100:  # what the public Monad endpoint says: "limited to a 100 range"
+            raise ChainDown(
+                "https://rpc.example: eth_getLogs: eth_getLogs is limited to a 100 range"
+            )
+        self.log_ranges.append((start, end))
+        return [log for log in self.logs if start <= int(str(log["blockNumber"]), 16) <= end]
 
     def rpc_eth_getTransactionReceipt(self, tx_hash: str) -> dict[str, object] | None:
         return self.receipts.get(tx_hash)
 
     def rpc_eth_getBlockByNumber(self, number: str, full: bool) -> dict[str, object]:
-        return {"timestamp": hex(1_791_460_123), "number": number}
+        return {"timestamp": hex(self.block_timestamp(int(number, 16))), "number": number}
 
 
 def make_chain(node: FakeNode, **kw: object) -> JsonRpcChain:
@@ -155,25 +173,62 @@ def test_a_commit_is_read_at_the_requested_block_tag_and_zero_means_absent() -> 
 
 
 @pytest.mark.trace("REQ-INFRA-007")
-def test_the_commit_evidence_comes_from_the_committed_log() -> None:
+def test_the_commit_evidence_is_found_by_time_and_never_asks_for_more_than_a_hundred_blocks() -> (
+    None
+):
+    """The public node answers `eth_getLogs is limited to a 100 range`. The first version asked for
+    the logs from the contract's deployment block to the head -- 104,000 blocks -- and the first
+    real commit could never be confirmed. The block is found from the commit's own time instead."""
     node = FakeNode()
+    commit_block = FakeNode.BASE_BLOCK + 100_000
+    block_time = node.block_timestamp(commit_block)
+    node.committed[ROOT.hex()] = (940, block_time, ACCOUNT.address)
     node.logs = [
         {
             "transactionHash": "0x" + "12" * 32,
-            "blockNumber": hex(69_218_999),
+            "blockNumber": hex(commit_block),
+            "topics": [COMMITTED_TOPIC, "0x" + ROOT.hex()],
+        }
+    ]
+
+    evidence = make_chain(node).committed_event(ROOT)
+
+    assert evidence is not None
+    assert (evidence.tx_hash, evidence.block_number) == ("0x" + "12" * 32, commit_block)
+    assert evidence.block_time == block_time  # the block's own timestamp, from the chain
+    assert node.log_ranges, "the logs were never asked for"
+    assert all(end - start + 1 <= 100 for start, end in node.log_ranges)
+    # ... and never before the deployment, nor beyond the head.
+    assert all(
+        start >= FakeNode.BASE_BLOCK and end <= FakeNode.HEAD for start, end in node.log_ranges
+    )
+    # A search that bisects, not one that walks: a hundred thousand blocks in a few dozen calls.
+    assert sum(1 for m, _ in node.calls if m == "eth_getBlockByNumber") < 60
+
+
+@pytest.mark.trace("REQ-INFRA-007")
+def test_blocks_that_share_a_second_are_all_searched() -> None:
+    node = FakeNode()
+    commit_block = (
+        FakeNode.BASE_BLOCK + 3_001
+    )  # the last block of its second: three blocks share it
+    node.committed[ROOT.hex()] = (940, node.block_timestamp(commit_block), ACCOUNT.address)
+    node.logs = [
+        {
+            "transactionHash": "0x" + "34" * 32,
+            "blockNumber": hex(commit_block),
             "topics": [COMMITTED_TOPIC, "0x" + ROOT.hex()],
         }
     ]
     evidence = make_chain(node).committed_event(ROOT)
+    assert evidence is not None and evidence.block_number == commit_block
 
-    assert evidence is not None
-    assert (evidence.tx_hash, evidence.block_number) == ("0x" + "12" * 32, 69_218_999)
-    assert evidence.block_time == 1_791_460_123  # the block's timestamp, from the chain
-    query = next(p[0] for m, p in node.calls if m == "eth_getLogs")
-    assert query["topics"] == [COMMITTED_TOPIC, "0x" + ROOT.hex()]  # type: ignore[index]
-    assert query["fromBlock"] == hex(69_218_030)  # type: ignore[index]
-    node.logs = []
+
+@pytest.mark.trace("REQ-INFRA-007")
+def test_a_root_the_chain_does_not_hold_has_no_evidence_and_costs_no_log_query() -> None:
+    node = FakeNode()
     assert make_chain(node).committed_event(ROOT) is None
+    assert node.log_ranges == []
 
 
 @pytest.mark.trace("REQ-INFRA-007")

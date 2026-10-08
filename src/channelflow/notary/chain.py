@@ -94,6 +94,10 @@ COMMIT_OF_SELECTOR = _selector("commitOf(bytes32)")
 OWNER_SELECTOR = _selector("owner()")
 COMMITTED_TOPIC = "0x" + keccak(b"Committed(bytes32,uint64,address)").hex()
 _ZERO_ADDRESS = "0x" + "00" * 20
+#: The public Monad endpoints answer `eth_getLogs is limited to a 100 range` (HTTP 413). Measured on
+#: 2026-10-08 against the first real commit: a search from the deployment block, 104,000 blocks
+#: away, was refused and the commit could not be confirmed.
+MAX_LOG_RANGE = 100
 
 
 def redact(url: str) -> str:
@@ -236,24 +240,50 @@ class JsonRpcChain:
         return int(words[0:64], 16), int(words[64:128], 16), to_checksum_address(committer)
 
     def committed_event(self, root: bytes) -> CommitEvidence | None:
-        logs = self._call(
-            "eth_getLogs",
-            {
-                "address": self._contract,
-                "fromBlock": hex(self._from_block),
-                "toBlock": "latest",
-                "topics": [COMMITTED_TOPIC, "0x" + root.hex()],
-            },
-        )
-        if not logs:
+        """Where the chain says `root` was committed, found from the commit's own time.
+
+        The contract stores the block's timestamp. Blocks arrive about three to a second, so the
+        blocks sharing that second are found by bisection (a few dozen `getBlockByNumber` calls over
+        a hundred thousand blocks) and only they are searched for the `Committed` log, in windows
+        no larger than the node allows. No query ever starts before the deployment.
+        """
+        committed = self.commit_of(root)
+        if committed is None:
             return None
-        log = logs[0]
-        number = _int(log["blockNumber"])
-        return CommitEvidence(
-            tx_hash=str(log["transactionHash"]),
-            block_number=number,
-            block_time=self.block_time(number),
-        )
+        block_time = committed[1]
+        head = _int(self._call("eth_blockNumber"))
+        first = self._first_block_at_or_after(block_time, head)
+        end = self._first_block_at_or_after(block_time + 1, head)  # exclusive
+        for start in range(first, end, MAX_LOG_RANGE):
+            stop = min(start + MAX_LOG_RANGE, end) - 1
+            logs = self._call(
+                "eth_getLogs",
+                {
+                    "address": self._contract,
+                    "fromBlock": hex(start),
+                    "toBlock": hex(stop),
+                    "topics": [COMMITTED_TOPIC, "0x" + root.hex()],
+                },
+            )
+            if logs:
+                number = _int(logs[0]["blockNumber"])
+                return CommitEvidence(
+                    tx_hash=str(logs[0]["transactionHash"]),
+                    block_number=number,
+                    block_time=self.block_time(number),
+                )
+        return None
+
+    def _first_block_at_or_after(self, timestamp: int, head: int) -> int:
+        """The lowest block from the deployment block to the head whose time is >= `timestamp`."""
+        low, high = self._from_block, head + 1
+        while low < high:
+            middle = (low + high) // 2
+            if self.block_time(middle) >= timestamp:
+                high = middle
+            else:
+                low = middle + 1
+        return low
 
     def receipt(self, tx_hash: str) -> Receipt | None:
         raw = self._call("eth_getTransactionReceipt", tx_hash)
