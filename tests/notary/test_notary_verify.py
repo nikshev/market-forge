@@ -184,3 +184,70 @@ def test_an_unknown_record_and_an_unnotarizable_one_are_not_committed(tmp_path: 
     row = tables.records_table(unnotarizable).read().to_pylist()[0]
     result = verify_record(unnotarizable, chain, str(row["record_id"]))
     assert result.status == "not committed" and "unnotarizable" in result.detail
+
+
+# ---- the commands -------------------------------------------------------------------------
+
+ENV = {
+    "MONAD_RPC_URL": "https://rpc.example",
+    "MONAD_CHAIN_ID": "10143",
+    "MONAD_NOTARY_ADDRESS": CONTRACT,
+    "MONAD_NOTARY_DEPLOY_BLOCK": "69218030",
+}
+
+
+@pytest.mark.trace("REQ-INFRA-007")
+def test_the_check_command_reports_committed_with_the_block_and_the_honest_claim(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from channelflow.notary import verify as cli
+
+    catalog, chain, records, _ = notarized(tmp_path)
+    capsys.readouterr()  # the fixture's pass printed; this test is about the command's output
+    code = cli.main(["check", pick(records, "snapshot")], env=ENV, catalog=catalog, chain=chain)
+
+    out = capsys.readouterr().out
+    assert code == 0 and out.startswith("committed")
+    assert f"block {chain.block_number}" in out and "no later than" in out
+    assert "before" not in out.replace("no later than", "")
+
+
+@pytest.mark.trace("REQ-INFRA-007")
+def test_the_check_command_exits_nonzero_for_pending_and_for_not_committed(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from channelflow.notary import verify as cli
+
+    catalog, chain, records, _ = notarized(tmp_path, confirm=False)
+    capsys.readouterr()
+    assert (
+        cli.main(["check", pick(records, "snapshot")], env=ENV, catalog=catalog, chain=chain) == 2
+    )
+    assert capsys.readouterr().out.startswith("pending")
+    assert cli.main(["check", "snapshot|nobody|X|1|1"], env=ENV, catalog=catalog, chain=chain) == 1
+    assert capsys.readouterr().out.startswith("not committed")
+
+
+@pytest.mark.trace("REQ-INFRA-007")
+def test_export_then_bundle_round_trips_through_a_file_with_no_lakehouse(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from channelflow.notary import verify as cli
+
+    catalog, chain, records, _ = notarized(tmp_path)
+    capsys.readouterr()
+    record_id = pick(records, "decision")
+    assert cli.main(["export", record_id], env=ENV, catalog=catalog, chain=chain) == 0
+    exported = capsys.readouterr().out
+    bundle = json.loads(exported)
+    assert bundle["chain"]["contract"] == CONTRACT and bundle["chain"]["deploy_block"] == 69218030
+
+    path = tmp_path / "bundle.json"
+    path.write_text(exported)
+    assert cli.main(["bundle", str(path)], env=ENV, chain=chain) == 0  # no catalog is passed
+    assert capsys.readouterr().out.startswith("committed")
+
+    bundle["record"]["record_bytes"] = bundle["record"]["record_bytes"][:-2] + "00"
+    path.write_text(json.dumps(bundle))
+    assert cli.main(["bundle", str(path)], env=ENV, chain=chain) == 1
+    assert "not committed" in capsys.readouterr().out

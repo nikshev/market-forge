@@ -158,3 +158,22 @@ def test_only_confirmed_batches_count_and_the_window_filters_by_the_chains_time(
     recent = latency_report(catalog, since_s=T + 1000)
 
     assert everything.sample == 2 and recent.sample == 1 and recent.latencies_s == [100]
+
+
+@pytest.mark.trace("REQ-INFRA-007")
+def test_the_latency_command_prints_the_report_as_json(
+    catalog: Catalog, capsys: pytest.CaptureFixture[str]
+) -> None:
+    import json
+
+    from channelflow.notary import latency as cli
+
+    confirmed_batch(
+        catalog, "ab" * 32, [("a", T, "BTCUSDT"), ("b", T + 60, "ETHUSDT")], block_time_s=T + 600
+    )
+    assert cli.main(["--since", "0"], catalog=catalog) == 0
+    printed = json.loads(capsys.readouterr().out)
+    assert (
+        printed["sample"] == 2 and printed["max_s"] == 600 and printed["meets_criterion"] is False
+    )
+    assert "insufficient" in printed["verdict"] and "latencies_s" not in printed

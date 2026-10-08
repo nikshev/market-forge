@@ -17,13 +17,20 @@ holds its root. It says nothing about any price move, and nothing here may sugge
 
 from __future__ import annotations
 
+import argparse
+import json
+import os
 import struct
+import sys
+from collections.abc import Mapping
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 from channelflow.lakehouse import Catalog
+from channelflow.lakehouse import catalog as open_catalog
 from channelflow.notary import tables
-from channelflow.notary.chain import NotaryChain
+from channelflow.notary.chain import JsonRpcChain, NotaryChain, http_transport
 from channelflow.notary.scheme import (
     SCHEME_VERSION,
     Context,
@@ -32,6 +39,7 @@ from channelflow.notary.scheme import (
     verify_inclusion,
 )
 from channelflow.notary.submitter import outbox_states
+from channelflow.settings import settings_from_env
 
 SECOND_NS = 1_000_000_000
 
@@ -70,7 +78,13 @@ def _not_committed(record_id: str, detail: str, **extra: Any) -> VerifyResult:
 
 
 def export_bundle(
-    catalog: Catalog, record_id: str, *, chain_id: int, contract: str, rpc_hint: str
+    catalog: Catalog,
+    record_id: str,
+    *,
+    chain_id: int,
+    contract: str,
+    rpc_hint: str,
+    deploy_block: int = 0,
 ) -> dict[str, Any]:
     """The bundle of `contracts/notary-bundle.md`. Raises if the record is not yet in a batch."""
     record = next(
@@ -126,7 +140,13 @@ def export_bundle(
             "path": [step.hex() for step in inclusion_proof(hashes, index)],
         },
         "root": root,
-        "chain": {"chain_id": chain_id, "contract": contract, "rpc_hint": rpc_hint},
+        "chain": {
+            "chain_id": chain_id,
+            "contract": contract,
+            "rpc_hint": rpc_hint,
+            # Where a verifier may start looking for the commit's block; 0 is safe, only slower.
+            "deploy_block": deploy_block,
+        },
         "commit": commit,
     }
 
@@ -194,7 +214,9 @@ def verify_bundle(bundle: dict[str, Any], chain: NotaryChain) -> VerifyResult:
     )
 
 
-def verify_record(catalog: Catalog, chain: NotaryChain, record_id: str) -> VerifyResult:
+def verify_record(
+    catalog: Catalog, chain: NotaryChain, record_id: str, *, contract: str = ""
+) -> VerifyResult:
     record = next(
         (
             r
@@ -224,5 +246,108 @@ def verify_record(catalog: Catalog, chain: NotaryChain, record_id: str) -> Verif
             "pending", record_id, f"its batch is {event}{why}", root=str(leaf["batch_root"])
         )
 
-    bundle = export_bundle(catalog, record_id, chain_id=chain.chain_id(), contract="", rpc_hint="")
+    bundle = export_bundle(
+        catalog, record_id, chain_id=chain.chain_id(), contract=contract, rpc_hint=""
+    )
     return verify_bundle(bundle, chain)
+
+
+# ---- the commands ------------------------------------------------------------------------------
+
+DEFAULT_RPC_URL = "https://testnet-rpc.monad.xyz"
+#: Exit codes: a script can tell "not there" from "not yet".
+EXIT_COMMITTED, EXIT_NOT_COMMITTED, EXIT_PENDING = 0, 1, 2
+
+
+def read_only_chain(
+    rpc_url: str, *, chain_id: int, contract: str, deploy_block: int
+) -> JsonRpcChain:
+    """A chain to read from. It never signs, so its account is a throwaway nobody holds."""
+    from eth_account import Account
+
+    return JsonRpcChain(
+        http_transport(rpc_url),
+        chain_id=chain_id,
+        contract=contract,
+        account=Account.create(),
+        gas_margin=1.0,
+        from_block=deploy_block,
+    )
+
+
+def _report(result: VerifyResult) -> int:
+    print(f"{result.status}: {result.record_id}")
+    if result.status == "committed":
+        print(
+            f"  block {result.block_number}, time {result.block_time}, tx {result.tx_hash}\n"
+            f"  bar close to block: {result.latency_s} s\n  root {result.root}"
+        )
+    elif result.root:
+        print(f"  root {result.root}")
+    print(f"  {result.detail}")
+    return {"committed": EXIT_COMMITTED, "pending": EXIT_PENDING}.get(
+        result.status, EXIT_NOT_COMMITTED
+    )
+
+
+def main(
+    argv: list[str] | None = None,
+    *,
+    env: Mapping[str, str] | None = None,
+    catalog: Catalog | None = None,
+    chain: NotaryChain | None = None,
+) -> int:
+    """`check <record_id>`, `export <record_id>`, `bundle <file>`."""
+    environment = os.environ if env is None else env
+    parser = argparse.ArgumentParser(description="Check a record against the chain.")
+    commands = parser.add_subparsers(dest="command", required=True)
+    commands.add_parser("check", help="verify a record in this lakehouse").add_argument("record_id")
+    commands.add_parser("export", help="write a bundle anyone can verify").add_argument("record_id")
+    commands.add_parser(
+        "bundle", help="verify a bundle: needs only the file and a node"
+    ).add_argument("file", type=Path)
+    args = parser.parse_args(argv)
+
+    rpc_url = environment.get("MONAD_RPC_URL", "").strip() or DEFAULT_RPC_URL
+    chain_id = int(environment.get("MONAD_CHAIN_ID", "").strip() or 10143)
+    contract = environment.get("MONAD_NOTARY_ADDRESS", "").strip()
+    deploy_block = int(environment.get("MONAD_NOTARY_DEPLOY_BLOCK", "").strip() or 0)
+
+    if args.command == "bundle":
+        bundle = json.loads(args.file.read_text())
+        where = bundle["chain"]
+        node = chain or read_only_chain(
+            rpc_url if environment.get("MONAD_RPC_URL") else where.get("rpc_hint") or rpc_url,
+            chain_id=int(where["chain_id"]),
+            contract=str(where["contract"]),
+            deploy_block=int(where.get("deploy_block", 0)),
+        )
+        return _report(verify_bundle(bundle, node))
+
+    if not contract:
+        print("MONAD_NOTARY_ADDRESS must be set", file=sys.stderr)
+        return EXIT_NOT_COMMITTED
+    if catalog is None:
+        settings = settings_from_env(environment)
+        catalog = open_catalog(
+            uri=settings.catalog_uri, warehouse=settings.warehouse, **dict(settings.storage)
+        )
+    node = chain or read_only_chain(
+        rpc_url, chain_id=chain_id, contract=contract, deploy_block=deploy_block
+    )
+    if args.command == "export":
+        bundle = export_bundle(
+            catalog,
+            args.record_id,
+            chain_id=chain_id,
+            contract=contract,
+            rpc_hint=rpc_url,
+            deploy_block=deploy_block,
+        )
+        print(json.dumps(bundle, indent=2))
+        return EXIT_COMMITTED
+    return _report(verify_record(catalog, node, args.record_id, contract=contract))
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

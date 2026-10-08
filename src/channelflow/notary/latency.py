@@ -13,13 +13,21 @@ allowed to look like a result.
 
 from __future__ import annotations
 
+import argparse
+import json
 import math
+import os
 import statistics
+import time
+from collections.abc import Mapping
 from dataclasses import asdict, dataclass
 
 from channelflow.lakehouse import Catalog
+from channelflow.lakehouse import catalog as open_catalog
 from channelflow.notary import tables
+from channelflow.notary.config import parse_duration_s
 from channelflow.notary.submitter import outbox_states
+from channelflow.settings import settings_from_env
 
 SECOND_NS = 1_000_000_000
 CRITERION_RECORDS = 50
@@ -90,3 +98,30 @@ def latency_report(catalog: Catalog, *, since_s: int) -> LatencyReport:
         meets_criterion=meets,
         verdict=verdict,
     )
+
+
+def main(
+    argv: list[str] | None = None,
+    *,
+    env: Mapping[str, str] | None = None,
+    catalog: Catalog | None = None,
+) -> int:
+    """Print the report as JSON. `--since` is a duration back from now (`1h`); 0 means all."""
+    parser = argparse.ArgumentParser(
+        description="Bar-close-to-block latency over confirmed batches."
+    )
+    parser.add_argument("--since", default="0", help="a duration back from now, e.g. 90m; 0 is all")
+    args = parser.parse_args(argv)
+    if catalog is None:
+        settings = settings_from_env(os.environ if env is None else env)
+        catalog = open_catalog(
+            uri=settings.catalog_uri, warehouse=settings.warehouse, **dict(settings.storage)
+        )
+    window = parse_duration_s(args.since, name="--since")
+    since_s = 0 if window == 0 else int(time.time() - window)
+    print(json.dumps(latency_report(catalog, since_s=since_s).as_json(), indent=2))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
