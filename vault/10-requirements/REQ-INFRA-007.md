@@ -44,7 +44,7 @@ Principle I is unaffected: the hash is computed from data already final at bar c
 
 <!-- trace:begin -->
 - **Specs:** [[SPEC-143-notarize-final-records]]
-- **Outcomes:** [[OUT-2026-10-08-plan-notarize-final-records]], [[OUT-2026-10-08-spec-notarize-final-records]]
+- **Outcomes:** [[OUT-2026-10-08-plan-notarize-final-records]], [[OUT-2026-10-08-spec-notarize-final-records]], [[OUT-2026-10-08-tasks-notarize-final-records]]
 <!-- trace:end -->
 
 ## Notes

@@ -1090,6 +1090,7 @@ graph LR
   OUT_2026_10_08_plan_signal_notary_contract["OUT-2026-10-08-plan-signal-notary-contract"]
   OUT_2026_10_08_spec_notarize_final_records["OUT-2026-10-08-spec-notarize-final-records"]
   OUT_2026_10_08_spec_signal_notary_contract["OUT-2026-10-08-spec-signal-notary-contract"]
+  OUT_2026_10_08_tasks_notarize_final_records["OUT-2026-10-08-tasks-notarize-final-records"]
   OUT_2026_10_08_tasks_signal_notary_contract["OUT-2026-10-08-tasks-signal-notary-contract"]
   PRD["PRD: ChannelFlow PRD"]
   REQ_API_001["REQ-API-001: Read API for bars, channel snapshots, signals and live updates"]
@@ -6428,6 +6429,7 @@ graph LR
   OUT_2026_10_08_plan_signal_notary_contract -.->|RECORDS| REQ_INFRA_006
   OUT_2026_10_08_spec_notarize_final_records -.->|RECORDS| REQ_INFRA_007
   OUT_2026_10_08_spec_signal_notary_contract -.->|RECORDS| REQ_INFRA_006
+  OUT_2026_10_08_tasks_notarize_final_records -.->|RECORDS| REQ_INFRA_007
   OUT_2026_10_08_tasks_signal_notary_contract -.->|RECORDS| REQ_INFRA_006
   SPEC_001_traceability_tooling ==>|SPECIFIES| REQ_INFRA_001
   SPEC_002_project_bootstrap ==>|SPECIFIES| REQ_WP_001

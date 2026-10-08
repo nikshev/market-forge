@@ -33,8 +33,9 @@ No `web3.py`: of its surface the service needs nine JSON-RPC calls.
 
 **Target Platform**: the existing compose stack; one new service (`notary`); changes to `worker`, `Dockerfile`.
 
-**Performance Goals**: the pass must not be slower by more than a bound measured in the tasks (registration is
-local appends only); chain traffic ≈ 48 transactions a day.
+**Performance Goals**: with the notary enabled a worker pass takes no more than **110 % of the baseline pass time**
+recorded before the change (registration is local appends and one pinned read), including with the chain
+unreachable (SC-003); chain traffic ≈ 48 transactions a day.
 
 **Constraints**: the worker never holds a key; a chain outage delays notarization only; Principle I and III.
 

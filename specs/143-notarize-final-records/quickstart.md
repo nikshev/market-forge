@@ -20,5 +20,5 @@ python -m channelflow.notary.latency --since 1h > deployments/monad-testnet-late
 ```
 
 Configuration: `CHANNELFLOW_NOTARY_ENABLED`, `…_FROM`, `…_INTERVAL`, `…_BATCH_WINDOW` (default `30m`),
-`…_MAX_BATCH`, `…_MIN_BALANCE`, `…_MAX_GAS_PRICE`, `…_CONFIRMATION` (default `finalized`), `MONAD_RPC_URL`,
+`…_MAX_BATCH`, `…_MIN_BALANCE`, `…_MAX_GAS_PRICE`, `…_GAS_MARGIN`, `…_CONFIRMATION` (default `finalized`), `MONAD_RPC_URL`,
 `MONAD_CHAIN_ID`, `MONAD_NOTARY_ADDRESS`, and the two secret *paths* for the keystore and its password.

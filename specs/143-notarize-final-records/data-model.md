@@ -22,7 +22,7 @@ Event-time column: `bar_close_time_ns`.
 | `dataset_snapshot_id` | int64 | the pinned bars snapshot id (to re-read the input) |
 | `code_commit` | string | 40 hex, or empty when absent |
 | `notarizable` | string | `yes` or `no` |
-| `reason` | string | why not, when `no` (absent commit, dirty tree, unhashable config, non-final) |
+| `reason` | string | why not, when `no` (absent commit, dirty tree, unhashable config). A record that is **not final**, or that leaks (`source_max_event_time_ns > as_of_ns`), is *refused*, not registered: it is counted, logged as an error and never appears here (FR-004) |
 | `registered_at_ns` | int64 | `ingest_time`-class: when the registrar wrote it; informational, never hashed |
 
 `record_id` — snapshot: `snapshot|<venue>|<symbol>|<timeframe_ns>|<as_of_ns>`; decision:
