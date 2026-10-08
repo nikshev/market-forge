@@ -81,18 +81,18 @@ output is what proves the order.
 
 **Goal**: FR-011, FR-013, SC-003, SC-004.
 
-- [ ] T018 [US4] Dry-run: `python -m tools.notary.deploy`; check chain id 10143, deployer, balance (≥ the cost estimate), and that `contracts/` is clean and committed. Do not proceed on a dirty tree
-- [ ] T019 [US4] `python -m tools.notary.deploy --broadcast`. Read the result back (the tool does); open the transaction on the explorer as a second, independent check. If any read-back step fails, **stop**: no record is written, nothing is claimed; diagnose, do not retry blindly
-- [ ] T020 [US4] `python -m tools.notary.verify` exits 0 against the public RPC
-- [ ] T021 [US4] `python -m tools.notary.smoke`: one real `commit`, read back the `Committed` event, one real `resolve`, read back `Resolved`; add the `smoke` block to the record only after both are read back (FR-013)
-- [ ] T022 [US4] Add `MONAD_NOTARY_ADDRESS=<address>` to `.env.example` (same value as the record); `test_record.py` now exercises its "both present and equal" branch
+- [X] T018 [US4] Dry-run: `python -m tools.notary.deploy`; check chain id 10143, deployer, balance (≥ the cost estimate), and that `contracts/` is clean and committed. Do not proceed on a dirty tree
+- [X] T019 [US4] `python -m tools.notary.deploy --broadcast`. Read the result back (the tool does); open the transaction on the explorer as a second, independent check. If any read-back step fails, **stop**: no record is written, nothing is claimed; diagnose, do not retry blindly
+- [X] T020 [US4] `python -m tools.notary.verify` exits 0 against the public RPC
+- [X] T021 [US4] `python -m tools.notary.smoke`: one real `commit`, read back the `Committed` event, one real `resolve`, read back `Resolved`; add the `smoke` block to the record only after both are read back (FR-013)
+- [X] T022 [US4] Add `MONAD_NOTARY_ADDRESS=<address>` to `.env.example` (same value as the record); `test_record.py` now exercises its "both present and equal" branch
 
 ---
 
 ## Phase 5: Close-out
 
-- [ ] T023 Record **after**: test count, forge tests, the deploy's actual cost in MON (balance before − after), block time of the deployment, and the explorer links for deploy, commit and resolve transactions, in `vault/40-outcomes/OUT-<date>-implement-signal-notary-contract.md` together with the RED output (T005), the mutation table (T008) and what was *not* done (CI green run, timing claim of REQ-INFRA-007)
-- [ ] T024 `make graph` once, then `.venv/bin/python -m tools.trace.cli validate` (do not run `make validate` after `make graph`: it runs the suite twice). Set `status: implemented`; commit with explicit paths (pre-commit takes ~7 minutes; do not edit the tree while it runs)
+- [X] T023 Record **after**: test count, forge tests, the deploy's actual cost in MON (balance before − after), block time of the deployment, and the explorer links for deploy, commit and resolve transactions, in `vault/40-outcomes/OUT-<date>-implement-signal-notary-contract.md` together with the RED output (T005), the mutation table (T008) and what was *not* done (CI green run, timing claim of REQ-INFRA-007)
+- [X] T024 `make graph` once, then `.venv/bin/python -m tools.trace.cli validate` (do not run `make validate` after `make graph`: it runs the suite twice). Set `status: implemented`; commit with explicit paths (pre-commit takes ~7 minutes; do not edit the tree while it runs)
 
 ---
 

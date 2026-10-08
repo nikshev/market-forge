@@ -1,0 +1,20 @@
+{
+  "address": "0x4a0963b8B35311411Bf17497F0CAeD20d5596682",
+  "block_number": 69218030,
+  "block_time": 1791451264,
+  "chain_id": 10143,
+  "deployed_code_hash": "0x3bd2e40e8561dde079903ba931d918903da7ffb2c83a5209cd8bb961aea4390b",
+  "deployer": "0x2A3b97f9e0454Ed44d016FE92ccBCEcF8Cf02131",
+  "owner": "0x2A3b97f9e0454Ed44d016FE92ccBCEcF8Cf02131",
+  "smoke": {
+    "bar_ts": 1791451278,
+    "commit_block_time": 1791451278,
+    "commit_tx": "0x32a6bc0531e220cd8c2dd4120300f493f9409db3205e7088109dda5bcba09785",
+    "hash": "0x777c574d57e87574ea9bd4cc477105b3546ba780a97db2eeb1bd5f4b3b955f7b",
+    "outcome": 1,
+    "resolve_tx": "0x15cfaaf120b86fe0cc87e27ec0f37b720374b18d490612f1deb904d9f4e8f84d"
+  },
+  "solc": "0.8.28",
+  "source_commit": "4dd2b4969d4ef65c6e8a716afc71c2cfcd5464a7",
+  "tx_hash": "0xf107deec3b28247b1cf5a25796979c7b39de9949d4823df6ec00c4f2b389fee2"
+}

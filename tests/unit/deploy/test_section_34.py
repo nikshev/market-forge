@@ -79,6 +79,28 @@ def test_no_rpc_endpoint_carries_a_key_in_its_url() -> None:
         assert not re.search(r"/[0-9a-fA-F]{24,}(/|$)", url), f"{url} has a key-shaped path"
 
 
+_EVM_ADDRESS = re.compile(r"0x[0-9a-fA-F]{40}")
+
+
+def _is_placeholder_or_public(value: str) -> bool:
+    """A development placeholder, a short value, or a public EVM address.
+
+    An address (0x + 40 hex digits) is a public identifier by construction -- it is what a block
+    explorer shows -- and [[REQ-INFRA-006]] requires the deployed contract's address to be a
+    documented variable here. A private key is 0x + 64 hex digits and is none of these, so it is
+    still refused.
+    """
+    return "dev_only" in value or len(value) < 40 or _EVM_ADDRESS.fullmatch(value) is not None
+
+
+@pytest.mark.trace("REQ-WP-072", "REQ-INFRA-006")
+def test_a_public_address_is_allowed_in_the_template_and_a_private_key_is_not() -> None:
+    assert _is_placeholder_or_public("0x4a0963b8B35311411Bf17497F0CAeD20d5596682")
+    assert not _is_placeholder_or_public("0x" + "ab" * 32)  # a private key's shape
+    assert not _is_placeholder_or_public("0x" + "ab" * 20 + "00")  # not an address either
+    assert not _is_placeholder_or_public("a-long-looking-secret-value-that-is-not-a-placeholder")
+
+
 @pytest.mark.trace("REQ-WP-072")
 def test_the_environment_file_is_ignored_and_the_template_holds_no_live_secret() -> None:
     """§34: "no secrets committed"."""
@@ -98,6 +120,6 @@ def test_the_environment_file_is_ignored_and_the_template_holds_no_live_secret()
         name, _, value = line.partition("=")
         if not value:
             continue
-        assert "dev_only" in value or len(value) < 40, (
+        assert _is_placeholder_or_public(value), (
             f"{name} in .env.example carries {value!r}, which does not look like a placeholder"
         )

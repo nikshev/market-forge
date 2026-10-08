@@ -125,6 +125,7 @@ the larger version of the same mistake.
     - `tests/unit/deploy/test_exposure.py::test_the_compose_file_no_longer_says_ingest_binance_does_not_exist`
     - `tests/unit/deploy/test_exposure.py::test_the_compose_file_still_publishes_ports`
     - `tests/unit/deploy/test_exposure.py::test_the_default_is_in_the_compose_file_not_only_in_the_template`
+    - `tests/unit/deploy/test_section_34.py::test_a_public_address_is_allowed_in_the_template_and_a_private_key_is_not`
     - `tests/unit/deploy/test_section_34.py::test_no_connector_reads_a_trading_credential`
     - `tests/unit/deploy/test_section_34.py::test_no_rpc_endpoint_carries_a_key_in_its_url`
     - `tests/unit/deploy/test_section_34.py::test_the_alerting_package_reads_no_environment`

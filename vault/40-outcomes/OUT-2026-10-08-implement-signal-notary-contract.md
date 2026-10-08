@@ -15,7 +15,7 @@ solc 0.8.28, no libraries), `SignalNotary.sol`, thirteen Solidity tests, `tests/
 that makes them visible to the trace graph), and `tools/notary/` (`chain`, `deploy`, `verify`, `smoke`,
 `record`) with thirty-two tests against an in-memory chain.
 
-**Stage 2 -- the deployment (T018–T024):** see "Deployment" below.
+**Stage 2 -- the deployment (T018–T024):** see "Deployment" below; the record, `.env.example` and the status moved in the commit that follows the `tested` one.
 
 ### RED, before any implementation (T005)
 
@@ -122,10 +122,44 @@ the unit tests could not have shown any of that.
 
 ## Deployment
 
-_Not yet performed when this stage was committed._
+Deployed to **Monad testnet (chain id 10143)** on 2026-10-08 from commit `4dd2b4969d4e` (the
+`tested` commit, `contracts/` clean), after a dry run that showed the chain id, the deployer, 5 MON and a clean
+tree.
+
+| | |
+|---|---|
+| Contract | [`0x4a0963b8B35311411Bf17497F0CAeD20d5596682`](https://testnet.monadvision.com/address/0x4a0963b8B35311411Bf17497F0CAeD20d5596682) |
+| Deployment transaction | [`0xf107deec3b28247b1cf5a25796979c7b39de9949d4823df6ec00c4f2b389fee2`](https://testnet.monadvision.com/tx/0xf107deec3b28247b1cf5a25796979c7b39de9949d4823df6ec00c4f2b389fee2) |
+| Block / block time | 69218030 / 1791451264 |
+| Owner = deployer | `0x2A3b97f9e0454Ed44d016FE92ccBCEcF8Cf02131` |
+| Runtime code hash | `0x3bd2e40e8561dde079903ba931d918903da7ffb2c83a5209cd8bb961aea4390b` (equals a fresh local compile) |
+| Smoke `commit` | [`0x32a6bc0531e220cd8c2dd4120300f493f9409db3205e7088109dda5bcba09785`](https://testnet.monadvision.com/tx/0x32a6bc0531e220cd8c2dd4120300f493f9409db3205e7088109dda5bcba09785) |
+| Smoke `resolve` (outcome 1) | [`0x15cfaaf120b86fe0cc87e27ec0f37b720374b18d490612f1deb904d9f4e8f84d`](https://testnet.monadvision.com/tx/0x15cfaaf120b86fe0cc87e27ec0f37b720374b18d490612f1deb904d9f4e8f84d) |
+| Smoke hash | `0x777c574d57e87574ea9bd4cc477105b3546ba780a97db2eeb1bd5f4b3b955f7b` (a smoke hash, not a signal) |
+
+**Read back, not assumed.** `deploy --broadcast` read the receipt (status 1, created address equal), hashed the
+code at the address against the local compile, and read `owner()` before it wrote
+`deployments/monad-testnet.json`. Then, independently of that tool: the same receipt, `owner()` and code hash
+through a *different* public RPC (`rpc-testnet.monadinfra.com`, the first used `testnet-rpc.monad.xyz`), all
+equal; `make notary-verify` exits 0 before and after the smoke run; `commitOf` and `outcomeOf` on the live
+contract return what the smoke run sent.
+
+**The reverts hold on the deployed contract, not only in the local suite** (simulated with `eth_call`, no
+transactions): a second `commit` of the committed hash reverts with `0xbfec5558` (`AlreadyCommitted`), a
+`commit` from another address with `0x30cd7471` (`NotOwner`), a second `resolve` with `0x6d5703c2`
+(`AlreadyResolved`); each selector is the one `cast sig` gives for that error.
+
+**Cost.** The deployment took the balance from 5.000000 to 4.939368 MON (about 0.061 MON); the smoke commit and
+resolve about 0.015 MON together.
+
+**One thing that looks wrong and is not.** The anvil rehearsal produced the same contract address. A contract's
+address is a function of the deployer and its nonce, and both runs were this account's first transaction; the
+rehearsal wrote to a temporary file and nothing from it reached the repository.
 
 ## What is still open
 
+- The owner key still also exists in plain text in `/root/.monad/deployer.env` (outside the repository, mode 600, never read by the tools). It can be deleted now that the keystore is the only path; that is a decision for the key's owner, not done here.
+- The deployer and the owner are the same account, so the contract's authority is one key held on this host. Accepted in the spec for a testnet MVP; a leak means a new contract.
 - CI cannot be shown green until the unrelated MinIO image-pull failure is fixed (see the plan outcome); the
   Foundry step exists in the workflow but has not run on a runner.
 - The "committed within N seconds of bar close" claim is [[REQ-INFRA-007]]'s to measure; nothing here asserts it.

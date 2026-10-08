@@ -5,7 +5,7 @@ type: infrastructure
 prd_ref: "none -- user-directed integration, 2026-10-03; touches §0.13 (reproducibility), §26.4 (alerting), §29.B (dataset identity)"
 prd_lines: "0-0"
 phase: null
-status: tested
+status: implemented
 depends_on: []
 tags: [monad, notary, onchain]
 hard_gated: false
@@ -95,6 +95,13 @@ close", with N measured, not "before the move".
     - `tests/tools/notary/test_notary_record.py::test_env_example_documents_the_monad_variables`
     - `tests/tools/notary/test_notary_record.py::test_no_tracked_file_holds_something_shaped_like_a_private_key`
     - `tests/tools/notary/test_notary_record.py::test_the_record_and_env_example_agree_or_both_are_absent`
+    - `tests/unit/deploy/test_section_34.py::test_a_public_address_is_allowed_in_the_template_and_a_private_key_is_not`
+- **Code:**
+    - `tools/notary/chain.py`
+    - `tools/notary/deploy.py`
+    - `tools/notary/record.py`
+    - `tools/notary/smoke.py`
+    - `tools/notary/verify.py`
 - **Outcomes:** [[OUT-2026-10-08-implement-signal-notary-contract]], [[OUT-2026-10-08-plan-signal-notary-contract]], [[OUT-2026-10-08-spec-signal-notary-contract]], [[OUT-2026-10-08-tasks-signal-notary-contract]]
 <!-- trace:end -->
 
