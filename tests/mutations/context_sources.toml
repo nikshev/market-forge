@@ -1,0 +1,42 @@
+# REQ-WP-098: the one list of series and what derives from it. The mutations are the ways a spot series could
+# be shown the wrong perpetual, a book kept for the wrong market, or a perpetual go unpolled.
+#
+# Patterns are TOML *literal* strings on purpose: the basic form treats a
+# trailing backslash as a line continuation and eats the next line's indentation.
+source = "src/channelflow/context/sources.py"
+tests = ["tests/unit/context/test_sources_series.py", "tests/unit/pipeline/test_context_pass.py", "tests/unit/pipeline/test_context_main.py"]
+
+[[mutation]]
+name = "an okx spot pair is shown the bitcoin perpetual"
+find = '''    ("okx", "ETH-USDT"): "ETH-USDT-SWAP",'''
+replace = '''    ("okx", "ETH-USDT"): "BTC-USDT-SWAP",'''
+
+[[mutation]]
+name = "an okx spot pair has no perpetual"
+find = '''    ("okx", "SOL-USDT"): "SOL-USDT-SWAP",'''
+replace = ''''''
+
+[[mutation]]
+name = "the book symbols are the perpetuals"
+find = '''    return tuple(sorted(symbol for v, symbol, _ in SERIES if v == venue))'''
+replace = '''    return symbols_for(venue)'''
+
+[[mutation]]
+name = "the derivative symbols are the series"
+find = '''    return tuple(sorted({perp for (v, _), perp in PERPETUALS.items() if v == venue}))'''
+replace = '''    return tuple(sorted(symbol for v, symbol, _ in SERIES if v == venue))'''
+
+[[mutation]]
+name = "a spot series is labelled perp"
+find = '''    ("okx", "BTC-USDT", "spot"),'''
+replace = '''    ("okx", "BTC-USDT", "perp"),'''
+
+[[mutation]]
+name = "the market type of an unknown series is guessed"
+find = '''    raise KeyError(f"{venue} {symbol} is not a series this deployment ingests")'''
+replace = '''    return "spot"'''
+
+[[mutation]]
+name = "the market type lookup ignores the symbol"
+find = '''        if (v, s) == (venue, symbol):'''
+replace = '''        if v == venue:'''

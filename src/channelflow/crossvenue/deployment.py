@@ -51,6 +51,9 @@ MARKETS: tuple[ConsensusMarket, ...] = (
     ConsensusMarket("BTC", "binance", "BTCUSDT", "spot"),
     ConsensusMarket("ETH", "binance", "ETHUSDT", "spot"),
     ConsensusMarket("SOL", "binance", "SOLUSDT", "spot"),
+    ConsensusMarket("BTC", "okx", "BTC-USDT", "spot"),
+    ConsensusMarket("ETH", "okx", "ETH-USDT", "spot"),
+    ConsensusMarket("SOL", "okx", "SOL-USDT", "spot"),
 )
 
 

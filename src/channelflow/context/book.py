@@ -49,8 +49,21 @@ BOOK_VENUES = ("binance", "bybit", "okx")
 BYBIT_URL = "wss://stream.bybit.com/v5/public/linear"
 OKX_URL = "wss://ws.okx.com:8443/ws/v5/public"
 
-#: The market each venue's book is of (see the module docstring).
+#: The market each venue's books are of by default (see the module docstring). OKX is the exception
+#: that needs asking per instrument: it serves spot pairs and perpetual swaps from one endpoint.
 MARKET_TYPE = {"binance": "spot", "bybit": "perp", "okx": "perp"}
+
+
+def market_type_for(venue: str, symbol: str) -> str:
+    """The market type of one instrument's book: by instrument on OKX, by venue elsewhere.
+
+    OKX names a swap `BASE-QUOTE-SWAP` and a spot pair `BASE-QUOTE` -- the rule
+    `connectors.venue.okx_market_type` already applies to trades -- and the two differ in what a
+    size means (base units against contracts), so the book must know which it has.
+    """
+    if venue == "okx":
+        return "perp" if symbol.endswith("-SWAP") else "spot"
+    return MARKET_TYPE[venue]
 
 
 @dataclass(frozen=True)
@@ -81,6 +94,12 @@ def _scaled(message: BookSnapshot | BookDelta, factor: Decimal) -> BookSnapshot 
         return tuple(PriceLevel(price=level.price, qty=level.qty * factor) for level in levels)
 
     return message.model_copy(update={"bids": scale(message.bids), "asks": scale(message.asks)})
+
+
+def _relabelled(message: BookSnapshot | BookDelta, market_type: str) -> BookSnapshot | BookDelta:
+    return message.model_copy(
+        update={"meta": message.meta.model_copy(update={"market_type": market_type})}
+    )
 
 
 def message_of(
@@ -119,13 +138,19 @@ def message_of(
         message = okx_normalize.order_book_message(
             frame, venue="okx", market_type="perp", ingest_time_ns=ingest_time_ns
         )
-        contract_value = contract_values.get(message.meta.symbol)
+        symbol = message.meta.symbol
+        if market_type_for("okx", symbol) == "spot":
+            # A spot size is already in the base coin: scaling it by a contract value would be
+            # wrong by the factor the swap needs (REQ-WP-098).
+            message = _relabelled(message, "spot")
+            return symbol, message
+        contract_value = contract_values.get(symbol)
         if contract_value is None or contract_value <= 0:
             raise ValueError(
-                f"{message.meta.symbol}: no usable contract value; book sizes in base units "
+                f"{symbol}: no usable contract value; book sizes in base units "
                 "cannot be derived from contracts"
             )
-        return message.meta.symbol, _scaled(message, contract_value)
+        return symbol, _scaled(message, contract_value)
     raise ValueError(f"no book parser for venue {venue!r}")
 
 
@@ -173,7 +198,11 @@ class BookHandler:
             book.reset()
 
     def _store(self, summary: MinuteSummary, ingest_time_ns: int) -> None:
-        self.sink(summary, ingest_time_ns=ingest_time_ns, market_type=MARKET_TYPE[self.venue])
+        self.sink(
+            summary,
+            ingest_time_ns=ingest_time_ns,
+            market_type=market_type_for(self.venue, summary.symbol),
+        )
 
 
 def book_task(

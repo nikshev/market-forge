@@ -36,3 +36,4 @@ legacy `/ws/` path no longer delivers `forceOrder`, and `/market/ws/` (liquidati
 | `ws4_okx_books.json` | OKX `books` channel for `BTC-USDT-SWAP`: the subscription ack, a 400-level snapshot, four updates (sizes are **contracts**) |
 | `ws4_bybit_orderbook50.json` | Bybit `orderbook.50.BTCUSDT`: a snapshot, four deltas, and the subscription ack |
 | `ws4_binance_spot_depth10_combined.json` | Binance spot `btcusdt@depth10@1000ms` and `ethusdt@depth10@1000ms` on the combined stream (`{"stream", "data"}`) -- whole top-ten snapshots, no timestamp |
+| `ws5_okx_books_spot.json` | OKX `books` channel for the SPOT instruments `BTC-USDT` and `ETH-USDT`: acks, 400-level snapshots and updates -- sizes are **base units** (compare `ws4_okx_books.json`, a swap, whose sizes are contracts) |

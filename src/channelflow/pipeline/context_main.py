@@ -55,9 +55,12 @@ DEFAULT_PORT = 9101
 @dataclass(frozen=True)
 class ContextSettings:
     venue: str
+    #: What the collector polls and whose liquidations it follows: the venue's perpetuals.
     symbols: tuple[str, ...]
     port: int
     streams: tuple[str, ...] = DEFAULT_STREAMS
+    #: Whose order books it keeps: the venue's own series, which are not always its perpetuals.
+    book_symbols: tuple[str, ...] = ()
 
 
 def context_settings_from_env(environ: Mapping[str, str] | None = None) -> ContextSettings:
@@ -98,7 +101,13 @@ def context_settings_from_env(environ: Mapping[str, str] | None = None) -> Conte
             raise MissingConfiguration(
                 f"{STREAMS} names {', '.join(unknown)}; expected any of {', '.join(KNOWN_STREAMS)}"
             )
-    return ContextSettings(venue=venue, symbols=symbols, port=port, streams=streams)
+    return ContextSettings(
+        venue=venue,
+        symbols=symbols,
+        port=port,
+        streams=streams,
+        book_symbols=sources.book_symbols_for(venue) or symbols,
+    )
 
 
 def _add_stream(streams: list[StreamTask], task: StreamTask, venue: str, kind: str) -> None:
@@ -133,7 +142,11 @@ def main(argv: list[str] | None = None) -> int:
     streams: list[StreamTask] = []
     extra_sinks: list[Flushable] = []
     contract_values = (
-        {symbol: poller.contract_value(symbol) for symbol in context.symbols}
+        {
+            symbol: poller.contract_value(symbol)
+            for symbol in {*context.symbols, *context.book_symbols}
+            if symbol.endswith("-SWAP")
+        }
         if isinstance(poller, OkxPoller)
         else {}
     )
@@ -170,7 +183,7 @@ def main(argv: list[str] | None = None) -> int:
             streams,
             book_task(
                 venue=context.venue,
-                symbols=context.symbols,
+                symbols=context.book_symbols,
                 sink=book_sink,
                 now_ns=time.time_ns,
                 on_failure=on_failure,

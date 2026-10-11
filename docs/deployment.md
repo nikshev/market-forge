@@ -25,6 +25,7 @@ Thirteen services, started together:
 | `ingest-binance` | the live connector: one symbol, socket to bars ([[REQ-WP-066]]) |
 | `ingest-binance-eth` | the same, for ETHUSDT |
 | `ingest-binance-sol` | the same, for SOLUSDT |
+| `ingest-okx-spot-btc`, `-eth`, `-sol` | OKX **spot** `BTC-USDT`, `ETH-USDT`, `SOL-USDT`: the second spot venue, so the Binance spot series have a venue basis ([[REQ-WP-098]]) |
 | `resample` | builds every configured timeframe from the one-minute series, on a loop ([[REQ-WP-073]]) |
 | `maintenance` | prunes metadata, compacts and optionally expires, on a loop ([[REQ-WP-070]]) |
 | `worker` | fits channels, signals and extrema over the stored bars, on a loop ([[REQ-WP-077]]) |
@@ -285,7 +286,7 @@ secret; `.env` is not committed and never should be.
 | `CHANNELFLOW_BIND_ADDRESS` | what every published port binds to; `127.0.0.1` by default ([[REQ-WP-072]]) |
 | `CHANNELFLOW_CORS_ORIGINS`, `CHANNELFLOW_RATE_LIMIT`, `CHANNELFLOW_RATE_WINDOW_SECONDS` | what the read API allows and refuses |
 | `GRAFANA_ADMIN_PASSWORD`, `GRAFANA_ANONYMOUS` | Grafana's credential; anonymous access is off unless enabled |
-| `CHANNELFLOW_INGEST_SYMBOLS`, `CHANNELFLOW_INGEST_SYMBOLS_ETH`, `CHANNELFLOW_INGEST_SYMBOLS_SOL`, `CHANNELFLOW_INGEST_SYMBOLS_BYBIT`, `CHANNELFLOW_INGEST_SYMBOLS_OKX`, `CHANNELFLOW_INGEST_TIMEFRAME_NS`, `CHANNELFLOW_INGEST_VENUE`, `CHANNELFLOW_INGEST_MAX_SILENCE_SECONDS` | what each ingest daemon reads, which venue it connects to, at what bar size, and how long silence is tolerated before it reconnects (empty: the venue's own 60 s) — one symbol and venue per process |
+| `CHANNELFLOW_INGEST_SYMBOLS`, `CHANNELFLOW_INGEST_SYMBOLS_ETH`, `CHANNELFLOW_INGEST_SYMBOLS_SOL`, `CHANNELFLOW_INGEST_SYMBOLS_BYBIT`, `CHANNELFLOW_INGEST_SYMBOLS_OKX`, `CHANNELFLOW_INGEST_SYMBOLS_OKX_SPOT_BTC`, `CHANNELFLOW_INGEST_SYMBOLS_OKX_SPOT_ETH`, `CHANNELFLOW_INGEST_SYMBOLS_OKX_SPOT_SOL`, `CHANNELFLOW_INGEST_TIMEFRAME_NS`, `CHANNELFLOW_INGEST_VENUE`, `CHANNELFLOW_INGEST_MAX_SILENCE_SECONDS` | what each ingest daemon reads, which venue it connects to, at what bar size, and how long silence is tolerated before it reconnects (empty: the venue's own 60 s) — one symbol and venue per process |
 | `CHANNELFLOW_LOG_LEVEL`, `CHANNELFLOW_LOG_MAX_SIZE`, `CHANNELFLOW_LOG_MAX_FILE` | how loud the ingest daemons are (empty is INFO), and the cap on every service's container log — 20 MB × 3 files by default |
 | `CHANNELFLOW_TIMEFRAMES`, `CHANNELFLOW_RESAMPLE_INTERVAL` | which timeframes the resampler builds from the one-minute series, and how often it runs ([[REQ-WP-073]]); `1M` is refused. The read API reads the same variable and reports the set at `GET /api/v1/timeframes` ([[REQ-WP-074]]) — one value for both processes, so what a chart offers cannot disagree with what exists |
 | `CHANNELFLOW_MAINTENANCE_INTERVAL`, `CHANNELFLOW_KEEP_DAYS` | how often maintenance runs, and what it may expire |
@@ -622,6 +623,15 @@ fewer than ten levels a side gets no ten-level imbalance, and a crossed book is 
 The worker writes `ofi_1m` and `depth_imbalance_10` from the latest minute that ended at or before the bar's
 close and is no more than two minutes old. `CHANNELFLOW_CONTEXT_STREAMS` (default `liquidations,book`; an empty
 value turns every stream off) chooses what a collector holds beside its polls.
+
+**A second spot venue** ([REQ-WP-098]). OKX spot is ingested like every other market (one process per symbol), its
+books are collected by the OKX collector, and each spot asset's group is now Binance and OKX, so the consensus has
+two venues and the Binance spot venue-basis pane has a line. **A spot book's sizes are base units and a swap's are
+contracts**: the OKX book stream asks the instrument which it has -- `BASE-QUOTE` is spot, `BASE-QUOTE-SWAP` is a
+swap -- and converts only the swap's. A spot series is shown its venue's perpetual of the same pair for open interest,
+funding and basis (named in `channelflow/context/sources.py`, with the one list of series), so the OKX collector also
+polls `ETH-USDT-SWAP` and `SOL-USDT-SWAP`. Three more series make the worker's cycle longer: more channels, signals and
+notary records per cycle.
 
 **The consensus** ([REQ-WP-096]). The worker turns the quotes into the cross-venue consensus: one `consensus`
 row per minute close (every bar close is one), by the library's own median, a refusal stored with its reason and

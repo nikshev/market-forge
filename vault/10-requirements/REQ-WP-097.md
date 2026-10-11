@@ -62,10 +62,16 @@ three states, and the state is checked against the API:
     - `tests/tools/panes/test_classify.py::test_the_imbalance_having_points_is_data_even_with_no_sums`
     - `tests/tools/panes/test_classify.py::test_the_panes_are_read_from_the_page_with_volume_first`
     - `tests/tools/panes/test_classify.py::test_the_range_asked_for_ends_now_and_starts_the_stated_hours_before`
+    - `tests/tools/panes/test_classify.py::test_the_same_refusal_at_a_thousand_instants_is_one_reason`
     - `tests/tools/panes/test_classify.py::test_venue_basis_whose_consensus_read_failed_is_no_producer_and_says_what_it_answered`
     - `tests/tools/panes/test_classify.py::test_venue_basis_with_a_stored_refusal_is_absent_with_the_stored_reason`
     - `tests/tools/panes/test_classify.py::test_venue_basis_with_consensus_rows_but_no_basis_is_no_producer_not_absent`
     - `tests/tools/panes/test_classify.py::test_volume_is_read_from_the_bars_not_from_a_feature`
+- **Code:**
+    - `tools/panes/__init__.py`
+    - `tools/panes/__main__.py`
+    - `tools/panes/classify.py`
+    - `tools/panes/fetch.py`
 - **Outcomes:** [[OUT-2026-10-11-implement-pane-coverage]], [[OUT-2026-10-11-plan-live-panes]], [[OUT-2026-10-11-spec-live-panes]]
 <!-- trace:end -->
 

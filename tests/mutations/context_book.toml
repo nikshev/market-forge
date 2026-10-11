@@ -33,8 +33,8 @@ replace = '''MARKET_TYPE = {"binance": "perp", "bybit": "perp", "okx": "perp"}''
 
 [[mutation]]
 name = "okx contracts are read as base units"
-find = '''        return message.meta.symbol, _scaled(message, contract_value)'''
-replace = '''        return message.meta.symbol, message'''
+find = '''        return symbol, _scaled(message, contract_value)'''
+replace = '''        return symbol, message'''
 
 [[mutation]]
 name = "okx without a contract value is let through"
@@ -96,11 +96,6 @@ find = '''        for book in self.books.values():
 replace = '''        for book in self.books.values():
             pass'''
 
-[[mutation]]
-name = "a minute is stored with the wrong market type"
-find = '''        self.sink(summary, ingest_time_ns=ingest_time_ns, market_type=MARKET_TYPE[self.venue])'''
-replace = '''        self.sink(summary, ingest_time_ns=ingest_time_ns, market_type="perp")'''
-survives = '''Equivalent for the tests that read the stored rows only if they do not check the market type column; the market type is asserted on the normalised message in the frame tests and is a label here.'''
 
 [[mutation]]
 name = "the book stream is given a quiet policy"
@@ -114,3 +109,28 @@ find = '''        if frame.strip() == "pong":
             return  # OKX answers a ping with the bare word: not JSON, and not a fault'''
 replace = '''        if False:
             return  # OKX answers a ping with the bare word: not JSON, and not a fault'''
+
+[[mutation]]
+name = "an okx spot book is scaled by a contract value"
+find = '''        if market_type_for("okx", symbol) == "spot":'''
+replace = '''        if False:'''
+
+[[mutation]]
+name = "an okx swap is treated as spot"
+find = '''        return "perp" if symbol.endswith("-SWAP") else "spot"'''
+replace = '''        return "spot"'''
+
+[[mutation]]
+name = "an okx spot pair is labelled a perpetual"
+find = '''        return "perp" if symbol.endswith("-SWAP") else "spot"'''
+replace = '''        return "perp"'''
+
+[[mutation]]
+name = "a spot message keeps the perpetual label"
+find = '''            message = _relabelled(message, "spot")'''
+replace = '''            pass'''
+
+[[mutation]]
+name = "the minute is stored with the venue's default market type"
+find = '''            market_type=market_type_for(self.venue, summary.symbol),'''
+replace = '''            market_type=MARKET_TYPE[self.venue],'''

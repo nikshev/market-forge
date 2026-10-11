@@ -30,3 +30,8 @@ replace = '''    return f"0:cex:{market.symbol}".lower()'''
 name = "the registry gives each representation another asset"
 find = '''                canonical_asset_id=market.asset_id,'''
 replace = '''                canonical_asset_id="BTC",'''
+
+[[mutation]]
+name = "okx spot is not part of the spot group"
+find = '''    ConsensusMarket("BTC", "okx", "BTC-USDT", "spot"),'''
+replace = ''''''

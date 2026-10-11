@@ -66,7 +66,8 @@ def test_every_ingest_service_is_handed_the_silence_limit_and_the_log_level() ->
     the code and not in the deployment."""
     ingest = {name: d for name, d in services().items() if name.startswith("ingest-")}
 
-    assert len(ingest) == 5
+    # Five before, and the three OKX spot symbols (REQ-WP-098).
+    assert len(ingest) == 8
     for name, definition in ingest.items():
         environment = definition["environment"]
         assert "CHANNELFLOW_INGEST_MAX_SILENCE_SECONDS" in environment, name

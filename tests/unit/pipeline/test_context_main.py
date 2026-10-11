@@ -26,7 +26,7 @@ def test_an_unknown_venue_is_refused_naming_the_known_ones() -> None:
     [
         ("binance", ("BTCUSDT", "ETHUSDT", "SOLUSDT")),
         ("bybit", ("BTCUSDT",)),
-        ("okx", ("BTC-USDT-SWAP",)),
+        ("okx", ("BTC-USDT-SWAP", "ETH-USDT-SWAP", "SOL-USDT-SWAP")),
     ],
 )
 def test_the_symbols_default_to_the_ones_the_deployment_shows(
@@ -86,3 +86,15 @@ def test_an_unknown_stream_is_refused_naming_the_known_ones() -> None:
         main.context_settings_from_env(
             {"CHANNELFLOW_CONTEXT_VENUE": "okx", "CHANNELFLOW_CONTEXT_STREAMS": "tarot"}
         )
+
+
+@pytest.mark.trace("REQ-WP-098")
+def test_the_book_symbols_are_the_venues_own_series_and_the_derivative_symbols_its_perpetuals() -> (
+    None
+):
+    okx = main.context_settings_from_env({"CHANNELFLOW_CONTEXT_VENUE": "okx"})
+
+    assert okx.symbols == ("BTC-USDT-SWAP", "ETH-USDT-SWAP", "SOL-USDT-SWAP")
+    assert okx.book_symbols == ("BTC-USDT", "BTC-USDT-SWAP", "ETH-USDT", "SOL-USDT")
+    binance = main.context_settings_from_env({"CHANNELFLOW_CONTEXT_VENUE": "binance"})
+    assert binance.book_symbols == binance.symbols == ("BTCUSDT", "ETHUSDT", "SOLUSDT")

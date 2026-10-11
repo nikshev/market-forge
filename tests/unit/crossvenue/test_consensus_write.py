@@ -62,7 +62,7 @@ def test_the_deployments_markets_group_by_asset_and_market_type_never_blended() 
     by_group = groups()
 
     assert [m.venue for m in by_group[("BTC", "perp")]] == ["bybit", "okx"]
-    assert [m.venue for m in by_group[("BTC", "spot")]] == ["binance"]
+    assert [m.venue for m in by_group[("BTC", "spot")]] == ["binance", "okx"]
     assert ("ETH", "spot") in by_group and ("SOL", "spot") in by_group
 
 
@@ -395,3 +395,32 @@ def test_a_failed_commit_is_reported_and_the_rows_come_back_next_pass(
 @pytest.mark.trace("REQ-WP-096")
 def test_an_empty_quotes_table_is_a_pass_that_writes_nothing(catalog: Catalog) -> None:
     assert cp.write_consensus(catalog) == 0
+
+
+@pytest.mark.trace("REQ-WP-098")
+def test_every_spot_group_of_the_deployment_has_two_venues_and_an_alias_under_each_symbol() -> None:
+    by_group = groups()
+    for asset, okx_symbol, binance_symbol in (
+        ("BTC", "BTC-USDT", "BTCUSDT"),
+        ("ETH", "ETH-USDT", "ETHUSDT"),
+        ("SOL", "SOL-USDT", "SOLUSDT"),
+    ):
+        group = by_group[(asset, "spot")]
+        assert [m.venue for m in group] == ["binance", "okx"]
+        assert {m.symbol for m in group} == {binance_symbol, okx_symbol}
+
+
+@pytest.mark.trace("REQ-WP-098")
+def test_two_spot_venues_give_a_consensus_stored_under_both_symbols() -> None:
+    binance = ConsensusMarket("BTC", "binance", "BTCUSDT", "spot")
+    okx = ConsensusMarket("BTC", "okx", "BTC-USDT", "spot")
+    series = {
+        ("binance", "BTCUSDT"): series_of(per_minute(1, 3, "100")),
+        ("okx", "BTC-USDT"): series_of(per_minute(1, 3, "102")),
+    }
+
+    rows = cp.compute_rows(series, {}, markets=(binance, okx))
+
+    assert {r["asset"] for r in rows} == {"BTCUSDT", "BTC-USDT"}
+    assert all(r["consensus_mid"] == Decimal(101) and r["venue_count"] == 2 for r in rows)
+    assert all(r["market_type"] == "spot" for r in rows)

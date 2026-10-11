@@ -311,3 +311,84 @@ def test_okxs_bare_pong_is_not_a_failed_frame(catalog: Catalog) -> None:
     task.step()
 
     assert failures == []
+
+
+# --- spot and swap, on one venue (REQ-WP-098) ---
+
+
+@pytest.mark.trace("REQ-WP-098")
+def test_the_market_type_of_a_book_is_asked_by_instrument_not_by_venue() -> None:
+    assert book_stream.market_type_for("okx", "BTC-USDT") == "spot"
+    assert book_stream.market_type_for("okx", "BTC-USDT-SWAP") == "perp"
+    assert book_stream.market_type_for("binance", "BTCUSDT") == "spot"
+    assert book_stream.market_type_for("bybit", "BTCUSDT") == "perp"
+
+
+@pytest.mark.trace("REQ-WP-098")
+def test_a_recorded_okx_spot_frame_keeps_its_sizes_because_they_are_already_base_units() -> None:
+    frames = [f for f in load("ws5_okx_books_spot") if f.get("action") == "snapshot"]
+    assert frames
+    for frame in frames:
+        raw = Decimal(frame["data"][0]["asks"][0][1])
+
+        symbol, snapshot = book_stream.message_of("okx", frame, 1, {})  # type: ignore[misc]
+
+        assert snapshot.asks[0].qty == raw  # unscaled
+        assert snapshot.meta.market_type == "spot" and symbol == frame["arg"]["instId"]
+
+
+@pytest.mark.trace("REQ-WP-098")
+def test_a_spot_instrument_is_not_scaled_even_if_a_contract_value_is_offered_for_it() -> None:
+    frame = [f for f in load("ws5_okx_books_spot") if f.get("action") == "snapshot"][0]
+    raw = Decimal(frame["data"][0]["asks"][0][1])
+
+    _, snapshot = book_stream.message_of("okx", frame, 1, {frame["arg"]["instId"]: Decimal("0.01")})  # type: ignore[misc]
+
+    assert snapshot.asks[0].qty == raw
+
+
+@pytest.mark.trace("REQ-WP-098")
+def test_the_same_frame_shape_for_a_swap_is_scaled_and_labelled_perp() -> None:
+    frame = [f for f in load("ws4_okx_books") if "action" in f][0]
+    raw = Decimal(frame["data"][0]["asks"][0][1])
+
+    _, snapshot = book_stream.message_of("okx", frame, 1, CT_VAL)  # type: ignore[misc]
+
+    assert snapshot.asks[0].qty == raw * Decimal("0.01") and snapshot.meta.market_type == "perp"
+
+
+@pytest.mark.trace("REQ-WP-098")
+def test_okx_asks_for_every_book_symbol_in_one_subscription() -> None:
+    spec = book_stream.stream_spec("okx", ["BTC-USDT", "ETH-USDT", "BTC-USDT-SWAP"])
+    assert json.loads(spec.subscribe_message or "")["args"] == [
+        {"channel": "books", "instId": "BTC-USDT"},
+        {"channel": "books", "instId": "ETH-USDT"},
+        {"channel": "books", "instId": "BTC-USDT-SWAP"},
+    ]
+
+
+@pytest.mark.trace("REQ-WP-098")
+def test_each_minute_is_stored_with_its_own_instruments_market_type(catalog: Catalog) -> None:
+    spot = [f for f in load("ws5_okx_books_spot") if f.get("arg", {}).get("instId") == "BTC-USDT"]
+    swap = [f for f in load("ws4_okx_books") if "action" in f]
+    # The frames carry the venue's own times, and a minute closes in event time: the clock starts at
+    # the latest of them so that advancing it past a boundary closes the minute they are in.
+    latest_ms = max(int(f["data"][0]["ts"]) for f in spot + swap if "data" in f)
+    task, connector, clock, sink, _ = task_for(
+        catalog,
+        "okx",
+        ["BTC-USDT", "BTC-USDT-SWAP"],
+        contract_values=CT_VAL,
+        start_ns=latest_ms * 1_000_000,
+    )
+    for frame in [f for f in spot if "action" in f] + swap:
+        connector.push(json.dumps(frame))
+    for _ in range(70):
+        clock.advance_ns(SECOND)
+        task.step()
+
+    sink.flush()
+    types = {
+        row["symbol"]: row["market_type"] for row in table.table_for(catalog).read().to_pylist()
+    }
+    assert types == {"BTC-USDT": "spot", "BTC-USDT-SWAP": "perp"}

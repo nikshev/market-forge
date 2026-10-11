@@ -69,6 +69,9 @@ is refused**: the Binance panes say so. Making them live needs a second spot ven
     - `tests/unit/crossvenue/test_consensus_write.py::test_three_venues_give_the_middle_one`
     - `tests/unit/crossvenue/test_consensus_write.py::test_two_venues_give_the_interpolated_median`
     - `tests/unit/crossvenue/test_consensus_write.py::test_what_is_stored_reads_back_as_the_venue_basis_formula_for_both_perpetual_venues`
+- **Code:**
+    - `src/channelflow/crossvenue/deployment.py`
+    - `src/channelflow/pipeline/consensus_pass.py`
 - **Outcomes:** [[OUT-2026-10-11-implement-consensus-producer]], [[OUT-2026-10-11-plan-live-panes]], [[OUT-2026-10-11-spec-live-panes]]
 <!-- trace:end -->
 
