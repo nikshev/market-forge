@@ -287,7 +287,7 @@ secret; `.env` is not committed and never should be.
 | `CHANNELFLOW_BIND_ADDRESS` | what every published port binds to; `127.0.0.1` by default ([[REQ-WP-072]]) |
 | `CHANNELFLOW_CORS_ORIGINS`, `CHANNELFLOW_RATE_LIMIT`, `CHANNELFLOW_RATE_WINDOW_SECONDS` | what the read API allows and refuses |
 | `GRAFANA_ADMIN_PASSWORD`, `GRAFANA_ANONYMOUS` | Grafana's credential; anonymous access is off unless enabled |
-| `CHANNELFLOW_INGEST_SYMBOLS`, `CHANNELFLOW_INGEST_SYMBOLS_ETH`, `CHANNELFLOW_INGEST_SYMBOLS_SOL`, `CHANNELFLOW_INGEST_SYMBOLS_BYBIT`, `CHANNELFLOW_INGEST_SYMBOLS_BYBIT_HYPE`, `CHANNELFLOW_INGEST_SYMBOLS_OKX`, `CHANNELFLOW_INGEST_SYMBOLS_OKX_SPOT_BTC`, `CHANNELFLOW_INGEST_SYMBOLS_OKX_SPOT_ETH`, `CHANNELFLOW_INGEST_SYMBOLS_OKX_SPOT_SOL`, `CHANNELFLOW_INGEST_TIMEFRAME_NS`, `CHANNELFLOW_INGEST_VENUE`, `CHANNELFLOW_INGEST_MAX_SILENCE_SECONDS` | what each ingest daemon reads, which venue it connects to, at what bar size, and how long silence is tolerated before it reconnects (empty: the venue's own 60 s) — one symbol and venue per process |
+| `CHANNELFLOW_INGEST_SYMBOLS`, `CHANNELFLOW_INGEST_SYMBOLS_ETH`, `CHANNELFLOW_INGEST_SYMBOLS_SOL`, `CHANNELFLOW_INGEST_SYMBOLS_BYBIT`, `CHANNELFLOW_INGEST_SYMBOLS_BYBIT_HYPE`, `CHANNELFLOW_INGEST_SYMBOLS_OKX_HYPE`, `CHANNELFLOW_INGEST_SYMBOLS_OKX`, `CHANNELFLOW_INGEST_SYMBOLS_OKX_SPOT_BTC`, `CHANNELFLOW_INGEST_SYMBOLS_OKX_SPOT_ETH`, `CHANNELFLOW_INGEST_SYMBOLS_OKX_SPOT_SOL`, `CHANNELFLOW_INGEST_TIMEFRAME_NS`, `CHANNELFLOW_INGEST_VENUE`, `CHANNELFLOW_INGEST_MAX_SILENCE_SECONDS` | what each ingest daemon reads, which venue it connects to, at what bar size, and how long silence is tolerated before it reconnects (empty: the venue's own 60 s) — one symbol and venue per process |
 | `CHANNELFLOW_LOG_LEVEL`, `CHANNELFLOW_LOG_MAX_SIZE`, `CHANNELFLOW_LOG_MAX_FILE` | how loud the ingest daemons are (empty is INFO), and the cap on every service's container log — 20 MB × 3 files by default |
 | `CHANNELFLOW_TIMEFRAMES`, `CHANNELFLOW_RESAMPLE_INTERVAL` | which timeframes the resampler builds from the one-minute series, and how often it runs ([[REQ-WP-073]]); `1M` is refused. The read API reads the same variable and reports the set at `GET /api/v1/timeframes` ([[REQ-WP-074]]) — one value for both processes, so what a chart offers cannot disagree with what exists |
 | `CHANNELFLOW_MAINTENANCE_INTERVAL`, `CHANNELFLOW_KEEP_DAYS` | how often maintenance runs, and what it may expire |
@@ -642,7 +642,8 @@ read in `dex_swaps` and, once caught up, one reading of each pool (liquidity, pr
 refuses `eth_getLogs` over 1000 blocks and rate-limits within seconds of a burst -- inside an HTTP 200 -- so a gap
 is asked for in pieces, a few per poll, and a failed request stores nothing and moves nothing. A restart resumes after
 the last stored block. The features are written for **Bybit's HYPE perpetual**, a perpetual ingested for the purpose
-(`ingest-bybit-hype`) because HyperEVM has no bars: swap imbalance over the trailing five minutes (both pools) and the
+(`ingest-bybit-hype`) because HyperEVM has no bars (OKX's HYPE swap is ingested beside it, `ingest-okx-hype`, so the
+venue-basis pane of the HYPE series has a two-venue consensus): swap imbalance over the trailing five minutes (both pools) and the
 Uniswap v3 pool's active liquidity. A window in which the collector did not read every pool in every minute has **no**
 imbalance -- a quiet minute is a fact only where the collector was there -- and neither has a window with no swap.
 `CONTEXT_HYPEREVM_PORT` (9104) serves `/healthz` and `/metrics`.

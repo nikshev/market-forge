@@ -46,6 +46,10 @@ A recorded `eth_getLogs` answer (19 swaps from both pools over 81 blocks, 2026-1
   tests that count symbols were updated with the reason beside the number.
 - The mutation sweep found that the liveness of the collector (a failed poll counts as a success) was not tested; it is now.
 
+- **The first deployed run found a pane with no producer**: Bybit `HYPEUSDT` is in no consensus group, so its venue-basis
+  read answered HTTP 404 and the report said `no-producer`. A second HYPE market, OKX `HYPE-USDT-SWAP`, was added through the
+  same series, ingest and registry path as [[REQ-WP-098]], and the two form the HYPE perpetual group.
+
 ## What is still open
 
 - Deployment: the ingest, the collector, then the worker; the acceptance reads are measurements of that run.

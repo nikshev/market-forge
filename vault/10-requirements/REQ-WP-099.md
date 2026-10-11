@@ -24,7 +24,9 @@ On 2026-10-11 the owner chose to build the source.
    `liquidity()` and stores it in `dex_state`. The protocol comes from the pinned registry, never from the event.
 2. **A series to carry them.** The DEX features are keyed by `(venue, symbol)` ([[REQ-WP-059]]), and HyperEVM has no
    bars: the pools price HYPE, so they are shown on a HYPE market. Bybit's `HYPEUSDT` perpetual is ingested (a new
-   ingest service) and collected like `BTCUSDT`, and is the series the DEX panes are read from.
+   ingest service) and collected like `BTCUSDT`, and is the series the DEX panes are read from. **OKX's `HYPE-USDT-SWAP`
+   is ingested beside it** so the HYPE series' venue-basis pane has a two-venue consensus (the first deployed run found
+   a pane with no producer: a market in no consensus group has no consensus to read, and says so with a 404).
 3. **The features at each bar's close.** The worker computes `dex_swap_imbalance` (a trailing five-minute window, both
    pools) and `dex_active_liquidity` (the busiest pool's most recent reading) for the HYPE series at every final bar's
    close, as of that close: an event counts only if its block time **and** the time we stored it are at or before the close.
@@ -42,8 +44,8 @@ On 2026-10-11 the owner chose to build the source.
   which the collector did not poll for every minute yields **no** value, not zero; a window with no swap yields none.
 - `dex_active_liquidity` at a close is the most recent reading at or before it, and none if that reading is older than
   three polls.
-- `make panes-report` shows `data` for the HYPE series in both DEX panes at 1m; the other series still read "no DEX
-  source for this asset" (not "no DEX ingest").
+- `make panes-report` shows `data` for the HYPE series in both DEX panes at 1m and in Venue basis (both HYPE venues);
+  the other series read "no DEX pool is registered for this asset" (not "no DEX ingest").
 - The new ingest and collector services are started without recreating any running container.
 
 ## Trace
@@ -72,9 +74,12 @@ On 2026-10-11 the owner chose to build the source.
     - `tests/unit/connectors/hyperevm/test_rpc.py::test_logs_ask_for_both_pools_and_the_swap_topic_over_an_inclusive_range`
     - `tests/unit/connectors/hyperevm/test_rpc.py::test_the_head_is_the_hex_block_number_as_an_int`
     - `tests/unit/connectors/hyperevm/test_rpc.py::test_the_widest_allowed_range_is_one_thousand_blocks_inclusive`
+    - `tests/unit/context/test_sources_series.py::test_hype_is_a_perpetual_on_two_venues_so_its_venue_basis_has_a_consensus`
     - `tests/unit/context/test_sources_series.py::test_the_series_the_dex_pools_are_shown_on_is_an_ingested_perpetual_with_derivatives`
+    - `tests/unit/crossvenue/test_consensus_write.py::test_the_hype_perpetual_group_has_two_venues_so_its_pane_has_a_consensus`
     - `tests/unit/deploy/test_compose_logging.py::test_the_dex_collector_is_a_service_that_reports_its_own_health_and_holds_no_key`
     - `tests/unit/deploy/test_compose_logging.py::test_the_hype_ingest_service_reads_the_hype_symbol_from_bybit`
+    - `tests/unit/deploy/test_compose_logging.py::test_the_okx_hype_ingest_reads_the_hype_swap_from_okx`
     - `tests/unit/dex/test_hyperevm_collect.py::test_a_catch_up_is_spread_over_polls_not_hammered_into_one`
     - `tests/unit/dex/test_hyperevm_collect.py::test_a_failed_head_request_is_a_failed_poll`
     - `tests/unit/dex/test_hyperevm_collect.py::test_a_failed_logs_request_stores_nothing_and_leaves_the_cursor[failure0]`
@@ -156,8 +161,14 @@ On 2026-10-11 the owner chose to build the source.
     - `tests/unit/tables/test_dex_tables.py::test_a_swap_keeps_the_time_it_was_stored_apart_from_the_time_it_happened`
 - **Code:**
     - `src/channelflow/chain/hyperevm.py`
+    - `src/channelflow/connectors/hyperevm/__init__.py`
+    - `src/channelflow/connectors/hyperevm/rpc.py`
+    - `src/channelflow/dex/hyperevm_collect.py`
+    - `src/channelflow/dex/hyperevm_pools.py`
     - `src/channelflow/features/dex.py`
+    - `src/channelflow/features/dex_values.py`
     - `src/channelflow/pipeline/context_pass.py`
+    - `src/channelflow/pipeline/dex_main.py`
     - `src/channelflow/tables/dex_state.py`
     - `src/channelflow/tables/dex_swaps.py`
     - `tools/panes/classify.py`

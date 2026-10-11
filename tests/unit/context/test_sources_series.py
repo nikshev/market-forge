@@ -20,12 +20,23 @@ def test_the_series_list_names_every_market_the_deployment_ingests_with_its_type
 def test_the_book_symbols_of_a_venue_are_its_own_series_not_its_perpetuals() -> None:
     assert sources.book_symbols_for("binance") == ("BTCUSDT", "ETHUSDT", "SOLUSDT")
     assert sources.book_symbols_for("bybit") == ("BTCUSDT", "HYPEUSDT")
-    assert sources.book_symbols_for("okx") == ("BTC-USDT", "BTC-USDT-SWAP", "ETH-USDT", "SOL-USDT")
+    assert sources.book_symbols_for("okx") == (
+        "BTC-USDT",
+        "BTC-USDT-SWAP",
+        "ETH-USDT",
+        "HYPE-USDT-SWAP",
+        "SOL-USDT",
+    )
 
 
 @pytest.mark.trace("REQ-WP-098")
 def test_the_derivative_symbols_of_a_venue_are_the_perpetuals_its_series_are_shown() -> None:
-    assert sources.symbols_for("okx") == ("BTC-USDT-SWAP", "ETH-USDT-SWAP", "SOL-USDT-SWAP")
+    assert sources.symbols_for("okx") == (
+        "BTC-USDT-SWAP",
+        "ETH-USDT-SWAP",
+        "HYPE-USDT-SWAP",
+        "SOL-USDT-SWAP",
+    )
     assert sources.symbols_for("binance") == ("BTCUSDT", "ETHUSDT", "SOLUSDT")
     assert sources.symbols_for("bybit") == ("BTCUSDT", "HYPEUSDT")
 
@@ -69,3 +80,10 @@ def test_the_series_the_dex_pools_are_shown_on_is_an_ingested_perpetual_with_der
 
     assert sources.market_type_of(venue, symbol) == "perp"
     assert sources.perpetual_for(venue, symbol) == symbol
+
+
+@pytest.mark.trace("REQ-WP-099")
+def test_hype_is_a_perpetual_on_two_venues_so_its_venue_basis_has_a_consensus() -> None:
+    assert ("bybit", "HYPEUSDT", "perp") in sources.SERIES
+    assert ("okx", "HYPE-USDT-SWAP", "perp") in sources.SERIES
+    assert sources.perpetual_for("okx", "HYPE-USDT-SWAP") == "HYPE-USDT-SWAP"

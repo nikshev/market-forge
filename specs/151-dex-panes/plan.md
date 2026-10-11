@@ -20,8 +20,10 @@ features for the HYPE series, (5) one ingest service and one collector service.
    `liquidation_values.covered` already states. Rejected: a heartbeat table (a second place to be wrong).
 4. **Active liquidity from the busiest pool**, because the value is not comparable across pools (REQ-WP-063). The pool is a
    pinned fact (`LIQUIDITY_POOL`), with the measurement that chose it beside it.
-5. **The series is Bybit `HYPEUSDT`.** The features are keyed by `(venue, symbol)`; the pools price HYPE. One series, not two:
-   each series costs a worker cycle ([[REQ-WP-098]] measured that).
+5. **The series is Bybit `HYPEUSDT`.** The features are keyed by `(venue, symbol)`; the pools price HYPE. One series carries
+   the DEX panes: each series costs a worker cycle ([[REQ-WP-098]] measured that). **Amended after the first deployed run:**
+   a second HYPE market (OKX `HYPE-USDT-SWAP`) is ingested too, because a series in no consensus group has a venue-basis
+   pane with no producer (HTTP 404, not a refusal), and a second venue is what makes the group.
 6. **Not stored twice.** The sink drops a swap whose `(chain_id, tx_hash, log_index)` is already known to it; the cursor is
    restored from the table's latest block at start and the first range overlaps by one block.
 

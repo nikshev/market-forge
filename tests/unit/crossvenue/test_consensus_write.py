@@ -424,3 +424,13 @@ def test_two_spot_venues_give_a_consensus_stored_under_both_symbols() -> None:
     assert {r["asset"] for r in rows} == {"BTCUSDT", "BTC-USDT"}
     assert all(r["consensus_mid"] == Decimal(101) and r["venue_count"] == 2 for r in rows)
     assert all(r["market_type"] == "spot" for r in rows)
+
+
+@pytest.mark.trace("REQ-WP-099")
+def test_the_hype_perpetual_group_has_two_venues_so_its_pane_has_a_consensus() -> None:
+    group = groups()[("HYPE", "perp")]
+
+    assert [(m.venue, m.symbol) for m in group] == [
+        ("bybit", "HYPEUSDT"),
+        ("okx", "HYPE-USDT-SWAP"),
+    ]

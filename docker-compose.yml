@@ -437,6 +437,40 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  ingest-okx-hype:
+    logging: *default-logging
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command:
+      - python
+      - -m
+      - channelflow.pipeline.ingest_main
+    environment:
+      CHANNELFLOW_CATALOG_URI: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      CHANNELFLOW_WAREHOUSE: s3://${MINIO_BUCKET}/warehouse
+      CHANNELFLOW_S3_ENDPOINT: http://minio:9000
+      CHANNELFLOW_S3_ACCESS_KEY_ID: ${MINIO_ROOT_USER}
+      CHANNELFLOW_S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
+      CHANNELFLOW_S3_REGION: us-east-1
+      CHANNELFLOW_INGEST_SYMBOLS: ${CHANNELFLOW_INGEST_SYMBOLS_OKX_HYPE:-HYPE-USDT-SWAP}
+      CHANNELFLOW_INGEST_TIMEFRAME_NS: ${CHANNELFLOW_INGEST_TIMEFRAME_NS}
+      # Empty means unset. Compose forwards only the variables a service names, so a
+      # setting that is not listed here is unreachable on the host.
+      CHANNELFLOW_INGEST_MAX_SILENCE_SECONDS: ${CHANNELFLOW_INGEST_MAX_SILENCE_SECONDS:-}
+      # The volume profile's price bins (REQ-WP-089); empty means unset.
+      CHANNELFLOW_PROFILE_BIN_WIDTHS: ${CHANNELFLOW_PROFILE_BIN_WIDTHS:-}
+      CHANNELFLOW_PROFILE_BLOCK_SECONDS: ${CHANNELFLOW_PROFILE_BLOCK_SECONDS:-}
+      CHANNELFLOW_LOG_LEVEL: ${CHANNELFLOW_LOG_LEVEL:-}
+      CHANNELFLOW_ARCHIVE_URI: s3://${MINIO_BUCKET}/raw/cex
+      CHANNELFLOW_INGEST_VENUE: okx
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    restart: unless-stopped
+
   # OKX SPOT (REQ-WP-098): the second spot venue, so the Binance spot series have a consensus. One process per
   # symbol like every other ingest; `okx_market_type` makes a `BASE-QUOTE` instrument spot.
   ingest-okx-spot-btc:

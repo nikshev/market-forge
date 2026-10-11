@@ -66,8 +66,8 @@ def test_every_ingest_service_is_handed_the_silence_limit_and_the_log_level() ->
     the code and not in the deployment."""
     ingest = {name: d for name, d in services().items() if name.startswith("ingest-")}
 
-    # Five before, the three OKX spot symbols (REQ-WP-098) and the HYPE perpetual (REQ-WP-099).
-    assert len(ingest) == 9
+    # Five before, the three OKX spot symbols (REQ-WP-098) and HYPE on two venues (REQ-WP-099).
+    assert len(ingest) == 10
     for name, definition in ingest.items():
         environment = definition["environment"]
         assert "CHANNELFLOW_INGEST_MAX_SILENCE_SECONDS" in environment, name
@@ -92,3 +92,11 @@ def test_the_hype_ingest_service_reads_the_hype_symbol_from_bybit() -> None:
 
     assert environment["CHANNELFLOW_INGEST_VENUE"] == "bybit"
     assert environment["CHANNELFLOW_INGEST_SYMBOLS"].endswith(":-HYPEUSDT}")
+
+
+@pytest.mark.trace("REQ-WP-099")
+def test_the_okx_hype_ingest_reads_the_hype_swap_from_okx() -> None:
+    environment = services()["ingest-okx-hype"]["environment"]
+
+    assert environment["CHANNELFLOW_INGEST_VENUE"] == "okx"
+    assert environment["CHANNELFLOW_INGEST_SYMBOLS"].endswith(":-HYPE-USDT-SWAP}")
