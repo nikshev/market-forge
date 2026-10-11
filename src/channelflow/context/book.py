@@ -1,6 +1,7 @@
 """The order-book streams of each venue as a collector task (REQ-WP-095).
 
 # @trace: REQ-WP-095
+# @trace: REQ-WP-098
 
 What to connect to, how to read what arrives, and what to keep. The raw book is not stored: each
 frame goes to a `MinuteBook` (one per symbol), which finalises a summary per minute in event time,

@@ -35,6 +35,16 @@ are the base coin's (1.019 BTC at the first ask), where the recorded swap's are 
 - The deployment tests that count things (ingest services: five, now eight) are the tests that notice a service was
   added; they were updated with the reason beside the number.
 
+## Deployed run (2026-10-11, 16:41 UTC)
+
+The three ingests and the rebuilt OKX collector were started with `up -d --no-deps` and no pre-existing container was
+recreated (start times compared before and after); the worker was rebuilt last, from a clean committed tree.
+
+- **SC-001**: `make panes-report` -- Venue basis is `data` at 1m, 15m and 1h for Binance and OKX BTC, ETH and SOL spot.
+- **SC-002**: the consensus read for the spot groups returns `venue_count` 2 with no refusal over the last 120 minutes
+  (Binance BTCUSDT, Binance ETHUSDT, OKX SOL-USDT checked).
+- The OKX collector's log shows both streams connected for the spot books and the three polled swaps, with no failure count.
+
 ## What is still open
 
 - Deployment: the three ingests, the OKX collector, then the worker; SC-001 and SC-002 are measurements of that.

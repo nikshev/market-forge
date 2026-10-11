@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "§18.11.2, §18A.4, §19, §27.3; owner's direction 2026-10-11"
 prd_lines: "4423-4436"
 phase: null
-status: tested
+status: implemented
 depends_on: [REQ-WP-098, REQ-WP-097, REQ-WP-059, REQ-WP-063, REQ-WP-058, REQ-WP-053, REQ-WP-060]
 tags: [dex, hyperevm, panes, collector, defi]
 hard_gated: false
@@ -164,6 +164,7 @@ On 2026-10-11 the owner chose to build the source.
     - `src/channelflow/chain/hyperevm.py`
     - `src/channelflow/connectors/hyperevm/__init__.py`
     - `src/channelflow/connectors/hyperevm/rpc.py`
+    - `src/channelflow/context/sources.py`
     - `src/channelflow/dex/hyperevm_collect.py`
     - `src/channelflow/dex/hyperevm_pools.py`
     - `src/channelflow/features/dex.py`

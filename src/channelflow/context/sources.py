@@ -1,6 +1,8 @@
 """What the collector watches, for how long a reading stays current, and who it is shown to.
 
 # @trace: REQ-WP-093
+# @trace: REQ-WP-099
+# @trace: REQ-WP-098
 
 Three things live here because three other places must agree on them and none may own them:
 

@@ -1,6 +1,7 @@
 """Which markets of this deployment are one asset, and the registry that says so.
 
 # @trace: REQ-WP-096
+# @trace: REQ-WP-098
 
 `crossvenue/consensus.py` refuses to compare quotes the registry does not know to be one asset
 (PRD §18.13: never merge by ticker). The deployment's markets are listed here, once, with the

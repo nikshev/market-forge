@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "§17.1, §17.3, §27.3; owner's direction 2026-10-11"
 prd_lines: "2520-2552, 4423-4436"
 phase: null
-status: tested
+status: implemented
 depends_on: [REQ-WP-096, REQ-WP-095, REQ-WP-093, REQ-WP-076]
 tags: [consensus, venue-basis, okx, spot, ingest]
 hard_gated: false
@@ -69,6 +69,11 @@ ingests them and carries them through the whole path, so that each spot asset ha
     - `tests/unit/crossvenue/test_consensus_write.py::test_every_spot_group_of_the_deployment_has_two_venues_and_an_alias_under_each_symbol`
     - `tests/unit/crossvenue/test_consensus_write.py::test_two_spot_venues_give_a_consensus_stored_under_both_symbols`
     - `tests/unit/pipeline/test_context_main.py::test_the_book_symbols_are_the_venues_own_series_and_the_derivative_symbols_its_perpetuals`
+- **Code:**
+    - `src/channelflow/context/book.py`
+    - `src/channelflow/context/sources.py`
+    - `src/channelflow/crossvenue/deployment.py`
+    - `src/channelflow/pipeline/context_main.py`
 - **Outcomes:** [[OUT-2026-10-11-implement-second-spot-venue]], [[OUT-2026-10-11-spec-second-spot-venue]]
 <!-- trace:end -->
 

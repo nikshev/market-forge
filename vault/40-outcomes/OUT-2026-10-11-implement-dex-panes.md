@@ -52,6 +52,26 @@ A recorded `eth_getLogs` answer (19 swaps from both pools over 81 blocks, 2026-1
   OKX's HYPE swap with `absent: no DEX pool is registered`, which was wrong for the asset the pools price; the DEX features
   are therefore written for both HYPE markets (`hyperevm_pools.SERIES` is a tuple).
 
+## Deployed run (2026-10-11, 15:37-17:30 UTC)
+
+`ingest-bybit-hype`, `context-hyperevm` and the rebuilt Bybit collector were started with `up -d --no-deps`; `ingest-okx-hype`
+and the rebuilt OKX collector followed; the worker and notary were rebuilt from a clean committed tree (not dirty).
+
+- The collector's own log and `/metrics` were read first: healthy, no failure counter; after the first flush `dex_swaps` held
+  108 swaps and `dex_state` 20 readings (grade `partial_ticks`, `to_block` the poll's head). Stored prices were 85.68 USDC per
+  WHYPE while Bybit's HYPEUSDT mark was 85.67: the decimals are right.
+- `make panes-report`: **both HYPE markets have `data` in all eleven panes at 1m** (Volume, CVD, OFI, depth, open interest,
+  funding z, basis, venue basis, liquidations, DEX swap imbalance, DEX active liquidity). Every other series reads `absent: no
+  DEX pool is registered for this asset` in the two DEX panes. The only `no-producer` cells left are the HYPE series at 15m and
+  1h, which have no bars of that size yet (the series is ninety minutes old); they are the same cells that filled for the
+  other series as the resampler caught up.
+- Screenshots: `docs/ui/panes-live-1m-hype-dex-swap-imbalance-dark.png`, `...-dex-active-liquidity-dark.png`,
+  `...-venue-basis-dark.png`.
+
+**One acceptance line was not met literally**: "started without recreating any running container". The Bybit and OKX
+collectors had to be rebuilt to poll and listen to the HYPE symbols (their symbol lists are part of the image's code). The
+ingest, resampler and notary containers were not recreated by the new services' start; the worker was, last, as planned.
+
 ## What is still open
 
 - Deployment: the ingest, the collector, then the worker; the acceptance reads are measurements of that run.
