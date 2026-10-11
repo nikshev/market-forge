@@ -1,0 +1,77 @@
+# REQ-WP-097: the pane report's classification. The mutations are the ways a pane could be called filled
+# when it is empty, or excused when nothing says why -- which would make the acceptance say nothing.
+#
+# Patterns are TOML *literal* strings on purpose: the basic form treats a
+# trailing backslash as a line continuation and eats the next line's indentation.
+source = "tools/panes/classify.py"
+tests = ["tests/tools/panes/test_classify.py"]
+
+[[mutation]]
+name = "an empty pane is called data"
+find = '''    if evidence.feature_counts.get(feature, 0) > 0:
+        return PaneState(DATA)'''
+replace = '''    if evidence.feature_counts.get(feature, 0) >= 0:
+        return PaneState(DATA)'''
+
+[[mutation]]
+name = "volume with no bars is called data"
+find = '''        return PaneState(DATA) if evidence.bars > 0 else PaneState(NO_PRODUCER, "no bars in range")'''
+replace = '''        return PaneState(DATA)'''
+
+[[mutation]]
+name = "a pane with no reason is excused"
+find = '''    return PaneState(NO_PRODUCER, "nothing stored for this feature")'''
+replace = '''    return PaneState(ABSENT, "nothing stored for this feature")'''
+
+[[mutation]]
+name = "a failed consensus read is excused"
+find = '''        if evidence.consensus_error:
+            return PaneState(
+                NO_PRODUCER, f"the consensus read answered: {evidence.consensus_error}"
+            )'''
+replace = '''        if evidence.consensus_error:
+            return PaneState(ABSENT, f"the consensus read answered: {evidence.consensus_error}")'''
+
+[[mutation]]
+name = "consensus rows with no basis are excused"
+find = '''        return PaneState(NO_PRODUCER, "consensus rows exist and no venue basis was derived")'''
+replace = '''        return PaneState(ABSENT, "consensus rows exist and no venue basis was derived")'''
+
+[[mutation]]
+name = "a refusal reason is not shown"
+find = '''            return PaneState(ABSENT, "; ".join(sorted(set(evidence.consensus_reasons))))'''
+replace = '''            return PaneState(ABSENT, "")'''
+
+[[mutation]]
+name = "an uncovered liquidation window is excused as a quiet market"
+find = '''        return PaneState(
+            NO_PRODUCER, "no covered window: the liquidation stream wrote no heartbeat"
+        )'''
+replace = '''        return PaneState(ABSENT, "no covered window: the liquidation stream wrote no heartbeat")'''
+
+[[mutation]]
+name = "the liquidation reason does not need the stream to have been listening"
+find = '''        if evidence.feature_counts.get(LIQUIDATION_COVERAGE, 0) > 0:'''
+replace = '''        if True:'''
+
+[[mutation]]
+name = "a dex pane is not excused"
+find = '''    if feature in NO_SOURCE_IN_DEPLOYMENT:
+        return PaneState(ABSENT, NO_SOURCE_IN_DEPLOYMENT[feature])'''
+replace = '''    if False:
+        return PaneState(ABSENT, NO_SOURCE_IN_DEPLOYMENT[feature])'''
+
+[[mutation]]
+name = "a boolean is counted as a value"
+find = '''            if isinstance(value, (int, float)) and not isinstance(value, bool):'''
+replace = '''            if isinstance(value, (int, float)):'''
+
+[[mutation]]
+name = "a null is counted as a value"
+find = '''            if isinstance(value, (int, float)) and not isinstance(value, bool):'''
+replace = '''            if True:'''
+
+[[mutation]]
+name = "a zero is not a value"
+find = '''                counts[name] = counts.get(name, 0) + 1'''
+replace = '''                counts[name] = counts.get(name, 0) + (1 if value else 0)'''

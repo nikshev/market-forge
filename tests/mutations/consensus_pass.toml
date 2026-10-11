@@ -1,0 +1,112 @@
+# REQ-WP-096: the consensus pass. The mutations are the ways a row could include a venue that was not
+# there, leave one out, use a quote from after the close, lose a refusal, or be written twice.
+#
+# Patterns are TOML *literal* strings on purpose: the basic form treats a
+# trailing backslash as a line continuation and eats the next line's indentation.
+source = "src/channelflow/pipeline/consensus_pass.py"
+tests = ["tests/unit/crossvenue/test_consensus_write.py"]
+
+[[mutation]]
+name = "a quote from after the close is used"
+find = '''    i = bisect_right(series.times, close_ns)'''
+replace = '''    i = bisect_right(series.times, close_ns + 10 * MINUTE_NS)'''
+
+[[mutation]]
+name = "the staleness bound excludes its own edge"
+find = '''    fresh = [q for q in quotes if 0 <= close_ns - q.observed_at_ns <= staleness_ns]'''
+replace = '''    fresh = [q for q in quotes if 0 <= close_ns - q.observed_at_ns < staleness_ns]'''
+survives = '''Equivalent for the stored rows: `fresh` only feeds the venue COUNT of a refusal, while whether a quote contributes is the library's own check (inclusive, pinned by test_the_staleness_bound_is_inclusive). A refusal at exactly the staleness edge would report one venue fewer, which no test constructs.'''
+
+[[mutation]]
+name = "a refusal is not stored"
+find = '''    except (NoConsensus, NotComparable) as refusal:
+        return ClosedConsensus(asset_id, market_type, close_ns, None, len(fresh), str(refusal))'''
+replace = '''    except NotComparable as refusal:
+        return ClosedConsensus(asset_id, market_type, close_ns, None, len(fresh), str(refusal))'''
+
+[[mutation]]
+name = "a refusal loses its reason"
+find = '''        return ClosedConsensus(asset_id, market_type, close_ns, None, len(fresh), str(refusal))'''
+replace = '''        return ClosedConsensus(asset_id, market_type, close_ns, None, len(fresh), "")'''
+
+[[mutation]]
+name = "a refusal's venue count is the number of venues in the group"
+find = '''        return ClosedConsensus(asset_id, market_type, close_ns, None, len(fresh), str(refusal))'''
+replace = '''        return ClosedConsensus(asset_id, market_type, close_ns, None, len(group), str(refusal))'''
+
+[[mutation]]
+name = "the pass waits for the freshest venue, not the slowest"
+find = '''    return (min(waiting) // MINUTE_NS) * MINUTE_NS'''
+replace = '''    return (max(waiting) // MINUTE_NS) * MINUTE_NS'''
+
+[[mutation]]
+name = "a dead venue is waited for for ever"
+find = '''    waiting = [t for t in newest.values() if freshest - t <= DEAD_AFTER_NS]'''
+replace = '''    waiting = list(newest.values())'''
+
+[[mutation]]
+name = "a lagging venue is never waited for"
+find = '''    waiting = [t for t in newest.values() if freshest - t <= DEAD_AFTER_NS]'''
+replace = '''    waiting = [freshest]'''
+
+[[mutation]]
+name = "the horizon is taken from the exchange time instead of the storage time"
+find = '''        (m.venue, m.symbol): series[(m.venue, m.symbol)].ingests[-1]'''
+replace = '''        (m.venue, m.symbol): series[(m.venue, m.symbol)].times[-1]'''
+
+[[mutation]]
+name = "the first close is the minute of the first quote"
+find = '''        first_close = ((first_quote // MINUTE_NS) + 1) * MINUTE_NS'''
+replace = '''        first_close = (first_quote // MINUTE_NS) * MINUTE_NS'''
+
+[[mutation]]
+name = "the watermark is ignored"
+find = '''                if done is not None and close <= done:
+                    continue'''
+replace = '''                if False:
+                    continue'''
+
+[[mutation]]
+name = "the watermark skips one close too many"
+find = '''                if done is not None and close <= done:
+                    continue'''
+replace = '''                if done is not None and close <= done + MINUTE_NS:
+                    continue'''
+
+[[mutation]]
+name = "a group is stored under its first symbol only"
+find = '''            for alias in aliases:
+                done = start_of[alias]'''
+replace = '''            for alias in aliases[:1]:
+                done = start_of[alias]'''
+
+[[mutation]]
+name = "the consensus is stored under the canonical asset instead of the symbol"
+find = '''                            asset=alias,'''
+replace = '''                            asset=group[0].asset_id,'''
+
+[[mutation]]
+name = "the market type is dropped"
+find = '''                            market_type=market_type,  # type: ignore[arg-type]'''
+replace = '''                            market_type="perp",  # type: ignore[arg-type]'''
+
+[[mutation]]
+name = "a failed commit stops the pass"
+find = '''        except Exception as cause:  # noqa: BLE001 -- the channel step must still run
+            print(
+                f"  consensus: could not write {len(rows)} row(s) -- "'''
+replace = '''        except ZeroDivisionError as cause:
+            print(
+                f"  consensus: could not write {len(rows)} row(s) -- "'''
+
+[[mutation]]
+name = "a failed computation stops the pass"
+find = '''        print(f"  consensus: could not compute -- {type(cause).__name__}: {cause}", flush=True)
+        return 0'''
+replace = '''        raise'''
+survives = '''Equivalent for the tests, which have no way to make the compute fail with the tables they build. The handler exists so a bad row in the quotes table cannot end the worker's channel step; it is the same defensive shape every other pass has and is exercised by their tests.'''
+
+[[mutation]]
+name = "the quotes are read newest first"
+find = '''        raw[(str(venue), str(symbol))].append((int(ts), Decimal(str(mid)), int(ingest)))'''
+replace = '''        raw[(str(venue), str(symbol))].append((int(ts), Decimal(str(mid)) * -1, int(ingest)))'''

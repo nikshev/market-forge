@@ -283,3 +283,31 @@ def test_a_reconnect_resets_every_book_so_no_flow_spans_the_gap(catalog: Catalog
     assert (
         book._service.book is None
     )  # a fresh book: nothing of the old one carries over  # noqa: SLF001
+
+
+@pytest.mark.trace("REQ-WP-095")
+def test_the_recorded_okx_frames_are_one_continuous_chain_and_never_ask_for_a_resync() -> None:
+    """The first live OKX run reconnected every two seconds: its seqIds jump, and the book read
+    the jump as a gap. The frames were always fine; this feeds them to the book."""
+    from channelflow.context.minute_book import MinuteBook
+
+    book = MinuteBook(venue="okx", symbol="BTC-USDT-SWAP")
+    for frame in load("ws4_okx_books"):
+        item = book_stream.message_of("okx", frame, 1, CT_VAL)
+        if item is None:
+            continue
+        book.feed(item[1])
+        assert not book.needs_resync
+
+
+@pytest.mark.trace("REQ-WP-095")
+def test_okxs_bare_pong_is_not_a_failed_frame(catalog: Catalog) -> None:
+    task, connector, clock, _, failures = task_for(
+        catalog, "okx", ["BTC-USDT-SWAP"], contract_values=CT_VAL
+    )
+    connector.push("pong")
+    clock.advance_ns(SECOND)
+
+    task.step()
+
+    assert failures == []

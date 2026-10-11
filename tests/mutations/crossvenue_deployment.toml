@@ -1,0 +1,32 @@
+# REQ-WP-096: which of the deployment's markets are one asset. The mutations are the ways two markets
+# could be compared that are not the same thing.
+#
+# Patterns are TOML *literal* strings on purpose: the basic form treats a
+# trailing backslash as a line continuation and eats the next line's indentation.
+source = "src/channelflow/crossvenue/deployment.py"
+tests = ["tests/unit/crossvenue/test_consensus_write.py"]
+
+[[mutation]]
+name = "bybit's BTC is not the same asset as OKX's"
+find = '''    ConsensusMarket("BTC", "okx", "BTC-USDT-SWAP", "perp"),'''
+replace = '''    ConsensusMarket("BTC2", "okx", "BTC-USDT-SWAP", "perp"),'''
+
+[[mutation]]
+name = "the spot and the perpetual are one group"
+find = '''        grouped[(market.asset_id, market.market_type)].append(market)'''
+replace = '''        grouped[(market.asset_id, "any")].append(market)'''
+
+[[mutation]]
+name = "the markets of different assets are one group"
+find = '''        grouped[(market.asset_id, market.market_type)].append(market)'''
+replace = '''        grouped[("any", market.market_type)].append(market)'''
+
+[[mutation]]
+name = "a representation key ignores the venue"
+find = '''    return f"0:cex:{market.venue}:{market.symbol}".lower()'''
+replace = '''    return f"0:cex:{market.symbol}".lower()'''
+
+[[mutation]]
+name = "the registry gives each representation another asset"
+find = '''                canonical_asset_id=market.asset_id,'''
+replace = '''                canonical_asset_id="BTC",'''

@@ -106,9 +106,11 @@ def frame_handler(
     """Decode a frame, parse it, store what it holds. Not JSON raises, and is counted."""
 
     def handle(frame: str, received_at_ns: int) -> None:
+        if frame.strip() == "pong":
+            return  # OKX answers a ping with the bare word: not JSON, and not a fault
         decoded = json.loads(frame)
         if not isinstance(decoded, dict):
-            return  # a bare "pong" or similar: not a liquidation, not an error
+            return  # a JSON string or number: not a liquidation, not an error
         for event in parse(decoded, received_at_ns):
             sink(event)
 

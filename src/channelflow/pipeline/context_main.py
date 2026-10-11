@@ -137,7 +137,15 @@ def main(argv: list[str] | None = None) -> int:
         if isinstance(poller, OkxPoller)
         else {}
     )
-    on_failure = lambda message: status.record_failure("stream")  # noqa: E731
+    stream_log = logging.getLogger("channelflow.context.streams")
+
+    def on_failure(message: str) -> None:
+        """A frame a stream could not read: counted, and said -- a count alone hides the cause."""
+        status.record_failure("stream")
+        stream_log.warning(
+            "%s: a stream frame could not be handled: %s", context.venue, message[:300]
+        )
+
     if "liquidations" in context.streams:
         liquidation_sink = liquidation_table.LiquidationSink(liquidation_table.table_for(catalog))
         _add_stream(

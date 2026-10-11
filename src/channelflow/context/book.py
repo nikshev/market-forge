@@ -146,6 +146,8 @@ class BookHandler:
             self.books[symbol] = MinuteBook(venue=self.venue, symbol=symbol)
 
     def __call__(self, frame: str, received_at_ns: int) -> None:
+        if frame.strip() == "pong":
+            return  # OKX answers a ping with the bare word: not JSON, and not a fault
         decoded = json.loads(frame)
         if not isinstance(decoded, dict):
             return

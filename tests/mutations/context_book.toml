@@ -107,3 +107,10 @@ name = "the book stream is given a quiet policy"
 find = '''        policy=stream_policy(venue, quiet=False),'''
 replace = '''        policy=stream_policy(venue, quiet=True),'''
 survives = '''Equivalent for Bybit and OKX, whose policies keep a silence limit regardless (their pings are answered with frames) -- and the tests use a fake connector. The difference is observable only against Binance, where a book stream that stops sending SHOULD be reconnected (it is steady at one frame a second), and a live measurement is what shows it.'''
+
+[[mutation]]
+name = "a bare pong is counted as a failed frame"
+find = '''        if frame.strip() == "pong":
+            return  # OKX answers a ping with the bare word: not JSON, and not a fault'''
+replace = '''        if False:
+            return  # OKX answers a ping with the bare word: not JSON, and not a fault'''

@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "§17.1, §17.3, §27.3; owner's direction 2026-10-11"
 prd_lines: "2520-2552, 4423-4436"
 phase: null
-status: planned
+status: tested
 depends_on: [REQ-WP-095, REQ-WP-091]
 tags: [consensus, venue-basis, quotes, panes]
 hard_gated: false
@@ -47,7 +47,29 @@ is refused**: the Binance panes say so. Making them live needs a second spot ven
 
 <!-- trace:begin -->
 - **Specs:** [[SPEC-148-consensus-producer]]
-- **Outcomes:** [[OUT-2026-10-11-plan-live-panes]], [[OUT-2026-10-11-spec-live-panes]]
+- **Tests:**
+    - `tests/unit/crossvenue/test_consensus_write.py::test_a_failed_commit_is_reported_and_the_rows_come_back_next_pass`
+    - `tests/unit/crossvenue/test_consensus_write.py::test_a_gap_in_the_quotes_is_a_run_of_refusal_rows_not_a_hole`
+    - `tests/unit/crossvenue/test_consensus_write.py::test_a_quote_after_the_close_cannot_change_the_consensus_at_it`
+    - `tests/unit/crossvenue/test_consensus_write.py::test_a_spot_group_of_one_venue_stores_a_refusal_every_minute`
+    - `tests/unit/crossvenue/test_consensus_write.py::test_a_spot_series_reads_back_a_refusal_and_no_basis`
+    - `tests/unit/crossvenue/test_consensus_write.py::test_a_stale_quote_does_not_contribute_and_the_count_says_so`
+    - `tests/unit/crossvenue/test_consensus_write.py::test_a_venue_that_has_gone_quiet_for_good_stops_holding_the_pass_back`
+    - `tests/unit/crossvenue/test_consensus_write.py::test_a_venue_that_lags_holds_the_pass_back_so_no_row_leaves_it_out`
+    - `tests/unit/crossvenue/test_consensus_write.py::test_an_empty_quotes_table_is_a_pass_that_writes_nothing`
+    - `tests/unit/crossvenue/test_consensus_write.py::test_bybit_and_okx_btc_are_one_asset_and_eth_is_another`
+    - `tests/unit/crossvenue/test_consensus_write.py::test_each_group_is_stored_under_every_symbol_its_members_use_so_either_chart_finds_it`
+    - `tests/unit/crossvenue/test_consensus_write.py::test_each_symbol_resumes_from_its_own_watermark`
+    - `tests/unit/crossvenue/test_consensus_write.py::test_no_quotes_at_all_writes_nothing`
+    - `tests/unit/crossvenue/test_consensus_write.py::test_one_venue_is_a_refusal_with_its_reason_and_no_price`
+    - `tests/unit/crossvenue/test_consensus_write.py::test_the_deployments_markets_group_by_asset_and_market_type_never_blended`
+    - `tests/unit/crossvenue/test_consensus_write.py::test_the_pass_is_idempotent_and_resumes_from_its_watermark`
+    - `tests/unit/crossvenue/test_consensus_write.py::test_the_pass_writes_the_table_and_a_second_pass_writes_nothing`
+    - `tests/unit/crossvenue/test_consensus_write.py::test_the_staleness_bound_is_inclusive`
+    - `tests/unit/crossvenue/test_consensus_write.py::test_three_venues_give_the_middle_one`
+    - `tests/unit/crossvenue/test_consensus_write.py::test_two_venues_give_the_interpolated_median`
+    - `tests/unit/crossvenue/test_consensus_write.py::test_what_is_stored_reads_back_as_the_venue_basis_formula_for_both_perpetual_venues`
+- **Outcomes:** [[OUT-2026-10-11-implement-consensus-producer]], [[OUT-2026-10-11-plan-live-panes]], [[OUT-2026-10-11-spec-live-panes]]
 <!-- trace:end -->
 
 ## Notes

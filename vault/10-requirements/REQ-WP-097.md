@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "§27.3, §45 Phase 2, §45 Phase 3; owner's direction 2026-10-11"
 prd_lines: "4423-4436, 6751, 6768"
 phase: null
-status: planned
+status: tested
 depends_on: [REQ-WP-093, REQ-WP-094, REQ-WP-095, REQ-WP-096, REQ-WP-084]
 tags: [panes, acceptance, deployment]
 hard_gated: false
@@ -42,7 +42,31 @@ three states, and the state is checked against the API:
 
 <!-- trace:begin -->
 - **Specs:** [[SPEC-149-pane-coverage]]
-- **Outcomes:** [[OUT-2026-10-11-plan-live-panes]], [[OUT-2026-10-11-spec-live-panes]]
+- **Tests:**
+    - `tests/tools/panes/test_classify.py::test_a_cell_with_no_producer_makes_the_report_fail_and_names_the_pane`
+    - `tests/tools/panes/test_classify.py::test_a_dex_pane_that_has_data_is_data_whatever_the_deployment_says`
+    - `tests/tools/panes/test_classify.py::test_a_markets_read_that_fails_is_unreachable_even_if_the_other_reads_answer`
+    - `tests/tools/panes/test_classify.py::test_a_page_with_no_panes_is_an_error_not_an_empty_report`
+    - `tests/tools/panes/test_classify.py::test_a_pane_with_a_point_is_data`
+    - `tests/tools/panes/test_classify.py::test_a_pane_with_no_point_and_no_reason_is_no_producer`
+    - `tests/tools/panes/test_classify.py::test_a_refused_consensus_is_reported_as_the_reason_the_api_stored`
+    - `tests/tools/panes/test_classify.py::test_an_api_that_answers_the_markets_read_with_an_error_is_unreachable_not_an_empty_table`
+    - `tests/tools/panes/test_classify.py::test_an_api_that_cannot_be_reached_exits_two_and_prints_no_table`
+    - `tests/tools/panes/test_classify.py::test_every_cell_data_or_reasoned_exits_zero`
+    - `tests/tools/panes/test_classify.py::test_every_market_and_every_chosen_timeframe_is_queried_and_none_is_invented`
+    - `tests/tools/panes/test_classify.py::test_liquidations_with_covered_windows_and_no_event_are_absent_for_a_true_reason`
+    - `tests/tools/panes/test_classify.py::test_liquidations_with_no_covered_window_are_no_producer`
+    - `tests/tools/panes/test_classify.py::test_only_real_numbers_count_as_a_value`
+    - `tests/tools/panes/test_classify.py::test_only_the_chosen_timeframes_are_queried`
+    - `tests/tools/panes/test_classify.py::test_the_dex_panes_are_absent_with_the_one_reason_the_module_states`
+    - `tests/tools/panes/test_classify.py::test_the_imbalance_having_points_is_data_even_with_no_sums`
+    - `tests/tools/panes/test_classify.py::test_the_panes_are_read_from_the_page_with_volume_first`
+    - `tests/tools/panes/test_classify.py::test_the_range_asked_for_ends_now_and_starts_the_stated_hours_before`
+    - `tests/tools/panes/test_classify.py::test_venue_basis_whose_consensus_read_failed_is_no_producer_and_says_what_it_answered`
+    - `tests/tools/panes/test_classify.py::test_venue_basis_with_a_stored_refusal_is_absent_with_the_stored_reason`
+    - `tests/tools/panes/test_classify.py::test_venue_basis_with_consensus_rows_but_no_basis_is_no_producer_not_absent`
+    - `tests/tools/panes/test_classify.py::test_volume_is_read_from_the_bars_not_from_a_feature`
+- **Outcomes:** [[OUT-2026-10-11-implement-pane-coverage]], [[OUT-2026-10-11-plan-live-panes]], [[OUT-2026-10-11-spec-live-panes]]
 <!-- trace:end -->
 
 ## Notes

@@ -61,3 +61,26 @@ and `make typecheck` clean.
 - **Binance spot depth carries no timestamp**, so its minutes are dated by receipt: stated in the normalizer where it
   already was, and the one place event time and receive time coincide by necessity.
 - The collectors carry the previous image until rebuilt, and the worker the previous pass.
+
+## What the first live run found (after the commit above)
+
+The recorded frames passed every test; the live stream found two faults they could not.
+
+- **OKX reconnected every two seconds.** `OrderBook.apply` called a delta continuous only if `first == last + 1`.
+  OKX's `seqId` does not increase by one (345300361388 is followed by 345300361463) and the venue *says* what
+  came before (`prevSeqId`), which the book never read. Every update looked like a gap, the collector asked for a
+  fresh snapshot, and the connection was remade -- for ever. The rule is now the venue's where the venue states
+  it: a delta naming its predecessor is continuous when that is the update last applied; one that names none is
+  judged by consecutive ids, as before. Three tests prove it, and the first of them -- the recorded OKX frames fed
+  through `MinuteBook` -- is red without the fix. It is a change to shared book code, made here because this is the
+  first thing to run an OKX book live; the old rule suited Binance and Bybit and nothing had ever tested the OKX
+  chain through `BookService`.
+- **OKX's `pong` was counted as a failed frame.** The venue answers the client's ping with the bare word `pong`,
+  which is not JSON; both stream handlers counted every one as a failure, so a healthy stream's own failure counter
+  rose by a few a minute. A pong is now not a fault. Found by logging the failure *message*: the counter alone said
+  "34" and nothing else, so `context_main` now logs what each failed frame was.
+- **Host load, measured (SC-006)**: with three books, three liquidation sockets and the REST polls running, the
+  collectors sat at 0.3-6% (Binance), ~1.4% (Bybit) and ~1-3% (OKX) of one core, memory ~130-170 MiB each; the
+  load average of the machine was already ~9-10 from its other tenants and did not move.
+- Within half an hour the stored minutes looked right: Binance spot 60 frames and 58-59 observations a minute;
+  Bybit ~1,200-1,360 frames and 60 observations; OFI and the ten-level imbalance of plausible size and sign.

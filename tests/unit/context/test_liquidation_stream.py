@@ -138,15 +138,18 @@ def test_a_frame_that_is_not_json_is_counted_and_the_next_is_still_stored(catalo
 
 
 @pytest.mark.trace("REQ-WP-094")
-def test_a_bare_pong_is_neither_stored_nor_counted_as_a_failure(catalog: Catalog) -> None:
+def test_okxs_bare_pong_is_neither_stored_nor_counted_as_a_failure(catalog: Catalog) -> None:
+    """OKX answers the client's ping with the bare word `pong`: not JSON, and not a fault.
+
+    The first live run counted every one of them as a failed frame, which made a healthy stream
+    look like a broken one on its own failure counter."""
     task, connector, _, sink, failures = task_for(catalog, "okx", ["BTC-USDT-SWAP"])
-    connector.push(json.dumps("pong"))
-    connector.push("pong")  # not JSON at all
+    connector.push("pong")
+    connector.push(json.dumps("pong"))  # a JSON string is not a liquidation either
 
     task.step()
 
-    assert sink.pending == 0
-    assert len(failures) == 1  # the bare word is not JSON; the quoted string is simply ignored
+    assert sink.pending == 0 and failures == []
 
 
 @pytest.mark.trace("REQ-WP-094")

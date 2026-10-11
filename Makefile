@@ -4,7 +4,7 @@ PIP  := uv pip install --python $(PY)
 
 .PHONY: venv install test lint markers trace validate dashboard graph clean index mutate \
 	web-install web-typecheck web-test web-build contracts-test notary-verify \
-	notary-build-info images-resolvable
+	notary-build-info images-resolvable panes-report
 
 venv:
 	uv venv $(VENV) --python 3.12 --no-python-downloads
@@ -43,6 +43,11 @@ notary-verify:
 # hook: it needs a network, and that hook's contract is that it does not.
 images-resolvable:
 	$(PY) -m tools.images
+
+# The state of every lower pane of every market, from the running API: data, absent with a reason the
+# system gave, or NO PRODUCER (empty and nothing says why). Exit 1 on the last. (REQ-WP-097)
+panes-report:
+	$(PY) -m tools.panes
 
 # What the notary needs from a build (REQ-INFRA-007): the commit the images are built from and
 # whether that tree was clean. Use as

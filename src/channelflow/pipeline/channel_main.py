@@ -35,6 +35,7 @@ from channelflow.notary import tables as notary_tables
 from channelflow.notary.config import WorkerNotary, worker_notary_from_env
 from channelflow.notary.context import build_context
 from channelflow.notary.registrar import Registrar
+from channelflow.pipeline.consensus_pass import write_consensus
 from channelflow.pipeline.context_pass import write_context_features
 from channelflow.pipeline.passes import run_passes
 from channelflow.pipeline.replay import record_replay
@@ -248,6 +249,7 @@ def run_pass(
 
     write_flow_features(catalog, all_bars)
     write_context_features(catalog, all_bars)
+    write_consensus(catalog)
 
     results: list[tuple[str, str, str, int, int, int, int]] = []
     for venue, symbol in series:

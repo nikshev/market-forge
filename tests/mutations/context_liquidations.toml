@@ -28,7 +28,7 @@ replace = '''    watched = None'''
 [[mutation]]
 name = "a bare string frame is stored or raises"
 find = '''        if not isinstance(decoded, dict):
-            return  # a bare "pong" or similar: not a liquidation, not an error'''
+            return  # a JSON string or number: not a liquidation, not an error'''
 replace = '''        if False:
             return'''
 
@@ -50,3 +50,10 @@ replace = '''        for symbol in symbols[:1]:
 name = "the stream is not quiet, so it is reconnected for being quiet"
 find = '''        policy=stream_policy(venue, quiet=True),'''
 replace = '''        policy=stream_policy(venue, quiet=False),'''
+
+[[mutation]]
+name = "a bare pong is counted as a failed frame"
+find = '''        if frame.strip() == "pong":
+            return  # OKX answers a ping with the bare word: not JSON, and not a fault'''
+replace = '''        if False:
+            return  # OKX answers a ping with the bare word: not JSON, and not a fault'''

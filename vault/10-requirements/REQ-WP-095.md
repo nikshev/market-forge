@@ -68,6 +68,9 @@ Rules that hold:
 <!-- trace:begin -->
 - **Specs:** [[SPEC-147-book-subscription]]
 - **Tests:**
+    - `tests/unit/book/test_sequence.py::test_a_delta_that_names_no_predecessor_is_still_judged_by_consecutive_ids`
+    - `tests/unit/book/test_sequence.py::test_a_named_predecessor_that_is_what_was_applied_is_continuous_whatever_the_ids`
+    - `tests/unit/book/test_sequence.py::test_a_named_predecessor_that_was_not_applied_is_a_gap_even_if_the_ids_are_consecutive`
     - `tests/unit/context/test_book_stream.py::test_a_bybit_sequence_gap_closes_the_connection_so_a_fresh_snapshot_is_fetched`
     - `tests/unit/context/test_book_stream.py::test_a_frame_for_a_symbol_not_watched_is_ignored_even_across_a_minute_boundary`
     - `tests/unit/context/test_book_stream.py::test_a_frame_that_is_not_json_is_counted_and_the_stream_goes_on`
@@ -84,8 +87,10 @@ Rules that hold:
     - `tests/unit/context/test_book_stream.py::test_okx_acks_and_other_channels_are_not_book_messages`
     - `tests/unit/context/test_book_stream.py::test_okx_is_the_books_channel_which_has_ten_levels_not_books5_which_has_five`
     - `tests/unit/context/test_book_stream.py::test_okx_without_a_contract_value_refuses_rather_than_reading_contracts_as_base_units`
+    - `tests/unit/context/test_book_stream.py::test_okxs_bare_pong_is_not_a_failed_frame`
     - `tests/unit/context/test_book_stream.py::test_recorded_bybit_frames_are_a_snapshot_then_deltas_with_a_continuous_sequence`
     - `tests/unit/context/test_book_stream.py::test_recorded_okx_frames_become_a_snapshot_then_updates_with_sizes_in_base_units`
+    - `tests/unit/context/test_book_stream.py::test_the_recorded_okx_frames_are_one_continuous_chain_and_never_ask_for_a_resync`
     - `tests/unit/context/test_minute_book.py::test_a_book_with_fewer_than_ten_levels_a_side_has_no_ten_level_imbalance`
     - `tests/unit/context/test_minute_book.py::test_a_crossed_book_is_refused_and_does_not_become_a_quote`
     - `tests/unit/context/test_minute_book.py::test_a_minute_is_finalised_by_the_first_message_of_the_next_one`
@@ -135,7 +140,11 @@ Rules that hold:
     - `tests/unit/tables/test_book_minutes.py::test_the_schema_has_the_minute_its_two_times_and_what_it_amounted_to`
     - `tests/unit/tables/test_book_minutes.py::test_the_sink_stores_a_minute_and_its_quote_once`
 - **Code:**
+    - `src/channelflow/context/book.py`
+    - `src/channelflow/context/minute_book.py`
     - `src/channelflow/context/streams.py`
+    - `src/channelflow/features/book_values.py`
+    - `src/channelflow/tables/book_minutes.py`
 - **Outcomes:** [[OUT-2026-10-11-implement-book-subscription]], [[OUT-2026-10-11-plan-live-panes]], [[OUT-2026-10-11-spec-live-panes]]
 <!-- trace:end -->
 

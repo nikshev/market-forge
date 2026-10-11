@@ -143,7 +143,19 @@ class OrderBook:
 
         # Step 4/5: the sequence must be exactly continuous. Anything else is a
         # gap, and the delta is refused rather than applied out of order.
-        if first != self._last_sequence + 1:
+        #
+        # **What continuous means is the venue's to say, where it says it.** A venue that names
+        # the update before this one (`prev_update_id`: OKX's `prevSeqId`, Binance futures' `pu`)
+        # is continuous exactly when that is the update we last applied -- its ids need not
+        # increase by one, and OKX's do not (345300361388 is followed by 345300361463). A venue
+        # that names no predecessor is judged by its ids being consecutive. Reading OKX by the
+        # second rule called every update a gap, which made a live OKX book reconnect every two
+        # seconds (REQ-WP-095); the recorded frames were fine and the fixtures never showed it.
+        prev = delta.prev_update_id
+        continuous = (
+            prev == self._last_sequence if prev is not None else first == self._last_sequence + 1
+        )
+        if not continuous:
             self._gap_count += 1
             self._valid = False
             return

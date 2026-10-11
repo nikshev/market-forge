@@ -623,6 +623,15 @@ The worker writes `ofi_1m` and `depth_imbalance_10` from the latest minute that 
 close and is no more than two minutes old. `CHANNELFLOW_CONTEXT_STREAMS` (default `liquidations,book`; an empty
 value turns every stream off) chooses what a collector holds beside its polls.
 
+**The consensus** ([REQ-WP-096]). The worker turns the quotes into the cross-venue consensus: one `consensus`
+row per minute close (every bar close is one), by the library's own median, a refusal stored with its reason and
+no price. Consensus is per asset and market type, never blended: Bybit and OKX BTC are both perpetuals and form
+one group; Binance's series are spot and no other spot venue is ingested, so a spot group has one venue and is
+refused every minute -- which is what the Binance venue-basis pane then says. The API asks for a consensus by the
+viewed venue's symbol, so a group is stored under every symbol its members use (Bybit's BTCUSDT and OKX's BTC-USDT-SWAP).
+`make panes-report` reads the running API and prints, for every market and timeframe, each lower pane as `data`,
+`absent` with the reason the system gave, or `no-producer` (empty, and nothing says why: exit 1).
+
 Start them without recreating anything else:
 
 ```

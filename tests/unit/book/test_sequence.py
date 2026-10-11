@@ -142,3 +142,45 @@ def test_a_buffer_with_its_own_gap_fails_the_bootstrap() -> None:
         service.on_snapshot(snapshot(100))
 
     assert not service.is_bootstrapped
+
+
+def _chained(first: int, final: int, prev: int | None, bids: list[tuple[str, str]] | None = None):  # type: ignore[no-untyped-def]
+    return delta(first, final, bids=bids).model_copy(update={"prev_update_id": prev})
+
+
+@pytest.mark.trace("REQ-WP-095")
+def test_a_named_predecessor_that_is_what_was_applied_is_continuous_whatever_the_ids() -> None:
+    """OKX's seqId jumps (345300361388 -> 345300361463) and its prevSeqId says what came before."""
+    service = BookService()
+    service.on_snapshot(snapshot(345300361388, bids=[("100", "9")], asks=[("101", "4")]))
+
+    service.on_delta(_chained(345300361463, 345300361463, 345300361388, bids=[("99", "5")]))
+    service.on_delta(_chained(345300361586, 345300361586, 345300361463, bids=[("98", "6")]))
+
+    assert service.health().valid and service.health().gap_count == 0
+    assert service.health().last_sequence == 345300361586
+    assert service.book is not None and Decimal("98") in service.book.bids
+
+
+@pytest.mark.trace("REQ-WP-095")
+def test_a_named_predecessor_that_was_not_applied_is_a_gap_even_if_the_ids_are_consecutive() -> (
+    None
+):
+    service = BookService()
+    service.on_snapshot(snapshot(100, bids=[("100", "9")], asks=[("101", "4")]))
+
+    service.on_delta(_chained(101, 101, 77))  # says it follows 77, not 100
+
+    assert not service.health().valid and service.health().gap_count == 1
+
+
+@pytest.mark.trace("REQ-WP-095")
+def test_a_delta_that_names_no_predecessor_is_still_judged_by_consecutive_ids() -> None:
+    service = BookService()
+    service.on_snapshot(snapshot(100, bids=[("100", "9")], asks=[("101", "4")]))
+
+    service.on_delta(_chained(101, 101, None))
+    assert service.health().valid
+    service.on_delta(_chained(103, 103, None))  # 102 is missing
+
+    assert not service.health().valid

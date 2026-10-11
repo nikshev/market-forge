@@ -8,16 +8,16 @@ description: "Tasks for REQ-WP-097 -- every lower pane the deployment can fill h
 
 ## Phase 1: Tests (RED first)
 
-- [ ] T001 [P] `tests/tools/panes/test_classify.py`: three states from API answers; reasons taken from the answers; `NO PRODUCER` exits 1; API down exits 2; a market not in the markets list is never invented
-- [ ] T002 [P] `tests/mutations/panes_classify.toml`
+- [X] T001 [P] `tests/tools/panes/test_classify.py`: three states from API answers; reasons taken from the answers; `NO PRODUCER` exits 1; API down exits 2; a market not in the markets list is never invented
+- [X] T002 [P] `tests/mutations/panes_classify.toml`
 
 ## Phase 2: Implementation
 
-- [ ] T003 `tools/panes/{__init__,classify,fetch,__main__}.py`, `make panes-report`
+- [X] T003 `tools/panes/{__init__,classify,fetch,__main__}.py`, `make panes-report`
 
 ## Phase 3: Gate and live evidence
 
-- [ ] T004 `make lint`, `make typecheck`, `make graph`; `status: tested`; commit
+- [X] T004 `make lint`, `make typecheck`, `make graph`; `status: tested`; commit
 - [ ] T005 After specs 145-148 are deployed and have run: the recorded run, service listing with health and ages, image revision, screenshots (light/dark) in `docs/ui/`; `status: implemented`
 
 ## Coverage

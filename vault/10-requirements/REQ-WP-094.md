@@ -106,7 +106,6 @@ Rules that hold:
     - `tests/unit/connectors/test_context_liquidation_parsers.py::test_okx_in_net_mode_the_closing_orders_side_gives_the_position[net-sell-long_liquidated]`
     - `tests/unit/connectors/test_context_liquidation_parsers.py::test_okx_instruments_not_watched_are_ignored`
     - `tests/unit/connectors/test_context_liquidation_parsers.py::test_okx_size_is_contracts_and_is_converted_to_base_units`
-    - `tests/unit/context/test_liquidation_stream.py::test_a_bare_pong_is_neither_stored_nor_counted_as_a_failure`
     - `tests/unit/context/test_liquidation_stream.py::test_a_frame_for_a_symbol_not_watched_is_not_stored`
     - `tests/unit/context/test_liquidation_stream.py::test_a_frame_that_is_not_json_is_counted_and_the_next_is_still_stored`
     - `tests/unit/context/test_liquidation_stream.py::test_a_heartbeat_is_stored_for_every_symbol_watched_when_a_minute_is_covered`
@@ -119,6 +118,7 @@ Rules that hold:
     - `tests/unit/context/test_liquidation_stream.py::test_okx_contract_values_are_asked_for_through_the_poller_and_none_when_they_cannot_be`
     - `tests/unit/context/test_liquidation_stream.py::test_okx_subscribes_to_the_swap_liquidation_channel`
     - `tests/unit/context/test_liquidation_stream.py::test_okx_with_no_contract_value_refuses_its_events_and_counts_them`
+    - `tests/unit/context/test_liquidation_stream.py::test_okxs_bare_pong_is_neither_stored_nor_counted_as_a_failure`
     - `tests/unit/context/test_liquidation_stream.py::test_the_collector_steps_its_streams_and_commits_their_sink_with_the_polls`
     - `tests/unit/context/test_streams.py::test_a_dead_reader_writes_no_heartbeat`
     - `tests/unit/context/test_streams.py::test_a_dead_reader_writes_no_heartbeat_while_the_session_is_still_throttled`
