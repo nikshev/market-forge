@@ -86,3 +86,24 @@ pinned image on throw-away ports; on a copy of the live data directory it lists 
   the plan is to read the whole run (T020), not only the object-store steps.
 - **The live MinIO still runs the 2025 image.** Moving it onto the pinned one is a deliberate separate step.
 - **The check cannot guard a job's `services:` images** (pulled before any step); stated in the workflow.
+
+## What the first CI run found (run 38123078224, 2026-10-11)
+
+The push put CI back in front of the whole gate. The object-store steps, the new image check, lint, type check
+and Foundry passed for the first time since 2026-10-03 -- **the MinIO fix worked**. `Tests (including
+integration)` then failed with 10 of 3,769 tests, none related to the images, and the steps after it were
+skipped. CI had in fact been red since **2026-09-23**, a week before MinIO: the failures below were hidden
+behind each other, and the "dark since 2026-10-03" in the spec understated it.
+
+- **`tests/integration/test_dev_stack.py` (2 tests, REQ-WP-075)** read a live API (8000) and web server (8080).
+  Nothing in the workflow ever started them before `make test`, so they failed on every run since they were
+  added. The workflow now builds both images and starts them *before* the tests and leaves them running (the
+  tests run again inside `make validate`); the web container gets `--add-host api:127.0.0.1` because its nginx
+  proxies to a host named `api` and refuses to start with an unresolvable upstream.
+- **`tests/unit/test_opencode_config.py` (8 tests, REQ-INFRA-005)** spelled out `/opt/market-forge`: every one
+  failed with FileNotFoundError on any other checkout, a stranger's included. The root is now derived from the
+  file. The six that call the `opencode` CLI skip **only** when `CI=true` and the binary is absent; on a
+  developer's machine that lacks it they fail. They remain in the pre-commit gate, so the check is not absent
+  from both gates.
+
+Honest limit: the reordered workflow cannot be run end to end locally, so its first proof is the next run.

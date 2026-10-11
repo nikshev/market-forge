@@ -2,11 +2,29 @@
 """Test OpenCode configuration for ChannelFlow."""
 
 import json
+import os
 import re
+import shutil
 import subprocess
 import tempfile
+from pathlib import Path
 
 import pytest
+
+#: Where the repository is, from where this file is -- not from where one machine put it.
+#: These tests were first written with the author's checkout path spelled out, so on any other
+#: checkout (CI's runner, a stranger's laptop) every one of them failed with FileNotFoundError,
+#: which says nothing about whether the configuration is right.
+ROOT = Path(__file__).resolve().parents[2]
+
+#: The tests that ask the `opencode` CLI itself. CI's runner does not install it, and on a
+#: developer's machine that lacks it they must FAIL, not skip -- so the skip is for the CI
+#: environment only. The file-based tests below (AGENTS.md's rules, the terminology check) run
+#: everywhere.
+needs_opencode_cli = pytest.mark.skipif(
+    shutil.which("opencode") is None and os.environ.get("CI") == "true",
+    reason="the opencode CLI is not installed on this CI runner; the pre-commit gate runs these",
+)
 
 
 def _debug_config() -> subprocess.CompletedProcess[str]:
@@ -23,7 +41,7 @@ def _debug_config() -> subprocess.CompletedProcess[str]:
             stdout=out,
             stderr=subprocess.PIPE,
             text=True,
-            cwd="/opt/market-forge",
+            cwd=ROOT,
             timeout=60,
         )
         out.seek(0)
@@ -32,6 +50,7 @@ def _debug_config() -> subprocess.CompletedProcess[str]:
 
 
 @pytest.mark.trace("REQ-INFRA-005")
+@needs_opencode_cli
 def test_opencode_config_validates():
     """OpenCode project config must validate against published schema."""
     result = _debug_config()
@@ -58,7 +77,7 @@ def _listed_agents() -> tuple[int, set[str]]:
         ["opencode", "agent", "list"],
         capture_output=True,
         text=True,
-        cwd="/opt/market-forge",
+        cwd=ROOT,
         timeout=60,
     )
     names = set(re.findall(r"^([a-z][a-z-]*) \((?:primary|subagent|all)\)$", result.stdout, re.M))
@@ -66,6 +85,7 @@ def _listed_agents() -> tuple[int, set[str]]:
 
 
 @pytest.mark.trace("REQ-INFRA-005")
+@needs_opencode_cli
 def test_opencode_has_four_custom_agents():
     """OpenCode must discover all four ChannelFlow custom agents.
 
@@ -97,6 +117,7 @@ def test_opencode_has_four_custom_agents():
 
 
 @pytest.mark.trace("REQ-INFRA-005")
+@needs_opencode_cli
 def test_opencode_has_six_sdd_commands():
     """OpenCode must have all six SDD command entry points."""
     result = _debug_config()
@@ -117,13 +138,14 @@ def test_opencode_has_six_sdd_commands():
 
 
 @pytest.mark.trace("REQ-INFRA-005")
+@needs_opencode_cli
 def test_reviewer_is_read_only():
     """Reviewer agent must have edit: deny permission."""
     result = subprocess.run(
         ["opencode", "debug", "agent", "reviewer"],
         capture_output=True,
         text=True,
-        cwd="/opt/market-forge",
+        cwd=ROOT,
         timeout=60,
     )
     assert result.returncode == 0
@@ -138,13 +160,14 @@ def test_reviewer_is_read_only():
 
 
 @pytest.mark.trace("REQ-INFRA-005")
+@needs_opencode_cli
 def test_implementer_fallback_chain():
     """Implementer must have the configured fallback model chain."""
     result = subprocess.run(
         ["opencode", "debug", "agent", "implementer"],
         capture_output=True,
         text=True,
-        cwd="/opt/market-forge",
+        cwd=ROOT,
         timeout=60,
     )
     assert result.returncode == 0
@@ -160,13 +183,14 @@ def test_implementer_fallback_chain():
 
 
 @pytest.mark.trace("REQ-INFRA-005")
+@needs_opencode_cli
 def test_implementer_senior_fallback_chain():
     """Implementer-senior must have the configured fallback model chain."""
     result = subprocess.run(
         ["opencode", "debug", "agent", "implementer-senior"],
         capture_output=True,
         text=True,
-        cwd="/opt/market-forge",
+        cwd=ROOT,
         timeout=60,
     )
     assert result.returncode == 0
@@ -184,7 +208,7 @@ def test_implementer_senior_fallback_chain():
 @pytest.mark.trace("REQ-INFRA-005")
 def test_agents_md_has_required_rules():
     """AGENTS.md must contain all mandatory repository rules."""
-    with open("/opt/market-forge/AGENTS.md") as f:
+    with open(ROOT / "AGENTS.md") as f:
         content = f.read()
 
     required = [
@@ -206,9 +230,9 @@ def test_no_foreign_terminology():
     """Created files must not contain Parts Search Orchestrator or FR-* references."""
     import glob
 
-    files = glob.glob("/opt/market-forge/.opencode/**/*.md", recursive=True) + [
-        "/opt/market-forge/AGENTS.md",
-        "/opt/market-forge/opencode.json",
+    files = glob.glob(str(ROOT / ".opencode/**/*.md"), recursive=True) + [
+        str(ROOT / "AGENTS.md"),
+        str(ROOT / "opencode.json"),
     ]
     forbidden = ["parts-agent", "Parts Search", "FR-"]
     for path in files:

@@ -185,25 +185,10 @@ jobs:
         with:
           version: v1.7.1
 
-      - name: Tests (including integration)
-        run: make test
-
-      - name: Frontend type check
-        run: make web-typecheck
-
-      - name: Frontend tests
-        run: make web-test
-
-      - name: Frontend build
-        run: make web-build
-
-      # An acceptance audit rather than a regression gate: it answers whether the
-      # tests are worth having. In CI because a number nobody else can reproduce
-      # is not evidence, and because a drifted pattern or a stale "this survives
-      # because" is a regression nothing else catches. 151 mutations, ~250s.
-      - name: Mutation sweep
-        run: make mutate
-
+      # The images are built and started BEFORE the tests, and left running: the integration tests
+      # for the deployment (REQ-WP-075: the route reaches the bundle, the markets read has the
+      # shape the view consumes) read a live API and a live web server, and until now nothing
+      # started them in CI, so those two failed on every run since 2026-09-23.
       # A Dockerfile that is never built is a document. Both images are built and
       # the API is started against the live stack, because the two failures this
       # caught locally -- an editable install whose path link the runtime stage
@@ -214,7 +199,7 @@ jobs:
           docker build -t channelflow-api:ci -f Dockerfile .
           docker build -t channelflow-web:ci -f apps/web/Dockerfile apps/web
 
-      - name: Start the API image and probe it
+      - name: Start the API image and the web image and probe them
         run: |
           set -euo pipefail
           . ./.env
@@ -250,7 +235,42 @@ jobs:
           else
             echo "an unconfigured image did not refuse"; printf '%s\n' "$refusal"; exit 1
           fi
-          docker rm -f channelflow-api >/dev/null
+          # Not removed: `tests/integration/test_dev_stack.py` (REQ-WP-075) reads this API and the
+          # web image below, in `make test` and again in `make validate`.
+
+          # The web image proxies `/api` to a host named `api` (docker-compose.yml's service name),
+          # which does not exist on the host network; nginx refuses to start with an unresolvable
+          # upstream, so the name is pointed at this machine.
+          docker run -d --name channelflow-web --network host --add-host api:127.0.0.1 \
+            channelflow-web:ci
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8080/markets | grep -q '<div id="root">'; then
+              echo "the web image served /markets after ${i}s"; break
+            fi
+            if [ "$i" = "30" ]; then
+              echo "the web image did not serve the application"; docker logs channelflow-web; exit 1
+            fi
+            sleep 1
+          done
+
+      - name: Tests (including integration)
+        run: make test
+
+      - name: Frontend type check
+        run: make web-typecheck
+
+      - name: Frontend tests
+        run: make web-test
+
+      - name: Frontend build
+        run: make web-build
+
+      # An acceptance audit rather than a regression gate: it answers whether the
+      # tests are worth having. In CI because a number nobody else can reproduce
+      # is not evidence, and because a drifted pattern or a stale "this survives
+      # because" is a regression nothing else catches. 151 mutations, ~250s.
+      - name: Mutation sweep
+        run: make mutate
 
       - name: Traceability coverage
         run: make validate
