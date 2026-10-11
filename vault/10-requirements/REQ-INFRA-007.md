@@ -173,6 +173,7 @@ Principle I is unaffected: the hash is computed from data already final at bar c
     - `tests/notary/test_notary_submitter.py::test_a_gas_price_over_the_ceiling_holds_the_batch`
     - `tests/notary/test_notary_submitter.py::test_a_log_search_that_the_node_refuses_leaves_the_batch_pending_not_lost`
     - `tests/notary/test_notary_submitter.py::test_a_process_that_died_before_recording_anything_finds_its_root_on_chain`
+    - `tests/notary/test_notary_submitter.py::test_a_record_registered_while_the_summary_is_computed_does_not_break_it`
     - `tests/notary/test_notary_submitter.py::test_a_reverted_transaction_is_a_failure_and_is_retried`
     - `tests/notary/test_notary_submitter.py::test_a_transaction_still_in_flight_is_not_sent_again_before_its_timeout`
     - `tests/notary/test_notary_submitter.py::test_a_transaction_that_was_mined_as_a_revert_after_we_stopped_looking_is_noticed`
@@ -184,6 +185,7 @@ Principle I is unaffected: the hash is computed from data already final at bar c
     - `tests/notary/test_notary_submitter.py::test_one_batch_that_cannot_be_sent_holds_every_batch_behind_it`
     - `tests/notary/test_notary_submitter.py::test_orphaned_leaves_that_do_not_hash_to_their_root_are_not_turned_into_a_batch`
     - `tests/notary/test_notary_submitter.py::test_the_outbox_is_visible_while_the_chain_is_down_and_drains_when_it_returns`
+    - `tests/notary/test_notary_submitter.py::test_the_summary_reads_the_records_table_exactly_once`
     - `tests/notary/test_notary_tables.py::test_a_batchs_state_is_its_latest_event`
     - `tests/notary/test_notary_tables.py::test_registered_ids_and_unbatched_records_follow_the_leaves`
     - `tests/notary/test_notary_tree.py::test_a_proof_fails_for_a_flipped_leaf_path_index_or_size`

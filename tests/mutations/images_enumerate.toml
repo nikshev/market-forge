@@ -1,0 +1,49 @@
+# REQ-INFRA-013: what the image check reads. Each mutation is a way for the check to go green
+# while an image it should have asked about is never asked about -- or to cry wolf -- and a test must fail.
+#
+# Patterns are TOML *literal* strings on purpose: the basic form treats a
+# trailing backslash as a line continuation and eats the next line's indentation.
+source = "tools/images/enumerate.py"
+tests = ["tests/tools/images/test_enumerate.py"]
+
+[[mutation]]
+name = "a service built from this repository is asked about"
+find = '''            if not isinstance(spec, dict) or "build" in spec or "image" not in spec:'''
+replace = '''            if not isinstance(spec, dict) or "image" not in spec:'''
+
+[[mutation]]
+name = "a stage name is looked up as an image"
+find = '''                if names_an_earlier_stage or image.lower() == "scratch":'''
+replace = '''                if image.lower() == "scratch":'''
+
+[[mutation]]
+name = "scratch is looked up as an image"
+find = '''                if names_an_earlier_stage or image.lower() == "scratch":'''
+replace = '''                if names_an_earlier_stage:'''
+
+[[mutation]]
+name = "COPY --from a stage is looked up as an image"
+find = '''and match.group(1).lower() not in stages:'''
+replace = '''and True:'''
+
+[[mutation]]
+name = "ARG defaults are not substituted"
+find = '''                _add(found, image, where=where, known=args)
+            elif upper.startswith("COPY ")'''
+replace = '''                _add(found, image, where=where)
+            elif upper.startswith("COPY ")'''
+
+[[mutation]]
+name = "a job's service image is not read"
+find = '''                if isinstance(spec, dict) and "image" in spec:'''
+replace = '''                if False:'''
+
+[[mutation]]
+name = "an image the job builds itself is asked about"
+find = '''                        if image and image not in built:'''
+replace = '''                        if image:'''
+
+[[mutation]]
+name = "a continued docker run line is read as its first line only"
+find = '''                joined = re.sub(r"\\\n\s*", " ", script)'''
+replace = '''                joined = script'''

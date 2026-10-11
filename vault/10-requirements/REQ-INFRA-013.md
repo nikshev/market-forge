@@ -5,7 +5,7 @@ type: infrastructure
 prd_ref: "none -- operational finding, 2026-10-11; repository practice (ADR-064, REQ-INFRA-002)"
 prd_lines: "0-0"
 phase: null
-status: specified
+status: tested
 depends_on: [REQ-INFRA-002]
 tags: [ci, images, reproducibility, supply-chain]
 hard_gated: false
@@ -49,7 +49,49 @@ check that says which image is gone, not discovered as a `docker run` error half
 
 <!-- trace:begin -->
 - **Specs:** [[SPEC-144-pullable-images]]
-- **Outcomes:** [[OUT-2026-10-11-spec-pullable-images]]
+- **Tests:**
+    - `tests/tools/images/test_enumerate.py::test_a_reference_is_split_into_name_tag_and_digest[docker.io/pgsty/minio:RELEASE.X@sha256:abababababababababababababababababababababababababababababababab-docker.io/pgsty/minio-RELEASE.X-sha256:abababababababababababababababababababababababababababababababab]`
+    - `tests/tools/images/test_enumerate.py::test_a_reference_is_split_into_name_tag_and_digest[ghcr.io/astral-sh/uv@sha256:cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd-ghcr.io/astral-sh/uv-None-sha256:cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd]`
+    - `tests/tools/images/test_enumerate.py::test_a_reference_is_split_into_name_tag_and_digest[localhost:5000/team/img:1.2-localhost:5000/team/img-1.2-None]`
+    - `tests/tools/images/test_enumerate.py::test_a_reference_is_split_into_name_tag_and_digest[postgres-postgres-None-None]`
+    - `tests/tools/images/test_enumerate.py::test_a_reference_is_split_into_name_tag_and_digest[postgres:16-alpine3.24-postgres-16-alpine3.24-None]`
+    - `tests/tools/images/test_enumerate.py::test_a_reference_is_split_into_name_tag_and_digest[quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z-quay.io/minio/minio-RELEASE.2025-09-07T16-13-09Z-None]`
+    - `tests/tools/images/test_enumerate.py::test_compose_images_are_found_in_every_profile_with_defaults_resolved_and_built_images_skipped`
+    - `tests/tools/images/test_enumerate.py::test_dockerfile_from_and_copy_from_are_found_and_stage_names_are_not_images`
+    - `tests/tools/images/test_enumerate.py::test_the_real_repository_names_the_registry_images_it_is_known_to_use`
+    - `tests/tools/images/test_enumerate.py::test_the_workflow_services_and_multi_line_docker_run_commands_are_found`
+    - `tests/tools/images/test_pin.py::test_ci_names_the_identical_image_for_the_server_and_for_the_bucket`
+    - `tests/tools/images/test_pin.py::test_no_tracked_configuration_still_names_an_image_that_is_not_served`
+    - `tests/tools/images/test_pin.py::test_the_health_check_and_the_bucket_step_still_use_mc`
+    - `tests/tools/images/test_pin.py::test_the_server_and_the_bucket_one_shot_share_one_pinned_image`
+    - `tests/tools/images/test_resolve.py::test_a_docker_that_hangs_or_is_missing_is_unknown_never_gone`
+    - `tests/tools/images/test_resolve.py::test_a_rate_limit_or_a_network_failure_is_unknown_never_gone[429 Too Many Requests: unauthorized: authentication required]`
+    - `tests/tools/images/test_resolve.py::test_a_rate_limit_or_a_network_failure_is_unknown_never_gone[Error response from daemon: Head "https://registry-1.docker.io/v2/x/manifests/1": net/http: TLS handshake timeout]`
+    - `tests/tools/images/test_resolve.py::test_a_rate_limit_or_a_network_failure_is_unknown_never_gone[Get "https://quay.io/v2/": dial tcp 1.2.3.4:443: connect: connection refused]`
+    - `tests/tools/images/test_resolve.py::test_a_rate_limit_or_a_network_failure_is_unknown_never_gone[Temporary failure in name resolution]`
+    - `tests/tools/images/test_resolve.py::test_a_rate_limit_or_a_network_failure_is_unknown_never_gone[You have reached your pull limit; the rate limit resets in six hours]`
+    - `tests/tools/images/test_resolve.py::test_a_rate_limit_or_a_network_failure_is_unknown_never_gone[dial tcp: lookup registry-1.docker.io: no such host]`
+    - `tests/tools/images/test_resolve.py::test_a_rate_limit_or_a_network_failure_is_unknown_never_gone[i/o timeout]`
+    - `tests/tools/images/test_resolve.py::test_a_rate_limit_or_a_network_failure_is_unknown_never_gone[net/http: request canceled (Client.Timeout exceeded while awaiting headers) timed out]`
+    - `tests/tools/images/test_resolve.py::test_a_rate_limit_or_a_network_failure_is_unknown_never_gone[received unexpected HTTP status: 429 Too Many Requests]`
+    - `tests/tools/images/test_resolve.py::test_a_rate_limit_or_a_network_failure_is_unknown_never_gone[toomanyrequests: You have reached your pull rate limit.]`
+    - `tests/tools/images/test_resolve.py::test_a_rate_limit_or_a_network_failure_is_unknown_never_gone[toomanyrequests: retry later]`
+    - `tests/tools/images/test_resolve.py::test_an_image_the_check_cannot_read_fails_the_run_instead_of_vanishing`
+    - `tests/tools/images/test_resolve.py::test_each_distinct_reference_is_asked_about_once`
+    - `tests/tools/images/test_resolve.py::test_success_is_served_and_an_unrecognised_failure_is_unknown_not_gone`
+    - `tests/tools/images/test_resolve.py::test_the_command_exits_one_naming_the_image_and_where_it_is_referenced`
+    - `tests/tools/images/test_resolve.py::test_the_command_exits_zero_when_everything_is_served_or_merely_unknown`
+    - `tests/tools/images/test_resolve.py::test_the_registry_saying_it_does_not_have_the_image_is_gone[Error response from daemon: manifest for acme/x:9 not found: manifest unknown: manifest unknown]`
+    - `tests/tools/images/test_resolve.py::test_the_registry_saying_it_does_not_have_the_image_is_gone[Error response from daemon: pull access denied for minio/minio, repository does not exist or may require 'docker login']`
+    - `tests/tools/images/test_resolve.py::test_the_registry_saying_it_does_not_have_the_image_is_gone[Requires authentication]`
+    - `tests/tools/images/test_resolve.py::test_the_registry_saying_it_does_not_have_the_image_is_gone[authentication required]`
+    - `tests/tools/images/test_resolve.py::test_the_registry_saying_it_does_not_have_the_image_is_gone[denied: requested access to the resource is denied]`
+    - `tests/tools/images/test_resolve.py::test_the_registry_saying_it_does_not_have_the_image_is_gone[docker: Error response from daemon: unauthorized: access to the requested resource is not authorized]`
+    - `tests/tools/images/test_resolve.py::test_the_registry_saying_it_does_not_have_the_image_is_gone[manifest unknown: manifest unknown]`
+    - `tests/tools/images/test_resolve.py::test_the_registry_saying_it_does_not_have_the_image_is_gone[name unknown: repository name not known to registry]`
+    - `tests/tools/images/test_resolve.py::test_the_registry_saying_it_does_not_have_the_image_is_gone[no such manifest: quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z]`
+    - `tests/tools/images/test_resolve.py::test_the_registry_saying_it_does_not_have_the_image_is_gone[unauthorized: authentication required]`
+- **Outcomes:** [[OUT-2026-10-11-implement-pullable-images]], [[OUT-2026-10-11-plan-pullable-images]], [[OUT-2026-10-11-spec-pullable-images]]
 <!-- trace:end -->
 
 ## Notes

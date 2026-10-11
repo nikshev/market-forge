@@ -4,7 +4,7 @@ PIP  := uv pip install --python $(PY)
 
 .PHONY: venv install test lint markers trace validate dashboard graph clean index mutate \
 	web-install web-typecheck web-test web-build contracts-test notary-verify \
-	notary-build-info
+	notary-build-info images-resolvable
 
 venv:
 	uv venv $(VENV) --python 3.12 --no-python-downloads
@@ -36,6 +36,13 @@ contracts-test:
 # resolve the configuration; it sends nothing.
 notary-verify:
 	$(PY) -m tools.notary.verify
+
+# Does every container image the repository names still resolve at its registry? (REQ-INFRA-013)
+# Reads docker-compose.yml, the Dockerfiles and the CI workflows, asks each registry, and exits 1
+# naming any image that is no longer served. CI runs it before its first pull. Not in the pre-commit
+# hook: it needs a network, and that hook's contract is that it does not.
+images-resolvable:
+	$(PY) -m tools.images
 
 # What the notary needs from a build (REQ-INFRA-007): the commit the images are built from and
 # whether that tree was clean. Use as

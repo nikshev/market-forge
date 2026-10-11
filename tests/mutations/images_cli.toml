@@ -1,0 +1,29 @@
+# REQ-INFRA-013: what the image check reports and when it fails the run.
+#
+# Patterns are TOML *literal* strings on purpose: the basic form treats a
+# trailing backslash as a line continuation and eats the next line's indentation.
+source = "tools/images/__main__.py"
+tests = ["tests/tools/images/test_resolve.py"]
+
+[[mutation]]
+name = "a gone image does not fail the run"
+find = '''    return 1 if gone or found.unresolved else 0'''
+replace = '''    return 1 if found.unresolved else 0'''
+
+[[mutation]]
+name = "an unreadable reference does not fail the run"
+find = '''    return 1 if gone or found.unresolved else 0'''
+replace = '''    return 1 if gone else 0'''
+
+[[mutation]]
+name = "an unknown image fails the run"
+find = '''        elif status == "unknown":
+            first'''
+replace = '''        elif status == "unknown":
+            gone += 1
+            first'''
+
+[[mutation]]
+name = "a gone image is not told where it is referenced"
+find = '''                f"referenced at: {places}"'''
+replace = '''                f"referenced at: "'''

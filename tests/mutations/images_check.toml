@@ -1,0 +1,56 @@
+# REQ-INFRA-013: telling an image the registry no longer has from one it could not be asked about.
+# A check that calls a rate limit "gone" gets switched off; one that calls "gone" unknown is the
+# failure this requirement exists for. Each mutation is one of those, and a test must fail.
+#
+# Patterns are TOML *literal* strings on purpose: the basic form treats a
+# trailing backslash as a line continuation and eats the next line's indentation.
+source = "tools/images/resolve.py"
+tests = ["tests/tools/images/test_resolve.py"]
+
+[[mutation]]
+name = "a success is judged by its text"
+find = '''    if returncode == 0:
+        return "served"'''
+replace = '''    if returncode == 0 and False:
+        return "served"'''
+
+[[mutation]]
+name = "unknown is checked after gone"
+find = '''    if any(marker in lowered for marker in _UNKNOWN):
+        return "unknown"
+    if any(marker in lowered for marker in _GONE):
+        return "gone"'''
+replace = '''    if any(marker in lowered for marker in _GONE):
+        return "gone"
+    if any(marker in lowered for marker in _UNKNOWN):
+        return "unknown"'''
+
+[[mutation]]
+name = "an unrecognised failure is called gone"
+find = '''        return "gone"
+    return "unknown"'''
+replace = '''        return "gone"
+    return "gone"'''
+
+[[mutation]]
+name = "a removed repository that answers authentication required is not gone"
+find = '''    "authentication required",
+    "requires authentication",'''
+replace = ''''''
+
+[[mutation]]
+name = "manifest unknown is not gone"
+find = '''    "manifest unknown",
+'''
+replace = ''''''
+
+[[mutation]]
+name = "a rate limit is not unknown"
+find = '''    "toomanyrequests",'''
+replace = ''''''
+survives = '''Equivalent for every text seen. A text with no marker at all is already unknown (the fallback), so a marker only matters when the same text also carries a gone word; Docker Hub's throttling reply carries "rate limit" and "429" as well, which still win, and the mixed-text case in the tests pins that ordering.'''
+
+[[mutation]]
+name = "a timeout is reported as an error from the registry"
+find = '''        return 1, "i/o timeout"'''
+replace = '''        return 1, "unauthorized"'''

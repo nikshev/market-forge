@@ -43,6 +43,14 @@
 #
 # A cap applies to a container when it is *created*; editing this file changes nothing
 # for one already running until `docker compose up -d` recreates it.
+# The object store, and the one-shot that creates its bucket, run the SAME image (REQ-INFRA-013): it
+# contains `mc`, so there is no separate client image to vanish. A community-maintained fork of
+# MinIO ("SILO", pgsty/minio), because MinIO's own images are no longer served to anonymous clients
+# (ADR-064 found the first removal, ADR-069 the second). Pinned to a release tag AND the index digest:
+# a third party's tag can be re-pushed. `ci.yml` names the same string and a test fails if they differ.
+# Release 2026-08-04 is the one the object-store integration tests were run against.
+x-minio-image: &minio-image docker.io/pgsty/minio:RELEASE.2026-08-04T00-00-00Z@sha256:b6bfe7239bfc83fb90d31612d9704d86039dd714f7904b3f1ad68f211e602372
+
 x-logging: &default-logging
   driver: json-file
   options:
@@ -75,7 +83,7 @@ services:
 
   minio:
     logging: *default-logging
-    image: quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z
+    image: *minio-image
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER}
@@ -96,7 +104,7 @@ services:
   # it to complete, so a healthy stack always has the bucket the tests expect.
   minio_init:
     logging: *default-logging
-    image: quay.io/minio/mc:RELEASE.2025-08-13T08-35-41Z
+    image: *minio-image
     depends_on:
       minio:
         condition: service_healthy
