@@ -82,7 +82,7 @@ def write_context_features(catalog: Catalog, all_bars: Sequence[Bar]) -> int:
         return 0
 
     indexes: dict[tuple[str, str], StateIndex] = {}
-    written = 0
+    pending: list[dict[str, object]] = []
     for (venue, symbol, timeframe_ns), series_bars in sorted(grouped.items()):
         perpetual = sources.perpetual_for(venue, symbol)
         series_states = states.get((venue, perpetual)) if perpetual is not None else None
@@ -109,12 +109,25 @@ def write_context_features(catalog: Catalog, all_bars: Sequence[Bar]) -> int:
                             values=fresh,
                         )
                     )
-            if rows:
-                table.append(rows)
-                written += len(rows)
+            pending.extend(rows)
         except Exception as cause:  # noqa: BLE001 -- one series must not end the pass
             print(
                 f"  {venue} {symbol} {timeframe_ns // 60_000_000_000}m: context step failed -- "
+                f"{type(cause).__name__}: {cause}",
+                flush=True,
+            )
+    # One commit for the whole pass, not one per series: every append is a snapshot, and thirty-five
+    # of them to a table of millions of rows is minutes of commits for rows that were computed in
+    # seconds (the first backfill found this out). The rows are recomputed from the watermark on
+    # the next pass if the commit fails, so nothing is lost by it being one.
+    written = 0
+    if pending:
+        try:
+            table.append(pending)
+            written = len(pending)
+        except Exception as cause:  # noqa: BLE001 -- the channel step must still run
+            print(
+                f"  context: could not write {len(pending)} row(s) -- "
                 f"{type(cause).__name__}: {cause}",
                 flush=True,
             )

@@ -34,3 +34,21 @@ replace = '''        series_states = states.get((venue, perpetual or symbol))'''
 name = "one failing series stops the pass"
 find = '''        except Exception as cause:  # noqa: BLE001 -- one series must not end the pass'''
 replace = '''        except ZeroDivisionError as cause:'''
+
+[[mutation]]
+name = "a failed commit stops the pass"
+find = '''        except Exception as cause:  # noqa: BLE001 -- the channel step must still run
+            print(
+                f"  context: could not write {len(pending)} row(s) -- "'''
+replace = '''        except ZeroDivisionError as cause:
+            print(
+                f"  context: could not write {len(pending)} row(s) -- "'''
+
+[[mutation]]
+name = "a commit is made per series again"
+find = '''            pending.extend(rows)
+        except Exception as cause:'''
+replace = '''            pending.extend(rows)
+            if rows:
+                table.append(rows)
+        except Exception as cause:'''

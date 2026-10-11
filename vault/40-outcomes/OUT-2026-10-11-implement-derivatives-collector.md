@@ -72,6 +72,27 @@ checks refuse for the same outcome; and two conventions (404 for an unknown path
   `features/`, the reading and writing of tables is in `pipeline/`. Found by `make graph`'s full run, not by the
   tests written for the feature, which is what the full run is for.
 
+## The replay on the real lakehouse (T017) and the first deployment
+
+**Replay, nothing written** (the table's `append` replaced by a recorder, in the collector's container, with the
+live stored states): 150,251 bars read in 9 s; the pass computed **83,132 rows in 6.1 s**. `funding_z` appears for
+the span after the 24th settlement of the 50 each venue returned (about 8.7 days of one-minute bars per series) and
+its values lie in [-2.92, 2.21]. Five rows sampled at random from the Bybit one-minute series equal a plain-arithmetic
+z-score of the last 24 stored settlements to the ninth digit. Open interest and basis exist only for bars after the
+first poll (one bar at the time of the replay), which is right: the collectors had run for minutes.
+
+**Deployment**: the three collectors started with `up -d --no-deps` and logged their first requests within a second;
+each stored its first rows (50 settlements and the current state per symbol) and reported healthy; the start times of
+all 27 existing containers were unchanged. The worker and the notary were then rebuilt from the clean commit
+(`18415c1`) by the documented redeploy.
+
+**What the first real pass taught**: the worker's first pass wrote one commit per series and spent minutes at 100%
+CPU between commits with nothing in the log. Every append here computes the content hash of the whole table, so a
+commit costs in proportion to the table, not to the rows added -- thirty-five commits for 83,000 rows is the better
+part of an hour. The pass now makes one commit; the replay could not have shown this, because it replaced the
+commit. The lesson is the one the 2026-10-08 incident wrote down, in a smaller key: a replay that stubs the write
+proves the arithmetic and says nothing about the cost of the write.
+
 ## What is still open
 
 - **Not yet run against the real lakehouse**: the worker pass has to be replayed on a copy of it without writing before

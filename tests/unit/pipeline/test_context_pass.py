@@ -502,3 +502,50 @@ def test_a_failing_series_is_reported_and_does_not_stop_the_others(
 
     assert features_for(catalog, "binance", "BTCUSDT", MINUTE)
     assert "ETHUSDT" in capsys.readouterr().out
+
+
+@pytest.mark.trace("REQ-WP-093")
+def test_the_whole_pass_is_one_commit_however_many_series_it_covers(
+    catalog: Catalog, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Every append is a snapshot; a commit per series was minutes of commits on the real table."""
+    from channelflow.lakehouse import IcebergTable
+
+    store(catalog, binance_states())
+    commits: list[int] = []
+    original = IcebergTable.append
+
+    def counting(self: IcebergTable, rows: object) -> object:
+        if self.name == features_table.features_table_for(catalog).name:
+            commits.append(len(rows))  # type: ignore[arg-type]
+        return original(self, rows)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(IcebergTable, "append", counting)
+    bars = [make_bar(i) for i in range(5, 10)] + [
+        make_bar(i, timeframe_ns=5 * MINUTE) for i in range(2, 5)
+    ]
+
+    written = write.write_context_features(catalog, bars)
+
+    assert commits == [written] and written > 0
+
+
+@pytest.mark.trace("REQ-WP-093")
+def test_a_failed_commit_is_reported_and_the_rows_are_recomputed_next_pass(
+    catalog: Catalog, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from channelflow.lakehouse import IcebergTable
+
+    store(catalog, binance_states())
+    bars = [make_bar(i) for i in range(5, 10)]
+    original = IcebergTable.append
+
+    def broken(self: IcebergTable, rows: object) -> object:
+        raise OSError("object store down")
+
+    monkeypatch.setattr(IcebergTable, "append", broken)
+    assert write.write_context_features(catalog, bars) == 0
+    assert "could not write" in capsys.readouterr().out
+
+    monkeypatch.setattr(IcebergTable, "append", original)
+    assert write.write_context_features(catalog, bars) == len(bars) * 3
