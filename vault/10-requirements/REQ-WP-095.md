@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "§10.3, §15.1, §15.3, §17.1, §27.3; owner's direction 2026-10-11"
 prd_lines: "891-902, 2338-2385, 4423-4436"
 phase: null
-status: specified
+status: planned
 depends_on: [REQ-WP-093, REQ-WP-027, REQ-WP-084]
 tags: [order-book, ofi, depth, quotes, collector, panes]
 hard_gated: false
@@ -67,7 +67,7 @@ Rules that hold:
 
 <!-- trace:begin -->
 - **Specs:** [[SPEC-147-book-subscription]]
-- **Outcomes:** [[OUT-2026-10-11-spec-live-panes]]
+- **Outcomes:** [[OUT-2026-10-11-plan-live-panes]], [[OUT-2026-10-11-spec-live-panes]]
 <!-- trace:end -->
 
 ## Notes

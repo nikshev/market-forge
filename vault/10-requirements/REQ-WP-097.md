@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "§27.3, §45 Phase 2, §45 Phase 3; owner's direction 2026-10-11"
 prd_lines: "4423-4436, 6751, 6768"
 phase: null
-status: specified
+status: planned
 depends_on: [REQ-WP-093, REQ-WP-094, REQ-WP-095, REQ-WP-096, REQ-WP-084]
 tags: [panes, acceptance, deployment]
 hard_gated: false
@@ -42,7 +42,7 @@ three states, and the state is checked against the API:
 
 <!-- trace:begin -->
 - **Specs:** [[SPEC-149-pane-coverage]]
-- **Outcomes:** [[OUT-2026-10-11-spec-live-panes]]
+- **Outcomes:** [[OUT-2026-10-11-plan-live-panes]], [[OUT-2026-10-11-spec-live-panes]]
 <!-- trace:end -->
 
 ## Notes

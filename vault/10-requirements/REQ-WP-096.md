@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "§17.1, §17.3, §27.3; owner's direction 2026-10-11"
 prd_lines: "2520-2552, 4423-4436"
 phase: null
-status: specified
+status: planned
 depends_on: [REQ-WP-095, REQ-WP-091]
 tags: [consensus, venue-basis, quotes, panes]
 hard_gated: false
@@ -47,7 +47,7 @@ is refused**: the Binance panes say so. Making them live needs a second spot ven
 
 <!-- trace:begin -->
 - **Specs:** [[SPEC-148-consensus-producer]]
-- **Outcomes:** [[OUT-2026-10-11-spec-live-panes]]
+- **Outcomes:** [[OUT-2026-10-11-plan-live-panes]], [[OUT-2026-10-11-spec-live-panes]]
 <!-- trace:end -->
 
 ## Notes

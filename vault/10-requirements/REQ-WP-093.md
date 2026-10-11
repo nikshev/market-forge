@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "§10.4, §16.1, §16.2, §16.3, §27.3; owner's direction 2026-10-11"
 prd_lines: "903-918, 2460-2496, 4423-4436"
 phase: null
-status: specified
+status: planned
 depends_on: [REQ-WP-030, REQ-WP-084, REQ-WP-013]
 tags: [derivatives, open-interest, funding, basis, collector, panes]
 hard_gated: false
@@ -86,7 +86,7 @@ This requirement builds the missing producer, end to end, for the venues the dep
 
 <!-- trace:begin -->
 - **Specs:** [[SPEC-145-derivatives-collector]]
-- **Outcomes:** [[OUT-2026-10-11-spec-live-panes]]
+- **Outcomes:** [[OUT-2026-10-11-plan-live-panes]], [[OUT-2026-10-11-spec-live-panes]]
 <!-- trace:end -->
 
 ## Notes

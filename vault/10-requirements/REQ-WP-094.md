@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "§10.5, §16.4, §27.3; owner's direction 2026-10-11"
 prd_lines: "919-931, 2497-2507, 4423-4436"
 phase: null
-status: specified
+status: planned
 depends_on: [REQ-WP-093, REQ-WP-030, REQ-WP-084]
 tags: [derivatives, liquidations, collector, panes]
 hard_gated: false
@@ -64,7 +64,7 @@ Rules that hold:
 
 <!-- trace:begin -->
 - **Specs:** [[SPEC-146-liquidations-collector]]
-- **Outcomes:** [[OUT-2026-10-11-spec-live-panes]]
+- **Outcomes:** [[OUT-2026-10-11-plan-live-panes]], [[OUT-2026-10-11-spec-live-panes]]
 <!-- trace:end -->
 
 ## Notes
