@@ -137,13 +137,30 @@ def _register_all() -> None:
                 version=1,
                 family="order_book",
                 description=f"Depth imbalance over the top {levels} levels per side.",
-                formula=f"(sum_bid_depth_{levels} - sum_ask_depth_{levels}) / total_depth_{levels}",
+                formula=(
+                    f"(sum_bid_depth_{levels} - sum_ask_depth_{levels}) / total_depth_{levels}"
+                    + (
+                        "; as produced by the collector (REQ-WP-095) it is the book at the end of "
+                        "each minute of event time, from the stream the series' own market has"
+                        if levels == 10
+                        else ""
+                    )
+                ),
                 unit="normalized",
                 source_events=("book_snapshot", "book_delta"),
                 lookback="instant",
                 cadence="per book update",
                 availability_lag_ms=0,
-                null_policy="refuses when either side is empty",
+                null_policy=(
+                    "refuses when either side is empty"
+                    + (
+                        "; the worker writes nothing for a book with fewer than ten levels a side "
+                        "(a five-level book does not get a five-level number under this name), "
+                        "nor for a minute older than two minutes at the bar's close (stale)"
+                        if levels == 10
+                        else ""
+                    )
+                ),
                 clipping="none; bounded to [-1, 1] by construction",
                 normalization="none; already a ratio",
                 point_in_time_safe=True,

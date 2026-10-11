@@ -1,0 +1,82 @@
+# REQ-WP-095: the book-minutes table and the quotes a minute implies.
+#
+# Patterns are TOML *literal* strings on purpose: the basic form treats a
+# trailing backslash as a line continuation and eats the next line's indentation.
+source = "src/channelflow/tables/book_minutes.py"
+tests = ["tests/unit/tables/test_book_minutes.py", "tests/unit/pipeline/test_context_pass_book.py", "tests/unit/context/test_book_stream.py"]
+
+[[mutation]]
+name = "a quote carries our receipt time as its exchange time"
+find = '''        ts_ns=summary.quote_time_ns or summary.minute_close_ns,'''
+replace = '''        ts_ns=ingest_time_ns,'''
+
+[[mutation]]
+name = "a minute without a top of book writes a quote anyway"
+find = '''    if summary.mid is None or summary.bid is None or summary.ask is None:
+        return None'''
+replace = '''    if False:
+        return None'''
+
+[[mutation]]
+name = "the venue is not part of a minute's identity"
+find = '''        key = (summary.venue, summary.symbol, summary.minute_close_ns)'''
+replace = '''        key = ("", summary.symbol, summary.minute_close_ns)'''
+
+[[mutation]]
+name = "the symbol is not part of a minute's identity"
+find = '''        key = (summary.venue, summary.symbol, summary.minute_close_ns)'''
+replace = '''        key = (summary.venue, "", summary.minute_close_ns)'''
+
+[[mutation]]
+name = "the minute is not part of its identity"
+find = '''        key = (summary.venue, summary.symbol, summary.minute_close_ns)'''
+replace = '''        key = (summary.venue, summary.symbol, 0)'''
+
+[[mutation]]
+name = "a restart forgets the minutes stored"
+find = '''            self._known = set()
+            if rows.num_rows:'''
+replace = '''            self._known = set()
+            if False:'''
+
+[[mutation]]
+name = "an offered minute is not remembered"
+find = '''        known.add(key)
+        self._minutes.append('''
+replace = '''        self._minutes.append('''
+
+[[mutation]]
+name = "the quotes are not committed"
+find = '''        if self._quotes:
+            self.quotes.append(self._quotes)
+            self._quotes.clear()'''
+replace = '''        if False:
+            self.quotes.append(self._quotes)
+            self._quotes.clear()'''
+
+[[mutation]]
+name = "the quotes stay buffered after a flush"
+find = '''            self.quotes.append(self._quotes)
+            self._quotes.clear()'''
+replace = '''            self.quotes.append(self._quotes)'''
+
+[[mutation]]
+name = "the minutes stay buffered after a flush"
+find = '''            snapshot = self.table.append(self._minutes).content_hash
+            self._minutes.clear()'''
+replace = '''            snapshot = self.table.append(self._minutes).content_hash'''
+
+[[mutation]]
+name = "an absent OFI is read back as zero"
+find = '''        ofi=_decimal(row["ofi"]),'''
+replace = '''        ofi=_decimal(row["ofi"]) or Decimal(0),'''
+
+[[mutation]]
+name = "minutes are not sorted on read"
+find = '''        rows.sort(key=lambda r: r.minute_close_ns)'''
+replace = '''        pass'''
+
+[[mutation]]
+name = "the source says it is a REST book"
+find = '''        "source": f"{summary.venue}-ws-book",'''
+replace = '''        "source": f"{summary.venue}-rest-book",'''

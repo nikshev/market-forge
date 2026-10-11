@@ -1,0 +1,62 @@
+# REQ-WP-095: the order-flow features at a close. The rules: a minute that ended at or before the close,
+# nothing stale, nothing absent turned into zero.
+#
+# Patterns are TOML *literal* strings on purpose: the basic form treats a
+# trailing backslash as a line continuation and eats the next line's indentation.
+source = "src/channelflow/features/book_values.py"
+tests = ["tests/unit/features/test_book_values.py", "tests/unit/pipeline/test_context_pass_book.py"]
+
+[[mutation]]
+name = "a minute that ends after the close is used"
+find = '''    i = bisect_right(closes, close_ns)'''
+replace = '''    i = bisect_right(closes, close_ns + 5 * MINUTE_NS)'''
+
+[[mutation]]
+name = "the first minute is never used"
+find = '''    if i == 0:
+        return {}'''
+replace = '''    if i <= 1:
+        return {}'''
+
+[[mutation]]
+name = "a stale minute is used"
+find = '''    if close_ns - minute.minute_close_ns > STALENESS_NS or minute.frames == 0:
+        return {}'''
+replace = '''    if minute.frames == 0:
+        return {}'''
+
+[[mutation]]
+name = "a minute with no frame is used"
+find = '''    if close_ns - minute.minute_close_ns > STALENESS_NS or minute.frames == 0:
+        return {}'''
+replace = '''    if close_ns - minute.minute_close_ns > STALENESS_NS:
+        return {}'''
+survives = '''Equivalent for the stored data: a minute with no frame carries no value by construction (frames == 0 means OFI and depth imbalance are null), so the explicit check is a second guard on the same fact.'''
+
+[[mutation]]
+name = "the staleness bound is ten minutes"
+find = '''STALENESS_NS = 2 * MINUTE_NS'''
+replace = '''STALENESS_NS = 10 * MINUTE_NS'''
+
+[[mutation]]
+name = "an OFI with no observations is written"
+find = '''    if minute.ofi is not None and minute.observations > 0:'''
+replace = '''    if minute.ofi is not None:'''
+survives = '''Equivalent for the stored data: a minute with no observations has `ofi = None` by construction in `MinuteBook`, so the count check here is a second guard on the same fact; the test with zero observations and a present OFI would be a row no producer writes.'''
+
+[[mutation]]
+name = "an OFI of zero is dropped as if it were absent"
+find = '''    if minute.ofi is not None and minute.observations > 0:'''
+replace = '''    if minute.ofi and minute.observations > 0:'''
+
+[[mutation]]
+name = "a missing depth imbalance is written as zero"
+find = '''    if minute.depth_imbalance_10 is not None:
+        values["depth_imbalance_10"] = float(minute.depth_imbalance_10)'''
+replace = '''    values["depth_imbalance_10"] = float(minute.depth_imbalance_10 or 0.0)'''
+
+[[mutation]]
+name = "the precomputed times are ignored for a scan"
+find = '''    closes = times if times is not None else [m.minute_close_ns for m in minutes]'''
+replace = '''    closes = [m.minute_close_ns for m in minutes]'''
+survives = '''Equivalent in result, by design: `times` is a cost optimisation (a bisect over a list built once per series instead of per bar) and the test that compares both paths pins that they agree.'''

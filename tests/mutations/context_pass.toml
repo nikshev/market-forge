@@ -5,7 +5,7 @@
 # Patterns are TOML *literal* strings on purpose: the basic form treats a
 # trailing backslash as a line continuation and eats the next line's indentation.
 source = "src/channelflow/pipeline/context_pass.py"
-tests = ["tests/unit/pipeline/test_context_pass.py", "tests/unit/pipeline/test_context_pass_liquidations.py"]
+tests = ["tests/unit/pipeline/test_context_pass.py", "tests/unit/pipeline/test_context_pass_liquidations.py", "tests/unit/pipeline/test_context_pass_book.py"]
 
 [[mutation]]
 name = "a bar that is not final gets a row"
@@ -37,16 +37,16 @@ replace = '''        perpetual = sources.perpetual_for(venue, symbol) or symbol
 [[mutation]]
 name = "one failing derivatives series stops the pass"
 find = '''            except Exception as cause:  # noqa: BLE001 -- one series must not end the pass
-                _report(venue, symbol, minutes, "context", cause)'''
+                _report(venue, symbol, tf_minutes, "context", cause)'''
 replace = '''            except ZeroDivisionError as cause:
-                _report(venue, symbol, minutes, "context", cause)'''
+                _report(venue, symbol, tf_minutes, "context", cause)'''
 
 [[mutation]]
 name = "one failing liquidation series stops the pass"
 find = '''            except Exception as cause:  # noqa: BLE001 -- one series must not end the pass
-                _report(venue, symbol, minutes, "liquidation", cause)'''
+                _report(venue, symbol, tf_minutes, "liquidation", cause)'''
 replace = '''            except ZeroDivisionError as cause:
-                _report(venue, symbol, minutes, "liquidation", cause)'''
+                _report(venue, symbol, tf_minutes, "liquidation", cause)'''
 
 [[mutation]]
 name = "a failed commit stops the pass"
@@ -68,3 +68,16 @@ name = "the liquidation window is read from the whole event list"
 find = '''                    lo, hi = bisect_right(times, close - WINDOW_NS), bisect_right(times, close)'''
 replace = '''                    lo, hi = 0, len(times)'''
 survives = '''Equivalent, by design: `liquidation_values` filters events by event time and receipt time and the library's `window` keeps only `(close - window, close]`, so handing it every event gives the same answer. The slice is there for cost -- a bar should not scan every event ever stored -- and a test of cost is not a behaviour test.'''
+
+[[mutation]]
+name = "one failing book series stops the pass"
+find = '''            except Exception as cause:  # noqa: BLE001 -- one series must not end the pass
+                _report(venue, symbol, tf_minutes, "book", cause)'''
+replace = '''            except ZeroDivisionError as cause:
+                _report(venue, symbol, tf_minutes, "book", cause)'''
+
+[[mutation]]
+name = "a series is given the book of its perpetual instead of its own market"
+find = '''        series_minutes = minutes.get((venue, symbol))'''
+replace = '''        series_minutes = minutes.get((venue, sources.perpetual_for(venue, symbol) or symbol))'''
+survives = '''Equivalent while a series and its perpetual have the same symbol, which they do for every series the deployment shows (the Binance spot BTCUSDT and its USDT-M perpetual BTCUSDT are both "BTCUSDT"); the distinction is by market type, not by symbol, and is kept by `MARKET_TYPE` in the stream module and asserted there. The pass test with a differently named second stream proves the lookup uses the series' own name.'''

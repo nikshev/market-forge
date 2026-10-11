@@ -30,3 +30,9 @@ legacy `/ws/` path no longer delivers `forceOrder`, and `/market/ws/` (liquidati
 | `ws_okx_liquidation.json` | `wss://ws.okx.com:8443/ws/v5/public`, channel `liquidation-orders`, instType `SWAP` (three events, MAGIC-USDT-SWAP) |
 | `ws_bybit_allLiquidation.json` | `wss://stream.bybit.com/v5/public/linear`, `allLiquidation.BTCUSDT` -- **only the subscription acknowledgement**: no liquidation arrived in four minutes, nor in ten across eight symbols |
 | `ws3_binance_market_forceOrder_all.json` | `wss://fstream.binance.com/market/ws/!forceOrder@arr` (four events) |
+
+| File | Stream |
+|---|---|
+| `ws4_okx_books.json` | OKX `books` channel for `BTC-USDT-SWAP`: the subscription ack, a 400-level snapshot, four updates (sizes are **contracts**) |
+| `ws4_bybit_orderbook50.json` | Bybit `orderbook.50.BTCUSDT`: a snapshot, four deltas, and the subscription ack |
+| `ws4_binance_spot_depth10_combined.json` | Binance spot `btcusdt@depth10@1000ms` and `ethusdt@depth10@1000ms` on the combined stream (`{"stream", "data"}`) -- whole top-ten snapshots, no timestamp |

@@ -230,3 +230,64 @@ def test_a_dead_reader_writes_no_heartbeat_while_the_session_is_still_throttled(
 
     assert connector.connects == 1  # the reconnect was throttled
     assert beats == []
+
+
+@pytest.mark.trace("REQ-WP-095")
+def test_the_tick_callback_runs_on_every_step_with_the_time_so_silent_minutes_can_close() -> None:
+    clock = FakeClock(10 * MINUTE)
+    connector = FakeConnector()
+    session = StreamSession(
+        streams=("x",),
+        policy=stream_policy("binance", quiet=True),
+        connector=connector,
+        clock=clock,
+    )
+    ticks: list[int] = []
+    task = StreamTask(
+        session=session,
+        handler=lambda frame, at: None,
+        heartbeat=lambda at: None,
+        now_ns=clock.now_ns,
+        on_failure=lambda message: None,
+        tick=ticks.append,
+    )
+    task.start()
+    clock.advance_ns(SECOND)
+    task.step()
+    clock.advance_ns(SECOND)
+    task.step()
+
+    assert ticks == [10 * MINUTE + SECOND, 10 * MINUTE + 2 * SECOND]
+
+
+@pytest.mark.trace("REQ-WP-095")
+def test_the_reconnect_callback_runs_once_for_each_new_connection_and_not_for_the_first() -> None:
+    clock = FakeClock(10 * MINUTE)
+    connector = FakeConnector()
+    session = StreamSession(
+        streams=("x",),
+        policy=stream_policy("binance", quiet=True),
+        connector=connector,
+        clock=clock,
+    )
+    reconnects: list[int] = []
+    task = StreamTask(
+        session=session,
+        handler=lambda frame, at: None,
+        heartbeat=lambda at: None,
+        now_ns=clock.now_ns,
+        on_failure=lambda message: None,
+        on_reconnect=lambda: reconnects.append(clock.now_ns()),
+    )
+    task.start()
+    clock.advance_ns(5 * SECOND)
+    task.step()
+    assert reconnects == []  # the first connection is not a reconnect
+
+    connector.alive_flag = False
+    clock.advance_ns(5 * SECOND)
+    task.step()
+    clock.advance_ns(5 * SECOND)
+    task.step()
+
+    assert reconnects == [10 * MINUTE + 10 * SECOND]

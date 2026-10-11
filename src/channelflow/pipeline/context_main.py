@@ -25,15 +25,19 @@ from dataclasses import dataclass
 from types import FrameType
 
 from channelflow.context import sources
+from channelflow.context.book import book_task
 from channelflow.context.liquidations import liquidation_task
 from channelflow.context.pollers import OkxPoller, poller_for
 from channelflow.context.rest import HttpxJsonClient
 from channelflow.context.runtime import Collector, CollectorConfig, Flushable
 from channelflow.context.status import Status, serve
+from channelflow.context.streams import StreamTask
 from channelflow.lakehouse import catalog as open_catalog
 from channelflow.settings import MissingConfiguration, settings_from_env
+from channelflow.tables import book_minutes as book_table
 from channelflow.tables import derivatives_state
 from channelflow.tables import liquidations as liquidation_table
+from channelflow.tables import quotes as quotes_table
 
 VENUE = "CHANNELFLOW_CONTEXT_VENUE"
 SYMBOLS = "CHANNELFLOW_CONTEXT_SYMBOLS"
@@ -43,8 +47,8 @@ LOG_LEVEL = "CHANNELFLOW_LOG_LEVEL"
 
 KNOWN_VENUES = ("binance", "bybit", "okx")
 #: The websocket streams a collector can run beside its polls; each is its own requirement.
-KNOWN_STREAMS = ("liquidations",)
-DEFAULT_STREAMS: tuple[str, ...] = ("liquidations",)
+KNOWN_STREAMS = ("liquidations", "book")
+DEFAULT_STREAMS: tuple[str, ...] = ("liquidations", "book")
 DEFAULT_PORT = 9101
 
 
@@ -97,6 +101,21 @@ def context_settings_from_env(environ: Mapping[str, str] | None = None) -> Conte
     return ContextSettings(venue=venue, symbols=symbols, port=port, streams=streams)
 
 
+def _add_stream(streams: list[StreamTask], task: StreamTask, venue: str, kind: str) -> None:
+    """Start a stream task and keep it; one that does not connect yet is the session's to retry."""
+    try:
+        task.start()
+    except Exception as error:  # noqa: BLE001 -- the session reconnects; a poll must still run
+        logging.getLogger(__name__).error(
+            "%s: %s stream did not connect at start (%s: %s); the session will retry",
+            venue,
+            kind,
+            type(error).__name__,
+            error,
+        )
+    streams.append(task)
+
+
 def main(argv: list[str] | None = None) -> int:
     level = os.environ.get(LOG_LEVEL, "").strip().upper() or "INFO"
     logging.basicConfig(level=level, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -111,34 +130,48 @@ def main(argv: list[str] | None = None) -> int:
         venue=context.venue, poll_interval_s=sources.POLL_INTERVAL_S, now_ns=time.time_ns
     )
     poller = poller_for(context.venue, HttpxJsonClient(), time.time_ns)
-    streams = []
+    streams: list[StreamTask] = []
     extra_sinks: list[Flushable] = []
+    contract_values = (
+        {symbol: poller.contract_value(symbol) for symbol in context.symbols}
+        if isinstance(poller, OkxPoller)
+        else {}
+    )
+    on_failure = lambda message: status.record_failure("stream")  # noqa: E731
     if "liquidations" in context.streams:
         liquidation_sink = liquidation_table.LiquidationSink(liquidation_table.table_for(catalog))
-        contract_values = (
-            {symbol: poller.contract_value(symbol) for symbol in context.symbols}
-            if isinstance(poller, OkxPoller)
-            else {}
+        _add_stream(
+            streams,
+            liquidation_task(
+                venue=context.venue,
+                symbols=context.symbols,
+                sink=liquidation_sink,
+                now_ns=time.time_ns,
+                on_failure=on_failure,
+                contract_values=contract_values,
+            ),
+            context.venue,
+            "liquidation",
         )
-        task = liquidation_task(
-            venue=context.venue,
-            symbols=context.symbols,
-            sink=liquidation_sink,
-            now_ns=time.time_ns,
-            on_failure=lambda message: status.record_failure("liquidation-stream"),
-            contract_values=contract_values,
-        )
-        try:
-            task.start()
-        except Exception as error:  # noqa: BLE001 -- the session reconnects; a poll must still run
-            logging.getLogger(__name__).error(
-                "%s: liquidation stream did not connect at start (%s: %s); the session will retry",
-                context.venue,
-                type(error).__name__,
-                error,
-            )
-        streams.append(task)
         extra_sinks.append(liquidation_sink)
+    if "book" in context.streams:
+        book_sink = book_table.BookMinuteSink(
+            book_table.table_for(catalog), quotes_table.table_for(catalog)
+        )
+        _add_stream(
+            streams,
+            book_task(
+                venue=context.venue,
+                symbols=context.symbols,
+                sink=book_sink,
+                now_ns=time.time_ns,
+                on_failure=on_failure,
+                contract_values=contract_values,
+            ),
+            context.venue,
+            "book",
+        )
+        extra_sinks.append(book_sink)
     collector = Collector(
         config=CollectorConfig(venue=context.venue, symbols=context.symbols),
         poller=poller,

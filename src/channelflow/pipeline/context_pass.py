@@ -26,6 +26,7 @@ import pyarrow.compute as pc
 
 from channelflow.bars.models import Bar
 from channelflow.context import sources
+from channelflow.features.book_values import BOOK_FEATURES, book_values
 from channelflow.features.context_values import CONTEXT_FEATURES, StateIndex, context_values
 from channelflow.features.liquidation_values import (
     LIQUIDATION_FEATURES,
@@ -33,6 +34,7 @@ from channelflow.features.liquidation_values import (
     liquidation_values,
 )
 from channelflow.lakehouse import Catalog, IcebergTable
+from channelflow.tables import book_minutes as book_table
 from channelflow.tables import derivatives_state as state_table
 from channelflow.tables import features as features_table
 from channelflow.tables import liquidations as liquidation_table
@@ -63,7 +65,7 @@ def latest_context_times(table: IcebergTable) -> dict[tuple[str, str, int, str],
 
 
 def _names_array() -> pa.Array:
-    return pa.array(CONTEXT_FEATURES + LIQUIDATION_FEATURES)
+    return pa.array(CONTEXT_FEATURES + LIQUIDATION_FEATURES + BOOK_FEATURES)
 
 
 def write_context_features(catalog: Catalog, all_bars: Sequence[Bar]) -> int:
@@ -81,6 +83,7 @@ def write_context_features(catalog: Catalog, all_bars: Sequence[Bar]) -> int:
     try:
         states = state_table.read_states(state_table.table_for(catalog))
         events, heartbeats = liquidation_table.read(liquidation_table.table_for(catalog))
+        minutes = book_table.read_minutes(book_table.table_for(catalog))
         table = features_table.features_table_for(catalog)
         latest = latest_context_times(table)
     except Exception as cause:  # noqa: BLE001 -- the channel step must still run
@@ -92,13 +95,33 @@ def write_context_features(catalog: Catalog, all_bars: Sequence[Bar]) -> int:
     indexes: dict[tuple[str, str], StateIndex] = {}
     event_times: dict[tuple[str, str], list[int]] = {}
     pending: list[dict[str, object]] = []
+    book_times: dict[tuple[str, str], list[int]] = {}
     for (venue, symbol, timeframe_ns), series_bars in sorted(grouped.items()):
+        ordered = sorted(series_bars, key=lambda b: b.close_time_ns)
+        tf_minutes = timeframe_ns // 60_000_000_000
+
+        # A book is of the series' OWN market -- Binance's series is spot, and its book is the
+        # spot book -- so it is looked up by the series' own venue and symbol, never through the
+        # perpetual the derivatives are shown from.
+        series_minutes = minutes.get((venue, symbol))
+        if series_minutes:
+            try:
+                times = book_times.setdefault(
+                    (venue, symbol), [m.minute_close_ns for m in series_minutes]
+                )
+                for bar in ordered:
+                    values = book_values(
+                        series_minutes, close_ns=bar.close_time_ns, times=times, symbol=symbol
+                    )
+                    pending.extend(
+                        _fresh_rows(latest, venue, symbol, timeframe_ns, bar.close_time_ns, values)
+                    )
+            except Exception as cause:  # noqa: BLE001 -- one series must not end the pass
+                _report(venue, symbol, tf_minutes, "book", cause)
+
         perpetual = sources.perpetual_for(venue, symbol)
         if perpetual is None:
             continue
-        ordered = sorted(series_bars, key=lambda b: b.close_time_ns)
-        minutes = timeframe_ns // 60_000_000_000
-
         series_states = states.get((venue, perpetual))
         if series_states:
             try:
@@ -109,7 +132,7 @@ def write_context_features(catalog: Catalog, all_bars: Sequence[Bar]) -> int:
                         _fresh_rows(latest, venue, symbol, timeframe_ns, bar.close_time_ns, values)
                     )
             except Exception as cause:  # noqa: BLE001 -- one series must not end the pass
-                _report(venue, symbol, minutes, "context", cause)
+                _report(venue, symbol, tf_minutes, "context", cause)
 
         series_beats = heartbeats.get((venue, perpetual))
         if series_beats:
@@ -127,7 +150,7 @@ def write_context_features(catalog: Catalog, all_bars: Sequence[Bar]) -> int:
                     )
                     pending.extend(_fresh_rows(latest, venue, symbol, timeframe_ns, close, values))
             except Exception as cause:  # noqa: BLE001 -- one series must not end the pass
-                _report(venue, symbol, minutes, "liquidation", cause)
+                _report(venue, symbol, tf_minutes, "liquidation", cause)
     # One commit for the whole pass, not one per series: every append is a snapshot, and thirty-five
     # of them to a table of millions of rows is minutes of commits for rows that were computed in
     # seconds (the first backfill found this out). The rows are recomputed from the watermark on

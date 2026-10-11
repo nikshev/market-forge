@@ -152,7 +152,12 @@ def _register_all() -> None:
                     "sum over consecutive observations of "
                     "1[Pb_n >= Pb_n-1]*Qb_n - 1[Pb_n <= Pb_n-1]*Qb_n-1 "
                     "- 1[Pa_n <= Pa_n-1]*Qa_n + 1[Pa_n >= Pa_n-1]*Qa_n-1; "
-                    "no increment is formed across a sequence gap"
+                    "no increment is formed across a sequence gap. As produced by the collector "
+                    "(REQ-WP-095) the observations are the top of the book SAMPLED once a second "
+                    "of event time, whatever rate the venue pushes at -- a real measurement of "
+                    "what the sampled book did, not the exchange's full event-level OFI. Binance "
+                    "series use the spot book, Bybit and OKX the perpetual's; sizes are in base "
+                    "units (OKX's contracts are converted)"
                 ),
                 unit="base currency",
                 source_events=("book_snapshot", "book_delta"),
@@ -161,7 +166,9 @@ def _register_all() -> None:
                 availability_lag_ms=0,
                 null_policy=(
                     "a window with no observations reports zero and is flagged empty; "
-                    "the two are not the same fact"
+                    "the two are not the same fact. The worker writes nothing for a minute with "
+                    "no frame or fewer than two observations, and nothing for one older than "
+                    "two minutes at the bar's close (stale)"
                 ),
                 clipping="none",
                 normalization=(

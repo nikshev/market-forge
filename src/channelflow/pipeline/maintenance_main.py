@@ -35,6 +35,7 @@ from channelflow.lakehouse.retention import RetentionPolicy
 from channelflow.settings import settings_from_env
 from channelflow.tables import (
     bars,
+    book_minutes,
     channels,
     derivatives_state,
     dex_depth,
@@ -44,6 +45,7 @@ from channelflow.tables import (
     extrema,
     features,
     liquidations,
+    quotes,
     signals,
 )
 
@@ -64,6 +66,8 @@ TABLES: dict[str, Callable[[Catalog], IcebergTable]] = {
     "extremum_candidates": extrema.candidates_table_for,
     "derivatives_state": derivatives_state.table_for,
     "liquidations": liquidations.table_for,
+    "book_minutes": book_minutes.table_for,
+    "quotes": quotes.table_for,
     "dex_swaps": dex_swaps.table_for,
     "dex_liquidity": dex_liquidity.table_for,
     "dex_depth": dex_depth.table_for,

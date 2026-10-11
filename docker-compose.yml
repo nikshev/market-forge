@@ -475,6 +475,8 @@ services:
       CHANNELFLOW_S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
       CHANNELFLOW_S3_REGION: us-east-1
       CHANNELFLOW_LOG_LEVEL: ${CHANNELFLOW_LOG_LEVEL:-}
+      # What each collector holds beside its polls (REQ-WP-094, REQ-WP-095); empty turns them all off.
+      CHANNELFLOW_CONTEXT_STREAMS: ${CHANNELFLOW_CONTEXT_STREAMS-liquidations,book}
       CHANNELFLOW_CONTEXT_VENUE: binance
       CHANNELFLOW_CONTEXT_PORT: "9101"
     ports:

@@ -53,12 +53,20 @@ class StreamTask:
     now_ns: Callable[[], int]
     #: Called with a description of anything that failed, for the status counters.
     on_failure: Callable[[str], None]
+    #: Called on every step with the time, so a stream that has gone quiet can still close its
+    #: minutes (REQ-WP-095); `None` for a stream that has nothing to close.
+    tick: Callable[[int], None] | None = None
+    #: Called once for each new connection after the first: whatever was kept about the old one --
+    #: a book, a flow baseline -- no longer describes the market (REQ-WP-095).
+    on_reconnect: Callable[[], None] | None = None
     frames: int = 0
     _last_boundary_ns: int = 0
+    _connected_at_ns: int = 0
 
     def start(self) -> None:
         self.session.start()
         self._last_boundary_ns = (self.now_ns() // MINUTE_NS) * MINUTE_NS
+        self._connected_at_ns = self.session.connected_at_ns
 
     def step(self) -> None:
         received_at = self.now_ns()
@@ -70,7 +78,14 @@ class StreamTask:
             except Exception as exc:  # noqa: BLE001 -- one bad frame is not a reason to stop
                 self.on_failure(f"{type(exc).__name__}: {exc}")
         self.session.tick()
-        self._maybe_heartbeat(self.now_ns())
+        if self.session.connected_at_ns != self._connected_at_ns:
+            self._connected_at_ns = self.session.connected_at_ns
+            if self.on_reconnect is not None:
+                self.on_reconnect()
+        now = self.now_ns()
+        if self.tick is not None:
+            self.tick(now)
+        self._maybe_heartbeat(now)
 
     def _maybe_heartbeat(self, now: int) -> None:
         boundary = (now // MINUTE_NS) * MINUTE_NS

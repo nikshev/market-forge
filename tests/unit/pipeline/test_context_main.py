@@ -61,14 +61,23 @@ def test_a_bad_port_is_refused(port: str) -> None:
 
 
 @pytest.mark.trace("REQ-WP-094")
-def test_the_liquidation_stream_runs_by_default_and_can_be_turned_off() -> None:
+def test_the_liquidation_and_book_streams_run_by_default_and_can_be_turned_off() -> None:
     assert main.context_settings_from_env({"CHANNELFLOW_CONTEXT_VENUE": "okx"}).streams == (
         "liquidations",
+        "book",
     )
     off = main.context_settings_from_env(
         {"CHANNELFLOW_CONTEXT_VENUE": "okx", "CHANNELFLOW_CONTEXT_STREAMS": ""}
     )
     assert off.streams == ()
+
+
+@pytest.mark.trace("REQ-WP-095")
+def test_the_book_stream_can_be_chosen_alone() -> None:
+    only = main.context_settings_from_env(
+        {"CHANNELFLOW_CONTEXT_VENUE": "bybit", "CHANNELFLOW_CONTEXT_STREAMS": " Book "}
+    )
+    assert only.streams == ("book",)
 
 
 @pytest.mark.trace("REQ-WP-094")

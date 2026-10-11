@@ -4,7 +4,7 @@
 # Patterns are TOML *literal* strings on purpose: the basic form treats a
 # trailing backslash as a line continuation and eats the next line's indentation.
 source = "src/channelflow/context/streams.py"
-tests = ["tests/unit/context/test_streams.py", "tests/unit/context/test_liquidation_stream.py"]
+tests = ["tests/unit/context/test_streams.py", "tests/unit/context/test_liquidation_stream.py", "tests/unit/context/test_book_stream.py"]
 
 [[mutation]]
 name = "a frame the handler cannot read stops the stream"
@@ -24,8 +24,8 @@ replace = '''            pass'''
 [[mutation]]
 name = "the session is never ticked"
 find = '''        self.session.tick()
-        self._maybe_heartbeat(self.now_ns())'''
-replace = '''        self._maybe_heartbeat(self.now_ns())'''
+        if self.session.connected_at_ns != self._connected_at_ns:'''
+replace = '''        if self.session.connected_at_ns != self._connected_at_ns:'''
 
 [[mutation]]
 name = "a heartbeat is written for the minute the connection was made"
@@ -65,3 +65,31 @@ find = '''        raise ValueError(
             f"no stream policy for venue {venue!r}; known: {', '.join(sorted(POLICIES))}"
         ) from None'''
 replace = '''        policy = POLICIES["binance"]'''
+
+[[mutation]]
+name = "the tick callback is never called"
+find = '''        if self.tick is not None:
+            self.tick(now)'''
+replace = '''        if False:
+            self.tick(now)'''
+
+[[mutation]]
+name = "the reconnect callback is never called"
+find = '''            if self.on_reconnect is not None:
+                self.on_reconnect()'''
+replace = '''            if False:
+                self.on_reconnect()'''
+
+[[mutation]]
+name = "the reconnect callback runs on the first connection too"
+find = '''        self._connected_at_ns = self.session.connected_at_ns
+
+    def step(self) -> None:'''
+replace = '''        self._connected_at_ns = -1
+
+    def step(self) -> None:'''
+
+[[mutation]]
+name = "the reconnect callback runs on every step"
+find = '''        if self.session.connected_at_ns != self._connected_at_ns:'''
+replace = '''        if True:'''

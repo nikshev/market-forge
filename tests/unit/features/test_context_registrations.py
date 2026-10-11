@@ -48,3 +48,16 @@ def test_the_imbalance_says_it_is_absent_for_a_window_nobody_watched() -> None:
 @pytest.mark.parametrize("name", ["liquidation_intensity_5m", "time_since_liquidation_spike"])
 def test_the_two_liquidation_features_the_worker_does_not_write_say_so(name: str) -> None:
     assert "not produced" in REGISTRY[name].formula.lower()
+
+
+@pytest.mark.trace("REQ-WP-095")
+def test_ofi_says_it_is_sampled_once_a_second_and_not_the_exchanges_event_level_figure() -> None:
+    text = REGISTRY["ofi_1m"].formula.lower()
+    assert "sampled" in text and "second" in text and "event-level" in text
+
+
+@pytest.mark.trace("REQ-WP-095")
+def test_the_ten_level_imbalance_says_a_shallower_book_gets_no_number() -> None:
+    spec = REGISTRY["depth_imbalance_10"]
+    assert "fewer than ten levels" in spec.null_policy
+    assert "fewer than ten" not in REGISTRY["depth_imbalance_20"].null_policy  # only this one

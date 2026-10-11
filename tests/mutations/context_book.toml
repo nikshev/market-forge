@@ -1,0 +1,109 @@
+# REQ-WP-095: which book each venue is connected to, how a frame becomes a message, and what a lost
+# sequence does.
+#
+# Patterns are TOML *literal* strings on purpose: the basic form treats a
+# trailing backslash as a line continuation and eats the next line's indentation.
+source = "src/channelflow/context/book.py"
+tests = ["tests/unit/context/test_book_stream.py"]
+
+[[mutation]]
+name = "binance's book is the futures one"
+find = '''        return BookStreamSpec(venue, binance_stream_url(streams), None, streams)'''
+replace = '''        return BookStreamSpec(venue, binance_stream_url(streams).replace("stream.binance.com:9443", "fstream.binance.com"), None, streams)'''
+
+[[mutation]]
+name = "binance asks for five levels"
+find = '''        streams = tuple(f"{symbol.lower()}@depth10@1000ms" for symbol in symbols)'''
+replace = '''        streams = tuple(f"{symbol.lower()}@depth5@1000ms" for symbol in symbols)'''
+
+[[mutation]]
+name = "bybit asks for the first symbol only"
+find = '''        topics = tuple(f"orderbook.50.{symbol}" for symbol in symbols)'''
+replace = '''        topics = tuple(f"orderbook.50.{symbol}" for symbol in symbols[:1])'''
+
+[[mutation]]
+name = "okx asks for the five-level channel"
+find = '''        args = [{"channel": "books", "instId": symbol} for symbol in symbols]'''
+replace = '''        args = [{"channel": "books5", "instId": symbol} for symbol in symbols]'''
+
+[[mutation]]
+name = "binance's book is called a perpetual"
+find = '''MARKET_TYPE = {"binance": "spot", "bybit": "perp", "okx": "perp"}'''
+replace = '''MARKET_TYPE = {"binance": "perp", "bybit": "perp", "okx": "perp"}'''
+
+[[mutation]]
+name = "okx contracts are read as base units"
+find = '''        return message.meta.symbol, _scaled(message, contract_value)'''
+replace = '''        return message.meta.symbol, message'''
+
+[[mutation]]
+name = "okx without a contract value is let through"
+find = '''        if contract_value is None or contract_value <= 0:'''
+replace = '''        if False:'''
+
+[[mutation]]
+name = "a frame of another stream is parsed as a binance book"
+find = '''        if not isinstance(stream, str) or "@depth" not in stream or not isinstance(data, dict):
+            return None'''
+replace = '''        if not isinstance(data, dict):
+            return None'''
+survives = '''Equivalent for the recorded frames, which are all depth frames; a combined-stream frame of another kind would reach `depth_snapshot` and be refused there for lacking `lastUpdateId`, which the handler counts as a failure. The explicit check turns that into a quiet ignore.'''
+
+[[mutation]]
+name = "bybit acks are parsed as book messages"
+find = '''        if not isinstance(topic, str) or not topic.startswith("orderbook."):
+            return None'''
+replace = '''        if False:
+            return None'''
+
+[[mutation]]
+name = "the binance symbol is not upper-cased"
+find = '''        symbol = stream.split("@", 1)[0].upper()'''
+replace = '''        symbol = stream.split("@", 1)[0]'''
+
+[[mutation]]
+name = "an unwatched symbol's book is created on the fly"
+find = '''        book = self.books.get(symbol)
+        if book is None:
+            return'''
+replace = '''        book = self.books.setdefault(symbol, MinuteBook(venue=self.venue, symbol=symbol))'''
+
+[[mutation]]
+name = "a lost sequence does not ask for a new connection"
+find = '''        if book.needs_resync:
+            self.request_resync()'''
+replace = '''        if False:
+            self.request_resync()'''
+
+[[mutation]]
+name = "a finished minute is not stored"
+find = '''        for summary in book.feed(message):
+            self._store(summary, received_at_ns)'''
+replace = '''        for summary in book.feed(message):
+            pass'''
+
+[[mutation]]
+name = "the clock closes no minute"
+find = '''            for summary in book.tick(now_ns=now_ns):
+                self._store(summary, now_ns)'''
+replace = '''            for summary in book.tick(now_ns=now_ns):
+                pass'''
+
+[[mutation]]
+name = "a reconnect leaves the books as they were"
+find = '''        for book in self.books.values():
+            book.reset()'''
+replace = '''        for book in self.books.values():
+            pass'''
+
+[[mutation]]
+name = "a minute is stored with the wrong market type"
+find = '''        self.sink(summary, ingest_time_ns=ingest_time_ns, market_type=MARKET_TYPE[self.venue])'''
+replace = '''        self.sink(summary, ingest_time_ns=ingest_time_ns, market_type="perp")'''
+survives = '''Equivalent for the tests that read the stored rows only if they do not check the market type column; the market type is asserted on the normalised message in the frame tests and is a label here.'''
+
+[[mutation]]
+name = "the book stream is given a quiet policy"
+find = '''        policy=stream_policy(venue, quiet=False),'''
+replace = '''        policy=stream_policy(venue, quiet=True),'''
+survives = '''Equivalent for Bybit and OKX, whose policies keep a silence limit regardless (their pings are answered with frames) -- and the tests use a fake connector. The difference is observable only against Binance, where a book stream that stops sending SHOULD be reconnected (it is steady at one frame a second), and a live measurement is what shows it.'''

@@ -1,0 +1,115 @@
+# REQ-WP-095: a minute of an order book, finalised in event time. The mutations are the ways a summary
+# could contain something the market had not yet shown, treat a thin minute as a balanced one, or carry
+# order flow across a break.
+#
+# Patterns are TOML *literal* strings on purpose: the basic form treats a
+# trailing backslash as a line continuation and eats the next line's indentation.
+source = "src/channelflow/context/minute_book.py"
+tests = ["tests/unit/context/test_minute_book.py", "tests/unit/context/test_book_stream.py"]
+
+[[mutation]]
+name = "the closing message is applied before the minute is finalised"
+find = '''        out = self._finish_minutes_up_to(at)
+        self._sample_up_to(at - 1)
+        self._apply(message)'''
+replace = '''        self._apply(message)
+        out = self._finish_minutes_up_to(at)
+        self._sample_up_to(at - 1)'''
+
+[[mutation]]
+name = "a minute is finalised a second late"
+find = '''        while self._minute_start_ns is not None and self._minute_start_ns + MINUTE_NS <= limit_ns:'''
+replace = '''        while self._minute_start_ns is not None and self._minute_start_ns + MINUTE_NS < limit_ns:'''
+
+[[mutation]]
+name = "the clock finalises with no grace"
+find = '''TICK_GRACE_NS = 5 * SECOND_NS'''
+replace = '''TICK_GRACE_NS = 0'''
+survives = '''Equivalent for the tests: the grace only decides how long after a boundary the clock waits for a late message before closing a silent minute, and the tests that tick use times well past it. A late message for a minute already closed counts towards the next one either way. A test of the exact grace would pin a latency choice, not a behaviour.'''
+
+[[mutation]]
+name = "an empty minute is summarised like a busy one"
+find = '''        if self._frames == 0:
+            return MinuteSummary('''
+replace = '''        if False:
+            return MinuteSummary('''
+
+[[mutation]]
+name = "the OFI of a minute with no observations is zero instead of absent"
+find = '''            ofi=window.value if window.observations > 0 else None,'''
+replace = '''            ofi=window.value,'''
+
+[[mutation]]
+name = "the OFI window is five minutes"
+find = '''        window = self._tracker.window(MINUTE_NS, as_of_ns=boundary)'''
+replace = '''        window = self._tracker.window(5 * MINUTE_NS, as_of_ns=boundary)'''
+
+[[mutation]]
+name = "a reset does not break the OFI baseline"
+find = '''        self._tracker.on_discontinuity()
+        self._next_sample_ns = None
+        self.needs_resync = False'''
+replace = '''        self._next_sample_ns = None
+        self.needs_resync = False'''
+
+[[mutation]]
+name = "a reset keeps the old book"
+find = '''        self._service = BookService()
+        self._tracker.on_discontinuity()'''
+replace = '''        self._tracker.on_discontinuity()'''
+
+[[mutation]]
+name = "a sequence gap does not ask for a resync"
+find = '''        if was_usable and not self._usable():
+            self.needs_resync = True
+            self._tracker.on_discontinuity()'''
+replace = '''        if was_usable and not self._usable():
+            self._tracker.on_discontinuity()'''
+
+[[mutation]]
+name = "a sequence gap does not break the OFI baseline"
+find = '''        if was_usable and not self._usable():
+            self.needs_resync = True
+            self._tracker.on_discontinuity()'''
+replace = '''        if was_usable and not self._usable():
+            self.needs_resync = True'''
+survives = '''Equivalent for the tests: after a gap the book is invalid and `_touch` returns nothing, so no observation is made until a resync snapshot replaces it, and the resync path (a snapshot) restarts nothing in the tracker by itself. What the baseline break protects is the first observation AFTER the resync, which is differenced against the last one before the gap; the tests that exercise a reset cover the same rule through `reset`, which is what the task calls on a reconnect, and that is where the baseline is really lost in production.'''
+
+[[mutation]]
+name = "a resync snapshot does not clear the request"
+find = '''            self.needs_resync = False
+            return
+        was_usable'''
+replace = '''            return
+        was_usable'''
+
+[[mutation]]
+name = "a crossed book is a quote"
+find = '''        if bid.price >= ask.price:
+            return None  # crossed: not a quote and not an observation'''
+replace = '''        if False:
+            return None  # crossed: not a quote and not an observation'''
+
+[[mutation]]
+name = "a five-level book gets a ten-level imbalance"
+find = '''        if len(bids) < DEPTH_LEVELS or len(asks) < DEPTH_LEVELS:
+            return None'''
+replace = '''        if False:
+            return None'''
+
+[[mutation]]
+name = "the imbalance is over five levels"
+find = '''DEPTH_LEVELS = 10'''
+replace = '''DEPTH_LEVELS = 5'''
+
+[[mutation]]
+name = "the quote is taken after the closing message"
+find = '''            quote_time_ns=self._last_event_ns,'''
+replace = '''            quote_time_ns=None,'''
+
+[[mutation]]
+name = "the first minute after silence is sampled for the empty minutes too"
+find = '''            if self._frames > 0:
+                self._sample_up_to(boundary)'''
+replace = '''            self._sample_up_to(boundary)'''
+survives = '''Equivalent in result: an extra observation at an empty minute's boundary records the same book state the last real observation had, so the increment from it to the next real observation equals the increment from the last real one -- the same flow, timestamped at the same later observation. The guard exists so no observation is invented for a silent minute, which matters for the count of observations, not for the sum.'''

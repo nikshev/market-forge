@@ -147,7 +147,7 @@ Rules that hold:
     - `tests/unit/features/test_liquidation_values.py::test_two_heartbeats_in_one_minute_do_not_stand_in_for_two_minutes`
     - `tests/unit/features/test_liquidation_values.py::test_unknown_side_events_are_in_neither_sum`
     - `tests/unit/pipeline/test_context_main.py::test_an_unknown_stream_is_refused_naming_the_known_ones`
-    - `tests/unit/pipeline/test_context_main.py::test_the_liquidation_stream_runs_by_default_and_can_be_turned_off`
+    - `tests/unit/pipeline/test_context_main.py::test_the_liquidation_and_book_streams_run_by_default_and_can_be_turned_off`
     - `tests/unit/pipeline/test_context_pass_liquidations.py::test_a_bar_the_stream_did_not_cover_gets_no_liquidation_feature`
     - `tests/unit/pipeline/test_context_pass_liquidations.py::test_a_quiet_covered_bar_has_zero_sums_and_no_imbalance_row`
     - `tests/unit/pipeline/test_context_pass_liquidations.py::test_a_second_pass_writes_nothing_more`
@@ -171,6 +171,14 @@ Rules that hold:
     - `tests/unit/tables/test_liquidations.py::test_two_events_that_differ_in_any_identifying_field_are_two_events[different3]`
     - `tests/unit/tables/test_liquidations.py::test_two_events_that_differ_in_any_identifying_field_are_two_events[different4]`
     - `tests/unit/tables/test_liquidations.py::test_two_events_that_differ_in_any_identifying_field_are_two_events[different5]`
+- **Code:**
+    - `src/channelflow/connectors/binance/liquidation.py`
+    - `src/channelflow/connectors/bybit/liquidation.py`
+    - `src/channelflow/connectors/okx/liquidation.py`
+    - `src/channelflow/context/liquidations.py`
+    - `src/channelflow/context/streams.py`
+    - `src/channelflow/features/liquidation_values.py`
+    - `src/channelflow/tables/liquidations.py`
 - **Outcomes:** [[OUT-2026-10-11-implement-liquidations-collector]], [[OUT-2026-10-11-plan-live-panes]], [[OUT-2026-10-11-spec-live-panes]]
 <!-- trace:end -->
 

@@ -602,6 +602,27 @@ and the imbalance of a quiet window is absent, not zero. Intensity and time-sinc
 but not produced. A quiet stream is not reconnected for being quiet (Binance's 60 s silence limit is off
 for this stream; its keepalive is not).
 
+**The order book** ([REQ-WP-095]). Each collector holds a book stream too -- Binance's **spot** partial depth
+(`<symbol>@depth10@1000ms`; the Binance series are spot markets), Bybit's linear `orderbook.50`, OKX's `books`
+(its 400-level channel: `books5` has five levels and ten are asked for; OKX sizes are contracts and are
+converted to base units). The raw book is **not stored**: the existing `BookService` and `OFITracker` run
+inside the collector and, when a minute ends in event time, one row is stored in `book_minutes` -- the
+one-minute order-flow imbalance, the ten-level depth imbalance and the top-of-book quote -- with the number of
+frames and observations it rested on. The same minute writes a row to `quotes`, which is what the cross-venue
+consensus is a median of.
+
+A minute is finalised from the book **as it was before the first message of the next minute**, so it contains
+nothing the market had not shown by then; a minute with no frame is stored with a count of zero and nothing
+else, and the worker writes no feature for it. The tracker is fed the top of the book **once a second of event
+time** whatever rate the venue pushes at, so every venue's OFI is the same measurement -- a sampled one, which
+the feature's registration says: it is not the exchange's event-level figure. A reconnect or a lost sequence
+breaks the flow baseline, and a lost sequence makes the connection be remade for a fresh snapshot. A book with
+fewer than ten levels a side gets no ten-level imbalance, and a crossed book is not a quote.
+
+The worker writes `ofi_1m` and `depth_imbalance_10` from the latest minute that ended at or before the bar's
+close and is no more than two minutes old. `CHANNELFLOW_CONTEXT_STREAMS` (default `liquidations,book`; an empty
+value turns every stream off) chooses what a collector holds beside its polls.
+
 Start them without recreating anything else:
 
 ```
