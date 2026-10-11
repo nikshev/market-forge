@@ -80,7 +80,7 @@ afterEach(() => {
 describe("US2: isInitialLoad=false on refresh does not reset range", () => {
   it("calls setVisibleLogicalRange for channel window on initial load (isInitialLoad=true, no focusAtNs)", async () => {
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
-    render(<Chart bars={bars()} channel={channel()} isInitialLoad={true} />);
+    render(<Chart bars={bars()} channel={channel()} signal={null} isInitialLoad={true} />);
 
     // createChart is called synchronously on mount
     await waitFor(() => expect(mockCreateChart).toHaveBeenCalled(), { timeout: 2000 });
@@ -93,7 +93,7 @@ describe("US2: isInitialLoad=false on refresh does not reset range", () => {
   });
 
   it("does NOT call fitContent or setVisibleLogicalRange on refresh (isInitialLoad=false)", async () => {
-    render(<Chart bars={bars()} channel={channel()} isInitialLoad={false} />);
+    render(<Chart bars={bars()} channel={channel()} signal={null} isInitialLoad={false} />);
 
     await waitFor(() => expect(mockCreateChart).toHaveBeenCalled(), { timeout: 2000 });
     await waitFor(() => expect(mockFitContent).not.toHaveBeenCalled(), { timeout: 2000 });
@@ -102,7 +102,7 @@ describe("US2: isInitialLoad=false on refresh does not reset range", () => {
 
   it("calls setVisibleLogicalRange for deep link instant (focusAtNs) on initial load", async () => {
     const focusAtNs = 1_789_344_000_000_000_000n + 5n * MINUTE_NS;
-    render(<Chart bars={bars()} channel={channel()} focusAtNs={focusAtNs} isInitialLoad={true} />);
+    render(<Chart bars={bars()} channel={channel()} signal={null} focusAtNs={focusAtNs} isInitialLoad={true} />);
 
     await waitFor(() => expect(mockCreateChart).toHaveBeenCalled(), { timeout: 2000 });
     await waitFor(() => expect(mockSetVisibleLogicalRange).toHaveBeenCalled(), { timeout: 2000 });
@@ -110,7 +110,7 @@ describe("US2: isInitialLoad=false on refresh does not reset range", () => {
 
   it("does NOT call setVisibleLogicalRange for deep link instant on refresh", async () => {
     const focusAtNs = 1_789_344_000_000_000_000n + 5n * MINUTE_NS;
-    render(<Chart bars={bars()} channel={channel()} focusAtNs={focusAtNs} isInitialLoad={false} />);
+    render(<Chart bars={bars()} channel={channel()} signal={null} focusAtNs={focusAtNs} isInitialLoad={false} />);
 
     await waitFor(() => expect(mockCreateChart).toHaveBeenCalled(), { timeout: 2000 });
     await waitFor(() => expect(mockSetVisibleLogicalRange).not.toHaveBeenCalled(), { timeout: 2000 });

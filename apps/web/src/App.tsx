@@ -171,10 +171,11 @@ export function App(): JSX.Element {
     const parsed = raw === undefined ? 60_000 : Number(raw);
     return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
   })();
-  const timerId = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // `window.setInterval` returns a number; `ReturnType<typeof setTimeout>` is Node's Timeout under @types/node.
+  const timerId = useRef<number | null>(null);
   const isLoading = useRef(false);
-  const [lastRefreshFailed, setLastRefreshFailed] = useState(false);
-  const [lastRefreshError, setLastRefreshError] = useState<string | null>(null);
+  const [, setLastRefreshFailed] = useState(false);
+  const [, setLastRefreshError] = useState<string | null>(null);
   // isInitialLoad: true for mount and timeframe/mode change, false for timer refresh
   const [isInitialLoad, setIsInitialLoad] = useState(true);
 
@@ -435,6 +436,16 @@ export function App(): JSX.Element {
     };
   }, [load]);
 
+  // The timers below must call the CURRENT `load`. `load` is rebuilt when the offered timeframes arrive
+  // (it closes over `option`, which is null on the first render), and an effect whose dependencies are
+  // `[refreshIntervalMs, link]` keeps the `load` it first saw -- one that returns at once because there is
+  // no option yet. A refresh timer calling that one fires on schedule and refreshes nothing, which is
+  // exactly what the interval test caught: the second bars request never came.
+  const loadRef = useRef(load);
+  useEffect(() => {
+    loadRef.current = load;
+  }, [load]);
+
   // Live refresh timer (REQ-WP-090): runs on interval while page is visible, unpinned, enabled, and not loading
   useEffect(() => {
     if (refreshIntervalMs <= 0 || link === null || link.atNs !== null) {
@@ -445,7 +456,7 @@ export function App(): JSX.Element {
         return; // skip if previous load still in flight
       }
       isLoading.current = true;
-      void load(false).finally(() => {
+      void loadRef.current(false).finally(() => {
         isLoading.current = false;
       });
     };
@@ -472,7 +483,7 @@ export function App(): JSX.Element {
       } else if (!isLoading.current) {
         // One immediate refresh when becoming visible
         isLoading.current = true;
-        void load(false).finally(() => {
+        void loadRef.current(false).finally(() => {
           isLoading.current = false;
         });
         // Restart interval
@@ -481,7 +492,7 @@ export function App(): JSX.Element {
             return;
           }
           isLoading.current = true;
-          void load(false).finally(() => {
+          void loadRef.current(false).finally(() => {
             isLoading.current = false;
           });
         }, refreshIntervalMs);

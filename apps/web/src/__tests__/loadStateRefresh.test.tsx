@@ -2,8 +2,8 @@
 //
 // LoadState shows failed vocabulary on refresh failure, clears on success
 
-import { render, screen, waitFor } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { render, screen } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
 
 import { LoadState } from "../LoadState";
 

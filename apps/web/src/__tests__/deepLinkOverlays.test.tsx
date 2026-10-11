@@ -16,6 +16,9 @@ vi.mock("../Chart", () => ({ Chart: () => <div data-testid="chart" /> }));
 vi.mock("../api", () => ({
   fetchBars: async () => ({ ok: true, value: { bars: [] } }),
   fetchChannel: async () => ({ ok: false, error: "no channel" }),
+  // The page asks which timeframes the API offers before it loads a chart; a mock without it made
+  // that call throw as an unhandled rejection, which fails the whole run even with every test green.
+  fetchTimeframes: async () => ({ ok: false, error: "not offered in this test" }),
 }));
 
 describe("the deep link's overlays", () => {

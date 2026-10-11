@@ -182,7 +182,9 @@ describe("US1: the in-force timeframe reaches every request", () => {
           await gate;
           return { ok: true, status: 200, json: async () => OFFERED };
         }
-        return { ok: true, status: 200, json: async () => ({ bars: [barPayload()] }) };
+        // `points` too: every other path answers with this payload, and the page reads `.points` of the
+        // features answer -- without it the render threw an unhandled error that fails the run.
+        return { ok: true, status: 200, json: async () => ({ bars: [barPayload()], points: [] }) };
       }),
     );
 

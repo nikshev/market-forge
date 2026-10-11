@@ -61,7 +61,7 @@ function makeHarness(options: { barsFail?: boolean; deferBars?: boolean } = {}) 
     json: async () => payload,
   });
 
-  vi.useFakeTimers();
+  vi.useFakeTimers({ shouldAdvanceTime: true });
 
   vi.stubGlobal(
     "fetch",
@@ -116,13 +116,13 @@ function makeHarness(options: { barsFail?: boolean; deferBars?: boolean } = {}) 
     calls,
     advanceTimers,
     resolveBars: () => pending.shift()?.(),
-    setBarsFail: (fail: boolean) => { /* handled by barsFail in new harness */ },
+    setBarsFail: (_fail: boolean) => { /* handled by barsFail in new harness */ },
   };
 }
 
 beforeEach(() => {
   openAt("");
-  vi.useFakeTimers();
+  vi.useFakeTimers({ shouldAdvanceTime: true });
   // Set the refresh interval env for tests
   vi.stubGlobal("import.meta", { env: { VITE_CHART_REFRESH_MS: "60000" } });
 });
@@ -171,7 +171,7 @@ describe("US1: timer fires on interval, calls load(), new bars drawn", () => {
 
     // Hide the tab
     Object.defineProperty(document, "hidden", { value: true, configurable: true });
-    window.dispatchEvent(new Event("visibilitychange"));
+    document.dispatchEvent(new Event("visibilitychange"));
 
     await advanceTimers(60_000);
     await advanceTimers(60_000);
@@ -180,7 +180,7 @@ describe("US1: timer fires on interval, calls load(), new bars drawn", () => {
 
     // Show the tab
     Object.defineProperty(document, "hidden", { value: false, configurable: true });
-    window.dispatchEvent(new Event("visibilitychange"));
+    document.dispatchEvent(new Event("visibilitychange"));
 
     await waitFor(() => expect(seriesCalls(calls, "/api/v1/bars").length).toBe(initialBarsCalls + 1), { timeout: 5000 });
   });
@@ -198,7 +198,7 @@ describe("US1: overlapping ticks skipped (in-flight guard)", () => {
       json: async () => payload,
     });
 
-    vi.useFakeTimers();
+    vi.useFakeTimers({ shouldAdvanceTime: true });
 
     vi.stubGlobal(
       "fetch",
@@ -209,7 +209,9 @@ describe("US1: overlapping ticks skipped (in-flight guard)", () => {
         }
         if (url.includes("/api/v1/bars")) {
           barsCalls += 1;
-          if (barsCalls === 1) {
+          // The SECOND request is the first refresh; the first is the initial load, which must complete
+          // (it is what produces the extrema call this test waits for before advancing the clock).
+          if (barsCalls === 2) {
             const gate = new Promise<void>((resolve) => pending.push(resolve));
             await gate;
           }
@@ -268,7 +270,9 @@ describe("US1: overlapping ticks skipped (in-flight guard)", () => {
 describe("US3: refresh failure keeps picture, states failure, recovers on next success", () => {
   it("failed refresh shows 'Refresh failed: ...' in LoadState, keeps old bars", async () => {
     const calls: string[] = [];
-    let barsShouldFail = true;
+    // The initial load must succeed: the failure is of a REFRESH, and a chart that never loaded has no
+    // picture to keep. It is switched to failing below, after the first load has drawn.
+    let barsShouldFail = false;
 
     const respond = (payload: unknown, ok = true) => ({
       ok,
@@ -276,7 +280,7 @@ describe("US3: refresh failure keeps picture, states failure, recovers on next s
       json: async () => payload,
     });
 
-    vi.useFakeTimers();
+    vi.useFakeTimers({ shouldAdvanceTime: true });
 
     vi.stubGlobal(
       "fetch",
