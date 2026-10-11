@@ -283,10 +283,11 @@ secret; `.env` is not committed and never should be.
 | `PROMETHEUS_PORT`, `GRAFANA_PORT` | observability |
 | `API_PORT`, `WEB_PORT` | where the application services are published |
 | `CHANNELFLOW_DATA_DIR` | the directory every stateful service writes into ([[REQ-WP-065]]) |
+| `CHANNELFLOW_DEX_RPC_URL`, `CONTEXT_HYPEREVM_PORT` | the HyperEVM JSON-RPC node the DEX collector reads (empty: the public one) and the port it serves `/healthz` on |
 | `CHANNELFLOW_BIND_ADDRESS` | what every published port binds to; `127.0.0.1` by default ([[REQ-WP-072]]) |
 | `CHANNELFLOW_CORS_ORIGINS`, `CHANNELFLOW_RATE_LIMIT`, `CHANNELFLOW_RATE_WINDOW_SECONDS` | what the read API allows and refuses |
 | `GRAFANA_ADMIN_PASSWORD`, `GRAFANA_ANONYMOUS` | Grafana's credential; anonymous access is off unless enabled |
-| `CHANNELFLOW_INGEST_SYMBOLS`, `CHANNELFLOW_INGEST_SYMBOLS_ETH`, `CHANNELFLOW_INGEST_SYMBOLS_SOL`, `CHANNELFLOW_INGEST_SYMBOLS_BYBIT`, `CHANNELFLOW_INGEST_SYMBOLS_OKX`, `CHANNELFLOW_INGEST_SYMBOLS_OKX_SPOT_BTC`, `CHANNELFLOW_INGEST_SYMBOLS_OKX_SPOT_ETH`, `CHANNELFLOW_INGEST_SYMBOLS_OKX_SPOT_SOL`, `CHANNELFLOW_INGEST_TIMEFRAME_NS`, `CHANNELFLOW_INGEST_VENUE`, `CHANNELFLOW_INGEST_MAX_SILENCE_SECONDS` | what each ingest daemon reads, which venue it connects to, at what bar size, and how long silence is tolerated before it reconnects (empty: the venue's own 60 s) — one symbol and venue per process |
+| `CHANNELFLOW_INGEST_SYMBOLS`, `CHANNELFLOW_INGEST_SYMBOLS_ETH`, `CHANNELFLOW_INGEST_SYMBOLS_SOL`, `CHANNELFLOW_INGEST_SYMBOLS_BYBIT`, `CHANNELFLOW_INGEST_SYMBOLS_BYBIT_HYPE`, `CHANNELFLOW_INGEST_SYMBOLS_OKX`, `CHANNELFLOW_INGEST_SYMBOLS_OKX_SPOT_BTC`, `CHANNELFLOW_INGEST_SYMBOLS_OKX_SPOT_ETH`, `CHANNELFLOW_INGEST_SYMBOLS_OKX_SPOT_SOL`, `CHANNELFLOW_INGEST_TIMEFRAME_NS`, `CHANNELFLOW_INGEST_VENUE`, `CHANNELFLOW_INGEST_MAX_SILENCE_SECONDS` | what each ingest daemon reads, which venue it connects to, at what bar size, and how long silence is tolerated before it reconnects (empty: the venue's own 60 s) — one symbol and venue per process |
 | `CHANNELFLOW_LOG_LEVEL`, `CHANNELFLOW_LOG_MAX_SIZE`, `CHANNELFLOW_LOG_MAX_FILE` | how loud the ingest daemons are (empty is INFO), and the cap on every service's container log — 20 MB × 3 files by default |
 | `CHANNELFLOW_TIMEFRAMES`, `CHANNELFLOW_RESAMPLE_INTERVAL` | which timeframes the resampler builds from the one-minute series, and how often it runs ([[REQ-WP-073]]); `1M` is refused. The read API reads the same variable and reports the set at `GET /api/v1/timeframes` ([[REQ-WP-074]]) — one value for both processes, so what a chart offers cannot disagree with what exists |
 | `CHANNELFLOW_MAINTENANCE_INTERVAL`, `CHANNELFLOW_KEEP_DAYS` | how often maintenance runs, and what it may expire |
@@ -633,11 +634,24 @@ funding and basis (named in `channelflow/context/sources.py`, with the one list 
 polls `ETH-USDT-SWAP` and `SOL-USDT-SWAP`. Three more series make the worker's cycle longer: more channels, signals and
 notary records per cycle.
 
+**The DEX panes** ([REQ-WP-099]). One more service, `context-hyperevm`, reads HyperEVM's public JSON-RPC
+(`CHANNELFLOW_DEX_RPC_URL`; the default node needs no key) for the two busiest WHYPE/USDC pools on chain 999 -- a
+Uniswap v3 pool and an Algebra Integral pool, pinned in `channelflow/dex/hyperevm_pools.py` because they emit the
+same `Swap` topic and are different protocols. Every 30 seconds it stores the swaps of the blocks it has not yet
+read in `dex_swaps` and, once caught up, one reading of each pool (liquidity, price, fee) in `dex_state`. The node
+refuses `eth_getLogs` over 1000 blocks and rate-limits within seconds of a burst -- inside an HTTP 200 -- so a gap
+is asked for in pieces, a few per poll, and a failed request stores nothing and moves nothing. A restart resumes after
+the last stored block. The features are written for **Bybit's HYPE perpetual**, a perpetual ingested for the purpose
+(`ingest-bybit-hype`) because HyperEVM has no bars: swap imbalance over the trailing five minutes (both pools) and the
+Uniswap v3 pool's active liquidity. A window in which the collector did not read every pool in every minute has **no**
+imbalance -- a quiet minute is a fact only where the collector was there -- and neither has a window with no swap.
+`CONTEXT_HYPEREVM_PORT` (9104) serves `/healthz` and `/metrics`.
+
 **The consensus** ([REQ-WP-096]). The worker turns the quotes into the cross-venue consensus: one `consensus`
 row per minute close (every bar close is one), by the library's own median, a refusal stored with its reason and
 no price. Consensus is per asset and market type, never blended: Bybit and OKX BTC are both perpetuals and form
-one group; Binance's series are spot and no other spot venue is ingested, so a spot group has one venue and is
-refused every minute -- which is what the Binance venue-basis pane then says. The API asks for a consensus by the
+one group; Binance's and OKX's spot series form the spot groups (two venues each, since [REQ-WP-098]); a group with one
+venue is refused for that minute, and the venue-basis pane says so. The API asks for a consensus by the
 viewed venue's symbol, so a group is stored under every symbol its members use (Bybit's BTCUSDT and OKX's BTC-USDT-SWAP).
 `make panes-report` reads the running API and prints, for every market and timeframe, each lower pane as `data`,
 `absent` with the reason the system gave, or `no-producer` (empty, and nothing says why: exit 1).
@@ -645,7 +659,7 @@ viewed venue's symbol, so a group is stored under every symbol its members use (
 Start them without recreating anything else:
 
 ```
-docker compose up -d --no-deps context-binance context-bybit context-okx
+docker compose up -d --no-deps context-binance context-bybit context-okx context-hyperevm
 ```
 
 and read each one's log first (`docker logs channelflow-context-bybit-1`).

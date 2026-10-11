@@ -5,7 +5,7 @@
 # Patterns are TOML *literal* strings on purpose: the basic form treats a
 # trailing backslash as a line continuation and eats the next line's indentation.
 source = "src/channelflow/pipeline/context_pass.py"
-tests = ["tests/unit/pipeline/test_context_pass.py", "tests/unit/pipeline/test_context_pass_liquidations.py", "tests/unit/pipeline/test_context_pass_book.py"]
+tests = ["tests/unit/pipeline/test_context_pass.py", "tests/unit/pipeline/test_context_pass_liquidations.py", "tests/unit/pipeline/test_context_pass_book.py", "tests/unit/pipeline/test_context_pass_dex.py"]
 
 [[mutation]]
 name = "a bar that is not final gets a row"
@@ -81,3 +81,26 @@ name = "a series is given the book of its perpetual instead of its own market"
 find = '''        series_minutes = minutes.get((venue, symbol))'''
 replace = '''        series_minutes = minutes.get((venue, sources.perpetual_for(venue, symbol) or symbol))'''
 survives = '''Equivalent while a series and its perpetual have the same symbol, which they do for every series the deployment shows (the Binance spot BTCUSDT and its USDT-M perpetual BTCUSDT are both "BTCUSDT"); the distinction is by market type, not by symbol, and is kept by `MARKET_TYPE` in the stream module and asserted there. The pass test with a differently named second stream proves the lookup uses the series' own name.'''
+
+# REQ-WP-099: the DEX features are written for the series the pools price, from the chain's own rows.
+
+[[mutation]]
+name = "the dex features are written for every series"
+find = '''        if (venue, symbol) == hyperevm_pools.SERIES and dex is not None:'''
+replace = '''        if dex is not None:'''
+
+[[mutation]]
+name = "a swap's ingest time is its event time"
+find = '''                ingest_time_ns=int(str(row["ingest_time_ns"])),'''
+replace = '''                ingest_time_ns=int(str(row["event_time_ns"])),'''
+
+[[mutation]]
+name = "another chain's swaps are read as the pools'"
+find = '''        if row["chain_id"] == chain'''
+replace = '''        if True'''
+
+[[mutation]]
+name = "the dex features are not part of the watermark"
+find = '''BOOK_FEATURES + DEX_FEATURES)'''
+replace = '''BOOK_FEATURES)'''
+

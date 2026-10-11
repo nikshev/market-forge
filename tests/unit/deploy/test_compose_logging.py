@@ -66,9 +66,29 @@ def test_every_ingest_service_is_handed_the_silence_limit_and_the_log_level() ->
     the code and not in the deployment."""
     ingest = {name: d for name, d in services().items() if name.startswith("ingest-")}
 
-    # Five before, and the three OKX spot symbols (REQ-WP-098).
-    assert len(ingest) == 8
+    # Five before, the three OKX spot symbols (REQ-WP-098) and the HYPE perpetual (REQ-WP-099).
+    assert len(ingest) == 9
     for name, definition in ingest.items():
         environment = definition["environment"]
         assert "CHANNELFLOW_INGEST_MAX_SILENCE_SECONDS" in environment, name
         assert "CHANNELFLOW_LOG_LEVEL" in environment, name
+
+
+@pytest.mark.trace("REQ-WP-099")
+def test_the_dex_collector_is_a_service_that_reports_its_own_health_and_holds_no_key() -> None:
+    definition = services()["context-hyperevm"]
+
+    assert "channelflow.pipeline.dex_main" in definition["command"]
+    assert "healthcheck" in definition
+    assert definition["restart"] == "unless-stopped"
+    secrets = [k for k in definition["environment"] if "KEY" in k and "S3" not in k]
+    assert secrets == []
+    assert definition["logging"]["options"]["max-size"] == "${CHANNELFLOW_LOG_MAX_SIZE:-20m}"
+
+
+@pytest.mark.trace("REQ-WP-099")
+def test_the_hype_ingest_service_reads_the_hype_symbol_from_bybit() -> None:
+    environment = services()["ingest-bybit-hype"]["environment"]
+
+    assert environment["CHANNELFLOW_INGEST_VENUE"] == "bybit"
+    assert environment["CHANNELFLOW_INGEST_SYMBOLS"].endswith(":-HYPEUSDT}")

@@ -426,3 +426,59 @@ def test_the_two_repositories_agree_about_as_of(catalog: Catalog) -> None:
             band.state_time_ns for band in from_memory
         }, at_ns
         assert len(from_lakehouse) == len(from_memory), at_ns
+
+
+@pytest.mark.trace("REQ-WP-099")
+def test_a_swap_keeps_the_time_it_was_stored_apart_from_the_time_it_happened(
+    catalog: Catalog,
+) -> None:
+    """A close counts a swap only if it was stored by then; the block's time cannot say."""
+    table = dex_swaps.table_for(catalog)
+    sink = dex_swaps.DexSwapSink(table=table)
+    swap = _swap()
+    sink(swap)
+    sink.flush()
+
+    (row,) = table.read().to_pylist()
+
+    assert row["ingest_time_ns"] == swap.meta.ingest_time_ns
+    assert row["ingest_time_ns"] != row["event_time_ns"]
+
+
+@pytest.mark.trace("REQ-WP-099")
+def test_a_pool_reading_is_a_partial_ticks_state_that_the_liquidity_feature_accepts(
+    catalog: Catalog,
+) -> None:
+    from channelflow.features.dex import LiquidityReading, active_liquidity_at
+    from channelflow.tables import dex_state
+
+    row = dex_state.reading_row(
+        chain_id=999,
+        venue="hyperevm",
+        protocol="uniswap_v3",
+        pool="0xpool",
+        state_time_ns=5,
+        reference_price=Decimal("41.5"),
+        active_liquidity=2**100,
+        fee_state=500,
+        block=123,
+    )
+    table = dex_state.table_for(catalog)
+    sink = dex_state.DexStateSink(table)
+    sink(row)
+    sink.flush()
+
+    (stored,) = dex_state.read_states(table)
+
+    assert stored.reconstruction_quality == "partial_ticks"
+    assert stored.active_liquidity == 2**100
+    assert (stored.from_block, stored.to_block) == (123, 123)
+    assert stored.initialized_ticks == 0
+    assert active_liquidity_at(
+        [
+            LiquidityReading(
+                stored.state_time_ns, stored.active_liquidity, stored.reconstruction_quality
+            )
+        ],
+        at_ns=10,
+    ) == float(2**100)

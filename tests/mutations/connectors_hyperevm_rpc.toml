@@ -1,0 +1,67 @@
+# REQ-WP-099: HyperEVM's node client. The mutations are the ways a failure could be read as a quiet answer,
+# a range sent that the node refuses, or a pool's state read from the wrong word.
+#
+# Patterns are TOML *literal* strings on purpose: the basic form treats a
+# trailing backslash as a line continuation and eats the next line's indentation.
+source = "src/channelflow/connectors/hyperevm/rpc.py"
+tests = ["tests/unit/connectors/hyperevm/test_rpc.py"]
+
+[[mutation]]
+name = "a rate limit inside a 200 answer is an ordinary failure"
+find = '''            if code == RATE_LIMITED_CODE:'''
+replace = '''            if False:'''
+
+[[mutation]]
+name = "http 429 is not a rate limit"
+find = '''        if response.status_code == 429:'''
+replace = '''        if False:'''
+
+[[mutation]]
+name = "a non-200 status is trusted"
+find = '''        if response.status_code != 200:'''
+replace = '''        if False:'''
+
+[[mutation]]
+name = "an answer with no result is accepted"
+find = '''        if "result" not in body:'''
+replace = '''        if False:'''
+
+[[mutation]]
+name = "the widest range is refused one block early"
+find = '''        if to_block - from_block + 1 > MAX_BLOCK_RANGE:'''
+replace = '''        if to_block - from_block + 1 >= MAX_BLOCK_RANGE:'''
+
+[[mutation]]
+name = "an over-wide range is sent to the node"
+find = '''        if to_block - from_block + 1 > MAX_BLOCK_RANGE:'''
+replace = '''        if False:'''
+
+[[mutation]]
+name = "an algebra pool's fee is taken from the pool configuration"
+find = '''        fee = _word(state, 2, endpoint=endpoint) if algebra else pool.fee_pips'''
+replace = '''        fee = pool.fee_pips'''
+
+[[mutation]]
+name = "the tick is read unsigned"
+find = '''            tick=_signed(_word(state, 1, endpoint=endpoint)),'''
+replace = '''            tick=_word(state, 1, endpoint=endpoint),'''
+
+[[mutation]]
+name = "the price is read from the tick word"
+find = '''            sqrt_price_x96=_word(state, 0, endpoint=endpoint),'''
+replace = '''            sqrt_price_x96=_word(state, 1, endpoint=endpoint),'''
+
+[[mutation]]
+name = "an algebra pool is asked slot0"
+find = '''            pool.address, GLOBAL_STATE_SELECTOR if algebra else SLOT0_SELECTOR, block'''
+replace = '''            pool.address, SLOT0_SELECTOR, block'''
+
+[[mutation]]
+name = "the reading is taken at the latest block and not the one asked for"
+find = '''        result = self._rpc.call("eth_call", [{"to": pool, "data": selector}, hex(block)])'''
+replace = '''        result = self._rpc.call("eth_call", [{"to": pool, "data": selector}, "latest"])'''
+
+[[mutation]]
+name = "a short word is padded instead of refused"
+find = '''    if len(chunk) != WORD_HEX:'''
+replace = '''    if False:'''

@@ -25,7 +25,7 @@ def test_an_unknown_venue_is_refused_naming_the_known_ones() -> None:
     ("venue", "symbols"),
     [
         ("binance", ("BTCUSDT", "ETHUSDT", "SOLUSDT")),
-        ("bybit", ("BTCUSDT",)),
+        ("bybit", ("BTCUSDT", "HYPEUSDT")),
         ("okx", ("BTC-USDT-SWAP", "ETH-USDT-SWAP", "SOL-USDT-SWAP")),
     ],
 )

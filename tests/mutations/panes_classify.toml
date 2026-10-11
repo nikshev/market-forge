@@ -55,11 +55,21 @@ find = '''        if evidence.feature_counts.get(LIQUIDATION_COVERAGE, 0) > 0:''
 replace = '''        if True:'''
 
 [[mutation]]
-name = "a dex pane is not excused"
-find = '''    if feature in NO_SOURCE_IN_DEPLOYMENT:
-        return PaneState(ABSENT, NO_SOURCE_IN_DEPLOYMENT[feature])'''
-replace = '''    if False:
-        return PaneState(ABSENT, NO_SOURCE_IN_DEPLOYMENT[feature])'''
+name = "a market with no pool is blamed on the collector"
+find = '''        if not evidence.has_dex_pool:
+            return PaneState(ABSENT, NO_POOL_REASON)'''
+replace = '''        if False:
+            return PaneState(ABSENT, NO_POOL_REASON)'''
+
+[[mutation]]
+name = "a pool market with a reading but no swap is called broken"
+find = '''        if feature == "dex_swap_imbalance" and evidence.feature_counts.get("dex_active_liquidity"):'''
+replace = '''        if False:'''
+
+[[mutation]]
+name = "a pool market with no reading is excused"
+find = '''        return PaneState(NO_PRODUCER, "the DEX collector stored no pool reading for this range")'''
+replace = '''        return PaneState(ABSENT, "the DEX collector stored no pool reading for this range")'''
 
 [[mutation]]
 name = "a boolean is counted as a value"

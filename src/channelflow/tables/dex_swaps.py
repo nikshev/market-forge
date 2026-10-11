@@ -1,6 +1,7 @@
 """PRD §18.12.1's `NormalizedSwap`, as a canonical table.
 
 # @trace: REQ-WP-053
+# @trace: REQ-WP-099
 
 PRD §18.12 asks protocol adapters to emit "common **economic primitives**, not a
 fake common state model", and §6.4 makes Iceberg the canonical analytical
@@ -47,6 +48,9 @@ TABLE_NAME = "dex_swaps"
 SCHEMA = Schema(
     columns=(
         Column(name="event_time_ns", type="timestamp_ns"),
+        # When this system stored the swap: a swap is knowable at a close only if it was stored by
+        # then, and the block's time alone cannot say (REQ-WP-099).
+        Column(name="ingest_time_ns", type="int64"),
         Column(name="chain_id", type="int64"),
         Column(name="block_number", type="int64"),
         Column(name="tx_hash", type="string"),
@@ -88,6 +92,7 @@ def to_row(swap: DexSwapEvent) -> dict[str, object]:
     """One swap as a row."""
     return {
         "event_time_ns": swap.meta.event_time_ns,
+        "ingest_time_ns": swap.meta.ingest_time_ns,
         "chain_id": swap.chain.chain_id,
         "block_number": swap.chain.block_number,
         "tx_hash": swap.chain.tx_hash,

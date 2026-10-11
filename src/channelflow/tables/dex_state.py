@@ -2,6 +2,7 @@
 
 # @trace: REQ-WP-060
 # @trace: REQ-WP-063
+# @trace: REQ-WP-099
 
     venue / protocol / pool_id / reference_price / state_time / available_at /
     model_type / active_liquidity nullable / reserve_state nullable /
@@ -120,6 +121,46 @@ def to_row(
         "initialized_ticks": len(state.initialized_ticks),
         "from_block": provenance.from_block,
         "to_block": provenance.to_block,
+    }
+
+
+def reading_row(
+    *,
+    chain_id: int,
+    venue: str,
+    protocol: str,
+    pool: str,
+    state_time_ns: int,
+    reference_price: Decimal,
+    active_liquidity: int,
+    fee_state: int,
+    block: int,
+) -> dict[str, object]:
+    """A pool read directly from the contract at one block, as a row (REQ-WP-099).
+
+    **Graded `partial_ticks`, and that is the truth rather than a shortfall**: the reading has the
+    pool's own `liquidity()` and no tick map, so the map accounts for none of it
+    (`implied_active_liquidity` is zero, `initialized_ticks` zero). `dex_active_liquidity` accepts
+    this grade by design -- the figure is the pool's own report and a tick map says nothing about it
+    -- while a depth traversal refuses it.
+    """
+    return {
+        "state_time_ns": state_time_ns,
+        "chain_id": chain_id,
+        "venue": venue,
+        "protocol": protocol,
+        "pool": pool,
+        "reference_price": reference_price,
+        "model_type": CONCENTRATED_LIQUIDITY,
+        "active_liquidity": str(active_liquidity),
+        "reserve_state": None,
+        "invariant_state": None,
+        "fee_state": fee_state,
+        "reconstruction_quality": str(ReconstructionQuality.PARTIAL_TICKS),
+        "implied_active_liquidity": "0",
+        "initialized_ticks": 0,
+        "from_block": block,
+        "to_block": block,
     }
 
 

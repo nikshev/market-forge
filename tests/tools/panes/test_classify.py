@@ -51,16 +51,37 @@ def test_volume_is_read_from_the_bars_not_from_a_feature() -> None:
     assert classify("volume", evidence(bars=0)).state == NO_PRODUCER
 
 
-@pytest.mark.trace("REQ-WP-097")
-def test_the_dex_panes_are_absent_with_the_one_reason_the_module_states() -> None:
+@pytest.mark.trace("REQ-WP-099")
+def test_a_market_with_no_registered_pool_says_so_and_does_not_blame_the_collector() -> None:
     for feature in ("dex_swap_imbalance", "dex_active_liquidity"):
         state = classify(feature, evidence())
-        assert state.state == ABSENT and "no DEX source" in state.reason
+        assert state.state == ABSENT and "no DEX pool is registered for this asset" in state.reason
 
 
-@pytest.mark.trace("REQ-WP-097")
-def test_a_dex_pane_that_has_data_is_data_whatever_the_deployment_says() -> None:
+@pytest.mark.trace("REQ-WP-099")
+def test_a_dex_pane_that_has_data_is_data_whatever_the_market_says() -> None:
     assert classify("dex_swap_imbalance", evidence({"dex_swap_imbalance": 1})).state == DATA
+
+
+def dex_evidence(counts: dict[str, int] | None = None) -> Evidence:
+    return Evidence(counts or {}, 10, None, None, has_dex_pool=True)
+
+
+@pytest.mark.trace("REQ-WP-099")
+def test_a_pool_market_with_liquidity_but_no_imbalance_is_a_quiet_window_the_collector_saw() -> (
+    None
+):
+    state = classify("dex_swap_imbalance", dex_evidence({"dex_active_liquidity": 12}))
+
+    assert state.state == ABSENT
+    assert "no swap" in state.reason and "listening" in state.reason
+
+
+@pytest.mark.trace("REQ-WP-099")
+def test_a_pool_market_with_no_reading_at_all_is_no_producer() -> None:
+    for feature in ("dex_swap_imbalance", "dex_active_liquidity"):
+        state = classify(feature, dex_evidence())
+        assert state.state == NO_PRODUCER and "collector" in state.reason
 
 
 # --- reasons come from the system ---
@@ -304,3 +325,21 @@ def test_the_same_refusal_at_a_thousand_instants_is_one_reason() -> None:
 
     assert state.state == ABSENT
     assert state.reason == "only 1 venue(s) could contribute at the close; a median"
+
+
+@pytest.mark.trace("REQ-WP-099")
+def test_only_the_market_the_pools_price_is_gathered_as_having_a_dex_pool() -> None:
+    from channelflow.dex import hyperevm_pools
+
+    venue, symbol = hyperevm_pools.SERIES
+    api = fake_api(features={}, consensus=(404, {"detail": "none"}))
+
+    pool = report.gather(
+        api, venue=venue, symbol=symbol, timeframe_ns=60 * NS, start_ns=0, end_ns=NS
+    )
+    other = report.gather(
+        api, venue="bybit", symbol="BTCUSDT", timeframe_ns=60 * NS, start_ns=0, end_ns=NS
+    )
+
+    assert pool.has_dex_pool is True
+    assert other.has_dex_pool is False

@@ -1,6 +1,7 @@
 """The worker's context-feature pass: open interest, funding (z) and basis at each bar's close.
 
 # @trace: REQ-WP-093
+# @trace: REQ-WP-099
 
 Reads the collector's `derivatives_state` rows once and, for every series with bars, writes the
 context features at every final bar's close ([[ADR-070]]: the worker is the only writer of
@@ -20,14 +21,18 @@ from __future__ import annotations
 from bisect import bisect_right
 from collections import defaultdict
 from collections.abc import Sequence
+from decimal import Decimal
 
 import pyarrow as pa
 import pyarrow.compute as pc
 
 from channelflow.bars.models import Bar
 from channelflow.context import sources
+from channelflow.dex import hyperevm_pools
 from channelflow.features.book_values import BOOK_FEATURES, book_values
 from channelflow.features.context_values import CONTEXT_FEATURES, StateIndex, context_values
+from channelflow.features.dex import LiquidityReading
+from channelflow.features.dex_values import DEX_FEATURES, DexSeries, StoredSwap
 from channelflow.features.liquidation_values import (
     LIQUIDATION_FEATURES,
     WINDOW_NS,
@@ -36,6 +41,8 @@ from channelflow.features.liquidation_values import (
 from channelflow.lakehouse import Catalog, IcebergTable
 from channelflow.tables import book_minutes as book_table
 from channelflow.tables import derivatives_state as state_table
+from channelflow.tables import dex_state as dex_state_table
+from channelflow.tables import dex_swaps as dex_swaps_table
 from channelflow.tables import features as features_table
 from channelflow.tables import liquidations as liquidation_table
 
@@ -65,7 +72,7 @@ def latest_context_times(table: IcebergTable) -> dict[tuple[str, str, int, str],
 
 
 def _names_array() -> pa.Array:
-    return pa.array(CONTEXT_FEATURES + LIQUIDATION_FEATURES + BOOK_FEATURES)
+    return pa.array(CONTEXT_FEATURES + LIQUIDATION_FEATURES + BOOK_FEATURES + DEX_FEATURES)
 
 
 def write_context_features(catalog: Catalog, all_bars: Sequence[Bar]) -> int:
@@ -84,6 +91,7 @@ def write_context_features(catalog: Catalog, all_bars: Sequence[Bar]) -> int:
         states = state_table.read_states(state_table.table_for(catalog))
         events, heartbeats = liquidation_table.read(liquidation_table.table_for(catalog))
         minutes = book_table.read_minutes(book_table.table_for(catalog))
+        dex = _dex_series(catalog)
         table = features_table.features_table_for(catalog)
         latest = latest_context_times(table)
     except Exception as cause:  # noqa: BLE001 -- the channel step must still run
@@ -118,6 +126,16 @@ def write_context_features(catalog: Catalog, all_bars: Sequence[Bar]) -> int:
                     )
             except Exception as cause:  # noqa: BLE001 -- one series must not end the pass
                 _report(venue, symbol, tf_minutes, "book", cause)
+
+        if (venue, symbol) == hyperevm_pools.SERIES and dex is not None:
+            try:
+                for bar in ordered:
+                    values = dex.values(bar.close_time_ns)
+                    pending.extend(
+                        _fresh_rows(latest, venue, symbol, timeframe_ns, bar.close_time_ns, values)
+                    )
+            except Exception as cause:  # noqa: BLE001 -- one series must not end the pass
+                _report(venue, symbol, tf_minutes, "dex", cause)
 
         perpetual = sources.perpetual_for(venue, symbol)
         if perpetual is None:
@@ -168,6 +186,48 @@ def write_context_features(catalog: Catalog, all_bars: Sequence[Bar]) -> int:
             )
     print(f"  context rows written: {written}", flush=True)
     return written
+
+
+def _dex_series(catalog: Catalog) -> DexSeries | None:
+    """The stored swaps and pool readings of the registered pools, indexed; `None` if none exist.
+
+    The pools price one market ([[REQ-WP-099]]), so there is one index and the pass looks it up by
+    that series. Rows of another chain are not read as these pools' (the chain id is checked).
+    """
+    chain = hyperevm_pools.CHAIN_ID
+    swap_rows = [
+        dex_swaps_table.from_row(row)
+        for row in dex_swaps_table.table_for(catalog).read().to_pylist()
+        if row["chain_id"] == chain
+    ]
+    readings = [
+        r for r in dex_state_table.read_states(dex_state_table.table_for(catalog), chain_id=chain)
+    ]
+    if not swap_rows and not readings:
+        return None
+    by_pool: dict[str, list[LiquidityReading]] = defaultdict(list)
+    for r in readings:
+        by_pool[r.pool].append(
+            LiquidityReading(
+                state_time_ns=r.state_time_ns,
+                active_liquidity=r.active_liquidity,
+                quality=r.reconstruction_quality,
+            )
+        )
+    return DexSeries(
+        [
+            StoredSwap(
+                pool=str(row["pool"]),
+                event_time_ns=int(str(row["event_time_ns"])),
+                ingest_time_ns=int(str(row["ingest_time_ns"])),
+                amount0=Decimal(str(row["amount0"])),
+            )
+            for row in swap_rows
+        ],
+        by_pool,
+        pools=[pool.address for pool in hyperevm_pools.POOLS],
+        liquidity_pool=hyperevm_pools.LIQUIDITY_POOL,
+    )
 
 
 def _fresh_rows(

@@ -2,6 +2,7 @@
 
 # @trace: REQ-WP-059
 # @trace: REQ-WP-063
+# @trace: REQ-WP-099
 
     "Since AMM does not expose a traditional bid/ask queue, compute: signed swap
     USD flow; swap count; large swap share; price impact per USD; tick velocity;
@@ -40,9 +41,9 @@ from __future__ import annotations
 from collections.abc import Sequence
 from dataclasses import dataclass
 from decimal import Decimal
+from typing import Protocol
 
 from channelflow.dex.reconstruction import ReconstructionQuality
-from channelflow.domain import DexSwapEvent
 from channelflow.features.registry import FeatureSpec, register
 
 FEATURES: tuple[str, ...] = ("dex_swap_imbalance", "dex_active_liquidity")
@@ -77,9 +78,26 @@ class SwapImbalance:
         return self.signed / self.gross
 
 
-def swap_imbalance(
-    swaps: Sequence[DexSwapEvent], *, as_of_ns: int, window_ns: int
-) -> SwapImbalance:
+class _HasEventTime(Protocol):
+    @property
+    def event_time_ns(self) -> int: ...
+
+
+class SwapLike(Protocol):
+    """What the imbalance reads of a swap: when it happened and how much token0 moved.
+
+    A protocol so a swap read back from the table ([[REQ-WP-099]]) -- which has no `EventMeta` to
+    rebuild -- is not pretended into a `DexSwapEvent` to be summed; `DexSwapEvent` satisfies it.
+    """
+
+    @property
+    def meta(self) -> _HasEventTime: ...
+
+    @property
+    def amount0(self) -> Decimal: ...
+
+
+def swap_imbalance(swaps: Sequence[SwapLike], *, as_of_ns: int, window_ns: int) -> SwapImbalance:
     """Everything swapped in `(as_of_ns - window_ns, as_of_ns]`.
 
     Half-open at the floor and closed at `as_of_ns`, as every other windowed

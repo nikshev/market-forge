@@ -1,4 +1,5 @@
 # @trace: REQ-WP-097
+# @trace: REQ-WP-099
 """The three states a lower pane can be in, decided from the API's own answers.
 
 * `data`: at least one point in the loaded range carries the pane's feature.
@@ -10,9 +11,10 @@
   page, exactly like a quiet market.
 
 The reasons come from the system's answers, never from a list of excuses kept here. The one
-exception is stated: the DEX panes have no source in this deployment (no ingest, no compose
-service), so their absence is reported as exactly that -- a true reason, named, and the only place
-this module knows a fact the API does not tell it.
+exception is stated: the DEX panes exist for the market the registered pools price
+(`Evidence.has_dex_pool`, [[REQ-WP-099]]) and for no other, so on any other market their absence is
+reported as exactly that -- a true reason, named, and the only place this module knows a fact the
+API does not tell it.
 """
 
 from __future__ import annotations
@@ -26,12 +28,10 @@ DATA = "data"
 ABSENT = "absent"
 NO_PRODUCER = "no-producer"
 
-#: Feature panes whose source this deployment does not have. Named here, not discovered: the API
-#: cannot say "I have no DEX ingest", and saying nothing would report them as NO PRODUCER for ever.
-NO_SOURCE_IN_DEPLOYMENT: Mapping[str, str] = {
-    "dex_swap_imbalance": "no DEX source: this deployment runs no DEX ingest",
-    "dex_active_liquidity": "no DEX source: this deployment runs no DEX ingest",
-}
+#: The DEX panes, whose source is a pool and not a market: they have data only on the series the
+#: registered pools price. Named here because the API cannot say "this asset has no pool".
+DEX_FEATURES = ("dex_swap_imbalance", "dex_active_liquidity")
+NO_POOL_REASON = "no DEX pool is registered for this asset"
 
 #: The feature rows that prove a liquidation stream was listening for a window: a covered window
 #: writes both USD sums (zero is a reading there), an uncovered one writes none.
@@ -61,6 +61,8 @@ class Evidence:
     #: failed (a 404 for a market with no consensus rows).
     consensus_reasons: Sequence[str] | None
     consensus_error: str | None = None
+    #: Whether a registered DEX pool prices this market (REQ-WP-099).
+    has_dex_pool: bool = False
 
 
 def _without_instant(reason: str) -> str:
@@ -85,8 +87,16 @@ def classify(feature: str, evidence: Evidence) -> PaneState:
     if evidence.feature_counts.get(feature, 0) > 0:
         return PaneState(DATA)
 
-    if feature in NO_SOURCE_IN_DEPLOYMENT:
-        return PaneState(ABSENT, NO_SOURCE_IN_DEPLOYMENT[feature])
+    if feature in DEX_FEATURES:
+        if not evidence.has_dex_pool:
+            return PaneState(ABSENT, NO_POOL_REASON)
+        if feature == "dex_swap_imbalance" and evidence.feature_counts.get("dex_active_liquidity"):
+            return PaneState(
+                ABSENT,
+                "no swap in the range, and the collector was listening "
+                f"({evidence.feature_counts['dex_active_liquidity']} pool readings)",
+            )
+        return PaneState(NO_PRODUCER, "the DEX collector stored no pool reading for this range")
 
     if feature == "venue_basis_bps":
         if evidence.consensus_reasons:

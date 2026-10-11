@@ -1,0 +1,91 @@
+# REQ-WP-099: the DEX collector. The mutations are the ways a swap could be lost, stored twice, dated by the wrong
+# clock or priced in the wrong units, and the ways a pool reading could claim the collector was listening when it
+# was not.
+#
+# Patterns are TOML *literal* strings on purpose: the basic form treats a
+# trailing backslash as a line continuation and eats the next line's indentation.
+source = "src/channelflow/dex/hyperevm_collect.py"
+tests = ["tests/unit/dex/test_hyperevm_collect.py"]
+
+[[mutation]]
+name = "the head block itself is read"
+find = '''            safe = head - FINALITY_DEPTH'''
+replace = '''            safe = head'''
+
+[[mutation]]
+name = "a piece is one block too wide"
+find = '''            end = min(safe, start + MAX_BLOCK_RANGE - 1)'''
+replace = '''            end = min(safe, start + MAX_BLOCK_RANGE)'''
+
+[[mutation]]
+name = "the cursor jumps to the safe head after the first piece"
+find = '''            self.cursor = end'''
+replace = '''            self.cursor = safe'''
+
+[[mutation]]
+name = "a block already stored is stored again"
+find = '''            if _hex(log, "blockNumber") < start:'''
+replace = '''            if False:'''
+
+[[mutation]]
+name = "a reading is stored while the swaps are behind"
+find = '''            if caught_up:'''
+replace = '''            if True:'''
+
+[[mutation]]
+name = "a catch-up is not spread over polls"
+find = '''            if pieces == MAX_PIECES_PER_POLL:'''
+replace = '''            if False:'''
+
+[[mutation]]
+name = "a rate limit waits only the cadence"
+find = '''            self._next_poll_ns = max(regular, now + int(exc.retry_after_s * SECOND_NS))'''
+replace = '''            self._next_poll_ns = regular'''
+
+[[mutation]]
+name = "a swap is dated by our clock"
+find = '''            event_time_ns=block_time_ns,'''
+replace = '''            event_time_ns=ingest_time_ns,'''
+
+[[mutation]]
+name = "a swap is stored as ingested at its block's time"
+find = '''            ingest_time_ns=ingest_time_ns,'''
+replace = '''            ingest_time_ns=block_time_ns,'''
+
+[[mutation]]
+name = "a removed log is a swap"
+find = '''    if log.get("removed"):'''
+replace = '''    if False:'''
+
+[[mutation]]
+name = "the price ignores the token decimals"
+find = '''    scale = Decimal(10) ** (registry.DECIMALS[pool.token0] - registry.DECIMALS[pool.token1])'''
+replace = '''    scale = Decimal(1)'''
+
+[[mutation]]
+name = "token0 is scaled by token1's decimals"
+find = '''        amount0=Decimal(decoded.amount0) / Decimal(10**d0),'''
+replace = '''        amount0=Decimal(decoded.amount0) / Decimal(10**d1),'''
+
+[[mutation]]
+name = "a first run starts at the head and not behind it"
+find = '''            self.cursor = safe - START_LOOKBACK_BLOCKS'''
+replace = '''            self.cursor = safe'''
+
+[[mutation]]
+name = "a log that cannot be read is not counted"
+find = '''                self.status.record_failure("log")'''
+replace = '''                pass'''
+
+[[mutation]]
+name = "a poll that failed still counts as a success"
+find = '''            self._failed(exc)
+            return
+        self.status.record_success()'''
+replace = '''            self._failed(exc)
+        self.status.record_success()'''
+
+[[mutation]]
+name = "a reading is dated by the head block's number and not the poll"
+find = '''                    state_time_ns=now,'''
+replace = '''                    state_time_ns=head,'''

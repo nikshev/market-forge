@@ -19,7 +19,7 @@ def test_the_series_list_names_every_market_the_deployment_ingests_with_its_type
 @pytest.mark.trace("REQ-WP-098")
 def test_the_book_symbols_of_a_venue_are_its_own_series_not_its_perpetuals() -> None:
     assert sources.book_symbols_for("binance") == ("BTCUSDT", "ETHUSDT", "SOLUSDT")
-    assert sources.book_symbols_for("bybit") == ("BTCUSDT",)
+    assert sources.book_symbols_for("bybit") == ("BTCUSDT", "HYPEUSDT")
     assert sources.book_symbols_for("okx") == ("BTC-USDT", "BTC-USDT-SWAP", "ETH-USDT", "SOL-USDT")
 
 
@@ -27,7 +27,7 @@ def test_the_book_symbols_of_a_venue_are_its_own_series_not_its_perpetuals() -> 
 def test_the_derivative_symbols_of_a_venue_are_the_perpetuals_its_series_are_shown() -> None:
     assert sources.symbols_for("okx") == ("BTC-USDT-SWAP", "ETH-USDT-SWAP", "SOL-USDT-SWAP")
     assert sources.symbols_for("binance") == ("BTCUSDT", "ETHUSDT", "SOLUSDT")
-    assert sources.symbols_for("bybit") == ("BTCUSDT",)
+    assert sources.symbols_for("bybit") == ("BTCUSDT", "HYPEUSDT")
 
 
 @pytest.mark.trace("REQ-WP-098")
@@ -59,3 +59,13 @@ def test_the_market_type_of_a_series_is_asked_by_venue_and_symbol() -> None:
     assert sources.market_type_of("bybit", "BTCUSDT") == "perp"
     with pytest.raises(KeyError):
         sources.market_type_of("kraken", "BTCUSDT")
+
+
+@pytest.mark.trace("REQ-WP-099")
+def test_the_series_the_dex_pools_are_shown_on_is_an_ingested_perpetual_with_derivatives() -> None:
+    from channelflow.dex import hyperevm_pools
+
+    venue, symbol = hyperevm_pools.SERIES
+
+    assert sources.market_type_of(venue, symbol) == "perp"
+    assert sources.perpetual_for(venue, symbol) == symbol

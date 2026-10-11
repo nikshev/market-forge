@@ -1,0 +1,69 @@
+# REQ-WP-099: the DEX features at a close. The mutations are the ways a value could be made of something that
+# was not knowable at the close, a window the collector did not watch could be read as a quiet one, or a stale
+# liquidity could be shown as the pool's now.
+#
+# Patterns are TOML *literal* strings on purpose: the basic form treats a
+# trailing backslash as a line continuation and eats the next line's indentation.
+source = "src/channelflow/features/dex_values.py"
+tests = ["tests/unit/features/test_dex_values.py", "tests/unit/pipeline/test_context_pass_dex.py"]
+
+[[mutation]]
+name = "a swap stored after the close is counted"
+find = '''            known = [s for s in self._swaps[lo:hi] if s.ingest_time_ns <= close_ns]'''
+replace = '''            known = list(self._swaps[lo:hi])'''
+
+[[mutation]]
+name = "a swap on the window's floor is counted"
+find = '''            lo = bisect_right(self._swap_times, close_ns - WINDOW_NS)'''
+replace = '''            lo = bisect_left(self._swap_times, close_ns - WINDOW_NS)'''
+survives = '''Equivalent, by design: `swap_imbalance` applies the same half-open window itself (`floor < event_time <= as_of`), so slicing at the floor here only narrows what it is handed. The library is the guard that matters, and its own tests pin the floor.'''
+
+[[mutation]]
+name = "a swap dated after the close is counted"
+find = '''            hi = bisect_right(self._swap_times, close_ns)'''
+replace = '''            hi = bisect_right(self._swap_times, close_ns + SECOND_NS)'''
+survives = '''Equivalent, by design: `swap_imbalance` excludes any swap after `as_of_ns`, so the slice's upper bound narrows the work and the library is the guard. The ingest-time test (a swap stored after the close) is the one that bites on this path, and it is caught.'''
+
+[[mutation]]
+name = "one covered pool covers the window"
+find = '''        if all('''
+replace = '''        if any('''
+
+[[mutation]]
+name = "an uncovered window is evaluated"
+find = '''            for pool in self._pools
+        ):
+            lo ='''
+replace = '''            for pool in self._pools
+        ) or True:
+            lo ='''
+
+[[mutation]]
+name = "a liquidity reading of any age is current"
+find = '''            bisect_left(times, close_ns - LIQUIDITY_STALENESS_NS) : bisect_right(times, close_ns)'''
+replace = '''            0 : bisect_right(times, close_ns)'''
+
+[[mutation]]
+name = "a reading from after the close is the liquidity"
+find = '''            bisect_left(times, close_ns - LIQUIDITY_STALENESS_NS) : bisect_right(times, close_ns)'''
+replace = '''            bisect_left(times, close_ns - LIQUIDITY_STALENESS_NS) : bisect_right(
+                times, close_ns + 10 * SECOND_NS
+            )'''
+survives = '''Equivalent, by design: `active_liquidity_at` takes only readings at or before `at_ns`, so the slice's upper bound is defence in depth. `test_the_imbalance_never_reads_a_reading_from_after_the_close_as_coverage` pins the coverage side, which has no library guard and is caught.'''
+
+[[mutation]]
+name = "the window is ten minutes"
+find = '''WINDOW_NS = 5 * MINUTE_NS'''
+replace = '''WINDOW_NS = 10 * MINUTE_NS'''
+
+[[mutation]]
+name = "staleness is thirty polls"
+find = '''LIQUIDITY_STALENESS_NS = 3 * 30 * SECOND_NS'''
+replace = '''LIQUIDITY_STALENESS_NS = 30 * 30 * SECOND_NS'''
+
+[[mutation]]
+name = "a quiet covered window reads zero"
+find = '''            if imbalance is not None:'''
+replace = '''            if True:
+                imbalance = imbalance or 0.0
+            if imbalance is not None:'''

@@ -15,6 +15,7 @@ import sys
 import time
 from collections.abc import Sequence
 
+from channelflow.dex import hyperevm_pools
 from tools.panes.classify import (
     NO_PRODUCER,
     Evidence,
@@ -62,7 +63,13 @@ def gather(
         error = f"HTTP {status}" + (
             f" {consensus.get('detail')}" if isinstance(consensus, dict) else ""
         )
-    return Evidence(counts, bar_count, reasons, error)
+    return Evidence(
+        counts,
+        bar_count,
+        reasons,
+        error,
+        has_dex_pool=(venue, symbol) == hyperevm_pools.SERIES,
+    )
 
 
 def run(

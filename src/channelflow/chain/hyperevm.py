@@ -1,6 +1,7 @@
 """PRD section 18.11.2's HyperEVM pool events and cross-layer transfers.
 
 # @trace: REQ-WP-058
+# @trace: REQ-WP-099
 
     "A HyperEVM AMM is analyzed according to **its AMM protocol**, not according
     to the Hyperliquid CLOB model."
@@ -32,7 +33,7 @@ and is a positive balance either way.
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Mapping
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from enum import StrEnum
 
@@ -226,25 +227,37 @@ def decode_swap(record: ChainRecord, pool: RegisteredPool) -> HyperEvmSwap:
     stays absent here and is supplied by `pair_fees`, because the log that
     carries it is a different log.
     """
-    if record.topic0 != SWAP_TOPIC0:
-        raise ValueError(f"{record.topic0} is not a HyperEVM swap")
-    if len(record.topics) != 3:
-        raise ValueError(f"a swap carries a sender and a recipient topic; got {len(record.topics)}")
-    body = record.data.removeprefix("0x")
+    return decode_swap_log(
+        topics=record.topics, data=record.data, address=record.address, pool=pool
+    )
+
+
+def decode_swap_log(
+    *, topics: Sequence[str], data: str, address: str, pool: RegisteredPool
+) -> HyperEvmSwap:
+    """`decode_swap` for a log that has not been made a `ChainRecord`.
+
+    [[REQ-WP-099]]'s collector reads logs straight off `eth_getLogs`, where a block's parent hash is
+    not part of the answer; a `ChainRecord` requires one, and inventing it would be a field that
+    looks like evidence and is not. The decoding needs only these four things, so it takes them.
+    """
+    if not topics or topics[0] != SWAP_TOPIC0:
+        raise ValueError(f"{topics[0] if topics else 'no topic'} is not a HyperEVM swap")
+    if len(topics) != 3:
+        raise ValueError(f"a swap carries a sender and a recipient topic; got {len(topics)}")
+    body = data.removeprefix("0x")
     if len(body) != 5 * 64:
-        raise ValueError(
-            f"a swap payload is five words; got {len(body) / 64:g} on {record.address}"
-        )
+        raise ValueError(f"a swap payload is five words; got {len(body) / 64:g} on {address}")
     return HyperEvmSwap(
         pool=pool.address,
         family=pool.family,
-        sender=topic_address(record.topics[1]),
-        recipient=topic_address(record.topics[2]),
-        amount0=signed_word(record.data, 0),
-        amount1=signed_word(record.data, 1),
-        sqrt_price_x96=unsigned_word(record.data, 2),
-        liquidity=unsigned_word(record.data, 3),
-        tick=signed_word(record.data, 4),
+        sender=topic_address(topics[1]),
+        recipient=topic_address(topics[2]),
+        amount0=signed_word(data, 0),
+        amount1=signed_word(data, 1),
+        sqrt_price_x96=unsigned_word(data, 2),
+        liquidity=unsigned_word(data, 3),
+        tick=signed_word(data, 4),
         fee_pips=pool.fee_pips,
     )
 

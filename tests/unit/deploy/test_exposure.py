@@ -107,9 +107,10 @@ def test_the_default_is_in_the_compose_file_not_only_in_the_template() -> None:
     text = COMPOSE.read_text()
     bare = re.findall(r'"\$\{CHANNELFLOW_BIND_ADDRESS\}:', text)
     assert bare == [], f"{len(bare)} port mappings would bind all interfaces if unset"
-    # Twelve: the eight published before, the notary's `/metrics` (REQ-INFRA-007) and the three
-    # context collectors' `/healthz` and `/metrics` (REQ-WP-093) -- each loopback by default.
-    assert text.count("${CHANNELFLOW_BIND_ADDRESS:-127.0.0.1}:") == 12
+    # Thirteen: the eight published before, the notary's `/metrics` (REQ-INFRA-007), the three
+    # context collectors' `/healthz` and `/metrics` (REQ-WP-093) and the DEX collector's
+    # (REQ-WP-099) -- each loopback by default.
+    assert text.count("${CHANNELFLOW_BIND_ADDRESS:-127.0.0.1}:") == 13
 
 
 @pytest.mark.trace("REQ-WP-072")

@@ -35,3 +35,5 @@ scrape_configs:
         labels: {service: context, venue: bybit}
       - targets: ["host.docker.internal:9103"]
         labels: {service: context, venue: okx}
+      - targets: ["host.docker.internal:9104"]
+        labels: {service: context, venue: hyperevm}

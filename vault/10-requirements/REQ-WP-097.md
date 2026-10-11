@@ -44,7 +44,6 @@ three states, and the state is checked against the API:
 - **Specs:** [[SPEC-149-pane-coverage]]
 - **Tests:**
     - `tests/tools/panes/test_classify.py::test_a_cell_with_no_producer_makes_the_report_fail_and_names_the_pane`
-    - `tests/tools/panes/test_classify.py::test_a_dex_pane_that_has_data_is_data_whatever_the_deployment_says`
     - `tests/tools/panes/test_classify.py::test_a_markets_read_that_fails_is_unreachable_even_if_the_other_reads_answer`
     - `tests/tools/panes/test_classify.py::test_a_page_with_no_panes_is_an_error_not_an_empty_report`
     - `tests/tools/panes/test_classify.py::test_a_pane_with_a_point_is_data`
@@ -58,7 +57,6 @@ three states, and the state is checked against the API:
     - `tests/tools/panes/test_classify.py::test_liquidations_with_no_covered_window_are_no_producer`
     - `tests/tools/panes/test_classify.py::test_only_real_numbers_count_as_a_value`
     - `tests/tools/panes/test_classify.py::test_only_the_chosen_timeframes_are_queried`
-    - `tests/tools/panes/test_classify.py::test_the_dex_panes_are_absent_with_the_one_reason_the_module_states`
     - `tests/tools/panes/test_classify.py::test_the_imbalance_having_points_is_data_even_with_no_sums`
     - `tests/tools/panes/test_classify.py::test_the_panes_are_read_from_the_page_with_volume_first`
     - `tests/tools/panes/test_classify.py::test_the_range_asked_for_ends_now_and_starts_the_stated_hours_before`

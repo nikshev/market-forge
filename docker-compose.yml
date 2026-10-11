@@ -369,6 +369,40 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  ingest-bybit-hype:
+    logging: *default-logging
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command:
+      - python
+      - -m
+      - channelflow.pipeline.ingest_main
+    environment:
+      CHANNELFLOW_CATALOG_URI: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      CHANNELFLOW_WAREHOUSE: s3://${MINIO_BUCKET}/warehouse
+      CHANNELFLOW_S3_ENDPOINT: http://minio:9000
+      CHANNELFLOW_S3_ACCESS_KEY_ID: ${MINIO_ROOT_USER}
+      CHANNELFLOW_S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
+      CHANNELFLOW_S3_REGION: us-east-1
+      CHANNELFLOW_INGEST_SYMBOLS: ${CHANNELFLOW_INGEST_SYMBOLS_BYBIT_HYPE:-HYPEUSDT}
+      CHANNELFLOW_INGEST_TIMEFRAME_NS: ${CHANNELFLOW_INGEST_TIMEFRAME_NS}
+      # Empty means unset. Compose forwards only the variables a service names, so a
+      # setting that is not listed here is unreachable on the host.
+      CHANNELFLOW_INGEST_MAX_SILENCE_SECONDS: ${CHANNELFLOW_INGEST_MAX_SILENCE_SECONDS:-}
+      # The volume profile's price bins (REQ-WP-089); empty means unset.
+      CHANNELFLOW_PROFILE_BIN_WIDTHS: ${CHANNELFLOW_PROFILE_BIN_WIDTHS:-}
+      CHANNELFLOW_PROFILE_BLOCK_SECONDS: ${CHANNELFLOW_PROFILE_BLOCK_SECONDS:-}
+      CHANNELFLOW_LOG_LEVEL: ${CHANNELFLOW_LOG_LEVEL:-}
+      CHANNELFLOW_ARCHIVE_URI: s3://${MINIO_BUCKET}/raw/cex
+      CHANNELFLOW_INGEST_VENUE: bybit
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    restart: unless-stopped
+
   ingest-okx:
     logging: *default-logging
     build:
@@ -639,6 +673,48 @@ services:
       timeout: 5s
       retries: 3
       start_period: 60s
+
+  # The DEX collector ([[REQ-WP-099]]): HyperEVM's two WHYPE/USDC pools, read through the chain's public
+  # JSON-RPC (no key). Stores each swap in `dex_swaps` and a reading of each pool every poll in
+  # `dex_state`; the worker turns them into the two DEX panes of the HYPE series. Unhealthy on its own
+  # `/healthz` after three polls without a success.
+  context-hyperevm:
+    logging: *default-logging
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command:
+      - python
+      - -m
+      - channelflow.pipeline.dex_main
+    environment:
+      CHANNELFLOW_CATALOG_URI: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      CHANNELFLOW_WAREHOUSE: s3://${MINIO_BUCKET}/warehouse
+      CHANNELFLOW_S3_ENDPOINT: http://minio:9000
+      CHANNELFLOW_S3_ACCESS_KEY_ID: ${MINIO_ROOT_USER}
+      CHANNELFLOW_S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
+      CHANNELFLOW_S3_REGION: us-east-1
+      CHANNELFLOW_LOG_LEVEL: ${CHANNELFLOW_LOG_LEVEL:-}
+      CHANNELFLOW_DEX_RPC_URL: ${CHANNELFLOW_DEX_RPC_URL:-}
+      CHANNELFLOW_DEX_PORT: "9104"
+    ports:
+      - "${CHANNELFLOW_BIND_ADDRESS:-127.0.0.1}:${CONTEXT_HYPEREVM_PORT:-9104}:9104"
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "python -c \"import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:9104/healthz').status==200 else 1)\"",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    restart: unless-stopped
 
   # The signal notary ([[REQ-INFRA-007]]): forms batches of registered records, commits one Merkle
   # root per batch through the SignalNotary contract, confirms it, and keeps an outbox that drains

@@ -47,11 +47,12 @@ export interface Pane {
 //                          market-type consensus, `10000 * (mid_i / consensus_mid - 1)`. Its own name because
 //                          `basis_bps` above is a different quantity (perp against spot), and not §27.3's list
 //                          either, like the depth imbalance pane. The consensus is written every minute
-//                          ([[REQ-WP-096]]): Bybit and OKX BTC are one perpetual group; the Binance series are
-//                          spot with no second spot venue, so its consensus is refused and the pane says why;
+//                          ([[REQ-WP-096]]): Bybit and OKX BTC are one perpetual group; the Binance and OKX
+//                          spot series are the spot groups, two venues each ([[REQ-WP-098]]);
 //   DEX swap imbalance,
-//   DEX active liquidity   here, from [[REQ-WP-059]] and [[REQ-WP-063]]; **no source in this deployment**
-//                          (no DEX ingest runs), so they read "no data" -- the one pane family still empty;
+//   DEX active liquidity   here, from [[REQ-WP-059]] and [[REQ-WP-063]], read from HyperEVM's two WHYPE/USDC
+//                          pools ([[REQ-WP-099]]) and written for **Bybit HYPEUSDT only**, the market the
+//                          pools price; on any other series they read "no data" (no pool is registered);
 //   Depth imbalance (10)   **not in §27.3**: a pane this deployment added beyond the PRD's list, from
 //                          [[REQ-WP-027]]; written with the OFI from the same minute summaries. Whether to
 //                          keep it is the owner's call and it is left in place.
