@@ -183,3 +183,27 @@ def test_the_light_gate_does_not_pretend_to_run_the_full_one() -> None:
     assert stands_in in DOCS_WORKFLOW.read_text(), (
         "the docs gate must name the fast test that stands in for `make validate`"
     )
+
+
+@pytest.mark.trace("REQ-INFRA-002")
+def test_the_light_gate_installs_foundry_before_it_runs_the_tests_that_need_forge() -> None:
+    """`tests/contracts` fails, not skips, without `forge`, and `make test-fast` includes it, so a
+    docs gate that runs the tests without Foundry is red for a reason no documentation edit can
+    cause -- which is how every docs-only push was red from the day the notary suite landed."""
+    steps = yaml.safe_load(DOCS_WORKFLOW.read_text())["jobs"]["gate"]["steps"]
+    uses = [str(step.get("uses", "")) for step in steps]
+    runs = [str(step.get("run", "")) for step in steps]
+
+    foundry = next(i for i, u in enumerate(uses) if u.startswith("foundry-rs/foundry-toolchain"))
+    tests = next(i for i, r in enumerate(runs) if "make test-fast" in r)
+    assert foundry < tests
+
+    heavy = yaml.safe_load(CI_WORKFLOW.read_text())["jobs"]["gate"]["steps"]
+    pinned = next(
+        s["with"]["version"]
+        for s in heavy
+        if str(s.get("uses", "")).startswith("foundry-rs/foundry-toolchain")
+    )
+    assert steps[foundry]["with"]["version"] == pinned, (
+        "the two gates pin different Foundry versions"
+    )

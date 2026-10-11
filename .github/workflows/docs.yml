@@ -51,5 +51,13 @@ jobs:
       - name: Lint
         run: make lint
 
+      # `make test-fast` includes tests/contracts, which FAILS, not skips, without `forge` (the same
+      # Foundry version ci.yml pins). Without this step every docs-only push was red from the day the
+      # notary suite landed -- the light gate failing for a reason a documentation edit cannot cause.
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: v1.7.1
+
       - name: Tests (no services)
         run: make test-fast
