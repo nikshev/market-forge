@@ -100,3 +100,10 @@ proves the arithmetic and says nothing about the cost of the write.
 - **Worker rebuild** deploys everything committed since 2026-10-08, not only this: the order is collectors first.
 - Binance's open-interest bucket staleness (15 minutes) and the 3-minute bound are stated defaults; the measurement
   after deployment may show different ones are better.
+
+## Deployed (2026-10-11)
+
+The collectors and the worker run from `297cd4a`. The worker's first pass wrote the funding z-score for all 15 series
+from the settled history at once (83,132 rows, one commit after the fix recorded above) and open interest, basis and the
+rest from the first poll on; the page showed Funding (z), Open interest and Basis within the hour. SC-001 (24 h of
+collection) is measured at 2026-10-12 ~10:45 UTC.

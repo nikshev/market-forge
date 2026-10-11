@@ -291,3 +291,16 @@ def test_a_markets_read_that_fails_is_unreachable_even_if_the_other_reads_answer
 
     with pytest.raises(ApiUnreachable, match="markets"):
         report.run(only_markets_fail, panes=[("volume", "Volume")], hours=1, now_ns=10**18)
+
+
+@pytest.mark.trace("REQ-WP-097")
+def test_the_same_refusal_at_a_thousand_instants_is_one_reason() -> None:
+    reasons = [
+        f"only 1 venue(s) could contribute at {1_791_722_640_000_000_000 + i * 60 * NS}; a median"
+        for i in range(1000)
+    ]
+
+    state = classify("venue_basis_bps", evidence(consensus=reasons))
+
+    assert state.state == ABSENT
+    assert state.reason == "only 1 venue(s) could contribute at the close; a median"

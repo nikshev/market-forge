@@ -84,3 +84,10 @@ The recorded frames passed every test; the live stream found two faults they cou
   load average of the machine was already ~9-10 from its other tenants and did not move.
 - Within half an hour the stored minutes looked right: Binance spot 60 frames and 58-59 observations a minute;
   Bybit ~1,200-1,360 frames and 60 observations; OFI and the ten-level imbalance of plausible size and sign.
+
+## Deployed (2026-10-11)
+
+After the two fixes above the minutes are right on all three venues: Binance spot 60 frames and 58-59 observations a
+minute, Bybit ~1,200-1,500 frames and 60 observations, OKX ~250-590 frames and 60 observations, with OFI and the ten-level
+imbalance of plausible size and sign. The 1m panes for OFI and depth imbalance are `data` for every market; the 15m and
+1h ones fill as the resampled bars catch up (see the pane-coverage note).

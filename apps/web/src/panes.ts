@@ -28,24 +28,33 @@ export interface Pane {
 }
 
 // PRD section 27.3 lists nine panes: volume, CVD, OFI, OI, funding, basis, liquidations, DEX swap
-// imbalance and DEX active liquidity. This is how the page's row compares with it (REQ-WP-085):
+// imbalance and DEX active liquidity. This is how the page's row compares with it, and where each
+// one's data comes from as of 2026-10-11 (REQ-WP-093 to REQ-WP-097):
 //
 //   volume                 present, first, in `BAR_PANES` below -- read from the bars, not a feature;
 //   CVD (base)             here as `cvd_base` ([[REQ-WP-088]]): derived by the worker from the bars' stored
 //                          aggressor split, in base units not notional ([[ADR-068]]);
-//   OFI (1m)               here, from [[REQ-WP-027]]; needs a book subscription nobody has, so "no data";
-//   OI, funding, basis,
-//   liquidations           here, from [[REQ-WP-030]]; no producer writes them yet;
+//   OFI (1m)               here, from [[REQ-WP-027]]; written by the worker from the per-minute book
+//                          summaries the collectors store ([[REQ-WP-095]]) -- a once-a-second sampled
+//                          top-of-book measure, not the exchange's event-level figure;
+//   OI, funding, basis     here, from [[REQ-WP-030]]; written by the worker from the collectors' REST
+//                          polls of each venue's perpetual ([[REQ-WP-093]]); the Binance series are spot
+//                          and are shown their venue's perpetual;
+//   liquidations           here, from [[REQ-WP-030]]; written by the worker from each venue's liquidation
+//                          stream, and only for windows the stream was known to be listening to
+//                          ([[REQ-WP-094]]);
 //   venue basis            here as `venue_basis_bps`, from [[REQ-WP-091]]: the viewed venue's basis to the
 //                          market-type consensus, `10000 * (mid_i / consensus_mid - 1)`. Its own name because
 //                          `basis_bps` above is a different quantity (perp against spot), and not §27.3's list
-//                          either, like the depth imbalance pane. Producer: the consensus worker, which does
-//                          not write yet -- the pane reads "no data" until it does ([[REQ-WP-084]]);
+//                          either, like the depth imbalance pane. The consensus is written every minute
+//                          ([[REQ-WP-096]]): Bybit and OKX BTC are one perpetual group; the Binance series are
+//                          spot with no second spot venue, so its consensus is refused and the pane says why;
 //   DEX swap imbalance,
-//   DEX active liquidity   here, from [[REQ-WP-059]] and [[REQ-WP-063]]; the DEX ingest is not running in the
-//                          compose stack, so they read "no data";
+//   DEX active liquidity   here, from [[REQ-WP-059]] and [[REQ-WP-063]]; **no source in this deployment**
+//                          (no DEX ingest runs), so they read "no data" -- the one pane family still empty;
 //   Depth imbalance (10)   **not in §27.3**: a pane this deployment added beyond the PRD's list, from
-//                          [[REQ-WP-027]]. Whether to keep it is the owner's call and it is left in place.
+//                          [[REQ-WP-027]]; written with the OFI from the same minute summaries. Whether to
+//                          keep it is the owner's call and it is left in place.
 //
 // An earlier version of this comment said all nine of §27.3 were here. They were not: volume was missing and
 // depth imbalance stood in its place.

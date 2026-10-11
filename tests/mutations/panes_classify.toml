@@ -39,7 +39,7 @@ replace = '''        return PaneState(ABSENT, "consensus rows exist and no venue
 
 [[mutation]]
 name = "a refusal reason is not shown"
-find = '''            return PaneState(ABSENT, "; ".join(sorted(set(evidence.consensus_reasons))))'''
+find = '''            return PaneState(ABSENT, "; ".join(sorted(reasons)))'''
 replace = '''            return PaneState(ABSENT, "")'''
 
 [[mutation]]
@@ -75,3 +75,8 @@ replace = '''            if True:'''
 name = "a zero is not a value"
 find = '''                counts[name] = counts.get(name, 0) + 1'''
 replace = '''                counts[name] = counts.get(name, 0) + (1 if value else 0)'''
+
+[[mutation]]
+name = "a refusal is listed once for every instant it was refused at"
+find = '''            reasons = {_without_instant(r) for r in evidence.consensus_reasons}'''
+replace = '''            reasons = set(evidence.consensus_reasons)'''

@@ -51,3 +51,11 @@ returns the stored refusal and no basis.
 - The worker has not been rebuilt with this pass; after it is, the first pass backfills a consensus for every minute
   with quotes (a few thousand rows, one commit).
 - The registry is a short list in code; adding a market is one line there and one stream in `context/sources.py`.
+
+## Deployed (2026-10-11)
+
+The first worker pass wrote 242 consensus rows. The venue-basis pane is `data` for Bybit and OKX BTC (Bybit's reading at the
+screenshot was 0.43 bps) and `absent: only 1 venue(s) could
+contribute...` for the three Binance spot series. One thing the report found that was not in the plan: the API container
+had not been rebuilt since 2026-10-04 and answered `404` to the consensus route; rebuilding `api` and `web` was part of the
+deployment.

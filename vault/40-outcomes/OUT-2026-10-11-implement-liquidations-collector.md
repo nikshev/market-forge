@@ -66,3 +66,10 @@ suites around them pass; `make lint`, `make typecheck` clean.
   Binance/OKX in the range, and the pane's state.
 - The heartbeat treats "reader alive and connection old enough" as listening; it cannot see a connection that is open
   and has silently stopped delivering. The venues' pings (and Bybit/OKX's pongs, counted as frames) are the guard.
+
+## Deployed (2026-10-11)
+
+Within 35 minutes of the first start the liquidations table held 197 rows: BTC events on all three venues (Binance 12,
+OKX 8, Bybit 6) and a heartbeat per symbol per minute. The first worker pass over them wrote the three features; the
+Binance, Bybit and OKX BTC panes read `data`, and a Binance ETH window with no event read `absent: no liquidation in the
+range, and the stream was listening`.

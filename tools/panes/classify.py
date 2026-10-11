@@ -17,6 +17,7 @@ this module knows a fact the API does not tell it.
 
 from __future__ import annotations
 
+import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
@@ -62,6 +63,11 @@ class Evidence:
     consensus_error: str | None = None
 
 
+def _without_instant(reason: str) -> str:
+    """A stored reason names the instant it was refused at; one reason per instant is not a list."""
+    return re.sub(r"\bat \d{10,}", "at the close", reason)
+
+
 def count_features(points: Sequence[Mapping[str, Any]]) -> dict[str, int]:
     """How many points carry each feature, counting only real numbers."""
     counts: dict[str, int] = {}
@@ -84,7 +90,8 @@ def classify(feature: str, evidence: Evidence) -> PaneState:
 
     if feature == "venue_basis_bps":
         if evidence.consensus_reasons:
-            return PaneState(ABSENT, "; ".join(sorted(set(evidence.consensus_reasons))))
+            reasons = {_without_instant(r) for r in evidence.consensus_reasons}
+            return PaneState(ABSENT, "; ".join(sorted(reasons)))
         if evidence.consensus_error:
             return PaneState(
                 NO_PRODUCER, f"the consensus read answered: {evidence.consensus_error}"
