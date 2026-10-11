@@ -91,6 +91,10 @@ check that says which image is gone, not discovered as a `docker run` error half
     - `tests/tools/images/test_resolve.py::test_the_registry_saying_it_does_not_have_the_image_is_gone[name unknown: repository name not known to registry]`
     - `tests/tools/images/test_resolve.py::test_the_registry_saying_it_does_not_have_the_image_is_gone[no such manifest: quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z]`
     - `tests/tools/images/test_resolve.py::test_the_registry_saying_it_does_not_have_the_image_is_gone[unauthorized: authentication required]`
+- **Code:**
+    - `tools/images/__main__.py`
+    - `tools/images/enumerate.py`
+    - `tools/images/resolve.py`
 - **Outcomes:** [[OUT-2026-10-11-implement-pullable-images]], [[OUT-2026-10-11-plan-pullable-images]], [[OUT-2026-10-11-spec-pullable-images]]
 <!-- trace:end -->
 
