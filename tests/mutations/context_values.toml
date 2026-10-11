@@ -1,0 +1,83 @@
+# REQ-WP-093: the worker's context-feature pass. Each mutation is a way of letting a feature be
+# built from something not knowable at the bar's close, of feeding funding a polled estimate, of
+# showing a stale figure as current, or of writing a bar twice -- and a test must fail.
+#
+# Patterns are TOML *literal* strings on purpose: the basic form treats a
+# trailing backslash as a line continuation and eats the next line's indentation.
+source = "src/channelflow/features/context_values.py"
+tests = ["tests/unit/pipeline/test_context_pass.py"]
+
+[[mutation]]
+name = "open interest uses a state received after the close"
+find = '''        if state.meta.ingest_time_ns > close_ns:
+            continue  # seen after the close: not knowable at it'''
+replace = '''        if False:
+            continue  # seen after the close: not knowable at it'''
+
+[[mutation]]
+name = "basis uses a state received after the close"
+find = '''        if state.meta.ingest_time_ns > close_ns:
+            continue
+        if state.mark_price is None or state.index_price is None:'''
+replace = '''        if False:
+            continue
+        if state.mark_price is None or state.index_price is None:'''
+
+[[mutation]]
+name = "open interest reads past the close"
+find = '''    hi = bisect_right(index.polled_times, close_ns)
+    for state in reversed(index.polled[max(0, hi - _SCAN_BACK) : hi]):
+        if state.meta.ingest_time_ns > close_ns:
+            continue  # seen after the close: not knowable at it'''
+replace = '''    hi = len(index.polled_times)
+    for state in reversed(index.polled[max(0, hi - _SCAN_BACK) : hi]):
+        if state.meta.ingest_time_ns > close_ns:
+            continue  # seen after the close: not knowable at it'''
+
+[[mutation]]
+name = "funding reads settlements after the close"
+find = '''    hi = bisect_right(index.history_times, close_ns)'''
+replace = '''    hi = len(index.history_times)'''
+survives = '''Equivalent, by design: `settled_funding` itself excludes any state whose settlement is after the instant asked about (PRD section 41 rule 5), so slicing the history at the close here is defence in depth and the library is the guard that matters. The test that appends later settlements (test_appending_later_rows_changes_nothing_at_an_earlier_close) pins the behaviour either way.'''
+
+[[mutation]]
+name = "polled estimates enter the funding series"
+find = '''        settled = tuple(s for s in ordered if s.meta.source.endswith(_HISTORY_SUFFIX))'''
+replace = '''        settled = tuple(ordered)'''
+
+[[mutation]]
+name = "a polled state is read as settled history"
+find = '''        polled = tuple(s for s in ordered if not s.meta.source.endswith(_HISTORY_SUFFIX))'''
+replace = '''        polled = tuple(ordered)'''
+survives = '''Equivalent for the tests. Handing the history rows to the polled list as well adds states with no mark, no index and no open interest, which every polled read skips (it looks for the field it needs), so nothing observable changes. The mutation to the funding list above is the one that matters, and it is caught.'''
+
+[[mutation]]
+name = "binance open interest gets the short polled bound"
+find = '''        if state.meta.source.endswith(_OI_SOURCE_SUFFIX)'''
+replace = '''        if False'''
+
+[[mutation]]
+name = "a polled state never goes stale"
+find = '''            current = state_at([state], at_ns=close_ns, staleness_ns=sources.POLLED_STALENESS_NS)'''
+replace = '''            current = state_at([state], at_ns=close_ns, staleness_ns=10**30)'''
+
+[[mutation]]
+name = "funding is fresh for five minutes, the library default"
+find = '''            staleness_ns=sources.FUNDING_STALENESS_NS,'''
+replace = '''            staleness_ns=5 * 60 * 1_000_000_000,'''
+
+[[mutation]]
+name = "the funding window is shorter than the library's"
+find = '''            window=sources.FUNDING_WINDOW,'''
+replace = '''            window=3,'''
+
+[[mutation]]
+name = "basis is the index against the mark"
+find = '''        return basis_bps(perp_price=current.mark_price, spot_price=current.index_price)'''
+replace = '''        return basis_bps(perp_price=current.index_price, spot_price=current.mark_price)'''
+
+[[mutation]]
+name = "the scan for an already-received state is one deep"
+find = '''_SCAN_BACK = 200'''
+replace = '''_SCAN_BACK = 1'''
+

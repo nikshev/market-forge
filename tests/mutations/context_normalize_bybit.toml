@@ -1,0 +1,38 @@
+# REQ-WP-093: Bybit's derivatives state clock and settled history.
+#
+# Patterns are TOML *literal* strings on purpose: the basic form treats a
+# trailing backslash as a line continuation and eats the next line's indentation.
+source = "src/channelflow/connectors/bybit/normalize.py"
+tests = ["tests/unit/connectors/test_context_derivatives.py", "tests/unit/connectors/test_derivatives_state.py"]
+
+[[mutation]]
+name = "the venue time is ignored"
+find = '''            event_time_ns=ingest_time_ns if event_time_ns is None else event_time_ns,'''
+replace = '''            event_time_ns=ingest_time_ns,'''
+
+[[mutation]]
+name = "the venue time is used even when absent"
+find = '''            event_time_ns=ingest_time_ns if event_time_ns is None else event_time_ns,'''
+replace = '''            event_time_ns=event_time_ns,'''
+
+[[mutation]]
+name = "a settlement is dated at receipt"
+find = '''        settlement = int(_require(row, "fundingRateTimestamp", context)) * MS_TO_NS'''
+replace = '''        settlement = ingest_time_ns'''
+
+[[mutation]]
+name = "the settlement time is in milliseconds, not nanoseconds"
+find = '''        settlement = int(_require(row, "fundingRateTimestamp", context)) * MS_TO_NS'''
+replace = '''        settlement = int(_require(row, "fundingRateTimestamp", context))'''
+
+[[mutation]]
+name = "history is tagged as a poll"
+find = '''                    source=f"{venue}-funding-history",'''
+replace = '''                    source=f"{venue}-rest",'''
+
+[[mutation]]
+name = "a history row missing its rate is stored as zero"
+find = '''                funding_rate=float(_decimal(row, "fundingRate", context)),
+                next_funding_time_ns=settlement,'''
+replace = '''                funding_rate=float(row.get("fundingRate") or 0),
+                next_funding_time_ns=settlement,'''

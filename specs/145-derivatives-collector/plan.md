@@ -43,10 +43,11 @@ src/channelflow/context/
 ├── runtime.py        # the collector loop: cadence, flush, heartbeat, reconnect hooks for 146/147, shutdown
 └── status.py         # health + /metrics (the notary's tiny server pattern)
 src/channelflow/tables/derivatives_state.py   # schema, to_row/from_row, DerivativesStateSink, table_for
-src/channelflow/features/context_write.py     # write_context_features(): the worker's pass; as-of evaluation with bisect
+src/channelflow/features/context_values.py    # pure: context_values(): as-of evaluation with bisect (no storage backend: features/ is domain code)
+src/channelflow/pipeline/context_pass.py      # write_context_features(): the worker's pass, with write_flow_features
 src/channelflow/pipeline/context_main.py      # composition root, like ingest_main
 tools/record/derivatives_capture.py           # one-shot recorder of the REST fixtures
-tests/unit/context/…  tests/unit/tables/test_derivatives_state.py  tests/unit/features/test_context_write.py
+tests/unit/context/…  tests/unit/tables/test_derivatives_state.py  tests/unit/pipeline/test_context_pass.py
 tests/mutations/context_*.toml
 ```
 

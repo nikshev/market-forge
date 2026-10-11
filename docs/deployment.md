@@ -28,6 +28,7 @@ Thirteen services, started together:
 | `resample` | builds every configured timeframe from the one-minute series, on a loop ([[REQ-WP-073]]) |
 | `maintenance` | prunes metadata, compacts and optionally expires, on a loop ([[REQ-WP-070]]) |
 | `worker` | fits channels, signals and extrema over the stored bars, on a loop ([[REQ-WP-077]]) |
+| `context-binance`, `context-bybit`, `context-okx` | the context collectors: one per venue, polling its public derivatives endpoints (open interest, funding, mark and index) into `derivatives_state`; no key, no feature computed ([[REQ-WP-093]]) |
 | `notary` | **only when asked for** (`docker compose up -d notary`): commits a Merkle root of the records the worker registered to the SignalNotary contract on Monad testnet, and is the one service given the signing keystore ([[REQ-INFRA-007]]) |
 | `cloudflared` | **only with `--profile telegram`**: an outbound tunnel that gives the web service an HTTPS address for the Telegram Mini App ([[REQ-WP-080]]) |
 
@@ -553,6 +554,46 @@ gains a producer fails the build until the dashboard is regenerated.
 says so in words rather than drawing them as empty graphs. A flat line at the
 bottom of a chart reads as "nothing is going wrong", which is precisely what
 nobody knows. See `REQ-WP-055`.
+
+## The context collectors
+
+[REQ-WP-093] Open interest, Funding (z) and Basis, three of the lower panes, have no data in a stack that
+only ingests trades. `context-binance`, `context-bybit` and `context-okx` supply it: each polls its venue's
+**public** REST endpoints every 60 seconds and stores what it saw in `derivatives_state`, append-only, with
+the venue's time and the time we received it kept apart. They hold no key and compute no feature; the
+worker does, once per pass, as of each bar's close ([[ADR-070]]).
+
+What a series is shown, and from where:
+
+| Series | Derivatives from | Why |
+|---|---|---|
+| Binance BTC/ETH/SOL (spot) | the same venue's **perpetual** of the same pair | a spot market has no open interest or funding; the association is declared once, in `channelflow/context/sources.py` |
+| Bybit BTCUSDT, OKX BTC-USDT-SWAP | themselves | they are the perpetuals |
+
+`basis_bps` is the perpetual's mark price against the venue's index (its spot composite). Open interest is
+the figure the venue reports **in USD** -- Binance's from its five-minute history endpoint, because its
+base-unit endpoint would need a price of our choosing. **`funding_z` is computed from settled funding only**:
+the rates each venue's history reports, one per settlement, loaded at start and refreshed hourly, so the
+24 settlements its window needs exist from the first start rather than eight days later. Polled funding is
+the venue's still-revisable estimate and never enters it.
+
+A value is as of the bar's close and uses only what the collector had **received** by then. Where a reading
+is stale -- a poll older than three intervals (fifteen minutes for Binance's five-minute buckets), a
+settlement older than one funding interval plus an hour -- or cannot be computed, **no row is written** and
+the pane says "no data"; zero is never written for absence.
+
+Each collector serves `/healthz` (200, or 503 once nothing has succeeded for three poll intervals) and
+`/metrics` (`context_last_state_age_seconds`, `context_poll_failures_total`, `context_healthy`) on
+`CONTEXT_BINANCE_PORT`, `CONTEXT_BYBIT_PORT` and `CONTEXT_OKX_PORT` (9101-9103, loopback by default), and
+Prometheus scrapes them. A collector that stops is therefore visible; the panes it fed go back to "no data".
+
+Start them without recreating anything else:
+
+```
+docker compose up -d --no-deps context-binance context-bybit context-okx
+```
+
+and read each one's log first (`docker logs channelflow-context-bybit-1`).
 
 ## The signal notary (Monad testnet)
 

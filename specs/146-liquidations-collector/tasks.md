@@ -17,14 +17,14 @@ description: "Tasks for REQ-WP-094 -- the liquidations pane is fed by each venue
 - [ ] T004 [P] `tests/unit/connectors/test_liquidation_{binance,bybit,okx}.py`: the position side is the opposite of the order's; notional; OKX contracts -> base via `ctVal`; refusal of an unknown contract size, a non-positive price/qty; unmappable side -> `unknown`
 - [ ] T005 [P] `tests/unit/tables/test_liquidations.py`: schema, decimals, two times, sink dedupe by identity across a simulated reconnect replay
 - [ ] T006 [P] `tests/unit/context/test_streams.py`: a stream task on a fake transport/clock: silence -> reconnect, backoff capped, duplicates dropped, parse failures counted
-- [ ] T007 [P] `tests/unit/features/test_context_write_liquidations.py`: window features equal `window()`; later events change nothing; no heartbeat -> no row; heartbeat + no events -> zero USD and **no** imbalance; intensity absent without volume
+- [ ] T007 [P] `tests/unit/pipeline/test_context_pass_liquidations.py`: window features equal `window()`; later events change nothing; no heartbeat -> no row; heartbeat + no events -> zero USD and **no** imbalance; intensity absent without volume
 - [ ] T008 [P] `tests/mutations/context_liquidations.toml`
 
 ## Phase 3: Implementation
 
 - [ ] T009 `connectors/*/liquidation.py`; `tables/liquidations.py`
 - [ ] T010 `context/streams.py`; `connectors/venue.py` `CONTEXT_STREAMS`; wiring in `pipeline/context_main.py`
-- [ ] T011 `features/context_write.py::liquidation_rows` and its call; heartbeat from `derivatives_state`
+- [ ] T011 `features/context_values.py (pure) and pipeline/context_pass.py (the pass)::liquidation_rows` and its call; heartbeat from `derivatives_state`
 - [ ] T012 compose/maintenance/docs additions
 
 ## Phase 4: Gate and live evidence

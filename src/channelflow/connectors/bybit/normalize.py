@@ -205,7 +205,12 @@ def rest_order_book(
 
 
 def derivatives_state(
-    ticker: dict[str, Any], *, venue: str, market_type: str, ingest_time_ns: int
+    ticker: dict[str, Any],
+    *,
+    venue: str,
+    market_type: str,
+    ingest_time_ns: int,
+    event_time_ns: int | None = None,
 ) -> DerivativesState:
     """Funding, open interest, mark and index, from one `/v5/market/tickers` row.
 
@@ -218,6 +223,10 @@ def derivatives_state(
     makes OKX appear to hold fifty times Bybit's position. The comment is here
     rather than only there because this is the side that looks like it needs no
     conversion, and that is exactly why somebody would copy it.
+
+    **`event_time_ns` is the venue's time when the caller has it** (the response envelope's
+    `time`), and the receipt time only when it does not: a state stamped with our receipt claims
+    the venue said it then, which is the two clocks Principle II keeps apart (REQ-WP-093).
 
     **`nextFundingTime` is the settlement this rate pays at.** OKX calls the
     same instant `fundingTime` and uses `nextFundingTime` for the one after, so
@@ -247,7 +256,7 @@ def derivatives_state(
             venue=venue,
             market_type=market_type,
             symbol=str(_require(ticker, "symbol", context)),
-            event_time_ns=ingest_time_ns,
+            event_time_ns=ingest_time_ns if event_time_ns is None else event_time_ns,
             ingest_time_ns=ingest_time_ns,
             sequence=None,
             source_event_id=None,
@@ -263,3 +272,34 @@ def derivatives_state(
         open_interest_usd=None if open_interest_value is None else float(open_interest_value),
         basis_bps=basis_bps,
     )
+
+
+def funding_history(
+    rows: list[dict[str, Any]], *, venue: str, market_type: str, ingest_time_ns: int
+) -> list[DerivativesState]:
+    """One settled row per settlement from `/v5/market/funding/history` (REQ-WP-093).
+
+    The interval ended at `fundingRateTimestamp` and the rate was public from then on, so the row
+    is dated there and `next_funding_time` equals it.
+    """
+    context = "funding/history"
+    states = []
+    for row in rows:
+        settlement = int(_require(row, "fundingRateTimestamp", context)) * MS_TO_NS
+        states.append(
+            DerivativesState(
+                meta=EventMeta(
+                    source=f"{venue}-funding-history",
+                    venue=venue,
+                    market_type=market_type,
+                    symbol=str(_require(row, "symbol", context)),
+                    event_time_ns=settlement,
+                    ingest_time_ns=ingest_time_ns,
+                    sequence=None,
+                    source_event_id=None,
+                ),
+                funding_rate=float(_decimal(row, "fundingRate", context)),
+                next_funding_time_ns=settlement,
+            )
+        )
+    return sorted(states, key=lambda s: s.meta.event_time_ns)

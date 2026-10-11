@@ -1,0 +1,63 @@
+# REQ-WP-093: Binance's derivatives states. Each mutation is a way to date a state wrongly, to convert open
+# interest with a price of our choosing, or to misread a settlement.
+#
+# Patterns are TOML *literal* strings on purpose: the basic form treats a
+# trailing backslash as a line continuation and eats the next line's indentation.
+source = "src/channelflow/connectors/binance/normalize.py"
+tests = ["tests/unit/connectors/test_context_derivatives.py"]
+
+[[mutation]]
+name = "the mark state is dated with the next funding time"
+find = '''        meta=_perp_meta(
+            source=f"{venue}-rest",
+            venue=venue,
+            symbol=str(_require(premium_index, "symbol", context)),
+            event_time_ns=_ns(premium_index, "time", context),'''
+replace = '''        meta=_perp_meta(
+            source=f"{venue}-rest",
+            venue=venue,
+            symbol=str(_require(premium_index, "symbol", context)),
+            event_time_ns=_ns(premium_index, "nextFundingTime", context),'''
+
+[[mutation]]
+name = "the basis is the index against the mark"
+find = '''        basis_bps=None if index == 0 else float((mark / index - 1) * 10_000),'''
+replace = '''        basis_bps=None if mark == 0 else float((index / mark - 1) * 10_000),'''
+
+[[mutation]]
+name = "the basis is in percent, not basis points"
+find = '''float((mark / index - 1) * 10_000)'''
+replace = '''float((mark / index - 1) * 100)'''
+
+[[mutation]]
+name = "the open-interest state is dated at receipt"
+find = '''            event_time_ns=_ns(row, "timestamp", context),'''
+replace = '''            event_time_ns=ingest_time_ns,'''
+
+[[mutation]]
+name = "the open-interest USD is the base figure"
+find = '''        open_interest_usd=float(_decimal(row, "sumOpenInterestValue", context)),'''
+replace = '''        open_interest_usd=float(_decimal(row, "sumOpenInterest", context)),'''
+
+[[mutation]]
+name = "a settlement is dated at the next funding time"
+find = '''        settlement = _ns(row, "fundingTime", context)'''
+replace = '''        settlement = ingest_time_ns'''
+
+[[mutation]]
+name = "a settled row carries no settlement time"
+find = '''                funding_rate=float(_decimal(row, "fundingRate", context)),
+                next_funding_time_ns=settlement,'''
+replace = '''                funding_rate=float(_decimal(row, "fundingRate", context)),
+                next_funding_time_ns=None,'''
+
+[[mutation]]
+name = "history is tagged as a poll"
+find = '''                    source=f"{venue}-funding-history",'''
+replace = '''                    source=f"{venue}-rest",'''
+
+[[mutation]]
+name = "history is returned newest first"
+find = '''    return sorted(states, key=lambda s: s.meta.event_time_ns)'''
+replace = '''    return sorted(states, key=lambda s: -s.meta.event_time_ns)'''
+survives = '''Equivalent for the tests, which compare history as a set of settlement times (the sink and the writer both sort what they read). The order of the list a normalizer returns is a courtesy, not a contract anything depends on.'''

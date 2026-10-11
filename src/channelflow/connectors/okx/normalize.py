@@ -349,3 +349,35 @@ def derivatives_state(
     return AssembledDerivatives(
         state=state, oldest_ns=oldest_ms * MS_TO_NS, newest_ns=newest_ms * MS_TO_NS
     )
+
+
+def funding_history(
+    rows: list[dict[str, Any]], *, venue: str, market_type: str, ingest_time_ns: int
+) -> list[DerivativesState]:
+    """One settled row per settlement from `funding-rate-history` (REQ-WP-093).
+
+    `realizedRate` is the rate that settled; `fundingRate` in the same row is the formula's figure
+    and is not what was paid. The interval ended at `fundingTime`, so the row is dated there and
+    `next_funding_time` equals it.
+    """
+    context = "funding-rate-history"
+    states = []
+    for row in rows:
+        settlement = int(_require(row, "fundingTime", context)) * MS_TO_NS
+        states.append(
+            DerivativesState(
+                meta=EventMeta(
+                    source=f"{venue}-funding-history",
+                    venue=venue,
+                    market_type=market_type,
+                    symbol=str(_require(row, "instId", context)),
+                    event_time_ns=settlement,
+                    ingest_time_ns=ingest_time_ns,
+                    sequence=None,
+                    source_event_id=None,
+                ),
+                funding_rate=float(_decimal(row, "realizedRate", context)),
+                next_funding_time_ns=settlement,
+            )
+        )
+    return sorted(states, key=lambda s: s.meta.event_time_ns)

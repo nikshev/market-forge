@@ -242,3 +242,108 @@ def derivatives_state(
         next_funding_time_ns=_ns(premium_index, "nextFundingTime", context),
         open_interest_base=float(_require(open_interest, "openInterest", "openInterest")),
     )
+
+
+def _perp_meta(
+    *,
+    source: str,
+    venue: str,
+    symbol: str,
+    event_time_ns: int,
+    ingest_time_ns: int,
+) -> EventMeta:
+    return EventMeta(
+        source=source,
+        venue=venue,
+        market_type="perp",
+        symbol=symbol,
+        event_time_ns=event_time_ns,
+        ingest_time_ns=ingest_time_ns,
+        sequence=None,
+        source_event_id=None,
+    )
+
+
+def futures_state(
+    premium_index: dict[str, Any], *, venue: str, ingest_time_ns: int
+) -> DerivativesState:
+    """Mark, index, funding and basis from `premiumIndex`, at the venue's own time (REQ-WP-093).
+
+    One answer, one instant: this state says nothing about open interest, because the answer does
+    not, and that is [[open_interest_state]]'s. The two are separate states since they are about two
+    different instants -- Binance's USD open interest is a five-minute bucket -- and one state
+    stamped with either time would claim a freshness half of it does not have.
+
+    The basis is the perpetual's mark against the venue's index, which is Binance's own spot
+    composite; the same formula `bybit` and `okx` use.
+    """
+    context = "premiumIndex"
+    mark = _decimal(premium_index, "markPrice", context)
+    index = _decimal(premium_index, "indexPrice", context)
+    return DerivativesState(
+        meta=_perp_meta(
+            source=f"{venue}-rest",
+            venue=venue,
+            symbol=str(_require(premium_index, "symbol", context)),
+            event_time_ns=_ns(premium_index, "time", context),
+            ingest_time_ns=ingest_time_ns,
+        ),
+        mark_price=mark,
+        index_price=index,
+        funding_rate=float(_require(premium_index, "lastFundingRate", context)),
+        next_funding_time_ns=_ns(premium_index, "nextFundingTime", context),
+        basis_bps=None if index == 0 else float((mark / index - 1) * 10_000),
+    )
+
+
+def open_interest_state(
+    row: dict[str, Any], *, venue: str, ingest_time_ns: int
+) -> DerivativesState:
+    """Open interest from one `openInterestHist` bucket, in USD as the venue reports it.
+
+    `sumOpenInterestValue` is the venue's own USD figure. The base-unit `openInterest` endpoint
+    is not used for USD: multiplying it by a price of our choosing would invent a figure the
+    venue did not report, which `oi_series` refuses states of that kind for. The state is dated
+    at the bucket's own time and says nothing else.
+    """
+    context = "openInterestHist"
+    return DerivativesState(
+        meta=_perp_meta(
+            source=f"{venue}-rest-oi",
+            venue=venue,
+            symbol=str(_require(row, "symbol", context)),
+            event_time_ns=_ns(row, "timestamp", context),
+            ingest_time_ns=ingest_time_ns,
+        ),
+        open_interest_base=float(_decimal(row, "sumOpenInterest", context)),
+        open_interest_usd=float(_decimal(row, "sumOpenInterestValue", context)),
+    )
+
+
+def funding_history(
+    rows: list[dict[str, Any]], *, venue: str, ingest_time_ns: int
+) -> list[DerivativesState]:
+    """One settled row per settlement from `fundingRate` history (REQ-WP-093).
+
+    The interval ended at `fundingTime` and its rate was public from then on, so the row is dated
+    there and `next_funding_time` equals it: `settled_funding` reads it as settled at that
+    instant, whenever it was loaded.
+    """
+    context = "fundingRate"
+    states = []
+    for row in rows:
+        settlement = _ns(row, "fundingTime", context)
+        states.append(
+            DerivativesState(
+                meta=_perp_meta(
+                    source=f"{venue}-funding-history",
+                    venue=venue,
+                    symbol=str(_require(row, "symbol", context)),
+                    event_time_ns=settlement,
+                    ingest_time_ns=ingest_time_ns,
+                ),
+                funding_rate=float(_decimal(row, "fundingRate", context)),
+                next_funding_time_ns=settlement,
+            )
+        )
+    return sorted(states, key=lambda s: s.meta.event_time_ns)

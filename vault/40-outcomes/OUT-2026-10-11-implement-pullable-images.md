@@ -107,3 +107,22 @@ behind each other, and the "dark since 2026-10-03" in the spec understated it.
   from both gates.
 
 Honest limit: the reordered workflow cannot be run end to end locally, so its first proof is the next run.
+
+## The run that earned `implemented` (run 38127789232, 2026-10-11)
+
+Commit `0d47e17` on `main`, 40 minutes 42 seconds, **every step green** -- the first fully green CI run since
+2026-09-23:
+
+- "Images are still served" (the new check), "Start the object store" and "Create the object store bucket",
+  from the pinned `pgsty/minio` image: **SC-002 met**.
+- Lint, type check, Foundry, "Build the images", "Start the API image and the web image and probe them",
+  "Tests (including integration)" (the two deployment tests that failed for three weeks now read a live API and
+  web server), the three front-end steps, the 718-mutation sweep and "Traceability coverage".
+
+It took four pushes to get here, each found by the previous run: the MinIO image (the original failure), the
+deployment tests that nothing started a stack for and the opencode tests that assumed a checkout path, then a
+front-end that had not been type-checked, tested or built anywhere since 2026-09-23 -- one of whose failures was a
+product bug (the live-refresh timers captured a stale `load` and refreshed nothing; fixed in `0d47e17`,
+the commit this run built, and recorded in its message).
+
+What this does not claim: the live MinIO still runs the 2025 image; moving it is a separate, deliberate step.

@@ -17,14 +17,14 @@ description: "Tasks for REQ-WP-095 -- OFI, depth imbalance and the quotes from a
 - [ ] T004 [P] `tests/unit/connectors/test_book_normalise.py`: each venue's frame -> `BookSnapshot`; Bybit snapshot then delta through `BookService`; OKX five levels; crossed/empty/non-positive refused with a reason
 - [ ] T005 [P] `tests/unit/context/test_minute_book.py` (**the core**): a scripted sequence across a boundary -> OFI, `DI_10` (or the venue's depth), mid equal the hand calculation in `Decimal`; frames after the boundary change nothing; a silent minute is finalised on the clock with count zero; a reconnect resets the tracker and no OFI increment spans the gap
 - [ ] T006 [P] `tests/unit/tables/test_book_minutes.py` and a `quotes` write test: two times apart, decimals
-- [ ] T007 [P] `tests/unit/features/test_context_write_book.py`: the value at a close equals the last closed minute's; later summaries change nothing; zero-count or stale (> 2 min) writes nothing; `depth_imbalance_10` is not written for a venue whose book has fewer than ten levels
+- [ ] T007 [P] `tests/unit/pipeline/test_context_pass_book.py`: the value at a close equals the last closed minute's; later summaries change nothing; zero-count or stale (> 2 min) writes nothing; `depth_imbalance_10` is not written for a venue whose book has fewer than ten levels
 - [ ] T008 [P] `tests/mutations/context_book.toml`
 
 ## Phase 3: Implementation
 
 - [ ] T009 normalisers; `context/minute_book.py`; `tables/book_minutes.py`
 - [ ] T010 stream tasks and wiring; the 1 Hz sampling of Bybit's `BookService`
-- [ ] T011 `features/context_write.py::book_rows`; registration text states the sampling and depth
+- [ ] T011 `features/context_values.py (pure) and pipeline/context_pass.py (the pass)::book_rows`; registration text states the sampling and depth
 - [ ] T012 compose/maintenance/docs
 
 ## Phase 4: Gate and live evidence

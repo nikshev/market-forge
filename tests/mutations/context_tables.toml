@@ -1,0 +1,79 @@
+# REQ-WP-093: the derivatives-state table. Each mutation is a way to store a row twice, to swap the two
+# times, to turn an absence into a value, or to lose what a restart should remember.
+#
+# Patterns are TOML *literal* strings on purpose: the basic form treats a
+# trailing backslash as a line continuation and eats the next line's indentation.
+source = "src/channelflow/tables/derivatives_state.py"
+tests = ["tests/unit/tables/test_derivatives_state.py", "tests/unit/pipeline/test_context_pass.py"]
+
+[[mutation]]
+name = "the source is not part of an observation's identity"
+find = '''    return (meta.venue, meta.symbol, meta.event_time_ns, meta.source)'''
+replace = '''    return (meta.venue, meta.symbol, meta.event_time_ns, "")'''
+
+[[mutation]]
+name = "the venue is not part of an observation's identity"
+find = '''    return (meta.venue, meta.symbol, meta.event_time_ns, meta.source)'''
+replace = '''    return ("", meta.symbol, meta.event_time_ns, meta.source)'''
+
+[[mutation]]
+name = "the symbol is not part of an observation's identity"
+find = '''    return (meta.venue, meta.symbol, meta.event_time_ns, meta.source)'''
+replace = '''    return (meta.venue, "", meta.event_time_ns, meta.source)'''
+
+[[mutation]]
+name = "the time is not part of an observation's identity"
+find = '''    return (meta.venue, meta.symbol, meta.event_time_ns, meta.source)'''
+replace = '''    return (meta.venue, meta.symbol, 0, meta.source)'''
+
+[[mutation]]
+name = "the two times are swapped in the row"
+find = '''        "event_time_ns": meta.event_time_ns,
+        "ingest_time_ns": meta.ingest_time_ns,'''
+replace = '''        "event_time_ns": meta.ingest_time_ns,
+        "ingest_time_ns": meta.event_time_ns,'''
+
+[[mutation]]
+name = "a restart forgets what is already stored"
+find = '''            self._known = stored_identities(self.table)'''
+replace = '''            self._known = set()'''
+
+[[mutation]]
+name = "an offered state is not remembered, so it is stored every time"
+find = '''        known.add(key)
+        self._buffer.append(to_row(state))'''
+replace = '''        self._buffer.append(to_row(state))'''
+
+[[mutation]]
+name = "a flush leaves the rows buffered"
+find = '''        snapshot = self.table.append(self._buffer)
+        self._buffer.clear()'''
+replace = '''        snapshot = self.table.append(self._buffer)'''
+
+[[mutation]]
+name = "an empty flush commits anyway"
+find = '''        if not self._buffer:
+            return None
+        snapshot'''
+replace = '''        snapshot'''
+
+[[mutation]]
+name = "an absent price comes back as zero"
+find = '''    return None if value is None else Decimal(str(value))'''
+replace = '''    return Decimal(0) if value is None else Decimal(str(value))'''
+
+[[mutation]]
+name = "states are not sorted by event time on read"
+find = '''        states.sort(key=lambda s: (s.meta.event_time_ns, s.meta.ingest_time_ns))'''
+replace = '''        pass'''
+
+[[mutation]]
+name = "states of all symbols are grouped together"
+find = '''        grouped[(state.meta.venue, state.meta.symbol)].append(state)'''
+replace = '''        grouped[(state.meta.venue, "")].append(state)'''
+
+[[mutation]]
+name = "the market type is read back as a constant"
+find = '''            market_type=str(row["market_type"]),'''
+replace = '''            market_type="perp",'''
+survives = '''Equivalent for the tests, whose states are all perpetuals -- as is every state this collector stores, since it polls perpetual endpoints only. The column exists so a spot or DEX state could be stored later without a schema change; a test of a value no producer writes would be a test of the future.'''

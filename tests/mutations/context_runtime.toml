@@ -1,0 +1,78 @@
+# REQ-WP-093: the collector's loop. Each mutation is a way for it to poll too often or too rarely,
+# to store the result of a poll that failed, to ignore a rate limit, or to stop on a failed commit.
+#
+# Patterns are TOML *literal* strings on purpose: the basic form treats a
+# trailing backslash as a line continuation and eats the next line's indentation.
+source = "src/channelflow/context/runtime.py"
+tests = ["tests/unit/context/test_runtime.py"]
+
+[[mutation]]
+name = "a symbol is polled on every step"
+find = '''            if now >= self._next_poll_ns.get(symbol, 0):'''
+replace = '''            if True:'''
+
+[[mutation]]
+name = "history is loaded on every step"
+find = '''            if now >= self._next_history_ns.get(symbol, 0):'''
+replace = '''            if True:'''
+
+[[mutation]]
+name = "a successful poll does not move the next one"
+find = '''        self.status.record_success()
+        self._next_poll_ns[symbol] = regular'''
+replace = '''        self.status.record_success()'''
+
+[[mutation]]
+name = "a rate limit waits only the cadence"
+find = '''            self._next_poll_ns[symbol] = max(regular, now + int(exc.retry_after_s * SECOND_NS))'''
+replace = '''            self._next_poll_ns[symbol] = regular'''
+
+[[mutation]]
+name = "a failed poll is not counted"
+find = '''        self.status.record_failure(endpoint[:80])'''
+replace = '''        pass'''
+
+[[mutation]]
+name = "a success is not recorded"
+find = '''        for state in states:
+            self.sink(state)
+        self.status.record_success()
+        self._next_poll_ns[symbol] = regular'''
+replace = '''        for state in states:
+            self.sink(state)
+        self._next_poll_ns[symbol] = regular'''
+
+[[mutation]]
+name = "a failed flush stops the collector"
+find = '''        except Exception as exc:  # noqa: BLE001 -- a failed commit must not stop the collector'''
+replace = '''        except ZeroDivisionError as exc:'''
+
+[[mutation]]
+name = "a failed flush is not counted"
+find = '''            self.status.record_flush_failure()
+            return'''
+replace = '''            return'''
+
+[[mutation]]
+name = "a burst of rows waits for the interval"
+find = '''        if interval_due or self.sink.pending >= self.config.flush_rows:'''
+replace = '''        if interval_due:'''
+
+[[mutation]]
+name = "the interval never flushes"
+find = '''        if interval_due or self.sink.pending >= self.config.flush_rows:'''
+replace = '''        if self.sink.pending >= self.config.flush_rows:'''
+
+[[mutation]]
+name = "closing does not flush"
+find = '''        self._flush(self.now_ns())
+
+    # --- the real loop'''
+replace = '''        pass
+
+    # --- the real loop'''
+
+[[mutation]]
+name = "history failure retries only after the full refresh interval"
+find = '''        retry = now + self.config.poll_interval_s * SECOND_NS'''
+replace = '''        retry = now + self.config.history_refresh_s * SECOND_NS'''

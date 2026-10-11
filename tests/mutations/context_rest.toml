@@ -1,0 +1,53 @@
+# REQ-WP-093: one HTTP GET and what each way it fails becomes. A poll that fails must store nothing,
+# so each mutation is a failure that is let through as an answer, or a rate limit that is not obeyed.
+#
+# Patterns are TOML *literal* strings on purpose: the basic form treats a
+# trailing backslash as a line continuation and eats the next line's indentation.
+source = "src/channelflow/context/rest.py"
+tests = ["tests/unit/context/test_rest.py"]
+
+[[mutation]]
+name = "a non-200 status is returned as an answer"
+find = '''        if response.status_code != 200:
+            raise RestFailure(url, f"HTTP {response.status_code}")'''
+replace = '''        if response.status_code >= 500:
+            raise RestFailure(url, f"HTTP {response.status_code}")'''
+
+[[mutation]]
+name = "418 is not treated as a rate limit"
+find = '''RATE_LIMIT_STATUSES = frozenset({429, 418})'''
+replace = '''RATE_LIMIT_STATUSES = frozenset({429})'''
+
+[[mutation]]
+name = "429 is not treated as a rate limit"
+find = '''RATE_LIMIT_STATUSES = frozenset({429, 418})'''
+replace = '''RATE_LIMIT_STATUSES = frozenset({418})'''
+
+[[mutation]]
+name = "the retry-after header is ignored"
+find = '''        seconds = float(raw) if raw is not None else DEFAULT_RETRY_AFTER_S'''
+replace = '''        seconds = DEFAULT_RETRY_AFTER_S'''
+
+[[mutation]]
+name = "a missing retry-after waits no time at all"
+find = '''DEFAULT_RETRY_AFTER_S = 60.0'''
+replace = '''DEFAULT_RETRY_AFTER_S = 0.0'''
+
+[[mutation]]
+name = "a transport error escapes as itself"
+find = '''        except httpx.HTTPError as exc:
+            raise RestFailure(url, f"{type(exc).__name__}: {exc}") from exc'''
+replace = '''        except ZeroDivisionError as exc:
+            raise RestFailure(url, f"{type(exc).__name__}: {exc}") from exc'''
+
+[[mutation]]
+name = "an answer that is not JSON escapes as itself"
+find = '''        except ValueError as exc:
+            raise RestFailure(url, "the answer is not JSON") from exc'''
+replace = '''        except ZeroDivisionError as exc:
+            raise RestFailure(url, "the answer is not JSON") from exc'''
+
+[[mutation]]
+name = "the query parameters are dropped"
+find = '''            response = self._client.get(url, params=dict(params or {}))'''
+replace = '''            response = self._client.get(url)'''

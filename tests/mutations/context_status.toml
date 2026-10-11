@@ -1,0 +1,52 @@
+# REQ-WP-093: health. Each mutation makes a stopped collector look alive, or a started one look dead.
+#
+# Patterns are TOML *literal* strings on purpose: the basic form treats a
+# trailing backslash as a line continuation and eats the next line's indentation.
+source = "src/channelflow/context/status.py"
+tests = ["tests/unit/context/test_status.py"]
+
+[[mutation]]
+name = "unhealthy after one interval instead of three"
+find = '''UNHEALTHY_AFTER_INTERVALS = 3'''
+replace = '''UNHEALTHY_AFTER_INTERVALS = 1'''
+
+[[mutation]]
+name = "unhealthy only after thirty intervals"
+find = '''UNHEALTHY_AFTER_INTERVALS = 3'''
+replace = '''UNHEALTHY_AFTER_INTERVALS = 30'''
+
+[[mutation]]
+name = "a success does not reset the failure run"
+find = '''            self._last_success_ns = self._now()
+            self.consecutive_failures = 0'''
+replace = '''            self._last_success_ns = self._now()'''
+
+[[mutation]]
+name = "a success does not move the health clock"
+find = '''            self._last_success_ns = self._now()'''
+replace = '''            pass'''
+
+[[mutation]]
+name = "the age before any success is zero instead of unknown"
+find = '''age = -1 if self._last_success_ns is None else'''
+replace = '''age = 0 if self._last_success_ns is None else'''
+
+[[mutation]]
+name = "an unhealthy collector answers 200"
+find = '''                self.send_response(200 if ok else 503)'''
+replace = '''                self.send_response(200)'''
+
+[[mutation]]
+name = "failures are not counted by endpoint"
+find = '''            self.failures_total[endpoint] += 1'''
+replace = '''            self.failures_total["any"] += 1'''
+
+[[mutation]]
+name = "an unknown path is served as metrics"
+find = '''            else:
+                body = b"not found\n"
+                self.send_response(404)'''
+replace = '''            else:
+                body = status.render_metrics().encode()
+                self.send_response(200)'''
+survives = '''Equivalent for the tests, which ask for the two paths that exist. A 404 for a path nobody requests is the standard library's own convention kept for tidiness; a test of it would pin the absence of a feature, not behaviour anyone depends on.'''

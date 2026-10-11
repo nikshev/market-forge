@@ -1,0 +1,28 @@
+# REQ-WP-093: OKX's settled funding history.
+#
+# Patterns are TOML *literal* strings on purpose: the basic form treats a
+# trailing backslash as a line continuation and eats the next line's indentation.
+source = "src/channelflow/connectors/okx/normalize.py"
+tests = ["tests/unit/connectors/test_context_derivatives.py", "tests/unit/connectors/test_derivatives_state.py"]
+
+[[mutation]]
+name = "the formula rate is stored instead of the realized one"
+find = '''                funding_rate=float(_decimal(row, "realizedRate", context)),'''
+replace = '''                funding_rate=float(_decimal(row, "fundingRate", context)),'''
+
+[[mutation]]
+name = "a settlement is dated at receipt"
+find = '''        settlement = int(_require(row, "fundingTime", context)) * MS_TO_NS'''
+replace = '''        settlement = ingest_time_ns'''
+
+[[mutation]]
+name = "history is tagged as a poll"
+find = '''                    source=f"{venue}-funding-history",'''
+replace = '''                    source=f"{venue}-rest",'''
+
+[[mutation]]
+name = "a settled row carries no settlement time"
+find = '''                funding_rate=float(_decimal(row, "realizedRate", context)),
+                next_funding_time_ns=settlement,'''
+replace = '''                funding_rate=float(_decimal(row, "realizedRate", context)),
+                next_funding_time_ns=None,'''

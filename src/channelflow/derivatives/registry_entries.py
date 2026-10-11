@@ -140,13 +140,19 @@ def _register_all() -> None:
             name="funding_z",
             version=1,
             description="How unusual the settled funding rate is against its own history.",
-            formula="(rate - mean(window)) / stdev(window), over settled intervals only",
+            formula=(
+                "(rate - mean(window)) / stdev(window), over settled intervals only: the rows "
+                "loaded from each venue's funding history, one per settlement. Polled states carry "
+                "the venue's still-revisable estimate for the interval in progress, many per "
+                "settlement, and are never read as settled (REQ-WP-093)"
+            ),
             unit="standard deviations",
             lookback="24 settled intervals, configurable",
             cadence="per funding interval",
             null_policy=(
-                "absent on fewer observations than the window, and on a constant "
-                "series; 0.0 would read as exactly average (ADR-026)"
+                "absent on fewer observations than the window, on a constant "
+                "series (0.0 would read as exactly average, ADR-026), and when the latest "
+                "settlement is older than one funding interval plus an hour (stale)"
             ),
             normalization="z-score against a trailing window",
             test_fixture="tests/unit/derivatives/test_funding.py::test_a_constant_series_has_no_z_score",
@@ -173,11 +179,19 @@ def _register_all() -> None:
             name="open_interest_usd",
             version=1,
             description="Open interest in USD, as reported by the venue.",
-            formula="the venue's own figure; never derived from base units and a price",
+            formula=(
+                "the venue's own USD figure for the venue's perpetual -- a spot series is shown "
+                "its venue's perpetual of the same pair -- never derived from base units and a "
+                "price; of the latest state received by the bar's close (REQ-WP-093)"
+            ),
             unit="USD",
             lookback="instant",
             cadence="per state update",
-            null_policy="absent when the venue reports base units only",
+            null_policy=(
+                "absent when the venue reports base units only, and when the newest figure is "
+                "older than three poll intervals (fifteen minutes for Binance's five-minute "
+                "buckets): stale"
+            ),
             normalization="none",
             test_fixture="tests/unit/derivatives/test_openinterest.py::test_base_only_states_are_skipped",
             **_DERIVATIVES,  # type: ignore[arg-type]
@@ -259,11 +273,18 @@ def _register_all() -> None:
             name="basis_bps",
             version=1,
             description="Perpetual price against spot, relative to spot.",
-            formula="(perp - spot) / spot * 10_000",
+            formula=(
+                "(perp - spot) / spot * 10_000, with the perpetual's mark price as `perp` and the "
+                "venue's index price (its spot composite) as `spot`, of the latest state the "
+                "collector had received by the bar's close (REQ-WP-093)"
+            ),
             unit="basis points",
             lookback="instant",
             cadence="per state update",
-            null_policy="absent when either leg is missing",
+            null_policy=(
+                "absent when either leg is missing, or when the newest state is older than three "
+                "poll intervals (stale)"
+            ),
             normalization="relative to spot, so comparable across price levels",
             test_fixture="tests/unit/derivatives/test_openinterest.py::test_basis_is_relative_to_spot",
             **_DERIVATIVES,  # type: ignore[arg-type]

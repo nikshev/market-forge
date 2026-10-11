@@ -1,0 +1,84 @@
+# REQ-WP-093: the venues' polls. Each mutation is a way for a poll to return a half-state, to hide a
+# failure, to ask a venue for the wrong thing, or to date a state with our clock.
+#
+# Patterns are TOML *literal* strings on purpose: the basic form treats a
+# trailing backslash as a line continuation and eats the next line's indentation.
+source = "src/channelflow/context/pollers.py"
+tests = ["tests/unit/context/test_pollers.py"]
+
+[[mutation]]
+name = "a request failure is swallowed and the poll goes on"
+find = '''    except RestFailure as exc:
+        raise PollFailed(f"{exc.endpoint}: {exc.reason}") from exc'''
+replace = '''    except RestFailure:
+        return {}'''
+
+[[mutation]]
+name = "a rate limit loses its wait"
+find = '''    except RateLimited:
+        raise
+    except RestFailure as exc:'''
+replace = '''    except RateLimited as exc:
+        raise PollFailed(str(exc)) from exc
+    except RestFailure as exc:'''
+
+[[mutation]]
+name = "a normalizer's refusal escapes as itself"
+find = '''    except (KeyError, TypeError, IndexError, ValueError) as exc:
+        raise PollFailed(f"{what}: {type(exc).__name__}: {exc}") from exc'''
+replace = '''    except ZeroDivisionError as exc:
+        raise PollFailed(f"{what}: {type(exc).__name__}: {exc}") from exc'''
+
+[[mutation]]
+name = "binance asks for one open-interest bucket"
+find = '''BINANCE_OI_BUCKETS = 3'''
+replace = '''BINANCE_OI_BUCKETS = 1'''
+
+[[mutation]]
+name = "history asks for too few settlements to fill the window"
+find = '''HISTORY_LIMIT = 50'''
+replace = '''HISTORY_LIMIT = 5'''
+
+[[mutation]]
+name = "bybit dates its state with our receipt"
+find = '''                event_time_ns=int(body["time"]) * MS_TO_NS,'''
+replace = '''                event_time_ns=None,'''
+
+[[mutation]]
+name = "bybit stores a state when the venue sent no row"
+find = '''            if not rows:
+                raise bybit.NormalizationError(f"tickers: no row for {symbol}")'''
+replace = '''            if False:
+                raise bybit.NormalizationError(f"tickers: no row for {symbol}")'''
+survives = '''Equivalent here: with no row, `rows[0]` raises IndexError, which the poller already turns into the same failed poll. The explicit check only gives the failure a clearer message.'''
+
+[[mutation]]
+name = "okx asks for the index by the swap's own name"
+find = '''        index = self._data("/api/v5/market/index-tickers", {"instId": symbol.removesuffix("-SWAP")})'''
+replace = '''        index = self._data("/api/v5/market/index-tickers", {"instId": symbol})'''
+
+[[mutation]]
+name = "okx fetches the contract value on every poll"
+find = '''        if symbol not in self._contract_values:'''
+replace = '''        if True:'''
+
+[[mutation]]
+name = "okx accepts an answer whose code is not success"
+find = '''        if body.get("code") != "0" or not body.get("data"):'''
+replace = '''        if not body.get("data"):'''
+survives = '''Equivalent for the tests: a venue error answer carries no `data`, so the second condition refuses it too. The code check names the cause better; a test with a non-zero code and data present would be an answer no venue sends.'''
+
+[[mutation]]
+name = "okx history ignores the venue's error code"
+find = '''        if body.get("code") != "0":
+            raise PollFailed(f"funding-rate-history: code {body.get('code')!r}")'''
+replace = '''        if False:
+            raise PollFailed(f"funding-rate-history: code {body.get('code')!r}")'''
+survives = '''Equivalent for the tests: an error answer has no `data` list, and indexing it raises KeyError, which the poller turns into the same failed poll.'''
+
+[[mutation]]
+name = "an unknown venue falls back to a default poller"
+find = '''        raise ValueError(
+            f"no poller for venue {venue!r}; known: {', '.join(sorted(_POLLERS))}"
+        ) from None'''
+replace = '''        return BybitPoller(client, now_ns)'''

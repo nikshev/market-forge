@@ -22,8 +22,8 @@ I: a minute is finalised from frames before its boundary; the worker reads summa
 src/channelflow/connectors/{binance,bybit,okx}/normalize.py   # book snapshot normalisers (exist for Binance depth_snapshot and Bybit order_book_message; OKX gains books5/books); crossed/empty refused
 src/channelflow/context/minute_book.py                        # MinuteBook: feed(snapshot) -> finalised minutes; reset() at reconnect
 src/channelflow/tables/book_minutes.py                        # schema, to_row, BookMinuteSink, table_for; quotes via existing tables/quotes.py
-src/channelflow/features/context_write.py                     # + book_rows(): ofi_1m, depth_imbalance_10 as of each close
-tests/unit/context/test_minute_book.py  tests/unit/tables/test_book_minutes.py  tests/unit/features/test_context_write_book.py
+src/channelflow/features/context_values.py (pure) and pipeline/context_pass.py (the pass)                     # + book_rows(): ofi_1m, depth_imbalance_10 as of each close
+tests/unit/context/test_minute_book.py  tests/unit/tables/test_book_minutes.py  tests/unit/pipeline/test_context_pass_book.py
 tests/mutations/context_book.toml
 ```
 

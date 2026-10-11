@@ -6,7 +6,7 @@
 
 ## Summary
 
-Per-venue liquidation parsers (`connectors/{binance,bybit,okx}/liquidation.py`), a `liquidations` table and sink, a stream task in the collector built on the **existing** `StreamSession`/`WebsocketTransport` (keepalive, silence limit, reconnect already decided and tested there), and a second worker pass `features/context_write.py::liquidation_rows` that evaluates the five liquidation features at every bar close using `derivatives/liquidations.py`.
+Per-venue liquidation parsers (`connectors/{binance,bybit,okx}/liquidation.py`), a `liquidations` table and sink, a stream task in the collector built on the **existing** `StreamSession`/`WebsocketTransport` (keepalive, silence limit, reconnect already decided and tested there), and a second worker pass `features/context_values.py (pure) and pipeline/context_pass.py (the pass)::liquidation_rows` that evaluates the five liquidation features at every bar close using `derivatives/liquidations.py`.
 
 ## Technical Context
 
@@ -24,11 +24,11 @@ src/channelflow/connectors/bybit/liquidation.py     # allLiquidation frame -> [L
 src/channelflow/connectors/okx/liquidation.py       # liquidation-orders frame -> [LiquidationEvent]; contract size -> base units
 src/channelflow/tables/liquidations.py              # schema, to_row, LiquidationSink (dedupe by identity), table_for
 src/channelflow/context/streams.py                  # shared: a StreamSession task per (venue, kind), frames -> handler, reconnect/silence metrics
-tests/unit/connectors/test_liquidation_*.py  tests/unit/tables/test_liquidations.py  tests/unit/features/test_context_write_liquidations.py
+tests/unit/connectors/test_liquidation_*.py  tests/unit/tables/test_liquidations.py  tests/unit/pipeline/test_context_pass_liquidations.py
 tests/mutations/context_liquidations.toml
 ```
 
-Touched: `connectors/venue.py` (a `CONTEXT_STREAMS` registry beside `VENUE_REGISTRY`: stream names, URL, subscribe message per venue and kind -- futures hosts differ from the spot trade stream), `context/sources.py`, `pipeline/context_main.py`, `features/context_write.py`, `pipeline/maintenance_main.py`, `docs/deployment.md`.
+Touched: `connectors/venue.py` (a `CONTEXT_STREAMS` registry beside `VENUE_REGISTRY`: stream names, URL, subscribe message per venue and kind -- futures hosts differ from the spot trade stream), `context/sources.py`, `pipeline/context_main.py`, `features/context_values.py (pure) and pipeline/context_pass.py (the pass)`, `pipeline/maintenance_main.py`, `docs/deployment.md`.
 
 ## Design decisions, with what was rejected
 

@@ -5,7 +5,7 @@ type: infrastructure
 prd_ref: "none -- operational finding, 2026-10-11; repository practice (ADR-064, REQ-INFRA-002)"
 prd_lines: "0-0"
 phase: null
-status: tested
+status: implemented
 depends_on: [REQ-INFRA-002]
 tags: [ci, images, reproducibility, supply-chain]
 hard_gated: false

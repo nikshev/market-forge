@@ -1,0 +1,36 @@
+# REQ-WP-093: the worker's context-feature pass. Each mutation is a way of letting a feature be
+# built from something not knowable at the bar's close, of feeding funding a polled estimate, of
+# showing a stale figure as current, or of writing a bar twice -- and a test must fail.
+#
+# Patterns are TOML *literal* strings on purpose: the basic form treats a
+# trailing backslash as a line continuation and eats the next line's indentation.
+source = "src/channelflow/pipeline/context_pass.py"
+tests = ["tests/unit/pipeline/test_context_pass.py"]
+
+[[mutation]]
+name = "a bar that is not final gets a row"
+find = '''        if bar.is_final:
+            grouped[(bar.venue, bar.symbol, bar.timeframe_ns)].append(bar)'''
+replace = '''        if True:
+            grouped[(bar.venue, bar.symbol, bar.timeframe_ns)].append(bar)'''
+
+[[mutation]]
+name = "the watermark is ignored and a bar is written again"
+find = '''                    if close > latest.get((venue, symbol, timeframe_ns, name), -1)'''
+replace = '''                    if True'''
+
+[[mutation]]
+name = "the watermark is per series, not per feature"
+find = '''                    if close > latest.get((venue, symbol, timeframe_ns, name), -1)'''
+replace = '''                    if close > max((v for k, v in latest.items() if k[:3] == (venue, symbol, timeframe_ns)), default=-1)'''
+survives = '''Equivalent for the tests, which write all three features for every bar. A per-series watermark differs from a per-feature one only when one feature has a row for a later bar than another, which needs a gap in one feature's data in the middle of the range; no fixture has one and the pass's behaviour there (a bar looked at again) is the documented cost of the per-feature design, not a property a test can distinguish without constructing exactly that gap. Left as the one deliberate survivor.'''
+
+[[mutation]]
+name = "a series with no perpetual is given states anyway"
+find = '''        series_states = states.get((venue, perpetual)) if perpetual is not None else None'''
+replace = '''        series_states = states.get((venue, perpetual or symbol))'''
+
+[[mutation]]
+name = "one failing series stops the pass"
+find = '''        except Exception as cause:  # noqa: BLE001 -- one series must not end the pass'''
+replace = '''        except ZeroDivisionError as cause:'''

@@ -23,3 +23,15 @@ scrape_configs:
       - targets: ["host.docker.internal:8001"]
         labels:
           service: notary
+
+  # The context collectors (REQ-WP-093): the age of each venue's last successful poll and its failure
+  # counts. A collector that stops storing turns its panes back to "no data"; this is how that is seen.
+  - job_name: channelflow-context
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["host.docker.internal:9101"]
+        labels: {service: context, venue: binance}
+      - targets: ["host.docker.internal:9102"]
+        labels: {service: context, venue: bybit}
+      - targets: ["host.docker.internal:9103"]
+        labels: {service: context, venue: okx}
