@@ -1,0 +1,67 @@
+# REQ-WP-094 / REQ-WP-095: a stream inside the collector. A bad frame must not stop it, and a minute is
+# covered only if the connection was up for all of it.
+#
+# Patterns are TOML *literal* strings on purpose: the basic form treats a
+# trailing backslash as a line continuation and eats the next line's indentation.
+source = "src/channelflow/context/streams.py"
+tests = ["tests/unit/context/test_streams.py", "tests/unit/context/test_liquidation_stream.py"]
+
+[[mutation]]
+name = "a frame the handler cannot read stops the stream"
+find = '''            except Exception as exc:  # noqa: BLE001 -- one bad frame is not a reason to stop'''
+replace = '''            except ZeroDivisionError as exc:'''
+
+[[mutation]]
+name = "a failed frame is not counted"
+find = '''                self.on_failure(f"{type(exc).__name__}: {exc}")'''
+replace = '''                pass'''
+
+[[mutation]]
+name = "a frame is not shown to the session"
+find = '''            self.session.on_frame()'''
+replace = '''            pass'''
+
+[[mutation]]
+name = "the session is never ticked"
+find = '''        self.session.tick()
+        self._maybe_heartbeat(self.now_ns())'''
+replace = '''        self._maybe_heartbeat(self.now_ns())'''
+
+[[mutation]]
+name = "a heartbeat is written for the minute the connection was made"
+find = '''        connected_whole_minute = self.session.connected_at_ns <= boundary - MINUTE_NS'''
+replace = '''        connected_whole_minute = self.session.connected_at_ns <= boundary'''
+
+[[mutation]]
+name = "a heartbeat is written whatever the connection's age"
+find = '''        connected_whole_minute = self.session.connected_at_ns <= boundary - MINUTE_NS'''
+replace = '''        connected_whole_minute = True'''
+
+[[mutation]]
+name = "a dead reader still writes a heartbeat"
+find = '''        if connected_whole_minute and self.session.connector.alive:'''
+replace = '''        if connected_whole_minute:'''
+
+[[mutation]]
+name = "a heartbeat is written on every step"
+find = '''        if boundary <= self._last_boundary_ns:
+            return'''
+replace = '''        if boundary < self._last_boundary_ns:
+            return'''
+
+[[mutation]]
+name = "the quiet policy keeps the silence limit"
+find = '''    return replace(policy, max_silence_ns=None) if quiet else policy'''
+replace = '''    return policy'''
+
+[[mutation]]
+name = "the busy policy loses the silence limit"
+find = '''    return replace(policy, max_silence_ns=None) if quiet else policy'''
+replace = '''    return replace(policy, max_silence_ns=None)'''
+
+[[mutation]]
+name = "an unknown venue falls back to a policy"
+find = '''        raise ValueError(
+            f"no stream policy for venue {venue!r}; known: {', '.join(sorted(POLICIES))}"
+        ) from None'''
+replace = '''        policy = POLICIES["binance"]'''

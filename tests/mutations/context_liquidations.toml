@@ -1,0 +1,52 @@
+# REQ-WP-094: which stream each venue is connected to and how a frame becomes stored rows.
+#
+# Patterns are TOML *literal* strings on purpose: the basic form treats a
+# trailing backslash as a line continuation and eats the next line's indentation.
+source = "src/channelflow/context/liquidations.py"
+tests = ["tests/unit/context/test_liquidation_stream.py"]
+
+[[mutation]]
+name = "binance is connected on the legacy path that no longer delivers"
+find = '''BINANCE_URL = "wss://fstream.binance.com/market/ws/"'''
+replace = '''BINANCE_URL = "wss://fstream.binance.com/ws/"'''
+
+[[mutation]]
+name = "bybit asks for the first symbol only"
+find = '''        topics = tuple(f"allLiquidation.{symbol}" for symbol in symbols)'''
+replace = '''        topics = tuple(f"allLiquidation.{symbol}" for symbol in symbols[:1])'''
+
+[[mutation]]
+name = "okx subscribes to futures instead of swaps"
+find = '''        argument = {"channel": "liquidation-orders", "instType": "SWAP"}'''
+replace = '''        argument = {"channel": "liquidation-orders", "instType": "FUTURES"}'''
+
+[[mutation]]
+name = "every symbol is watched, not the ones asked for"
+find = '''    watched = frozenset(symbols)'''
+replace = '''    watched = None'''
+
+[[mutation]]
+name = "a bare string frame is stored or raises"
+find = '''        if not isinstance(decoded, dict):
+            return  # a bare "pong" or similar: not a liquidation, not an error'''
+replace = '''        if False:
+            return'''
+
+[[mutation]]
+name = "the events are parsed but not stored"
+find = '''        for event in parse(decoded, received_at_ns):
+            sink(event)'''
+replace = '''        for event in parse(decoded, received_at_ns):
+            pass'''
+
+[[mutation]]
+name = "a heartbeat is written for the first symbol only"
+find = '''        for symbol in symbols:
+            sink.heartbeat(Heartbeat(venue=venue, symbol=symbol, at_ns=boundary_ns))'''
+replace = '''        for symbol in symbols[:1]:
+            sink.heartbeat(Heartbeat(venue=venue, symbol=symbol, at_ns=boundary_ns))'''
+
+[[mutation]]
+name = "the stream is not quiet, so it is reconnected for being quiet"
+find = '''        policy=stream_policy(venue, quiet=True),'''
+replace = '''        policy=stream_policy(venue, quiet=False),'''

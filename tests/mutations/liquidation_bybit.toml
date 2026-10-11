@@ -1,0 +1,57 @@
+# REQ-WP-094: Bybit's allLiquidation frame. Its side is the POSITION's -- the opposite convention from
+# Binance's -- so the mutations that matter are the ones that swap it.
+#
+# Patterns are TOML *literal* strings on purpose: the basic form treats a
+# trailing backslash as a line continuation and eats the next line's indentation.
+source = "src/channelflow/connectors/bybit/liquidation.py"
+tests = ["tests/unit/connectors/test_context_liquidation_parsers.py"]
+
+[[mutation]]
+name = "a buy update is a short that was liquidated"
+find = '''{"Buy": "long_liquidated", "Sell": "short_liquidated"}'''
+replace = '''{"Buy": "short_liquidated", "Sell": "long_liquidated"}'''
+
+[[mutation]]
+name = "the venue's time is replaced by receipt"
+find = '''            event_time_ns = int(row["T"]) * MS_TO_NS'''
+replace = '''            event_time_ns = ingest_time_ns'''
+
+[[mutation]]
+name = "the notional is the size alone"
+find = '''                notional_usd=price * qty,'''
+replace = '''                notional_usd=qty,'''
+
+[[mutation]]
+name = "only the first row of a frame is read"
+find = '''    for row in rows:
+        symbol = str(row.get("s", ""))'''
+replace = '''    for row in rows[:1]:
+        symbol = str(row.get("s", ""))'''
+
+[[mutation]]
+name = "every symbol is returned"
+find = '''        if symbols is not None and symbol not in symbols:
+            continue'''
+replace = '''        if False:
+            continue'''
+
+[[mutation]]
+name = "a frame of another topic is parsed"
+find = '''    if not isinstance(topic, str) or not topic.startswith("allLiquidation."):
+        return []  # an acknowledgement, a pong, another topic'''
+replace = '''    if False:
+        return []  # an acknowledgement, a pong, another topic'''
+
+[[mutation]]
+name = "an unknown side is taken as a long"
+find = '''        if side is None:
+            raise LiquidationRefused(f"allLiquidation: unknown side {row.get('S')!r}")'''
+replace = '''        if side is None:
+            side = "long_liquidated"'''
+
+[[mutation]]
+name = "a non-positive price and size are accepted"
+find = '''        if price <= 0 or qty <= 0:
+            raise LiquidationRefused('''
+replace = '''        if False:
+            raise LiquidationRefused('''

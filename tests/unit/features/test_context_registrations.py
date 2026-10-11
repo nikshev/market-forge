@@ -28,3 +28,23 @@ def test_basis_says_it_is_the_perpetuals_mark_against_the_venues_index() -> None
     spec = REGISTRY["basis_bps"]
     text = f"{spec.formula} {spec.description}".lower()
     assert "mark" in text and "index" in text
+
+
+@pytest.mark.trace("REQ-WP-094")
+def test_the_liquidation_sums_say_zero_needs_a_stream_that_was_listening() -> None:
+    for name in ("liquidation_long_usd_5m", "liquidation_short_usd_5m"):
+        spec = REGISTRY[name]
+        text = f"{spec.formula} {spec.null_policy}".lower()
+        assert "heartbeat" in text and "position" in text
+
+
+@pytest.mark.trace("REQ-WP-094")
+def test_the_imbalance_says_it_is_absent_for_a_window_nobody_watched() -> None:
+    text = REGISTRY["liquidation_imbalance_5m"].null_policy.lower()
+    assert "did not cover" in text
+
+
+@pytest.mark.trace("REQ-WP-094")
+@pytest.mark.parametrize("name", ["liquidation_intensity_5m", "time_since_liquidation_spike"])
+def test_the_two_liquidation_features_the_worker_does_not_write_say_so(name: str) -> None:
+    assert "not produced" in REGISTRY[name].formula.lower()

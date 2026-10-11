@@ -165,6 +165,7 @@ This requirement builds the missing producer, end to end, for the venues the dep
     - `tests/unit/pipeline/test_context_main.py::test_the_symbols_default_to_the_ones_the_deployment_shows[bybit-symbols1]`
     - `tests/unit/pipeline/test_context_main.py::test_the_symbols_default_to_the_ones_the_deployment_shows[okx-symbols2]`
     - `tests/unit/pipeline/test_context_pass.py::test_a_constant_funding_series_writes_no_funding_z_not_zero`
+    - `tests/unit/pipeline/test_context_pass.py::test_a_failed_commit_is_reported_and_the_rows_are_recomputed_next_pass`
     - `tests/unit/pipeline/test_context_pass.py::test_a_failing_series_is_reported_and_does_not_stop_the_others`
     - `tests/unit/pipeline/test_context_pass.py::test_a_later_pass_writes_only_the_new_bars`
     - `tests/unit/pipeline/test_context_pass.py::test_a_poll_older_than_the_bound_writes_no_open_interest_and_no_basis`
@@ -190,6 +191,7 @@ This requirement builds the missing producer, end to end, for the venues the dep
     - `tests/unit/pipeline/test_context_pass.py::test_the_pass_skips_bars_that_are_not_final`
     - `tests/unit/pipeline/test_context_pass.py::test_the_pass_writes_the_three_features_at_every_final_bars_close`
     - `tests/unit/pipeline/test_context_pass.py::test_the_three_values_at_a_close_are_what_the_library_gives_at_that_instant`
+    - `tests/unit/pipeline/test_context_pass.py::test_the_whole_pass_is_one_commit_however_many_series_it_covers`
     - `tests/unit/pipeline/test_context_pass.py::test_values_are_plain_finite_floats`
     - `tests/unit/tables/test_derivatives_state.py::test_a_new_sink_knows_what_an_earlier_one_stored`
     - `tests/unit/tables/test_derivatives_state.py::test_an_absent_field_stays_absent_and_is_never_a_default`
@@ -198,6 +200,17 @@ This requirement builds the missing producer, end to end, for the venues the dep
     - `tests/unit/tables/test_derivatives_state.py::test_states_are_read_back_grouped_by_market_and_sorted_by_event_time`
     - `tests/unit/tables/test_derivatives_state.py::test_the_schema_is_section_10_4_plus_the_source_and_both_times`
     - `tests/unit/tables/test_derivatives_state.py::test_the_sink_stores_a_state_once_however_often_it_is_offered`
+- **Code:**
+    - `src/channelflow/context/__init__.py`
+    - `src/channelflow/context/pollers.py`
+    - `src/channelflow/context/rest.py`
+    - `src/channelflow/context/runtime.py`
+    - `src/channelflow/context/sources.py`
+    - `src/channelflow/context/status.py`
+    - `src/channelflow/features/context_values.py`
+    - `src/channelflow/pipeline/context_main.py`
+    - `src/channelflow/pipeline/context_pass.py`
+    - `src/channelflow/tables/derivatives_state.py`
 - **Outcomes:** [[OUT-2026-10-11-implement-derivatives-collector]], [[OUT-2026-10-11-plan-live-panes]], [[OUT-2026-10-11-spec-live-panes]]
 <!-- trace:end -->
 

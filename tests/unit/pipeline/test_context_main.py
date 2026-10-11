@@ -58,3 +58,22 @@ def test_a_bad_port_is_refused(port: str) -> None:
         main.context_settings_from_env(
             {"CHANNELFLOW_CONTEXT_VENUE": "bybit", "CHANNELFLOW_CONTEXT_PORT": port}
         )
+
+
+@pytest.mark.trace("REQ-WP-094")
+def test_the_liquidation_stream_runs_by_default_and_can_be_turned_off() -> None:
+    assert main.context_settings_from_env({"CHANNELFLOW_CONTEXT_VENUE": "okx"}).streams == (
+        "liquidations",
+    )
+    off = main.context_settings_from_env(
+        {"CHANNELFLOW_CONTEXT_VENUE": "okx", "CHANNELFLOW_CONTEXT_STREAMS": ""}
+    )
+    assert off.streams == ()
+
+
+@pytest.mark.trace("REQ-WP-094")
+def test_an_unknown_stream_is_refused_naming_the_known_ones() -> None:
+    with pytest.raises(MissingConfiguration, match="liquidations"):
+        main.context_settings_from_env(
+            {"CHANNELFLOW_CONTEXT_VENUE": "okx", "CHANNELFLOW_CONTEXT_STREAMS": "tarot"}
+        )

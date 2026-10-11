@@ -22,6 +22,7 @@ from channelflow.context import sources
 from channelflow.context.pollers import Poller, PollFailed
 from channelflow.context.rest import RateLimited
 from channelflow.context.status import Status
+from channelflow.context.streams import StreamTask
 from channelflow.domain import DerivativesState
 
 logger = logging.getLogger(__name__)
@@ -31,6 +32,15 @@ SECOND_NS = 1_000_000_000
 
 class StateSink(Protocol):
     def __call__(self, state: DerivativesState) -> None: ...
+
+    @property
+    def pending(self) -> int: ...
+
+    def flush(self) -> str | None: ...
+
+
+class Flushable(Protocol):
+    """What a sink that is only committed, not fed by the collector's own polls, offers."""
 
     @property
     def pending(self) -> int: ...
@@ -55,6 +65,10 @@ class Collector:
     sink: StateSink
     now_ns: Callable[[], int]
     status: Status
+    #: Websocket streams stepped beside the polls (REQ-WP-094, REQ-WP-095), each with the sink its
+    #: rows go to; committed on the same schedule as the states.
+    streams: tuple[StreamTask, ...] = ()
+    extra_sinks: tuple[Flushable, ...] = ()
     _next_poll_ns: dict[str, int] = field(default_factory=dict)
     _next_history_ns: dict[str, int] = field(default_factory=dict)
     _last_flush_ns: int | None = None
@@ -63,6 +77,8 @@ class Collector:
         now = self.now_ns()
         if self._last_flush_ns is None:
             self._last_flush_ns = now
+        for stream in self.streams:
+            stream.step()
         for symbol in self.config.symbols:
             if now >= self._next_history_ns.get(symbol, 0):
                 self._load_history(symbol, now)
@@ -118,21 +134,32 @@ class Collector:
             self._last_flush_ns is not None
             and now - self._last_flush_ns >= self.config.flush_interval_s * SECOND_NS
         )
-        if interval_due or self.sink.pending >= self.config.flush_rows:
+        pending = self.sink.pending + sum(sink.pending for sink in self.extra_sinks)
+        if interval_due or pending >= self.config.flush_rows:
             self._flush(now)
 
     def _flush(self, now: int) -> None:
-        try:
-            self.sink.flush()
-        except Exception as exc:  # noqa: BLE001 -- a failed commit must not stop the collector
-            logger.error("%s: could not commit: %s: %s", self.config.venue, type(exc).__name__, exc)
-            self.status.record_flush_failure()
-            return
-        self._last_flush_ns = now
+        failed = False
+        for sink in (self.sink, *self.extra_sinks):
+            try:
+                sink.flush()
+            except Exception as exc:  # noqa: BLE001 -- a failed commit must not stop the collector
+                logger.error(
+                    "%s: could not commit: %s: %s", self.config.venue, type(exc).__name__, exc
+                )
+                self.status.record_flush_failure()
+                failed = True
+        if not failed:
+            self._last_flush_ns = now
 
     def close(self) -> None:
-        """Commit what is pending; called on the way out."""
+        """Commit what is pending and close the streams; called on the way out."""
         self._flush(self.now_ns())
+        for stream in self.streams:
+            try:
+                stream.session.connector.close()
+            except Exception:  # noqa: BLE001, S110 -- leaving; nothing to do about a close that fails
+                pass
 
     # --- the real loop -------------------------------------------------------
 

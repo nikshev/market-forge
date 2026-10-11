@@ -4,7 +4,7 @@
 # Patterns are TOML *literal* strings on purpose: the basic form treats a
 # trailing backslash as a line continuation and eats the next line's indentation.
 source = "src/channelflow/context/runtime.py"
-tests = ["tests/unit/context/test_runtime.py"]
+tests = ["tests/unit/context/test_runtime.py", "tests/unit/context/test_liquidation_stream.py"]
 
 [[mutation]]
 name = "a symbol is polled on every step"
@@ -49,30 +49,55 @@ replace = '''        except ZeroDivisionError as exc:'''
 
 [[mutation]]
 name = "a failed flush is not counted"
-find = '''            self.status.record_flush_failure()
-            return'''
-replace = '''            return'''
+find = '''                self.status.record_flush_failure()
+                failed = True'''
+replace = '''                failed = True'''
 
 [[mutation]]
 name = "a burst of rows waits for the interval"
-find = '''        if interval_due or self.sink.pending >= self.config.flush_rows:'''
+find = '''        if interval_due or pending >= self.config.flush_rows:'''
 replace = '''        if interval_due:'''
 
 [[mutation]]
 name = "the interval never flushes"
-find = '''        if interval_due or self.sink.pending >= self.config.flush_rows:'''
-replace = '''        if self.sink.pending >= self.config.flush_rows:'''
+find = '''        if interval_due or pending >= self.config.flush_rows:'''
+replace = '''        if pending >= self.config.flush_rows:'''
 
 [[mutation]]
 name = "closing does not flush"
 find = '''        self._flush(self.now_ns())
-
-    # --- the real loop'''
-replace = '''        pass
-
-    # --- the real loop'''
+        for stream in self.streams:'''
+replace = '''        for stream in self.streams:'''
 
 [[mutation]]
 name = "history failure retries only after the full refresh interval"
 find = '''        retry = now + self.config.poll_interval_s * SECOND_NS'''
 replace = '''        retry = now + self.config.history_refresh_s * SECOND_NS'''
+
+[[mutation]]
+name = "a failed flush of a stream's sink makes the next flush skip the rest"
+find = '''        if not failed:
+            self._last_flush_ns = now'''
+replace = '''        self._last_flush_ns = now'''
+survives = '''Equivalent for the tests in one respect: the flush interval only decides WHEN the next attempt is, and the tests that fail a flush look at the failure count and at the rows still being pending, not at when the retry happens. A retry one interval later versus a retry on the next step is a latency choice with no test; the rows are never lost either way.'''
+
+[[mutation]]
+name = "the streams are stepped after the polls instead of before"
+find = '''        for stream in self.streams:
+            stream.step()
+        for symbol in self.config.symbols:'''
+replace = '''        for symbol in self.config.symbols:'''
+
+[[mutation]]
+name = "a stream's sink is not committed"
+find = '''        for sink in (self.sink, *self.extra_sinks):'''
+replace = '''        for sink in (self.sink,):'''
+
+[[mutation]]
+name = "closing leaves the streams open"
+find = '''        for stream in self.streams:
+            try:
+                stream.session.connector.close()'''
+replace = '''        for stream in ():
+            try:
+                stream.session.connector.close()'''

@@ -1,0 +1,97 @@
+# REQ-WP-094: the liquidations table. Events are stored once however often a reconnect replays them;
+# a heartbeat is one per symbol per minute; a heartbeat is never an event.
+#
+# Patterns are TOML *literal* strings on purpose: the basic form treats a
+# trailing backslash as a line continuation and eats the next line's indentation.
+source = "src/channelflow/tables/liquidations.py"
+tests = ["tests/unit/tables/test_liquidations.py", "tests/unit/pipeline/test_context_pass_liquidations.py"]
+
+[[mutation]]
+name = "the price is not part of an event's identity"
+find = '''    return (EVENT, meta.venue, meta.symbol, meta.event_time_ns, event.price, event.qty, event.side)'''
+replace = '''    return (EVENT, meta.venue, meta.symbol, meta.event_time_ns, event.qty, event.side)'''
+
+[[mutation]]
+name = "the side is not part of an event's identity"
+find = '''    return (EVENT, meta.venue, meta.symbol, meta.event_time_ns, event.price, event.qty, event.side)'''
+replace = '''    return (EVENT, meta.venue, meta.symbol, meta.event_time_ns, event.price, event.qty)'''
+
+[[mutation]]
+name = "the quantity is not part of an event's identity"
+find = '''    return (EVENT, meta.venue, meta.symbol, meta.event_time_ns, event.price, event.qty, event.side)'''
+replace = '''    return (EVENT, meta.venue, meta.symbol, meta.event_time_ns, event.price, event.side)'''
+
+[[mutation]]
+name = "the time is not part of an event's identity"
+find = '''    return (EVENT, meta.venue, meta.symbol, meta.event_time_ns, event.price, event.qty, event.side)'''
+replace = '''    return (EVENT, meta.venue, meta.symbol, 0, event.price, event.qty, event.side)'''
+
+[[mutation]]
+name = "the symbol is not part of a heartbeat's identity"
+find = '''    return (HEARTBEAT, beat.venue, beat.symbol, beat.at_ns)'''
+replace = '''    return (HEARTBEAT, beat.venue, "", beat.at_ns)'''
+
+[[mutation]]
+name = "the minute is not part of a heartbeat's identity"
+find = '''    return (HEARTBEAT, beat.venue, beat.symbol, beat.at_ns)'''
+replace = '''    return (HEARTBEAT, beat.venue, beat.symbol, 0)'''
+
+[[mutation]]
+name = "a stored heartbeat is not recognised on a restart"
+find = '''    if row["kind"] == HEARTBEAT:
+        return (HEARTBEAT, row["venue"], row["symbol"], int(row["event_time_ns"]))'''
+replace = '''    if row["kind"] == HEARTBEAT:
+        return (HEARTBEAT, row["venue"], row["symbol"], 0)'''
+
+[[mutation]]
+name = "a restart forgets what is stored"
+find = '''            self._known = {_identity_of_row(r) for r in self.table.read().to_pylist()}'''
+replace = '''            self._known = set()'''
+
+[[mutation]]
+name = "an offered observation is not remembered"
+find = '''        known.add(key)
+        self._buffer.append(row)'''
+replace = '''        self._buffer.append(row)'''
+
+[[mutation]]
+name = "a flush leaves the rows buffered"
+find = '''        snapshot = self.table.append(self._buffer)
+        self._buffer.clear()'''
+replace = '''        snapshot = self.table.append(self._buffer)'''
+
+[[mutation]]
+name = "an empty flush commits"
+find = '''        if not self._buffer:
+            return None
+        snapshot'''
+replace = '''        snapshot'''
+
+[[mutation]]
+name = "a heartbeat row carries a side"
+find = '''        "kind": HEARTBEAT,
+        "side": None,'''
+replace = '''        "kind": HEARTBEAT,
+        "side": "unknown",'''
+
+[[mutation]]
+name = "a heartbeat is read back as an event"
+find = '''    if row["kind"] == HEARTBEAT:
+        return Heartbeat('''
+replace = '''    if False:
+        return Heartbeat('''
+
+[[mutation]]
+name = "heartbeats are read back as events' neighbours in the wrong list"
+find = '''            beats[(item.venue, item.symbol)].append(item.at_ns)'''
+replace = '''            beats[(item.venue, "")].append(item.at_ns)'''
+
+[[mutation]]
+name = "events are not sorted on read"
+find = '''        series.sort(key=lambda e: (e.meta.event_time_ns, e.meta.ingest_time_ns))'''
+replace = '''        pass'''
+
+[[mutation]]
+name = "heartbeats are not sorted on read"
+find = '''        series_beats.sort()'''
+replace = '''        pass'''

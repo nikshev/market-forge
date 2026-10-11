@@ -197,6 +197,14 @@ class OkxPoller:
             )
         return self._contract_values[symbol]
 
+    def contract_value(self, symbol: str) -> Decimal | None:
+        """The instrument's contract value, or `None` if it could not be had (REQ-WP-094 needs it
+        to turn a liquidation's contracts into base units, and refuses the event without it)."""
+        try:
+            return self._contract_value(symbol)
+        except (PollFailed, RateLimited):
+            return None
+
     def poll(self, symbol: str) -> list[DerivativesState]:
         contract_value = self._contract_value(symbol)
         funding = self._data("/api/v5/public/funding-rate", {"instId": symbol})

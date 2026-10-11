@@ -18,3 +18,15 @@ value overrides a field in code and says so.
 | `okx_index_tickers.json` | `https://www.okx.com/api/v5/market/index-tickers?instId=BTC-USDT` |
 | `okx_funding_history.json` | `https://www.okx.com/api/v5/public/funding-rate-history?instId=BTC-USDT-SWAP&limit=30` |
 | `okx_instruments.json` | `https://www.okx.com/api/v5/public/instruments?instType=SWAP&instId=BTC-USDT-SWAP` |
+
+## Websocket frames (REQ-WP-094, REQ-WP-095)
+
+Recorded with `websockets` on the same day. Binance's futures streams moved to new paths in 2026: the
+legacy `/ws/` path no longer delivers `forceOrder`, and `/market/ws/` (liquidations, mark price) and
+`/public/ws/` (depth) do.
+
+| File | Stream |
+|---|---|
+| `ws_okx_liquidation.json` | `wss://ws.okx.com:8443/ws/v5/public`, channel `liquidation-orders`, instType `SWAP` (three events, MAGIC-USDT-SWAP) |
+| `ws_bybit_allLiquidation.json` | `wss://stream.bybit.com/v5/public/linear`, `allLiquidation.BTCUSDT` -- **only the subscription acknowledgement**: no liquidation arrived in four minutes, nor in ten across eight symbols |
+| `ws3_binance_market_forceOrder_all.json` | `wss://fstream.binance.com/market/ws/!forceOrder@arr` (four events) |

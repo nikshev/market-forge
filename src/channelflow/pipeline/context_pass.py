@@ -17,6 +17,7 @@ code and may not reach for a storage backend (PRD §29.0, `tests/unit/lakehouse/
 
 from __future__ import annotations
 
+from bisect import bisect_right
 from collections import defaultdict
 from collections.abc import Sequence
 
@@ -26,9 +27,15 @@ import pyarrow.compute as pc
 from channelflow.bars.models import Bar
 from channelflow.context import sources
 from channelflow.features.context_values import CONTEXT_FEATURES, StateIndex, context_values
+from channelflow.features.liquidation_values import (
+    LIQUIDATION_FEATURES,
+    WINDOW_NS,
+    liquidation_values,
+)
 from channelflow.lakehouse import Catalog, IcebergTable
 from channelflow.tables import derivatives_state as state_table
 from channelflow.tables import features as features_table
+from channelflow.tables import liquidations as liquidation_table
 
 
 def latest_context_times(table: IcebergTable) -> dict[tuple[str, str, int, str], int]:
@@ -56,7 +63,7 @@ def latest_context_times(table: IcebergTable) -> dict[tuple[str, str, int, str],
 
 
 def _names_array() -> pa.Array:
-    return pa.array(CONTEXT_FEATURES)
+    return pa.array(CONTEXT_FEATURES + LIQUIDATION_FEATURES)
 
 
 def write_context_features(catalog: Catalog, all_bars: Sequence[Bar]) -> int:
@@ -73,6 +80,7 @@ def write_context_features(catalog: Catalog, all_bars: Sequence[Bar]) -> int:
 
     try:
         states = state_table.read_states(state_table.table_for(catalog))
+        events, heartbeats = liquidation_table.read(liquidation_table.table_for(catalog))
         table = features_table.features_table_for(catalog)
         latest = latest_context_times(table)
     except Exception as cause:  # noqa: BLE001 -- the channel step must still run
@@ -82,40 +90,44 @@ def write_context_features(catalog: Catalog, all_bars: Sequence[Bar]) -> int:
         return 0
 
     indexes: dict[tuple[str, str], StateIndex] = {}
+    event_times: dict[tuple[str, str], list[int]] = {}
     pending: list[dict[str, object]] = []
     for (venue, symbol, timeframe_ns), series_bars in sorted(grouped.items()):
         perpetual = sources.perpetual_for(venue, symbol)
-        series_states = states.get((venue, perpetual)) if perpetual is not None else None
-        if not series_states:
+        if perpetual is None:
             continue
-        try:
-            index = indexes.setdefault((venue, symbol), StateIndex.of(series_states))
-            rows: list[dict[str, object]] = []
-            for bar in sorted(series_bars, key=lambda b: b.close_time_ns):
-                close = bar.close_time_ns
-                values = context_values(series_states, close_ns=close, index=index)
-                fresh = {
-                    name: value
-                    for name, value in values.items()
-                    if close > latest.get((venue, symbol, timeframe_ns, name), -1)
-                }
-                if fresh:
-                    rows.extend(
-                        features_table.feature_rows(
-                            venue=venue,
-                            symbol=symbol,
-                            timeframe_ns=timeframe_ns,
-                            at_ns=close,
-                            values=fresh,
-                        )
+        ordered = sorted(series_bars, key=lambda b: b.close_time_ns)
+        minutes = timeframe_ns // 60_000_000_000
+
+        series_states = states.get((venue, perpetual))
+        if series_states:
+            try:
+                index = indexes.setdefault((venue, symbol), StateIndex.of(series_states))
+                for bar in ordered:
+                    values = context_values(series_states, close_ns=bar.close_time_ns, index=index)
+                    pending.extend(
+                        _fresh_rows(latest, venue, symbol, timeframe_ns, bar.close_time_ns, values)
                     )
-            pending.extend(rows)
-        except Exception as cause:  # noqa: BLE001 -- one series must not end the pass
-            print(
-                f"  {venue} {symbol} {timeframe_ns // 60_000_000_000}m: context step failed -- "
-                f"{type(cause).__name__}: {cause}",
-                flush=True,
-            )
+            except Exception as cause:  # noqa: BLE001 -- one series must not end the pass
+                _report(venue, symbol, minutes, "context", cause)
+
+        series_beats = heartbeats.get((venue, perpetual))
+        if series_beats:
+            try:
+                series_events = events.get((venue, perpetual), [])
+                times = event_times.setdefault(
+                    (venue, symbol), [e.meta.event_time_ns for e in series_events]
+                )
+                for bar in ordered:
+                    close = bar.close_time_ns
+                    # Only the events that can be in the window: sorted by event time, so a slice.
+                    lo, hi = bisect_right(times, close - WINDOW_NS), bisect_right(times, close)
+                    values = liquidation_values(
+                        series_events[lo:hi], series_beats, close_ns=close, symbol=symbol
+                    )
+                    pending.extend(_fresh_rows(latest, venue, symbol, timeframe_ns, close, values))
+            except Exception as cause:  # noqa: BLE001 -- one series must not end the pass
+                _report(venue, symbol, minutes, "liquidation", cause)
     # One commit for the whole pass, not one per series: every append is a snapshot, and thirty-five
     # of them to a table of millions of rows is minutes of commits for rows that were computed in
     # seconds (the first backfill found this out). The rows are recomputed from the watermark on
@@ -133,3 +145,31 @@ def write_context_features(catalog: Catalog, all_bars: Sequence[Bar]) -> int:
             )
     print(f"  context rows written: {written}", flush=True)
     return written
+
+
+def _fresh_rows(
+    latest: dict[tuple[str, str, int, str], int],
+    venue: str,
+    symbol: str,
+    timeframe_ns: int,
+    close_ns: int,
+    values: dict[str, float],
+) -> list[dict[str, object]]:
+    """The rows for a close that are past the watermark of their own feature."""
+    fresh = {
+        name: value
+        for name, value in values.items()
+        if close_ns > latest.get((venue, symbol, timeframe_ns, name), -1)
+    }
+    if not fresh:
+        return []
+    return features_table.feature_rows(
+        venue=venue, symbol=symbol, timeframe_ns=timeframe_ns, at_ns=close_ns, values=fresh
+    )
+
+
+def _report(venue: str, symbol: str, minutes: int, step: str, cause: Exception) -> None:
+    print(
+        f"  {venue} {symbol} {minutes}m: {step} step failed -- {type(cause).__name__}: {cause}",
+        flush=True,
+    )

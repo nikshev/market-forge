@@ -1,0 +1,61 @@
+# REQ-WP-094: OKX's liquidation-orders frame: the position's side from posSide, the size in contracts
+# turned into base units with the instrument's own contract value, and refusing what it cannot size.
+#
+# Patterns are TOML *literal* strings on purpose: the basic form treats a
+# trailing backslash as a line continuation and eats the next line's indentation.
+source = "src/channelflow/connectors/okx/liquidation.py"
+tests = ["tests/unit/connectors/test_context_liquidation_parsers.py"]
+
+[[mutation]]
+name = "a long position closed by a sell is a short"
+find = '''        return "long_liquidated" if side == "sell" else "unknown"'''
+replace = '''        return "short_liquidated" if side == "sell" else "unknown"'''
+
+[[mutation]]
+name = "a contradiction is guessed instead of unknown"
+find = '''        return "long_liquidated" if side == "sell" else "unknown"'''
+replace = '''        return "long_liquidated"'''
+
+[[mutation]]
+name = "a short position closed by a buy is a long"
+find = '''        return "short_liquidated" if side == "buy" else "unknown"'''
+replace = '''        return "long_liquidated" if side == "buy" else "unknown"'''
+
+[[mutation]]
+name = "net mode reads the order's side backwards"
+find = '''        return {"sell": "long_liquidated", "buy": "short_liquidated"}.get(side, "unknown")'''
+replace = '''        return {"sell": "short_liquidated", "buy": "long_liquidated"}.get(side, "unknown")'''
+
+[[mutation]]
+name = "contracts are read as base units"
+find = '''            qty = contracts * contract_value'''
+replace = '''            qty = contracts'''
+
+[[mutation]]
+name = "an unknown contract value is let through"
+find = '''        if contract_value is None or contract_value <= 0:'''
+replace = '''        if False:'''
+
+[[mutation]]
+name = "an unwatched instrument is returned"
+find = '''        if symbol not in contract_values:
+            continue'''
+replace = '''        if False:
+            continue'''
+
+[[mutation]]
+name = "the time is receipt"
+find = '''                event_time_ns = int(detail["ts"]) * MS_TO_NS'''
+replace = '''                event_time_ns = ingest_time_ns'''
+
+[[mutation]]
+name = "another channel is parsed"
+find = '''    if not isinstance(arg, dict) or arg.get("channel") != "liquidation-orders":
+        return []'''
+replace = '''    if False:
+        return []'''
+
+[[mutation]]
+name = "a non-positive price and size are accepted"
+find = '''            if price <= 0 or contracts <= 0:'''
+replace = '''            if False:'''

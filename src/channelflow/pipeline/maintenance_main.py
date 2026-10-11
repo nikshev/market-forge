@@ -43,6 +43,7 @@ from channelflow.tables import (
     dex_swaps,
     extrema,
     features,
+    liquidations,
     signals,
 )
 
@@ -62,6 +63,7 @@ TABLES: dict[str, Callable[[Catalog], IcebergTable]] = {
     "confirmed_extrema": extrema.confirmed_table_for,
     "extremum_candidates": extrema.candidates_table_for,
     "derivatives_state": derivatives_state.table_for,
+    "liquidations": liquidations.table_for,
     "dex_swaps": dex_swaps.table_for,
     "dex_liquidity": dex_liquidity.table_for,
     "dex_depth": dex_depth.table_for,

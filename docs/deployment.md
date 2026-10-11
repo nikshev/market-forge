@@ -587,6 +587,21 @@ Each collector serves `/healthz` (200, or 503 once nothing has succeeded for thr
 `CONTEXT_BINANCE_PORT`, `CONTEXT_BYBIT_PORT` and `CONTEXT_OKX_PORT` (9101-9103, loopback by default), and
 Prometheus scrapes them. A collector that stops is therefore visible; the panes it fed go back to "no data".
 
+**Liquidations** ([REQ-WP-094]). Each collector also holds one websocket to its venue's public liquidation
+stream (Binance `!forceOrder@arr` on the futures `/market/ws/` path -- the legacy `/ws/` path connects and
+says nothing; Bybit `allLiquidation.<symbol>`; OKX `liquidation-orders`) and stores each event in
+`liquidations`. **The side is the position that was closed**: Binance and OKX publish the closing *order's*
+side (a forced SELL liquidates a long), Bybit publishes the position's side (a Buy is a long); the three
+mappings are pinned by tests. OKX reports contracts, converted with the instrument's own contract value.
+
+The stream task also writes a **heartbeat** per symbol per minute, but only for a minute in which its
+connection stayed up from the start of the minute to the end. The worker writes the three liquidation
+features (long and short USD over the trailing five minutes, and their imbalance) only for a window
+whose every minute has a heartbeat: **zero liquidated is a reading only where the stream was listening**,
+and the imbalance of a quiet window is absent, not zero. Intensity and time-since-spike are registered
+but not produced. A quiet stream is not reconnected for being quiet (Binance's 60 s silence limit is off
+for this stream; its keepalive is not).
+
 Start them without recreating anything else:
 
 ```

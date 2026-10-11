@@ -1,0 +1,63 @@
+# REQ-WP-094: the liquidation features at a close. The rules: quiet is a reading only where the stream
+# was listening, and a value uses only what had been delivered by the close.
+#
+# Patterns are TOML *literal* strings on purpose: the basic form treats a
+# trailing backslash as a line continuation and eats the next line's indentation.
+source = "src/channelflow/features/liquidation_values.py"
+tests = ["tests/unit/features/test_liquidation_values.py", "tests/unit/pipeline/test_context_pass_liquidations.py"]
+
+[[mutation]]
+name = "a window is covered whatever the heartbeats say"
+find = '''    if not covered(heartbeats, close_ns=close_ns):
+        return {}'''
+replace = '''    if False:
+        return {}'''
+
+[[mutation]]
+name = "a missing minute does not uncover the window"
+find = '''        if i >= len(ordered) or ordered[i] > end:
+            return False'''
+replace = '''        if False:
+            return False'''
+
+[[mutation]]
+name = "the first minute of the window is not checked"
+find = '''    for slot in range(window_ns // MINUTE_NS):'''
+replace = '''    for slot in range(window_ns // MINUTE_NS - 1):'''
+
+[[mutation]]
+name = "the last minute of the window is not checked"
+find = '''    for slot in range(window_ns // MINUTE_NS):'''
+replace = '''    for slot in range(1, window_ns // MINUTE_NS):'''
+
+[[mutation]]
+name = "a heartbeat at the start of its slot counts for the slot before"
+find = '''        i = bisect_right(ordered, start)'''
+replace = '''        i = bisect_right(ordered, start - 1)'''
+
+[[mutation]]
+name = "an event received after the close is used"
+find = '''        e for e in events if e.meta.event_time_ns <= close_ns and e.meta.ingest_time_ns <= close_ns'''
+replace = '''        e for e in events if e.meta.event_time_ns <= close_ns'''
+
+[[mutation]]
+name = "an event dated after the close is used if it arrived before it"
+find = '''        e for e in events if e.meta.event_time_ns <= close_ns and e.meta.ingest_time_ns <= close_ns'''
+replace = '''        e for e in events if e.meta.ingest_time_ns <= close_ns'''
+survives = '''Equivalent, by design: the library's `window` itself keeps only events dated inside `(as_of - window, as_of]`, so an event dated after the close is dropped there whatever this filter says. The filter on the event time here is defence in depth; the test that appends later events and the one with a fast venue clock pin the behaviour either way.'''
+
+[[mutation]]
+name = "the imbalance of a quiet window is zero"
+find = '''    if inside.imbalance is not None:
+        values["liquidation_imbalance_5m"] = inside.imbalance'''
+replace = '''    values["liquidation_imbalance_5m"] = inside.imbalance or 0.0'''
+
+[[mutation]]
+name = "the window is ten minutes"
+find = '''WINDOW_NS = 5 * MINUTE_NS'''
+replace = '''WINDOW_NS = 10 * MINUTE_NS'''
+
+[[mutation]]
+name = "the short sum is the long sum"
+find = '''        "liquidation_short_usd_5m": float(inside.short_usd),'''
+replace = '''        "liquidation_short_usd_5m": float(inside.long_usd),'''

@@ -5,7 +5,7 @@
 # Patterns are TOML *literal* strings on purpose: the basic form treats a
 # trailing backslash as a line continuation and eats the next line's indentation.
 source = "src/channelflow/pipeline/context_pass.py"
-tests = ["tests/unit/pipeline/test_context_pass.py"]
+tests = ["tests/unit/pipeline/test_context_pass.py", "tests/unit/pipeline/test_context_pass_liquidations.py"]
 
 [[mutation]]
 name = "a bar that is not final gets a row"
@@ -16,24 +16,37 @@ replace = '''        if True:
 
 [[mutation]]
 name = "the watermark is ignored and a bar is written again"
-find = '''                    if close > latest.get((venue, symbol, timeframe_ns, name), -1)'''
-replace = '''                    if True'''
+find = '''        if close_ns > latest.get((venue, symbol, timeframe_ns, name), -1)'''
+replace = '''        if True'''
 
 [[mutation]]
 name = "the watermark is per series, not per feature"
-find = '''                    if close > latest.get((venue, symbol, timeframe_ns, name), -1)'''
-replace = '''                    if close > max((v for k, v in latest.items() if k[:3] == (venue, symbol, timeframe_ns)), default=-1)'''
-survives = '''Equivalent for the tests, which write all three features for every bar. A per-series watermark differs from a per-feature one only when one feature has a row for a later bar than another, which needs a gap in one feature's data in the middle of the range; no fixture has one and the pass's behaviour there (a bar looked at again) is the documented cost of the per-feature design, not a property a test can distinguish without constructing exactly that gap. Left as the one deliberate survivor.'''
+find = '''        if close_ns > latest.get((venue, symbol, timeframe_ns, name), -1)'''
+replace = '''        if close_ns > max((v for k, v in latest.items() if k[:3] == (venue, symbol, timeframe_ns)), default=-1)'''
+survives = '''Equivalent for the tests, which write every feature of a series for every bar. A per-series watermark differs from a per-feature one only when one feature has a row for a later bar than another, which needs a gap in one feature's data in the middle of the range; no fixture has one and the pass's behaviour there (a bar looked at again) is the documented cost of the per-feature design, not a property a test can distinguish without constructing exactly that gap. Left as the one deliberate survivor.'''
 
 [[mutation]]
 name = "a series with no perpetual is given states anyway"
-find = '''        series_states = states.get((venue, perpetual)) if perpetual is not None else None'''
-replace = '''        series_states = states.get((venue, perpetual or symbol))'''
+find = '''        perpetual = sources.perpetual_for(venue, symbol)
+        if perpetual is None:
+            continue'''
+replace = '''        perpetual = sources.perpetual_for(venue, symbol) or symbol
+        if False:
+            continue'''
 
 [[mutation]]
-name = "one failing series stops the pass"
-find = '''        except Exception as cause:  # noqa: BLE001 -- one series must not end the pass'''
-replace = '''        except ZeroDivisionError as cause:'''
+name = "one failing derivatives series stops the pass"
+find = '''            except Exception as cause:  # noqa: BLE001 -- one series must not end the pass
+                _report(venue, symbol, minutes, "context", cause)'''
+replace = '''            except ZeroDivisionError as cause:
+                _report(venue, symbol, minutes, "context", cause)'''
+
+[[mutation]]
+name = "one failing liquidation series stops the pass"
+find = '''            except Exception as cause:  # noqa: BLE001 -- one series must not end the pass
+                _report(venue, symbol, minutes, "liquidation", cause)'''
+replace = '''            except ZeroDivisionError as cause:
+                _report(venue, symbol, minutes, "liquidation", cause)'''
 
 [[mutation]]
 name = "a failed commit stops the pass"
@@ -45,10 +58,13 @@ replace = '''        except ZeroDivisionError as cause:
                 f"  context: could not write {len(pending)} row(s) -- "'''
 
 [[mutation]]
-name = "a commit is made per series again"
-find = '''            pending.extend(rows)
-        except Exception as cause:'''
-replace = '''            pending.extend(rows)
-            if rows:
-                table.append(rows)
-        except Exception as cause:'''
+name = "the liquidation rows are committed on their own"
+find = '''                    pending.extend(_fresh_rows(latest, venue, symbol, timeframe_ns, close, values))'''
+replace = '''                    if r := _fresh_rows(latest, venue, symbol, timeframe_ns, close, values):
+                        table.append(r)'''
+
+[[mutation]]
+name = "the liquidation window is read from the whole event list"
+find = '''                    lo, hi = bisect_right(times, close - WINDOW_NS), bisect_right(times, close)'''
+replace = '''                    lo, hi = 0, len(times)'''
+survives = '''Equivalent, by design: `liquidation_values` filters events by event time and receipt time and the library's `window` keeps only `(close - window, close]`, so handing it every event gives the same answer. The slice is there for cost -- a bar should not scan every event ever stored -- and a test of cost is not a behaviour test.'''

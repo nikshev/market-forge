@@ -320,6 +320,12 @@ class StreamSession:
     _down_since_ns: int | None = None
 
     @property
+    def connected_at_ns(self) -> int:
+        """When the current connection was made. The collector's heartbeat reads it: a minute is
+        only covered by a connection that existed for all of it (REQ-WP-094)."""
+        return self._connected_at_ns
+
+    @property
     def needs_snapshot(self) -> bool:
         """True until a snapshot is taken, and true again after any reconnect."""
         return self._needs_snapshot

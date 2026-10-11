@@ -315,11 +315,20 @@ def _register_all() -> None:
                 name=name,
                 version=1,
                 description=description,
-                formula="sum of notional_usd for that side within the window",
+                formula=(
+                    "sum of notional_usd for that side within the window, of the events the "
+                    "venue's liquidation stream had delivered by the bar's close (REQ-WP-094); the "
+                    "side is the side of the position that was closed"
+                ),
                 unit="USD",
                 lookback="5m",
                 cadence="per liquidation",
-                null_policy="zero when nothing was liquidated; the event count distinguishes it",
+                null_policy=(
+                    "zero when nothing was liquidated AND the stream was connected for every "
+                    "minute of the window (its heartbeat); absent for a window nobody was "
+                    "listening to. Zero is a reading of a watched market, never a stand-in for "
+                    "an unwatched one"
+                ),
                 normalization="none",
                 test_fixture="tests/unit/derivatives/test_liquidations.py::test_sides_are_totalled_separately",
                 **liquidation,  # type: ignore[arg-type]
@@ -335,8 +344,9 @@ def _register_all() -> None:
             lookback="5m",
             cadence="per liquidation",
             null_policy=(
-                "absent when nothing was liquidated; 0.0 means both sides equally, "
-                "which is a fact about a busy window rather than a quiet one"
+                "absent when nothing was liquidated, and absent for a window the stream did not "
+                "cover; 0.0 means both sides equally, which is a fact about a busy window rather "
+                "than a quiet one"
             ),
             normalization="none; already a ratio",
             test_fixture="tests/unit/derivatives/test_liquidations.py::test_the_imbalance_is_absent_when_nothing_was_liquidated",
@@ -348,7 +358,11 @@ def _register_all() -> None:
             name="liquidation_intensity_5m",
             version=1,
             description="Liquidated notional as a fraction of turnover.",
-            formula="liquidated_usd / traded_volume_usd",
+            formula=(
+                "liquidated_usd / traded_volume_usd. Registered and computable (the library has "
+                "it); NOT produced by the worker today: it needs the trailing five minutes' "
+                "traded volume, which a bar of another timeframe does not carry (REQ-WP-094)"
+            ),
             unit="ratio",
             lookback="5m",
             cadence="per liquidation",
@@ -363,7 +377,11 @@ def _register_all() -> None:
             name="time_since_liquidation_spike",
             version=1,
             description="Event-time distance to the last liquidation above a threshold.",
-            formula="as_of - the event time of the most recent print >= the threshold",
+            formula=(
+                "as_of - the event time of the most recent print >= the threshold. Registered "
+                "and computable; NOT produced by the worker today: the threshold is per symbol "
+                "and has not been chosen (REQ-WP-094)"
+            ),
             unit="nanoseconds",
             lookback="the whole stream",
             cadence="per liquidation",
