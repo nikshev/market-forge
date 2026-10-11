@@ -103,4 +103,4 @@ make web-install && make web-test && make web-build
 
 ## License
 
-No license has been chosen yet.
+MIT -- see [LICENSE](LICENSE).
