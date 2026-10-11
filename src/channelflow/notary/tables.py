@@ -112,15 +112,23 @@ def _order(row: Row) -> tuple[int, str, str]:
     return (int(str(row["bar_close_time_ns"])), str(row["kind"]), str(row["record_id"]))
 
 
-def unbatched(records: IcebergTable, leaves: IcebergTable) -> list[Row]:
-    """Notarizable records that are in no batch yet, in the order a batch is built."""
-    batched = {str(r["record_id"]) for r in leaves.read().to_pylist()}
+def waiting_in(record_rows: list[Row], leaf_rows: list[Row]) -> list[Row]:
+    """The notarizable records among `record_rows` that are in none of `leaf_rows`' batches.
+
+    A pure function over rows already read, so a caller that needs the answer *and* the rows it
+    came from reads each table once. The worker registers records continuously: two reads of the
+    same table are two different tables.
+    """
+    batched = {str(r["record_id"]) for r in leaf_rows}
     waiting = [
-        r
-        for r in records.read().to_pylist()
-        if r["notarizable"] == "yes" and str(r["record_id"]) not in batched
+        r for r in record_rows if r["notarizable"] == "yes" and str(r["record_id"]) not in batched
     ]
     return sorted(waiting, key=_order)
+
+
+def unbatched(records: IcebergTable, leaves: IcebergTable) -> list[Row]:
+    """Notarizable records that are in no batch yet, in the order a batch is built."""
+    return waiting_in(records.read().to_pylist(), leaves.read().to_pylist())
 
 
 def unnotarizable(records: IcebergTable) -> list[Row]:

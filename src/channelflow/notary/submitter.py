@@ -91,16 +91,20 @@ def outbox_summary(catalog: Catalog, *, now_ns: int) -> OutboxSummary:
     an operator cares about, which keeps growing across batching, retries and holds instead of
     resetting when a batch is formed.
     """
+    # Each table is read ONCE and everything is derived from that read. Reading `records` twice (as
+    # the first version did) meant a record registered in between was found by the second read and
+    # missing from the dict built from the first: a KeyError, 253 times in three days.
     records = tables.records_table(catalog).read().to_pylist()
+    leaves = tables.leaves_table(catalog).read().to_pylist()
     registered = {str(r["record_id"]): int(str(r["registered_at_ns"])) for r in records}
-    waiting = tables.unbatched(tables.records_table(catalog), tables.leaves_table(catalog))
+    waiting = tables.waiting_in(records, leaves)
     pending = [(b, s) for b, s in outbox_states(catalog) if s["event"] != "confirmed"]
     pending_roots = {str(b["batch_root"]) for b, _ in pending}
 
     waited = [registered[str(r["record_id"])] for r in waiting]
     waited += [
         registered[str(leaf["record_id"])]
-        for leaf in tables.leaves_table(catalog).read().to_pylist()
+        for leaf in leaves
         if str(leaf["batch_root"]) in pending_roots and str(leaf["record_id"]) in registered
     ]
     problems = [s for _, s in pending if s["event"] in ("failed", "held")]

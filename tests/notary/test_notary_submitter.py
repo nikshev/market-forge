@@ -422,3 +422,63 @@ def test_a_log_search_that_the_node_refuses_leaves_the_batch_pending_not_lost(
     monkeypatch.undo()
     sub.tick()  # the node answers again: confirmed, and still not sent twice
     assert events(catalog)[-1] == ("confirmed", "found on chain") and len(chain.sent) == 1
+
+
+# ---- the summary reads once (found on the running system, 2026-10-11) ---------------------
+#
+# `outbox_summary` read the records table twice. The worker registers records continuously, so a
+# record could appear between the two reads, and the second read's rows were looked up in a dict
+# built from the first: `KeyError`. The notary survived (the loop reports a failed pass and goes on)
+# and no commit was affected, but the metrics were not updated on those ticks and the `outbox`
+# command could fail the same way -- 253 times in three days.
+
+
+class _GrowingRecords:
+    """A records table to which the worker adds one record after every read."""
+
+    def __init__(self, real, extra_row) -> None:  # type: ignore[no-untyped-def]
+        self._real, self._extra, self.reads = real, extra_row, 0
+
+    def read(self):  # type: ignore[no-untyped-def]
+        import pyarrow as pa
+
+        self.reads += 1
+        table = self._real.read()
+        if self.reads == 1:
+            return table
+        added = pa.Table.from_pylist([self._extra], schema=table.schema)
+        return pa.concat_tables([table, added])
+
+
+@pytest.mark.trace("REQ-INFRA-007")
+def test_a_record_registered_while_the_summary_is_computed_does_not_break_it(
+    catalog: Catalog, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    register(catalog, record_row("old", T, registered_at_ns=T * SECOND))
+    late = record_row("registered-meanwhile", T + 300, registered_at_ns=(T + 300) * SECOND)
+    growing = _GrowingRecords(tables.records_table(catalog), late)
+    monkeypatch.setattr(tables, "records_table", lambda _catalog: growing)
+
+    summary = outbox_summary(catalog, now_ns=T * SECOND + 600 * SECOND)  # must not raise
+
+    assert summary.unbatched_records >= 1
+    assert summary.oldest_pending_age_s == 600.0  # the 'old' record, from its registration
+
+
+@pytest.mark.trace("REQ-INFRA-007")
+def test_the_summary_reads_the_records_table_exactly_once(
+    catalog: Catalog, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    register(catalog, record_row("a", T, registered_at_ns=T * SECOND))
+    reads = {"n": 0}
+    real = tables.records_table(catalog)
+
+    class Counting:
+        def read(self):  # type: ignore[no-untyped-def]
+            reads["n"] += 1
+            return real.read()
+
+    monkeypatch.setattr(tables, "records_table", lambda _catalog: Counting())
+    outbox_summary(catalog, now_ns=T * SECOND + 60 * SECOND)
+
+    assert reads["n"] == 1
