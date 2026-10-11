@@ -86,7 +86,7 @@ survives = '''Equivalent while a series and its perpetual have the same symbol, 
 
 [[mutation]]
 name = "the dex features are written for every series"
-find = '''        if (venue, symbol) == hyperevm_pools.SERIES and dex is not None:'''
+find = '''        if (venue, symbol) in hyperevm_pools.SERIES and dex is not None:'''
 replace = '''        if dex is not None:'''
 
 [[mutation]]

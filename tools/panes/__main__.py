@@ -68,7 +68,7 @@ def gather(
         bar_count,
         reasons,
         error,
-        has_dex_pool=(venue, symbol) == hyperevm_pools.SERIES,
+        has_dex_pool=(venue, symbol) in hyperevm_pools.SERIES,
     )
 
 

@@ -50,6 +50,7 @@ def test_token_decimals_are_known_for_both_tokens() -> None:
 def test_the_series_the_pools_are_shown_on_is_one_the_deployment_ingests() -> None:
     from channelflow.context import sources
 
-    venue, symbol, _ = next(s for s in sources.SERIES if s[:2] == pools.SERIES)
+    ingested = {(venue, symbol) for venue, symbol, _ in sources.SERIES}
 
-    assert (venue, symbol) == pools.SERIES
+    assert set(pools.SERIES) <= ingested
+    assert len(pools.SERIES) == 2, "HYPE is on two venues; both carry the panes"

@@ -15,7 +15,7 @@ from tests.unit.pipeline.test_context_pass import MINUTE, features_for, make_bar
 
 pytestmark = pytest.mark.trace("REQ-WP-099")
 
-VENUE, SYMBOL = registry.SERIES
+VENUE, SYMBOL = registry.SERIES[0]
 A, B = (pool.address for pool in registry.POOLS)
 SECOND = 1_000_000_000
 
@@ -196,3 +196,15 @@ def test_a_swap_of_another_chain_is_not_one_of_the_pools(catalog: Catalog) -> No
     write.write_context_features(catalog, [b])
 
     assert features_for(catalog, VENUE, SYMBOL, MINUTE)[close]["dex_swap_imbalance"] == 1.0
+
+
+def test_every_market_the_pools_price_gets_the_features(catalog: Catalog) -> None:
+    close = bar(30).close_time_ns
+    store(catalog, [swap(close - 2 * MINUTE, "1")], through=close + 10 * MINUTE)
+    bars = [make_bar(30, venue=v, symbol=s) for v, s in registry.SERIES]
+
+    write.write_context_features(catalog, bars)
+
+    for venue, symbol in registry.SERIES:
+        got = features_for(catalog, venue, symbol, MINUTE)[close]
+        assert got["dex_swap_imbalance"] == 1.0, (venue, symbol)

@@ -51,8 +51,8 @@ export interface Pane {
 //                          spot series are the spot groups, two venues each ([[REQ-WP-098]]);
 //   DEX swap imbalance,
 //   DEX active liquidity   here, from [[REQ-WP-059]] and [[REQ-WP-063]], read from HyperEVM's two WHYPE/USDC
-//                          pools ([[REQ-WP-099]]) and written for **Bybit HYPEUSDT only**, the market the
-//                          pools price; on any other series they read "no data" (no pool is registered);
+//                          pools ([[REQ-WP-099]]) and written for **the two HYPE perpetuals only** (Bybit and OKX), the
+//                          markets the pools price; on any other series they read "no data" (no pool);
 //   Depth imbalance (10)   **not in §27.3**: a pane this deployment added beyond the PRD's list, from
 //                          [[REQ-WP-027]]; written with the OFI from the same minute summaries. Whether to
 //                          keep it is the owner's call and it is left in place.

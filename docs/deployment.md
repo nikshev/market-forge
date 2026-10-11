@@ -641,9 +641,9 @@ same `Swap` topic and are different protocols. Every 30 seconds it stores the sw
 read in `dex_swaps` and, once caught up, one reading of each pool (liquidity, price, fee) in `dex_state`. The node
 refuses `eth_getLogs` over 1000 blocks and rate-limits within seconds of a burst -- inside an HTTP 200 -- so a gap
 is asked for in pieces, a few per poll, and a failed request stores nothing and moves nothing. A restart resumes after
-the last stored block. The features are written for **Bybit's HYPE perpetual**, a perpetual ingested for the purpose
-(`ingest-bybit-hype`) because HyperEVM has no bars (OKX's HYPE swap is ingested beside it, `ingest-okx-hype`, so the
-venue-basis pane of the HYPE series has a two-venue consensus): swap imbalance over the trailing five minutes (both pools) and the
+the last stored block. The features are written for **both HYPE perpetuals** -- Bybit's and OKX's, ingested for the purpose
+(`ingest-bybit-hype`, `ingest-okx-hype`) because HyperEVM has no bars, and two so that the venue-basis pane of the HYPE
+series has a two-venue consensus: swap imbalance over the trailing five minutes (both pools) and the
 Uniswap v3 pool's active liquidity. A window in which the collector did not read every pool in every minute has **no**
 imbalance -- a quiet minute is a fact only where the collector was there -- and neither has a window with no swap.
 `CONTEXT_HYPEREVM_PORT` (9104) serves `/healthz` and `/metrics`.

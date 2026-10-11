@@ -76,10 +76,9 @@ def test_the_market_type_of_a_series_is_asked_by_venue_and_symbol() -> None:
 def test_the_series_the_dex_pools_are_shown_on_is_an_ingested_perpetual_with_derivatives() -> None:
     from channelflow.dex import hyperevm_pools
 
-    venue, symbol = hyperevm_pools.SERIES
-
-    assert sources.market_type_of(venue, symbol) == "perp"
-    assert sources.perpetual_for(venue, symbol) == symbol
+    for venue, symbol in hyperevm_pools.SERIES:
+        assert sources.market_type_of(venue, symbol) == "perp"
+        assert sources.perpetual_for(venue, symbol) == symbol
 
 
 @pytest.mark.trace("REQ-WP-099")

@@ -331,15 +331,15 @@ def test_the_same_refusal_at_a_thousand_instants_is_one_reason() -> None:
 def test_only_the_market_the_pools_price_is_gathered_as_having_a_dex_pool() -> None:
     from channelflow.dex import hyperevm_pools
 
-    venue, symbol = hyperevm_pools.SERIES
     api = fake_api(features={}, consensus=(404, {"detail": "none"}))
 
-    pool = report.gather(
-        api, venue=venue, symbol=symbol, timeframe_ns=60 * NS, start_ns=0, end_ns=NS
-    )
+    pools = [
+        report.gather(api, venue=v, symbol=s, timeframe_ns=60 * NS, start_ns=0, end_ns=NS)
+        for v, s in hyperevm_pools.SERIES
+    ]
     other = report.gather(
         api, venue="bybit", symbol="BTCUSDT", timeframe_ns=60 * NS, start_ns=0, end_ns=NS
     )
 
-    assert pool.has_dex_pool is True
+    assert [p.has_dex_pool for p in pools] == [True, True]
     assert other.has_dex_pool is False

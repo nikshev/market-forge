@@ -127,7 +127,7 @@ def write_context_features(catalog: Catalog, all_bars: Sequence[Bar]) -> int:
             except Exception as cause:  # noqa: BLE001 -- one series must not end the pass
                 _report(venue, symbol, tf_minutes, "book", cause)
 
-        if (venue, symbol) == hyperevm_pools.SERIES and dex is not None:
+        if (venue, symbol) in hyperevm_pools.SERIES and dex is not None:
             try:
                 for bar in ordered:
                     values = dex.values(bar.close_time_ns)

@@ -24,8 +24,8 @@ On 2026-10-11 the owner chose to build the source.
    `liquidity()` and stores it in `dex_state`. The protocol comes from the pinned registry, never from the event.
 2. **A series to carry them.** The DEX features are keyed by `(venue, symbol)` ([[REQ-WP-059]]), and HyperEVM has no
    bars: the pools price HYPE, so they are shown on a HYPE market. Bybit's `HYPEUSDT` perpetual is ingested (a new
-   ingest service) and collected like `BTCUSDT`, and is the series the DEX panes are read from. **OKX's `HYPE-USDT-SWAP`
-   is ingested beside it** so the HYPE series' venue-basis pane has a two-venue consensus (the first deployed run found
+   ingest service) and collected like `BTCUSDT`, and is a series the DEX panes are read from. **OKX's `HYPE-USDT-SWAP`
+   is ingested beside it**, carries them too, and makes the HYPE series' venue-basis pane a two-venue consensus (the first deployed run found
    a pane with no producer: a market in no consensus group has no consensus to read, and says so with a 404).
 3. **The features at each bar's close.** The worker computes `dex_swap_imbalance` (a trailing five-minute window, both
    pools) and `dex_active_liquidity` (the busiest pool's most recent reading) for the HYPE series at every final bar's
@@ -144,6 +144,7 @@ On 2026-10-11 the owner chose to build the source.
     - `tests/unit/pipeline/test_context_pass_dex.py::test_a_series_without_pools_gets_no_dex_feature`
     - `tests/unit/pipeline/test_context_pass_dex.py::test_a_swap_of_another_chain_is_not_one_of_the_pools`
     - `tests/unit/pipeline/test_context_pass_dex.py::test_a_swap_stored_after_the_close_is_not_in_the_bar`
+    - `tests/unit/pipeline/test_context_pass_dex.py::test_every_market_the_pools_price_gets_the_features`
     - `tests/unit/pipeline/test_context_pass_dex.py::test_the_pass_writes_both_features_at_a_covered_close`
     - `tests/unit/pipeline/test_context_pass_dex.py::test_the_value_at_a_close_does_not_change_when_later_swaps_arrive`
     - `tests/unit/pipeline/test_dex_main.py::test_a_bad_port_is_refused[-1]`

@@ -57,7 +57,8 @@ BY_ADDRESS: Mapping[str, RegisteredPool] = {pool.address: pool for pool in POOLS
 #: the 88 swaps of the two over 800 blocks on 2026-10-11.
 LIQUIDITY_POOL = POOLS[0].address
 
-#: The market the pools price: HYPE against a dollar. The DEX features are keyed by `(venue,
-# symbol)` : and HyperEVM has no bars, so they are written to this series' bars (REQ-WP-099, plan
-# decision 5).
-SERIES: tuple[str, str] = ("bybit", "HYPEUSDT")
+#: The markets the pools price: HYPE against a dollar. The DEX features are keyed by
+#: `(venue, symbol)` and HyperEVM has no bars, so they are written to these series' bars
+#: (REQ-WP-099, plan decision 5): every HYPE market the deployment ingests, because the pane is
+#: about the asset the pools price.
+SERIES: tuple[tuple[str, str], ...] = (("bybit", "HYPEUSDT"), ("okx", "HYPE-USDT-SWAP"))
