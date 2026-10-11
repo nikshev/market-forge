@@ -40,8 +40,9 @@ Rules that hold:
 - **No look-ahead**: only events with `event_time <= close` enter a window.
 - **A quiet market is a reading only where the collector was listening.** Zero liquidations in five minutes is
   the true value for a market the collector watched, and a lie for a market it did not. A window is written only
-  where the collector is known to have been up for the whole window (from its own heartbeat rows in
-  `derivatives_state`, which are polled every minute); elsewhere it is absent. And the imbalance of an empty
+  where the liquidation stream's own connection is known to have been up for every minute of it (the
+  stream task stores a heartbeat row per symbol per minute while it is connected; a heartbeat from the REST poller would
+  prove the poller was up, not the socket); elsewhere it is absent. And the imbalance of an empty
   window is **absent**, not zero -- `LiquidationWindow.imbalance` already returns `None` there, and the pane
   must not draw "balanced" through a calm hour.
 - **Event time is the venue's**; receive time is stored beside it and never decides availability.

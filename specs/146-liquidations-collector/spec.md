@@ -99,7 +99,7 @@ Someone opens a chart whose venue emitted liquidations in the loaded range, sele
 - **FR-004**: Events are stored append-only in a `liquidations` table: event time (venue's) and ingest time apart, decimals for price, quantity and notional, identity (venue, symbol, event time, price, quantity, side) enforced against duplicates after a reconnect.
 - **FR-005**: A silent connection is detected by a stated window and reconnected with capped backoff; the failure and reconnect counts are metrics.
 - **FR-006**: The worker, per series and timeframe, writes `liquidation_long_usd_5m`, `liquidation_short_usd_5m`, `liquidation_imbalance_5m`, `liquidation_intensity_5m` and `time_since_liquidation_spike` at each bar's close from events with event time at or before it.
-- **FR-007**: A window is written only where the collector's heartbeat covers it; the imbalance of an empty window is absent; no feature is ever written as zero for "unknown".
+- **FR-007**: A window is written only where the stream's heartbeat covers every minute of it; the imbalance of an empty window is absent; no feature is ever written as zero for "unknown".
 - **FR-008**: The intensity uses the bar's own traded USD volume; a bar with none has no intensity.
 - **FR-009**: Value at a bar's close is unchanged by events appended later (a test), and the worker is the only writer of `feature_snapshots`.
 - **FR-010**: The six trade features, and the features of specs 145 and 147, keep their values and counts.
@@ -108,7 +108,7 @@ Someone opens a chart whose venue emitted liquidations in the loaded range, sele
 ### Key Entities
 
 - **LiquidationEvent** (§10.5) as stored, plus ingest time and source tag.
-- **Collector heartbeat**: the derivatives states of spec 145, polled every minute, read as proof that the collector was up.
+- **Stream heartbeat**: one row per configured symbol per minute, written into the liquidations table while the stream's connection is alive; its absence in a minute means nobody was listening then.
 - **Liquidation feature row**: (at_ns = bar close, venue, symbol, timeframe, feature name, value).
 
 ## Success Criteria *(mandatory)*
