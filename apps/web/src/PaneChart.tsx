@@ -1,3 +1,4 @@
+// @trace: REQ-WP-101
 // @trace: REQ-WP-092
 // @trace: REQ-WP-086
 //
@@ -27,6 +28,7 @@ import {
   PANE_HEIGHT,
   paneView,
   PRICE_SCALE_WIDTH,
+  READING_INTERACTION,
   type ChartHandle,
 } from "./paneChart";
 import { toSeconds } from "./series";
@@ -74,6 +76,9 @@ export function PaneChart({
       timeScale: { timeVisible: true, secondsVisible: false },
       // Margins keep the top and bottom axis labels inside a pane this short.
       rightPriceScale: { minimumWidth: PRICE_SCALE_WIDTH, scaleMargins: { top: 0.2, bottom: 0.1 } },
+      // The same as the chart above it (REQ-WP-101): the wheel scrolls the page, the price axis stays on its auto-fit.
+      handleScroll: READING_INTERACTION.handleScroll,
+      handleScale: READING_INTERACTION.handleScale,
       ...chartLayout(scheme, palette),
     });
     instance.current = created;

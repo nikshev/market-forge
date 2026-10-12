@@ -497,3 +497,105 @@ def test_compacting_a_table_that_does_not_exist_does_nothing(catalog: Catalog) -
     )
 
     assert table.compact() == 0
+
+
+# --- compaction while writers are writing (REQ-WP-100) --------------------------------------------
+
+
+def _numbered(catalog: Catalog, name: str = "busy") -> IcebergTable:
+    return IcebergTable(
+        name=name,
+        schema=Schema(columns=(Column(name="n", type="int64"),)),
+        catalog=catalog,
+    )
+
+
+def _append_during_the_read(table: IcebergTable, writer: IcebergTable, rows: list[int]) -> None:
+    """Make another writer commit after `table` has read its files and before it commits."""
+    original = table._read_in_order  # noqa: SLF001 -- the seam a concurrent writer lands in
+    fired: list[bool] = []
+
+    def read_then_let_a_writer_in(paths, iceberg_table):  # type: ignore[no-untyped-def]
+        result = original(paths, iceberg_table)
+        if not fired:
+            fired.append(True)
+            for n in rows:
+                writer.append([{"n": n}])
+        return result
+
+    table._read_in_order = read_then_let_a_writer_in  # type: ignore[method-assign]  # noqa: SLF001
+
+
+@pytest.mark.trace("REQ-WP-100")
+def test_compaction_survives_a_writer_committing_while_it_runs(catalog: Catalog) -> None:
+    """The failure that left a deployment's `bars` table uncompacted for days: compaction reads the
+    live rows, takes a minute, and by the time it commits an ingest daemon has appended. It used
+    to refuse with `ValidationException` (and, forced through, would have deleted the daemon's
+    rows). It must land, and the late rows must still be there."""
+    table = _numbered(catalog)
+    for n in range(10):
+        table.append([{"n": n}])
+    _append_during_the_read(table, _numbered(catalog), [100, 101])
+
+    files = table.compact()
+
+    assert files == 10
+    assert [r["n"] for r in table.read().to_pylist()] == [*range(10), 100, 101]
+
+
+@pytest.mark.trace("REQ-WP-100")
+def test_a_row_appended_during_compaction_is_not_read_twice(catalog: Catalog) -> None:
+    table = _numbered(catalog)
+    for n in range(6):
+        table.append([{"n": n}])
+    _append_during_the_read(table, _numbered(catalog), [50])
+
+    table.compact()
+
+    rows = [r["n"] for r in table.read().to_pylist()]
+    assert rows.count(50) == 1
+    assert len(rows) == 7
+
+
+@pytest.mark.trace("REQ-WP-100")
+def test_rows_compacted_come_before_rows_a_writer_added_meanwhile(catalog: Catalog) -> None:
+    """Every "latest row wins" reader folds rows in commit order. The compacted file is committed
+    after the writer's file, so by sequence number alone it would sort after it and the old rows
+    would shadow the new: the order has to be kept by what the file replaced."""
+    table = _numbered(catalog)
+    for n in range(4):
+        table.append([{"n": n}])
+    _append_during_the_read(table, _numbered(catalog), [900])
+
+    table.compact()
+    table.append([{"n": 901}])
+
+    assert [r["n"] for r in table.read().to_pylist()] == [0, 1, 2, 3, 900, 901]
+
+
+@pytest.mark.trace("REQ-WP-100")
+def test_compacting_again_after_a_concurrent_pass_keeps_the_whole_order(catalog: Catalog) -> None:
+    table = _numbered(catalog)
+    for n in range(4):
+        table.append([{"n": n}])
+    _append_during_the_read(table, _numbered(catalog), [900])
+    table.compact()
+    table.append([{"n": 901}])
+
+    table.compact()
+    table.append([{"n": 902}])
+
+    assert [r["n"] for r in table.read().to_pylist()] == [0, 1, 2, 3, 900, 901, 902]
+
+
+@pytest.mark.trace("REQ-WP-100")
+def test_the_order_it_keeps_a_file_by_does_not_pile_up_across_passes(catalog: Catalog) -> None:
+    table = _numbered(catalog)
+    for _ in range(4):
+        for n in range(3):
+            table.append([{"n": n}])
+        table.compact()
+
+    kept = [k for k in table._table().properties if k.startswith("channelflow.sequence.")]  # type: ignore[union-attr]  # noqa: SLF001
+
+    assert len(kept) == 1, "a property outlives the file it described"

@@ -5,6 +5,7 @@
 # @trace: REQ-WP-041
 # @trace: REQ-WP-079
 # @trace: REQ-WP-081
+# @trace: REQ-WP-100
 
 [[ADR-002]] chose "Parquet on S3-compatible object storage with Iceberg table
 semantics"; `table.py` implements those semantics by hand and [[ADR-060]]
@@ -89,6 +90,22 @@ METADATA_PRUNING: dict[str, Any] = {
     "write.metadata.previous-versions-max": "20",
 }
 
+#: Compaction replaces exactly the files it read, so a writer that commits while it runs is not a
+#: conflict -- but pyiceberg's default isolation (`serializable`) treats any concurrently added
+#: file as one, and refused every compaction of a table with twelve writers for days
+#: ([[REQ-WP-100]]). The files it deletes are still checked to exist, which is the check that
+#: matters.
+CONCURRENT_REPLACE: dict[str, Any] = {
+    "write.delete.isolation-level": "snapshot",
+    "write.update.isolation-level": "snapshot",
+}
+
+#: A compacted file is committed *after* whatever a writer added while it was being made, so its own
+#: sequence number would sort it after rows that came later -- and every "latest row wins" reader
+#: folds rows in that order. The file is instead ordered as the **newest file it replaced**, and
+#: that is recorded here, against its name, in the same commit that creates it.
+SEQUENCE_PROPERTY = "channelflow.sequence."
+
 #: One pool for the process, created on first use. A reader waits for a slot
 #: instead of adding a thread, which is the whole point of a shared bound.
 _READ_POOL: ThreadPoolExecutor | None = None
@@ -106,6 +123,10 @@ def _read_pool() -> ThreadPoolExecutor:
 
 
 NAMESPACE = "channelflow"
+
+
+def _name_of(path: str) -> str:
+    return path.rsplit("/", 1)[-1]
 
 
 class NoEventTime(ValueError):
@@ -301,9 +322,23 @@ class IcebergTable:
         snapshot read back in a different order than it was written. The
         sequence numbers survive expiry, so they do not lose that.
         """
+        live = self._live_files(table, snapshot_id)
+        if not live:
+            return self.schema.arrow().empty_table()
+
+        return self._read_in_order([f.file_path for _, f in live], table)
+
+    def _live_files(self, table: _IcebergTable, snapshot_id: int) -> list[tuple[int, Any]]:
+        """`(order, data file)` for the files a snapshot holds, oldest first.
+
+        `order` is the sequence number Iceberg recorded against the file, or -- for a file a
+        compaction made -- the newest sequence number among the files it replaced
+        ([[REQ-WP-100]]).
+        """
         target = self._allocated(table, snapshot_id)
         snapshot = next(s for s in table.metadata.snapshots if int(s.snapshot_id) == target)
-        ordered: list[tuple[int, str]] = []
+        properties = table.properties
+        ordered: list[tuple[int, Any]] = []
         seen: set[str] = set()
         for manifest in snapshot.manifests(table.io):
             # Live entries only: a manifest keeps a record of files the table
@@ -314,13 +349,13 @@ class IcebergTable:
             # scan it cost.
             for entry in manifest.fetch_manifest_entry(table.io):
                 path = entry.data_file.file_path
-                if path not in seen:
-                    seen.add(path)
-                    ordered.append((int(entry.sequence_number or 0), path))
-        if not ordered:
-            return self.schema.arrow().empty_table()
-
-        return self._read_in_order([path for _, path in sorted(ordered)], table)
+                if path in seen:
+                    continue
+                seen.add(path)
+                recorded = properties.get(SEQUENCE_PROPERTY + _name_of(path))
+                order = int(recorded) if recorded is not None else int(entry.sequence_number or 0)
+                ordered.append((order, entry.data_file))
+        return sorted(ordered, key=lambda pair: (pair[0], pair[1].file_path))
 
     def _read_in_order(self, paths: Sequence[str], table: _IcebergTable) -> pa.Table:
         """Open the data files concurrently and concatenate them in order.
@@ -457,16 +492,59 @@ class IcebergTable:
         table = self._table()
         if table is None:
             return 0
-        before = sum(1 for _ in table.scan().plan_files())
+        head = table.current_snapshot()
+        if head is None:
+            return 0
+        self._allow_concurrent_replace(table)
+        head = table.current_snapshot()
+        assert head is not None  # a commit above cannot have removed the snapshot it read
+        live = self._live_files(table, int(head.sequence_number or 0))
+        before = len(live)
         if before <= 1:
             # Nothing to gain, and an overwrite would spend a snapshot saying
             # something happened.
             return before
-        # No empty-table guard: `before > 1` means at least two data files, and
-        # Iceberg does not write a file with no rows. The mutation sweep found
-        # that branch unreachable, which is what it is for.
-        table.overwrite(self.read())
+        # Exactly the files listed, not "whatever the table holds now": a writer that commits while
+        # this runs adds a file this did not read, and replacing the table would delete its rows.
+        rows = self._read_in_order([f.file_path for _, f in live], table)
+        self._replace(table, live, rows)
         return before
+
+    def _allow_concurrent_replace(self, table: _IcebergTable) -> None:
+        if all(table.properties.get(k) == v for k, v in CONCURRENT_REPLACE.items()):
+            return
+        with table.transaction() as transaction:
+            transaction.set_properties(**dict(CONCURRENT_REPLACE))
+
+    def _replace(self, table: _IcebergTable, live: list[tuple[int, Any]], rows: pa.Table) -> None:
+        """Swap `live` for one file holding `rows`, in one commit that spares other writers."""
+        from pyiceberg.io.pyarrow import _dataframe_to_data_files
+
+        newest = max(order for order, _ in live)
+        stale = [
+            key
+            for _, f in live
+            if (key := SEQUENCE_PROPERTY + _name_of(f.file_path)) in table.properties
+        ]
+        with table.transaction() as transaction:
+            with transaction.update_snapshot().overwrite() as replacement:
+                for _, data_file in live:
+                    replacement.delete_data_file(data_file)
+                created = list(
+                    _dataframe_to_data_files(
+                        table_metadata=transaction.table_metadata,
+                        write_uuid=replacement.commit_uuid,
+                        df=rows,
+                        io=table.io,
+                    )
+                )
+                for data_file in created:
+                    replacement.append_data_file(data_file)
+            transaction.set_properties(
+                {SEQUENCE_PROPERTY + _name_of(f.file_path): str(newest) for f in created}
+            )
+            if stale:
+                transaction.remove_properties(*stale)
 
     def expire_snapshots_except(self, keep: Sequence[int]) -> None:
         """Forget every snapshot but these.

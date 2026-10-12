@@ -17,18 +17,39 @@ replace = '''READ_WORKERS = 4096'''
 
 [[mutation]]
 name = "compaction drops the rows it rewrites"
-find = '''        table.overwrite(self.read())
+find = '''        self._replace(table, live, rows)
         return before'''
 replace = '''        return before'''
 
 [[mutation]]
 name = "compaction reverses the rows"
-find = '''        table.overwrite(self.read())'''
-replace = '''        rows = self.read()
-        table.overwrite(rows.take(list(reversed(range(rows.num_rows)))))'''
+find = '''        rows = self._read_in_order([f.file_path for _, f in live], table)'''
+replace = '''        rows = self._read_in_order([f.file_path for _, f in live], table)
+        rows = rows.take(list(reversed(range(rows.num_rows))))'''
 
 [[mutation]]
 name = "compaction runs on a single file too"
 find = '''        if before <= 1:'''
 replace = '''        if False:'''
 
+# REQ-WP-100: compaction while writers write.
+
+[[mutation]]
+name = "a compacted file is ordered by its own, later, sequence number"
+find = '''        newest = max(order for order, _ in live)'''
+replace = '''        newest = 10**9'''
+
+[[mutation]]
+name = "the order records of replaced files are kept"
+find = '''            if stale:'''
+replace = '''            if False:'''
+
+[[mutation]]
+name = "concurrent appends are still a conflict"
+find = '''            transaction.set_properties(**dict(CONCURRENT_REPLACE))'''
+replace = '''            pass'''
+
+[[mutation]]
+name = "the recorded order is ignored when reading"
+find = '''                order = int(recorded) if recorded is not None else int(entry.sequence_number or 0)'''
+replace = '''                order = int(entry.sequence_number or 0)'''

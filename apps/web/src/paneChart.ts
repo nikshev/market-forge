@@ -1,4 +1,5 @@
 // @trace: REQ-WP-092
+// @trace: REQ-WP-101
 //
 // The lower pane as a chart on the main chart's own time axis: the decisions, kept pure so they can be tested.
 //
@@ -18,6 +19,24 @@ import type { BarOut, FeaturePointOut } from "./types";
 /** Both charts' right price scales are at least this wide, so their plot areas start and end together. */
 export const PRICE_SCALE_WIDTH = 88;
 export const PANE_HEIGHT = 160;
+
+/**
+ * What a reader may do to a chart (REQ-WP-101). A chart here is read, not operated: with the library's defaults the
+ * mouse wheel zooms the time axis, so scrolling the page with the pointer over a chart stopped the page and squeezed and
+ * stretched the chart instead; and a drag on the price axis switches its auto-fit off, leaving a scale nobody chose.
+ * Dragging along the time axis, dragging the plot and pinching stay.
+ */
+export const READING_INTERACTION = {
+  handleScroll: { mouseWheel: false, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: false },
+  handleScale: {
+    mouseWheel: false,
+    pinch: true,
+    axisPressedMouseMove: { time: true, price: false },
+  },
+} as const;
+
+/** The main chart's price scale leaves this share of the plot above and below the candles (the library's default is 20 % and 10 %). */
+export const PLOT_MARGINS = { top: 0.08, bottom: 0.08 } as const;
 
 /** The candle's own colours (lightweight-charts' defaults), so a volume bar is the colour of its candle. */
 export const UP_COLOUR = "#26a69a";
