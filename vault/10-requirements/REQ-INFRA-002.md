@@ -57,6 +57,7 @@ requirement whose verification needs a network or a service.
     - `tests/tools/gates/test_two_gates.py::test_no_check_is_absent_from_both_gates`
     - `tests/tools/gates/test_two_gates.py::test_the_fast_gate_deselects_exactly_the_integration_tests`
     - `tests/tools/gates/test_two_gates.py::test_the_light_gate_does_not_pretend_to_run_the_full_one`
+    - `tests/tools/gates/test_two_gates.py::test_the_light_gate_installs_foundry_before_it_runs_the_tests_that_need_forge`
     - `tests/tools/gates/test_two_gates.py::test_the_light_gate_runs_the_checks_that_need_no_services`
     - `tests/tools/gates/test_two_gates.py::test_the_two_workflows_carve_the_repository_in_two`
     - `tests/tools/gates/test_two_gates.py::test_the_workflow_runs_every_check_of_the_full_gate`

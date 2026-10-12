@@ -48,6 +48,13 @@ with, and keeps the rows' order, which every "latest row wins" reader depends on
 
 <!-- trace:begin -->
 - **Specs:** [[SPEC-152-compaction-under-writers]]
+- **Tests:**
+    - `tests/unit/lakehouse/test_iceberg.py::test_a_row_appended_during_compaction_is_not_read_twice`
+    - `tests/unit/lakehouse/test_iceberg.py::test_a_table_that_is_compacted_retries_a_lost_commit_more_than_the_default_four_times`
+    - `tests/unit/lakehouse/test_iceberg.py::test_compacting_again_after_a_concurrent_pass_keeps_the_whole_order`
+    - `tests/unit/lakehouse/test_iceberg.py::test_compaction_survives_a_writer_committing_while_it_runs`
+    - `tests/unit/lakehouse/test_iceberg.py::test_rows_compacted_come_before_rows_a_writer_added_meanwhile`
+    - `tests/unit/lakehouse/test_iceberg.py::test_the_order_it_keeps_a_file_by_does_not_pile_up_across_passes`
 - **Code:**
     - `src/channelflow/lakehouse/iceberg.py`
 - **Outcomes:** [[OUT-2026-10-12-implement-compaction-under-writers]]

@@ -34,6 +34,14 @@ the library lets switch its auto-fit off, left a scale nobody chose.
 
 <!-- trace:begin -->
 - **Specs:** [[SPEC-153-reading-interaction]]
+- **Tests:**
+    - `tests/unit/web/test_reading_interaction_artifacts.py::test_both_charts_are_created_with_the_one_interaction_constant[Chart.tsx]`
+    - `tests/unit/web/test_reading_interaction_artifacts.py::test_both_charts_are_created_with_the_one_interaction_constant[PaneChart.tsx]`
+    - `tests/unit/web/test_reading_interaction_artifacts.py::test_every_module_this_requirement_touches_names_it[Chart.tsx]`
+    - `tests/unit/web/test_reading_interaction_artifacts.py::test_every_module_this_requirement_touches_names_it[PaneChart.tsx]`
+    - `tests/unit/web/test_reading_interaction_artifacts.py::test_every_module_this_requirement_touches_names_it[paneChart.ts]`
+    - `tests/unit/web/test_reading_interaction_artifacts.py::test_the_behaviour_is_covered_by_a_vitest_file_that_names_the_requirement`
+    - `tests/unit/web/test_reading_interaction_artifacts.py::test_the_constant_turns_the_wheel_and_the_price_axis_drag_off`
 - **Code:**
     - `apps/web/src/Chart.tsx`
     - `apps/web/src/PaneChart.tsx`
