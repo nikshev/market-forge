@@ -53,3 +53,8 @@ replace = '''            pass'''
 name = "the recorded order is ignored when reading"
 find = '''                order = int(recorded) if recorded is not None else int(entry.sequence_number or 0)'''
 replace = '''                order = int(entry.sequence_number or 0)'''
+
+[[mutation]]
+name = "a lost commit is retried only the default four times"
+find = '''    "commit.retry.num-retries": "40",'''
+replace = '''    "commit.retry.num-retries": "4",'''

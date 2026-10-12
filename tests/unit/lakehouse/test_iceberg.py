@@ -599,3 +599,20 @@ def test_the_order_it_keeps_a_file_by_does_not_pile_up_across_passes(catalog: Ca
     kept = [k for k in table._table().properties if k.startswith("channelflow.sequence.")]  # type: ignore[union-attr]  # noqa: SLF001
 
     assert len(kept) == 1, "a property outlives the file it described"
+
+
+@pytest.mark.trace("REQ-WP-100")
+def test_a_table_that_is_compacted_retries_a_lost_commit_more_than_the_default_four_times(
+    catalog: Catalog,
+) -> None:
+    """The first deployed pass gave up after four retries ("branch main has changed") against a
+    dozen writers; the retries are cheap, so the table is given many."""
+    table = _numbered(catalog)
+    for n in range(3):
+        table.append([{"n": n}])
+
+    table.compact()
+
+    properties = table._table().properties  # type: ignore[union-attr]  # noqa: SLF001
+    assert int(properties["commit.retry.num-retries"]) >= 20
+    assert int(properties["commit.retry.max-wait-ms"]) <= 5000

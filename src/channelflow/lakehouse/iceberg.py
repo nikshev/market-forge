@@ -98,6 +98,12 @@ METADATA_PRUNING: dict[str, Any] = {
 CONCURRENT_REPLACE: dict[str, Any] = {
     "write.delete.isolation-level": "snapshot",
     "write.update.isolation-level": "snapshot",
+    # With a dozen writers a commit loses the race several times running: pyiceberg's default of
+    # four retries over about a second gave up on the first deployed pass ("branch main has
+    # changed"). Each retry only re-applies metadata, so many cost little; the writers get them too.
+    "commit.retry.num-retries": "40",
+    "commit.retry.min-wait-ms": "50",
+    "commit.retry.max-wait-ms": "2000",
 }
 
 #: A compacted file is committed *after* whatever a writer added while it was being made, so its own
