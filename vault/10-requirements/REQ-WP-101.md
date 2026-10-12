@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "§27.2, §27.3; owner's report 2026-10-12"
 prd_lines: "4423-4436"
 phase: null
-status: tested
+status: implemented
 depends_on: [REQ-WP-092, REQ-WP-080]
 tags: [web, chart, interaction]
 hard_gated: false
@@ -33,4 +33,11 @@ the library lets switch its auto-fit off, left a scale nobody chose.
 ## Trace
 
 <!-- trace:begin -->
+- **Specs:** [[SPEC-153-reading-interaction]]
+- **Code:**
+    - `apps/web/src/Chart.tsx`
+    - `apps/web/src/PaneChart.tsx`
+    - `apps/web/src/__tests__/readingInteraction.test.tsx`
+    - `apps/web/src/paneChart.ts`
+- **Outcomes:** [[OUT-2026-10-12-implement-reading-interaction]]
 <!-- trace:end -->

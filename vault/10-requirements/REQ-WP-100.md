@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "§36, §29.0; owner's report 2026-10-12 (the page showed no data)"
 prd_lines: "6478-6492"
 phase: null
-status: tested
+status: implemented
 depends_on: [REQ-WP-068, REQ-WP-070, REQ-WP-039]
 tags: [lakehouse, compaction, concurrency, availability]
 hard_gated: false
@@ -47,4 +47,8 @@ with, and keeps the rows' order, which every "latest row wins" reader depends on
 ## Trace
 
 <!-- trace:begin -->
+- **Specs:** [[SPEC-152-compaction-under-writers]]
+- **Code:**
+    - `src/channelflow/lakehouse/iceberg.py`
+- **Outcomes:** [[OUT-2026-10-12-implement-compaction-under-writers]]
 <!-- trace:end -->

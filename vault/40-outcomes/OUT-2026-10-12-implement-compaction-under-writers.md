@@ -30,6 +30,20 @@ equal the first 170,614 read after, in order; 38 rows committed meanwhile follow
 - The maintenance container is nine days old and runs the old image: it also reports `dex_swaps: FAILED` (its schema predates
   `ingest_time_ns`). It has to be recreated from the new code.
 
+## Deployed run (2026-10-12, maintenance container rebuilt twice)
+
+- First pass on the new image: `channel_snapshots`, `feature_snapshots`, signals and extrema compacted; **`bars` failed**
+  (`CommitFailedException: branch main has changed`) after pyiceberg's default four retries, about a second, against a dozen
+  writers. The table is now given forty retries with a 50 ms-2 s backoff (the writers share them).
+- Second pass: **every table compacted, no `FAILED`** -- including `dex_swaps`, which the old image could not touch (its schema
+  predated `ingest_time_ns`). `bars` took 1,764 s: most of it retries while the daemons kept committing, the table having
+  been compacted by hand from 3,019 files an hour earlier and holding 88 by then. A pass is every six hours, so that cost is paid
+  in the background and the daemons are not stopped.
+- API after: a 30-minute bars request 2.7-3.5 s (it was 25 s), features 2.3 s, with the host's load average still 6-10 and
+  swap full (another tenant's `reth`, `minio` at 120-170 % CPU) -- the remaining cost is the host, not the table.
+
 ## What is still open
+
+- **Bars lag by up to fifteen minutes by design**: the ingest commits 15 bars at a time (`FLUSH_EVERY_BARS`, [[REQ-WP-068]]) to keep the file count down. With compaction now working under writers the batch could be smaller; that is the owner's call and is not changed here.
 
 - The maintenance container is to be recreated; then its next pass is the evidence for the last acceptance line.

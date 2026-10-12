@@ -22,7 +22,11 @@ and `tsc --noEmit` pass.
   the price axis being draggable. Both are settled by options rather than by code that fights the library.
 - Zoom by wheel is removed on purpose: it is the same gesture as scrolling the page. Pinch and dragging the time axis remain.
 
+## Deployed run (2026-10-12)
+
+The web image was rebuilt; in a headless browser against it the same six wheel ticks over the chart moved the page
+(`scrollY` 0 -> 210), the chart kept its full width, and the panes came into view with the chart's time axis unchanged.
+
 ## What is still open
 
-- The deployed check (the wheel scrolls the page over the new build) is the last acceptance line; the web image is rebuilt
-  after the commit.
+- Nothing in the repository: the deployed check was made.
