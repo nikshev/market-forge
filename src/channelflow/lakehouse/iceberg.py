@@ -6,6 +6,7 @@
 # @trace: REQ-WP-079
 # @trace: REQ-WP-081
 # @trace: REQ-WP-100
+# @trace: REQ-WP-105
 
 [[ADR-002]] chose "Parquet on S3-compatible object storage with Iceberg table
 semantics"; `table.py` implements those semantics by hand and [[ADR-060]]
@@ -105,6 +106,13 @@ CONCURRENT_REPLACE: dict[str, Any] = {
     "commit.retry.min-wait-ms": "50",
     "commit.retry.max-wait-ms": "2000",
 }
+
+#: A file with at least this many rows is **not rewritten** by compaction ([[REQ-WP-105]]).
+#: Compaction folds the small files that arrived since the last large one into one; it never
+#: touches the large one, so a pass costs what arrived, not what the table holds. Measured on
+#: 2026-10-13: merging the whole features table took 1,612 s -- to fold 68 small files into a file
+#: of 1.3 million rows that did not need touching.
+BIG_FILE_ROWS = 100_000
 
 #: A compacted file is committed *after* whatever a writer added while it was being made, so its own
 #: sequence number would sort it after rows that came later -- and every "latest row wins" reader
@@ -472,28 +480,28 @@ class IcebergTable:
             transaction.set_properties(**dict(METADATA_PRUNING))
         return True
 
-    def compact(self) -> int:
-        """Rewrite the live rows into one file, preserving their order.
+    def compact(self, *, big_rows: int = BIG_FILE_ROWS) -> int:
+        """Rewrite the small files at the end of the table into one, preserving their order.
 
-        The operation `append` cannot undo. A table written one row at a time
-        holds one file per row: measured on a deployment, **685 files for 689
-        rows**, each about 8 KiB of Parquet around a few hundred bytes of data,
-        and a read that cost 4.4 seconds against §36's two-second budget
-        ([[REQ-WP-067]]).
+        The operation `append` cannot undo. A table written one row at a time holds one file per
+        row: measured on a deployment, **685 files for 689 rows**, each about 8 KiB of Parquet
+        around a few hundred bytes of data, and a read that cost 4.4 seconds against §36's
+        two-second budget ([[REQ-WP-067]]).
 
-        [[REQ-WP-068]]'s flush policy stops the count growing. It cannot shrink
-        one that already grew, and a deployment that ran for a day before the
-        fix would otherwise stay slow for as long as it kept its history.
+        [[REQ-WP-068]]'s flush policy stops the count growing. It cannot shrink one that already
+        grew, and a deployment that ran for a day before the fix would otherwise stay slow for as
+        long as it kept its history.
 
-        **Rows come back in commit order and go out in it**, which is what makes
-        this safe: `read` already guarantees that order and every "latest row
-        wins" reader depends on it, so a compaction that reordered would change
-        answers rather than timings. The rewritten file carries them in the same
-        sequence, and the old files stop being referenced by the current
-        snapshot -- earlier snapshots still name them until they are expired, so
-        nothing pinned is lost.
+        **Only the tail is rewritten** ([[REQ-WP-105]]): the files after the last one of `big_rows`
+        rows or more, which a previous pass already made. Merging across a large file would move
+        rows past it, and rewriting it is the cost of the whole table for nothing -- a table that
+        was merged is merged. **Rows come back in commit order and go out in it**, which is what
+        makes this safe: `read` already guarantees that order and every "latest row wins" reader
+        depends on it, so a compaction that reordered would change answers rather than timings.
+        The tail is read as of the snapshot it was listed from, and the new file stands where the
+        newest file it replaced stood.
 
-        Returns how many files the live set had before.
+        Returns how many files were merged; one file is not worth a snapshot.
         """
         table = self._table()
         if table is None:
@@ -504,11 +512,14 @@ class IcebergTable:
         self._allow_concurrent_replace(table)
         head = table.current_snapshot()
         assert head is not None  # a commit above cannot have removed the snapshot it read
-        live = self._live_files(table, int(head.sequence_number or 0))
+        everything = self._live_files(table, int(head.sequence_number or 0))
+        last_large = max(
+            (i for i, (_, f) in enumerate(everything) if f.record_count >= big_rows), default=-1
+        )
+        live = everything[last_large + 1 :]
         before = len(live)
         if before <= 1:
-            # Nothing to gain, and an overwrite would spend a snapshot saying
-            # something happened.
+            # Nothing to gain, and an overwrite would spend a snapshot saying something happened.
             return before
         # Exactly the files listed, not "whatever the table holds now": a writer that commits while
         # this runs adds a file this did not read, and replacing the table would delete its rows.

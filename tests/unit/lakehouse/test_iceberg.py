@@ -596,7 +596,9 @@ def test_the_order_it_keeps_a_file_by_does_not_pile_up_across_passes(catalog: Ca
             table.append([{"n": n}])
         table.compact()
 
-    kept = [k for k in table._table().properties if k.startswith("channelflow.sequence.")]  # type: ignore[union-attr]  # noqa: SLF001
+    inner = table._table()  # noqa: SLF001
+    assert inner is not None
+    kept = [k for k in inner.properties if k.startswith("channelflow.sequence.")]
 
     assert len(kept) == 1, "a property outlives the file it described"
 
@@ -616,3 +618,109 @@ def test_a_table_that_is_compacted_retries_a_lost_commit_more_than_the_default_f
     properties = table._table().properties  # type: ignore[union-attr]  # noqa: SLF001
     assert int(properties["commit.retry.num-retries"]) >= 20
     assert int(properties["commit.retry.max-wait-ms"]) <= 5000
+
+
+# --- compaction rewrites the tail, not the whole table (REQ-WP-105)
+# ---------------------------------
+
+
+def _files_of(table: IcebergTable) -> list[str]:
+    inner = table._table()  # noqa: SLF001
+    assert inner is not None
+    return sorted(task.file.file_path for task in inner.scan().plan_files())
+
+
+def _filled(catalog: Catalog, big: int, small: int, name: str = "tail") -> IcebergTable:
+    """One commit of `big` rows, then `small` commits of one row each."""
+    table = _numbered(catalog, name)
+    table.append([{"n": n} for n in range(big)])
+    for n in range(small):
+        table.append([{"n": 1000 + n}])
+    return table
+
+
+@pytest.mark.trace("REQ-WP-105")
+def test_a_large_file_is_left_alone_and_only_the_small_ones_after_it_are_merged(
+    catalog: Catalog,
+) -> None:
+    """Merging the whole table every pass costs what the table holds; merging the tail costs what
+    arrived since. On 2026-10-13 the first took 1,612 s for the features table, to fold 68 small
+    files into a file of 1.3 million rows that did not need touching."""
+    table = _filled(catalog, big=10, small=4)
+    (big_file,) = [p for p in _files_of(table)][:1] or [""]
+    before = _files_of(table)
+
+    merged = table.compact(big_rows=5)
+
+    after = _files_of(table)
+    assert merged == 4
+    assert len(after) == 2
+    assert set(after) & set(before), "the large file was rewritten"
+
+
+@pytest.mark.trace("REQ-WP-105")
+def test_rows_come_back_in_the_same_order_when_only_the_tail_was_merged(catalog: Catalog) -> None:
+    table = _filled(catalog, big=10, small=4)
+    expected = [r["n"] for r in table.read().to_pylist()]
+
+    table.compact(big_rows=5)
+    table.append([{"n": 2000}])
+
+    assert [r["n"] for r in table.read().to_pylist()] == [*expected, 2000]
+
+
+@pytest.mark.trace("REQ-WP-105")
+def test_a_second_pass_merges_only_what_arrived_since_the_first(catalog: Catalog) -> None:
+    # The merged tail is four rows, which is "large" at three: a table whose tail has grown to the
+    # size of a large file stops being merged, which is how the cost stays proportional to what
+    # arrives.
+    table = _filled(catalog, big=10, small=4)
+    table.compact(big_rows=3)
+    settled = _files_of(table)
+    for n in range(3):
+        table.append([{"n": 3000 + n}])
+
+    merged = table.compact(big_rows=3)
+
+    assert merged == 3
+    assert set(settled) & set(_files_of(table)) == set(settled), "an earlier file was rewritten"
+
+
+@pytest.mark.trace("REQ-WP-105")
+def test_a_table_whose_files_are_all_small_is_merged_whole_as_before(catalog: Catalog) -> None:
+    table = _filled(catalog, big=1, small=5)
+
+    assert table.compact(big_rows=5) == 6
+    assert len(_files_of(table)) == 1
+
+
+@pytest.mark.trace("REQ-WP-105")
+def test_one_small_file_after_a_large_one_is_not_worth_a_snapshot(catalog: Catalog) -> None:
+    table = _filled(catalog, big=10, small=1)
+    snapshots = len(table.snapshot_ids())
+
+    assert table.compact(big_rows=5) == 1
+    assert len(table.snapshot_ids()) == snapshots
+
+
+@pytest.mark.trace("REQ-WP-105")
+def test_a_small_file_before_a_large_one_is_not_merged_across_it(catalog: Catalog) -> None:
+    """Merging it with files after the large one would move rows past it: order is the contract."""
+    table = _numbered(catalog, "across")
+    table.append([{"n": 1}])
+    table.append([{"n": n} for n in range(10, 20)])
+    table.append([{"n": 2}])
+    table.append([{"n": 3}])
+    expected = [r["n"] for r in table.read().to_pylist()]
+
+    table.compact(big_rows=5)
+
+    assert [r["n"] for r in table.read().to_pylist()] == expected
+    assert expected == [1, *range(10, 20), 2, 3]
+
+
+@pytest.mark.trace("REQ-WP-105")
+def test_the_default_leaves_a_table_of_a_hundred_thousand_rows_alone() -> None:
+    from channelflow.lakehouse.iceberg import BIG_FILE_ROWS
+
+    assert BIG_FILE_ROWS == 100_000

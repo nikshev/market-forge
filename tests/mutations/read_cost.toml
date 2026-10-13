@@ -58,3 +58,25 @@ replace = '''                order = int(entry.sequence_number or 0)'''
 name = "a lost commit is retried only the default four times"
 find = '''    "commit.retry.num-retries": "40",'''
 replace = '''    "commit.retry.num-retries": "4",'''
+
+# REQ-WP-105: compaction rewrites the tail, not the table.
+
+[[mutation]]
+name = "no file is large, so the whole table is rewritten every pass"
+find = '''            (i for i, (_, f) in enumerate(everything) if f.record_count >= big_rows), default=-1'''
+replace = '''            (i for i, (_, f) in enumerate(everything) if f.record_count > big_rows * 10**9), default=-1'''
+
+[[mutation]]
+name = "the large file is merged with the tail"
+find = '''        live = everything[last_large + 1 :]'''
+replace = '''        live = everything[last_large:]'''
+
+[[mutation]]
+name = "the large file's threshold is a million rows"
+find = '''BIG_FILE_ROWS = 100_000'''
+replace = '''BIG_FILE_ROWS = 1_000_000'''
+
+[[mutation]]
+name = "the tail is taken from the first large file, not the last"
+find = '''        last_large = max('''
+replace = '''        last_large = min('''
