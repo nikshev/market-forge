@@ -1,6 +1,7 @@
 """Maintain the canonical plane: prune metadata, compact, and expire.
 
 # @trace: REQ-WP-068
+# @trace: REQ-WP-104
 
 An append-only plane written a few rows at a time accumulates a file per commit.
 [[REQ-WP-066]]'s daemon now commits every fifteen bars rather than every one, so
@@ -48,6 +49,7 @@ from channelflow.tables import (
     liquidations,
     quotes,
     signals,
+    volume_bins,
 )
 
 #: Every table a running deployment appends to, by its own factory. Named rather
@@ -74,6 +76,9 @@ TABLES: dict[str, Callable[[Catalog], IcebergTable]] = {
     "dex_liquidity": dex_liquidity.table_for,
     "dex_depth": dex_depth.table_for,
     "dex_state": dex_state.table_for,
+    # Written by every ingest daemon, and left out of this list until 2026-10-13: 5,077 files, a
+    # 23 s read, and a volume profile that took a minute and a half ([[REQ-WP-104]]).
+    "volume_bins": volume_bins.table_for,
 }
 
 

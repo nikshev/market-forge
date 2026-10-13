@@ -68,8 +68,12 @@ class TestRunSeries:
     def test_returns_none_when_no_bars(self):
         mock_table = MagicMock()
         mock_table.catalog = MagicMock()
-        bars_table = MagicMock()
-        bars_table.read_bars.return_value = []
+        # An empty bars table. The read used to be a bare `MagicMock` that happened to iterate as
+        # nothing; the filter now runs on Arrow columns (REQ-WP-104), so the table says what it
+        # holds -- nothing.
+        from channelflow.tables import bars as bars_module
+
+        mock_table.read.return_value = bars_module.SCHEMA.arrow().empty_table()
 
         target = TIMEFRAMES["1h"]
         result = channel_main.run_series(

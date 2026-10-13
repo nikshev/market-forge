@@ -1,6 +1,7 @@
 """Reading one value out of a stored row, or refusing.
 
 # @trace: REQ-STORE-002
+# @trace: REQ-WP-104
 
 A row that comes back from the plane is `dict[str, object]`: Arrow knows the
 column's type and Python's type checker does not. Every table module needs the
@@ -17,6 +18,9 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from decimal import Decimal
+
+import pyarrow as pa
+import pyarrow.compute as pc
 
 
 class RowShape(TypeError):
@@ -93,3 +97,36 @@ def as_float_map(row: Mapping[str, object], field: str) -> dict[str, float]:
     if isinstance(value, str) or not isinstance(value, Sequence):
         raise RowShape(f"{field!r} is {value!r}; the column holds a map of numbers")
     return {str(key): float(item) for key, item in value}
+
+
+def narrow(rows: pa.Table, /, **conditions: object | tuple[int | None, int | None]) -> pa.Table:
+    """The rows of `rows` that meet every condition, still an Arrow table ([[REQ-WP-104]]).
+
+    A value keeps the rows whose column equals it; a `(low, high)` pair keeps those between, both
+    ends included, either open with `None`; `None` for a whole condition means "not asked" and
+    filters nothing, so a caller's optional arguments pass straight through. Order is kept.
+
+    This exists so the filter runs on the columns, before `to_pylist()` makes a Python dict of
+    every row: a read of one series out of a table of a million rows used to build a million dicts
+    to keep a few thousand. An unknown column raises `KeyError` -- an empty answer would be a typo
+    reading as a quiet market.
+    """
+    mask = None
+    for name, wanted in conditions.items():
+        column = rows[name]
+        if wanted is None:
+            continue
+        if isinstance(wanted, tuple):
+            low, high = wanted
+            parts = []
+            if low is not None:
+                parts.append(pc.greater_equal(column, low))
+            if high is not None:
+                parts.append(pc.less_equal(column, high))
+            if not parts:
+                continue
+            condition = parts[0] if len(parts) == 1 else pc.and_(parts[0], parts[1])
+        else:
+            condition = pc.equal(column, wanted)
+        mask = condition if mask is None else pc.and_(mask, condition)
+    return rows if mask is None else rows.filter(mask)

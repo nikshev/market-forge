@@ -1,0 +1,53 @@
+# REQ-WP-104: rows are narrowed in Arrow before they become Python. The mutations are the ways a filter could keep a row it
+# should not, drop one it should keep, or make a typo read as an empty answer.
+#
+# Patterns are TOML *literal* strings on purpose: the basic form treats a
+# trailing backslash as a line continuation and eats the next line's indentation.
+source = "src/channelflow/tables/rows.py"
+tests = ["tests/unit/tables/test_narrow.py"]
+
+[[mutation]]
+name = "a range drops its lower end"
+find = '''                parts.append(pc.greater_equal(column, low))'''
+replace = '''                parts.append(pc.greater(column, low))'''
+
+[[mutation]]
+name = "a range drops its upper end"
+find = '''                parts.append(pc.less_equal(column, high))'''
+replace = '''                parts.append(pc.less(column, high))'''
+
+[[mutation]]
+name = "a range ignores its upper end"
+find = '''            condition = parts[0] if len(parts) == 1 else pc.and_(parts[0], parts[1])'''
+replace = '''            condition = parts[0]'''
+
+[[mutation]]
+name = "conditions are or-ed, not and-ed"
+find = '''        mask = condition if mask is None else pc.and_(mask, condition)'''
+replace = '''        mask = condition if mask is None else pc.or_(mask, condition)'''
+
+[[mutation]]
+name = "an unknown column is skipped"
+find = '''        column = rows[name]
+        if wanted is None:
+            continue'''
+replace = '''        if wanted is None or name not in rows.column_names:
+            continue
+        column = rows[name]'''
+
+[[mutation]]
+name = "none means equal to null"
+find = '''        if wanted is None:
+            continue
+        if isinstance(wanted, tuple):'''
+replace = '''        if isinstance(wanted, tuple):'''
+
+[[mutation]]
+name = "nothing to filter on returns no rows"
+find = '''    return rows if mask is None else rows.filter(mask)'''
+replace = '''    return rows.slice(0, 0) if mask is None else rows.filter(mask)'''
+
+[[mutation]]
+name = "a narrowed table is returned unfiltered"
+find = '''    return rows if mask is None else rows.filter(mask)'''
+replace = '''    return rows'''

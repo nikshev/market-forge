@@ -2,9 +2,10 @@
 
 # @trace: REQ-WP-073
 # @trace: REQ-INFRA-012
+# @trace: REQ-WP-104
 
-The process half of `resample`: it reads the source series and what each target
-already holds, calls the pure resampler, and appends through `BarSink`. This is
+The process half of `resample`: it reads the bars table once, calls the pure resampler for each
+series and target, and appends what they produced as one commit through `BarSink`. This is
 the only file in the feature that knows a loop and a catalog exist.
 
 **One series failing does not end the pass.** The rule `maintenance_main`
@@ -18,13 +19,14 @@ from __future__ import annotations
 import argparse
 import os
 import time
+from collections import defaultdict
 from collections.abc import Sequence
 
 from channelflow.bars.models import Bar
-from channelflow.lakehouse import Catalog, IcebergTable
+from channelflow.lakehouse import Catalog
 from channelflow.lakehouse import catalog as open_catalog
 from channelflow.pipeline.passes import run_passes
-from channelflow.pipeline.resample import ResampleReport, report_for, resample
+from channelflow.pipeline.resample import ResampleReport, ResampleResult, report_for, resample
 from channelflow.settings import MissingConfiguration, settings_from_env
 from channelflow.tables import bars as bars_table
 from channelflow.timeframes import SOURCE_TOKEN, TIMEFRAMES, Timeframe, parse_list
@@ -47,35 +49,6 @@ def _interval_seconds(text: str) -> float:
     return float(text)
 
 
-def run_series(
-    table: IcebergTable,
-    *,
-    venue: str,
-    symbol: str,
-    target: Timeframe,
-    source_timeframe: Timeframe,
-    source_bars: Sequence[Bar],
-    now_ns: int,
-) -> ResampleReport:
-    """One `(venue, symbol, timeframe)`: read what exists, resample, append."""
-    existing = bars_table.read_bars(table, venue=venue, symbol=symbol, timeframe_ns=target.ns)
-    result = resample(
-        source_bars,
-        target=target,
-        source_timeframe=source_timeframe,
-        already_present=frozenset(bar.open_time_ns for bar in existing),
-        now_ns=now_ns,
-    )
-    sink = bars_table.BarSink(table=table)
-    for bar in result.bars:
-        sink(bar)
-    written = sink.pending
-    sink.flush()
-    # `written` is what was buffered for the append that just happened, so a
-    # report never counts a bar the commit refused.
-    return report_for(result, venue=venue, symbol=symbol, timeframe=target, written=written)
-
-
 def run_pass(
     catalog: Catalog,
     *,
@@ -89,23 +62,37 @@ def run_pass(
     configured a second time: a symbol list that could disagree with the bars
     table would eventually do so, and the series to produce are exactly the
     series that exist.
+
+    **One read and one commit, however many series there are** ([[REQ-WP-104]]).
+    The pass used to read the whole table for every `(series, timeframe)` --
+    seventeen series at seven timeframes is over a hundred reads of a table of
+    hundreds of thousands of rows -- and to commit a snapshot for each series with
+    something to write. On 2026-10-13 that held the host at 345 % CPU and the
+    object store at 250 % while the API took 54 s to answer a bars request. What
+    each series resamples to is unchanged; the table is read once, what each
+    target already holds is taken from that one read, and everything computed is
+    appended as one commit. If that commit fails nothing was written, every report
+    says so, and the next pass finds the same windows absent and writes them.
     """
     table = bars_table.table_for(catalog)
-    source_bars = bars_table.read_bars(table, timeframe_ns=source.ns)
-    series = sorted({(bar.venue, bar.symbol) for bar in source_bars})
+    everything = bars_table.read_bars(table)
 
-    reports: list[ResampleReport] = []
-    for venue, symbol in series:
-        owned = [bar for bar in source_bars if bar.venue == venue and bar.symbol == symbol]
+    sources: dict[tuple[str, str], list[Bar]] = defaultdict(list)
+    held: dict[tuple[str, str, int], set[int]] = defaultdict(set)
+    for bar in everything:
+        held[(bar.venue, bar.symbol, bar.timeframe_ns)].add(bar.open_time_ns)
+        if bar.timeframe_ns == source.ns:
+            sources[(bar.venue, bar.symbol)].append(bar)
+
+    computed: list[tuple[ResampleResult, str, str, Timeframe]] = []
+    for (venue, symbol), owned in sorted(sources.items()):
         for target in targets:
             try:
-                report = run_series(
-                    table,
-                    venue=venue,
-                    symbol=symbol,
+                result = resample(
+                    owned,
                     target=target,
                     source_timeframe=source,
-                    source_bars=owned,
+                    already_present=frozenset(held[(venue, symbol, target.ns)]),
                     now_ns=now_ns,
                 )
             except Exception as cause:  # noqa: BLE001 -- one series must not end the pass
@@ -114,10 +101,38 @@ def run_pass(
                     flush=True,
                 )
                 continue
-            reports.append(report)
-            print(f"  {report.line}", flush=True)
-            for refusal in report.refusals:
-                print(f"    refused: {refusal.reason}", flush=True)
+            computed.append((result, venue, symbol, target))
+
+    sink = bars_table.BarSink(table=table)
+    for result, _, _, _ in computed:
+        for bar in result.bars:
+            sink(bar)
+    committed = True
+    if sink.pending:
+        try:
+            sink.flush()
+        except Exception as cause:  # noqa: BLE001 -- the next pass computes the same windows again
+            committed = False
+            print(
+                f"  FAILED to commit {sink.pending} bar(s) -- {type(cause).__name__}: {cause}",
+                flush=True,
+            )
+
+    reports: list[ResampleReport] = []
+    for result, venue, symbol, target in computed:
+        # What the commit took, never what was computed: a report that counted a bar the commit
+        # refused would claim a row that does not exist.
+        report = report_for(
+            result,
+            venue=venue,
+            symbol=symbol,
+            timeframe=target,
+            written=len(result.bars) if committed else 0,
+        )
+        reports.append(report)
+        print(f"  {report.line}", flush=True)
+        for refusal in report.refusals:
+            print(f"    refused: {refusal.reason}", flush=True)
     return reports
 
 

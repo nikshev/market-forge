@@ -1,5 +1,6 @@
 """The API's reads, served from the canonical plane.
 
+# @trace: REQ-WP-104
 # @trace: REQ-STORE-002
 # @trace: REQ-API-001
 # @trace: REQ-WP-081
@@ -56,7 +57,7 @@ from channelflow.tables import features as features_table
 from channelflow.tables import quotes as quotes_table
 from channelflow.tables import signals as signals_table
 from channelflow.tables import volume_bins as volume_bins_table
-from channelflow.tables.rows import as_float, as_int, as_str
+from channelflow.tables.rows import as_float, as_int, as_str, narrow
 
 
 @dataclass
@@ -285,16 +286,18 @@ class LakehouseRepository:
         so the grouping happens on the way out.
         """
         by_instant: dict[int, dict[str, float]] = {}
-        for row in self._features.read().to_pylist():
-            if (
-                row["venue"] != venue
-                or row["symbol"] != symbol
-                or row["timeframe_ns"] != timeframe_ns
-            ):
-                continue
+        # Narrowed on the columns before any row becomes a Python dict ([[REQ-WP-104]]): the
+        # features table holds every series at every timeframe, over a million rows, and one
+        # chart wants a few thousand.
+        wanted = narrow(
+            self._features.read(),
+            venue=venue,
+            symbol=symbol,
+            timeframe_ns=timeframe_ns,
+            at_ns=(start_ns, end_ns),
+        )
+        for row in wanted.to_pylist():
             at_ns = as_int(row, "at_ns")
-            if not start_ns <= at_ns <= end_ns:
-                continue
             by_instant.setdefault(at_ns, {})[as_str(row, "feature_name")] = as_float(row, "value")
         return [FeaturePoint(at_ns=at_ns, values=by_instant[at_ns]) for at_ns in sorted(by_instant)]
 
@@ -372,7 +375,7 @@ class LakehouseRepository:
         """
         _ = timeframe_ns
         return select_consensus(
-            self._consensus.read().to_pylist(),
+            narrow(self._consensus.read(), asset=asset, market_type=market_type).to_pylist(),
             asset=asset,
             market_type=market_type,
             window_ns=window_ns,
@@ -395,7 +398,7 @@ class LakehouseRepository:
         """
         _ = timeframe_ns
         return select_venue_basis(
-            self._consensus.read().to_pylist(),
+            narrow(self._consensus.read(), asset=asset, market_type=market_type).to_pylist(),
             self._quotes.read().to_pylist(),
             asset=asset,
             market_type=market_type,

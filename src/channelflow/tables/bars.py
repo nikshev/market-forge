@@ -1,5 +1,6 @@
 """PRD §29.4's `bars`, as a canonical table.
 
+# @trace: REQ-WP-104
 # @trace: REQ-TBL-001
 
     ## 29.4. `bars`
@@ -30,6 +31,7 @@ from decimal import Decimal
 
 from channelflow.bars import Bar
 from channelflow.lakehouse import Catalog, Column, IcebergTable, Schema
+from channelflow.tables.rows import narrow
 
 logger = logging.getLogger(__name__)
 
@@ -193,14 +195,14 @@ def read_bars(
     afterwards in Python would be the same answer for a small table and the
     wrong shape for a large one; doing it here keeps one meaning of "as of".
     """
-    rows = table.read(snapshot_id=snapshot_id, as_of_ns=as_of_ns).to_pylist()
-    matched = [
-        row
-        for row in rows
-        if (venue is None or row["venue"] == venue)
-        and (symbol is None or row["symbol"] == symbol)
-        and (timeframe_ns is None or row["timeframe_ns"] == timeframe_ns)
-    ]
+    # Narrowed on the columns first: a table of hundreds of thousands of bars was converted to
+    # Python dicts in full to keep one series ([[REQ-WP-104]]).
+    matched = narrow(
+        table.read(snapshot_id=snapshot_id, as_of_ns=as_of_ns),
+        venue=venue,
+        symbol=symbol,
+        timeframe_ns=timeframe_ns,
+    ).to_pylist()
     matched.sort(key=lambda row: tuple(row[name] for name in ORDER))
     return [from_row(row) for row in matched]
 

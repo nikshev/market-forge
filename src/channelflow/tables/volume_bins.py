@@ -20,6 +20,7 @@ from dataclasses import dataclass, field
 from decimal import Decimal
 
 from channelflow.lakehouse import Catalog, Column, IcebergTable, Schema
+from channelflow.tables.rows import narrow
 from channelflow.volume.bins import BinBlock
 
 logger = logging.getLogger(__name__)
@@ -182,8 +183,10 @@ def read_bins(
 ) -> BinsRead:
     """`select_bins` over the table, with the storage layer's point-in-time read on the block's
     close."""
+    # Narrowed on the columns before any row becomes a dict ([[REQ-WP-104]]): every series' bins
+    # are in this table, and one profile is one series' window.
     return select_bins(
-        table.read(as_of_ns=as_of_ns).to_pylist(),
+        narrow(table.read(as_of_ns=as_of_ns), venue=venue, symbol=symbol).to_pylist(),
         venue=venue,
         symbol=symbol,
         as_of_ns=as_of_ns,

@@ -1,0 +1,61 @@
+# REQ-WP-104: the resample pass reads once and commits once. The mutations are the ways that economy could cost a bar: a
+# window taken for present when it is not (or the reverse), one series' windows taken for another's, a report that counts
+# what a refused commit did not write, and a failure that ends the pass.
+#
+# Patterns are TOML *literal* strings on purpose: the basic form treats a
+# trailing backslash as a line continuation and eats the next line's indentation.
+source = "src/channelflow/pipeline/resample_main.py"
+tests = ["tests/unit/pipeline/test_resample_pass.py", "tests/unit/pipeline/test_resample_main.py"]
+
+[[mutation]]
+name = "no window is taken for already written"
+find = '''                    already_present=frozenset(held[(venue, symbol, target.ns)]),'''
+replace = '''                    already_present=frozenset(),'''
+
+[[mutation]]
+name = "one series' windows are taken for another's"
+find = '''        held[(bar.venue, bar.symbol, bar.timeframe_ns)].add(bar.open_time_ns)'''
+replace = '''        held[("", "", bar.timeframe_ns)].add(bar.open_time_ns)'''
+
+[[mutation]]
+name = "a series is checked against the wrong timeframe's windows"
+find = '''                    already_present=frozenset(held[(venue, symbol, target.ns)]),'''
+replace = '''                    already_present=frozenset(held[(venue, symbol, source.ns)]),'''
+
+[[mutation]]
+name = "the report counts what a refused commit did not write"
+find = '''            written=len(result.bars) if committed else 0,'''
+replace = '''            written=len(result.bars),'''
+
+[[mutation]]
+name = "a refused commit is said to have landed"
+find = '''            committed = False'''
+replace = '''            committed = True'''
+
+[[mutation]]
+name = "a series that cannot be resampled ends the pass"
+find = '''                    f"  {venue} {symbol} {target.token}: FAILED — {type(cause).__name__}: {cause}",
+                    flush=True,
+                )
+                continue'''
+replace = '''                    f"  {venue} {symbol} {target.token}: FAILED — {type(cause).__name__}: {cause}",
+                    flush=True,
+                )
+                raise'''
+
+[[mutation]]
+name = "a bar of another timeframe is a source"
+find = '''        if bar.timeframe_ns == source.ns:'''
+replace = '''        if True:'''
+
+[[mutation]]
+name = "the pass commits even with nothing to write"
+find = '''    if sink.pending:'''
+replace = '''    if True:'''
+survives = '''Equivalent in effect: `BarSink.flush` with nothing buffered returns without committing, so an unconditional call writes no snapshot either (`test_a_pass_with_nothing_to_write_commits_nothing` holds for both). The guard only saves the call.'''
+
+[[mutation]]
+name = "the series are not read in order"
+find = '''    for (venue, symbol), owned in sorted(sources.items()):'''
+replace = '''    for (venue, symbol), owned in reversed(sorted(sources.items())):'''
+survives = '''Equivalent: the order series are resampled in changes only the order of the report lines; each series' bars and the one commit are the same either way.'''
