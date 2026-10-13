@@ -10,6 +10,7 @@
 // @trace: REQ-WP-089
 // @trace: REQ-WP-090
 // @trace: REQ-WP-091
+// @trace: REQ-WP-102
 //
 // The page an alert's deep link opens. PRD section 27.1's route, and section
 // 27.5's default: AS-SEEN-THEN, always, unless the link says otherwise in so
@@ -40,6 +41,9 @@ import { AppShell } from "./AppShell";
 import { CandidateSwitch } from "./CandidateSwitch";
 import { Chart } from "./Chart";
 import { GapNotice } from "./GapNotice";
+import { LiveChip } from "./LiveChip";
+import { LIVE_TIMEFRAME } from "./live";
+import { useLiveBars } from "./useLiveBars";
 import type { ChartHandle } from "./paneChart";
 import { DexBands } from "./DexBands";
 import { ChannelModeControl } from "./ChannelMode";
@@ -210,6 +214,14 @@ export function App(): JSX.Element {
 
   const option = offered === null ? null : matchTimeframe(offered, timeframe);
   const refused = offered !== null && option === null;
+
+  // The chart's real-time feed (REQ-WP-102): only for the live 1m chart -- not a view pinned to an instant, which is
+  // history and must not grow -- and for no timeframe the ingest does not build bars at.
+  const live = useLiveBars({
+    venue: link?.venue ?? "",
+    symbol: link?.symbol ?? "",
+    enabled: link !== null && link.atNs === null && option !== null && option.token === LIVE_TIMEFRAME,
+  });
 
   const load = useCallback(async (initial = false) => {
     if (link === null || option === null) {
@@ -551,6 +563,7 @@ export function App(): JSX.Element {
     <AppShell back="/">
       <Typography variant="h5" component="h2" sx={{ mb: 1.5, overflowWrap: "anywhere" }}>
         {link.symbol} · {link.venue} · {timeframe}
+        <LiveChip status={live.status} />
       </Typography>
       <Stack spacing={1.5} sx={{ mb: 1.5 }}>
         {offered === null ? null : (
@@ -599,6 +612,7 @@ export function App(): JSX.Element {
             palette={chartPalette}
             onReady={setMainChart}
             isInitialLoad={isInitialLoad}
+            liveBars={live.bars}
           />
         </Paper>
       )}
@@ -644,6 +658,7 @@ export function App(): JSX.Element {
         failure={paneFailure}
         available={available}
         bars={bars}
+        liveBars={live.bars}
         barsLoaded={barsLoaded}
         chart={mainChart}
         scheme={theme.palette.mode}

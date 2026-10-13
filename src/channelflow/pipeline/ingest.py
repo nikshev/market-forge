@@ -1,6 +1,7 @@
 """PRD §6.2's `ingest-binance`, as a process that can be run.
 
 # @trace: REQ-WP-066
+# @trace: REQ-WP-102
 # @trace: REQ-WP-089
 # @trace: REQ-WP-078
 # @trace: REQ-WP-076
@@ -38,6 +39,7 @@ from typing import Protocol
 from channelflow.bars.builder import BarBuilder
 from channelflow.connectors.session import StreamSession
 from channelflow.connectors.venue import VenueConnector
+from channelflow.live.publisher import LivePublisher
 from channelflow.pipeline.archive import FrameArchive
 from channelflow.pipeline.venue_normalize import normalize_frames
 from channelflow.volume.bins import PriceBinBuilder
@@ -114,6 +116,9 @@ class IngestDaemon:
     bins: PriceBinBuilder | None = None
     flush_bins: Callable[[], str | None] = field(default=lambda: None)
     bins_pending: Callable[[], int] = field(default=lambda: 0)
+    #: The chart's real-time feed ([[REQ-WP-102]]): the bar being built, published at most once a
+    # second. : `None` publishes nothing; the bars are the same either way.
+    live: LivePublisher | None = None
 
     #: Frames whose stream this daemon does not turn into events. Counted, not
     #: dropped silently: a subscription nobody consumes is a cost with no
@@ -160,6 +165,12 @@ class IngestDaemon:
                 trades += 1
 
         self.session.tick()
+
+        if self.live is not None:
+            # After the trades are in the builder and before anything else is decided: the view is
+            # of what was just taken, and it can never hold a trade up (the publisher swallows its
+            # own errors).
+            self.live.forming(self.builder.forming())
 
         flushed = None
         if self._should_flush(received_at):

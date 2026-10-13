@@ -111,8 +111,11 @@ class EventPublisher(Protocol):
 class EventConsumer(Protocol):
     """Whatever records come out of."""
 
-    def poll(self, *, limit: int) -> list[Record]:
-        """Up to `limit` records. An empty list is an answer."""
+    def poll(self, *, limit: int, timeout: float = 0.0) -> list[Record]:
+        """Up to `limit` records, waiting at most `timeout` seconds for the first.
+
+        An empty list is an answer. A zero timeout asks only for what is there.
+        """
         ...
 
 

@@ -1,0 +1,46 @@
+# REQ-WP-102: the one websocket a browser may use is gated like the rest. The mutations are the ways it could be opened
+# without launch data, opened by data that does not verify, or hand the data back.
+#
+# Patterns are TOML *literal* strings on purpose: the basic form treats a
+# trailing backslash as a line continuation and eats the next line's indentation.
+source = "src/channelflow/api/telegram_auth.py"
+tests = ["tests/unit/api/test_telegram_gate.py"]
+
+[[mutation]]
+name = "the live socket is opened without checking the launch data"
+find = '''                try:
+                    self.gate.check(_launch_from_subprotocols(scope))
+                except LaunchRefused:
+                    await receive()
+                    await send({"type": "websocket.close", "code": 1008})
+                    return'''
+replace = '''                if False:
+                    return'''
+
+[[mutation]]
+name = "any first subprotocol is taken for the scheme"
+find = '''    if len(offered) != 2 or offered[0] != LIVE_SCHEME:'''
+replace = '''    if len(offered) != 2:'''
+
+[[mutation]]
+name = "a third subprotocol is tolerated"
+find = '''    if len(offered) != 2 or offered[0] != LIVE_SCHEME:'''
+replace = '''    if len(offered) < 2 or offered[0] != LIVE_SCHEME:'''
+survives = '''Equivalent for the data this is given: extra offered protocols after the token are ignored either way, and the token that is verified is the second one in both. What matters -- a missing token and a wrong scheme -- is covered by the mutation above and by the parametrised refusals.'''
+
+[[mutation]]
+name = "the original socket is opened to signed launch data too"
+find = '''            await receive()  # the `websocket.connect` event, which a close must answer
+            await send({"type": "websocket.close", "code": 1008})
+            return'''
+replace = '''            if _launch_from_subprotocols(scope) is not None:
+                await self.app(scope, receive, send)
+                return
+            await receive()  # the `websocket.connect` event, which a close must answer
+            await send({"type": "websocket.close", "code": 1008})
+            return'''
+
+[[mutation]]
+name = "the live path is not in the gate's scope"
+find = '''        return path.startswith("/ws/") or path == LIVE_PATH'''
+replace = '''        return path.startswith("/ws/")'''

@@ -1,6 +1,7 @@
 """Who may read the API when it is opened from Telegram (REQ-WP-080).
 
 # @trace: REQ-WP-080
+# @trace: REQ-WP-102
 
 A Telegram Mini App is handed `initData`: a URL-encoded string of fields, signed for one bot. This
 module verifies it and gates the API on it. Three decisions shape everything below.
@@ -32,6 +33,7 @@ against the others' answers, never only its own.
 
 from __future__ import annotations
 
+import base64
 import hashlib
 import hmac
 import time
@@ -166,17 +168,43 @@ class TelegramGate:
         )
 
 
+#: The one websocket a browser may use ([[REQ-WP-102]]): the chart's live feed. Under `/api/v1/` so
+#: the public proxy's one location reaches it and nothing else does.
+LIVE_PATH = "/api/v1/live"
+
+#: The subprotocol that carries launch data on a websocket: `["tma", <base64url(initData)>]`. A
+#: browser cannot send an `Authorization` header on a websocket and a URL is logged; neither is true
+#: of a subprotocol.
+LIVE_SCHEME = "tma"
+
+
 def _in_scope(scope: Scope) -> bool:
     path = str(scope.get("path", ""))
     if scope["type"] == "http":
         return path == "/api/v1" or path.startswith("/api/v1/")
     if scope["type"] == "websocket":
-        return path.startswith("/ws/")
+        return path.startswith("/ws/") or path == LIVE_PATH
     return False
+
+
+def _launch_from_subprotocols(scope: Scope) -> str | None:
+    """`Authorization`-shaped launch data from `["tma", <base64url(initData)>]`, or `None`."""
+    offered = [str(p) for p in scope.get("subprotocols", [])]
+    if len(offered) != 2 or offered[0] != LIVE_SCHEME:
+        return None
+    token = offered[1]
+    try:
+        data = base64.urlsafe_b64decode(token + "=" * (-len(token) % 4)).decode()
+    except (ValueError, UnicodeDecodeError):
+        return None
+    return SCHEME + data
 
 
 class TelegramAuthMiddleware:
     """Refuses an unsigned caller on everything under `/api/v1/` and `/ws/`.
+
+    The one exception to "a websocket is closed" is the chart's live feed (`LIVE_PATH`), which takes
+    its launch data in a subprotocol and is verified like any request ([[REQ-WP-102]]).
 
     Pure ASGI rather than `BaseHTTPMiddleware`, because one class has to cover both an HTTP request
     and
@@ -195,6 +223,15 @@ class TelegramAuthMiddleware:
             return
 
         if scope["type"] == "websocket":
+            if str(scope.get("path", "")) == LIVE_PATH:
+                try:
+                    self.gate.check(_launch_from_subprotocols(scope))
+                except LaunchRefused:
+                    await receive()
+                    await send({"type": "websocket.close", "code": 1008})
+                    return
+                await self.app(scope, receive, send)
+                return
             await receive()  # the `websocket.connect` event, which a close must answer
             await send({"type": "websocket.close", "code": 1008})
             return
@@ -220,6 +257,7 @@ def _authorization(scope: Scope) -> str | None:
 
 
 __all__ = [
+    "LIVE_PATH",
     "REASONS",
     "LaunchData",
     "LaunchRefused",

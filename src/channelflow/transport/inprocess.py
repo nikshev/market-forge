@@ -13,6 +13,7 @@ one consumer would be a different thing wearing the same interface.
 
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass, field
 
 from channelflow.transport import EventConsumer, EventPublisher, Record
@@ -59,7 +60,15 @@ class _Consumer:
     topics: tuple[str, ...]
     _offsets: dict[str, int] = field(default_factory=dict)
 
-    def poll(self, *, limit: int) -> list[Record]:
+    def poll(self, *, limit: int, timeout: float = 0.0) -> list[Record]:
+        deadline = time.monotonic() + timeout
+        while True:
+            found = self._take(limit)
+            if found or time.monotonic() >= deadline:
+                return found
+            time.sleep(0.01)
+
+    def _take(self, limit: int) -> list[Record]:
         found: list[Record] = []
         for topic in self.topics:
             offset = self._offsets.get(topic, 0)

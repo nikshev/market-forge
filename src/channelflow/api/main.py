@@ -4,6 +4,7 @@
 # @trace: REQ-WP-072
 # @trace: REQ-WP-074
 # @trace: REQ-WP-080
+# @trace: REQ-WP-102
 
 PRD §6.2's MVP deployment names an `api` service. There was no way to run one:
 `create_app` takes an already-built repository, `LakehouseRepository` takes a
@@ -24,14 +25,19 @@ itself.
 
 from __future__ import annotations
 
+import os
+
 from fastapi import FastAPI
 
 from channelflow.api.app import create_app
 from channelflow.api.lakehouse_repository import LakehouseRepository
+from channelflow.api.live import attach_live
 from channelflow.api.readiness import catalog_probe
 from channelflow.api.telegram_auth import TelegramGate
 from channelflow.lakehouse import catalog as open_catalog
 from channelflow.lakehouse.iceberg import NAMESPACE
+from channelflow.live.broker import bootstrap_from_env, consumer_for
+from channelflow.live.relay import LiveCache
 from channelflow.settings import (
     CATALOG_URI,
     REQUIRED,
@@ -47,14 +53,22 @@ def build_app(settings: Settings) -> FastAPI:
     store = open_catalog(
         uri=settings.catalog_uri, warehouse=settings.warehouse, **dict(settings.storage)
     )
-    return create_app(
+    bootstrap = bootstrap_from_env(os.environ)
+    cache = LiveCache() if bootstrap else None
+    app = create_app(
         repository=LakehouseRepository(catalog=store),
         readiness=catalog_probe(lambda: store.list_tables(NAMESPACE)),
         allowed_origins=settings.allowed_origins,
         rate_limit=settings.rate_limit,
         timeframes=settings.timeframes,
         telegram_gate=_telegram_gate(settings),
+        live_cache=cache,
     )
+    if bootstrap and cache is not None:
+        # The chart's real-time feed ([[REQ-WP-102]]): read from the broker, cached, relayed on
+        # `/ws/market`.
+        attach_live(app, cache, lambda: consumer_for(bootstrap))
+    return app
 
 
 def _telegram_gate(settings: Settings) -> TelegramGate | None:

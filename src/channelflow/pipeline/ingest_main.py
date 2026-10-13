@@ -5,6 +5,7 @@
 # @trace: REQ-WP-076
 # @trace: REQ-WP-081
 # @trace: REQ-WP-089
+# @trace: REQ-WP-102
 
 The same shape as the read API's composition root, and for the same reasons: the
 environment is the only input, nothing defaults, and a missing variable refuses
@@ -17,18 +18,21 @@ import logging
 import math
 import os
 import time
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field, replace
 from decimal import Decimal
 from importlib import import_module
 from pathlib import Path
 from typing import Any
 
+from channelflow.bars import Bar
 from channelflow.bars.builder import BarBuilder
 from channelflow.connectors.session import StreamSession
 from channelflow.connectors.venue import VENUE_REGISTRY
 from channelflow.connectors.websocket import binance_stream_url
 from channelflow.lakehouse import catalog as open_catalog
+from channelflow.live.broker import bootstrap_from_env, broker_for
+from channelflow.live.publisher import LivePublisher
 from channelflow.pipeline.archive import FrameArchive, LocalObjectStore, ObjectStore, S3ObjectStore
 from channelflow.pipeline.ingest import IngestDaemon
 from channelflow.pipeline.market_registration import register_own_market
@@ -224,6 +228,20 @@ def _resolve_connector(dotted: str) -> Any:
     return getattr(import_module(module_name), class_name)
 
 
+def final_and_live(sink: Callable[[Bar], None], live: LivePublisher) -> Callable[[Bar], None]:
+    """A finished bar goes to the table's sink first and to the live feed after.
+
+    In that order because the table is the record and the feed is a view of it; and the feed's own
+    errors never leave the publisher, so they cannot keep a bar from the record.
+    """
+
+    def on_final(bar: Bar) -> None:
+        sink(bar)
+        live.final(bar)
+
+    return on_final
+
+
 def build_daemon(
     *,
     symbol: str,
@@ -233,8 +251,13 @@ def build_daemon(
     warehouse: str,
     storage: Mapping[str, str],
     venue: str,
+    live_bootstrap: str | None = None,
 ) -> IngestDaemon:
-    """One symbol's daemon, wired from configuration."""
+    """One symbol's daemon, wired from configuration.
+
+    `live_bootstrap` is the broker the chart's real-time feed is published to ([[REQ-WP-102]]);
+    `None` publishes nothing.
+    """
     if venue not in VENUE_REGISTRY:
         raise MissingConfiguration(f"Unknown venue: {venue}. Known: {list(VENUE_REGISTRY.keys())}")
 
@@ -250,7 +273,12 @@ def build_daemon(
     config = VENUE_REGISTRY[venue]
     catalog = open_catalog(uri=catalog_uri, warehouse=warehouse, **dict(storage))
     sink = bars_table.BarSink(table=bars_table.table_for(catalog))
-    builder = BarBuilder(timeframe_ns=settings.timeframe_ns, on_final=sink)
+    live = LivePublisher(
+        broker_for(live_bootstrap) if live_bootstrap else None,
+        producer=f"ingest-{venue}-{symbol}",
+        now_ns=time.time_ns,
+    )
+    builder = BarBuilder(timeframe_ns=settings.timeframe_ns, on_final=final_and_live(sink, live))
     bin_sink = volume_bins.BinSink(table=volume_bins.table_for(catalog))
     bins = PriceBinBuilder(
         block_ns=settings.profile_block_ns,
@@ -295,6 +323,7 @@ def build_daemon(
         ),
         builder=builder,
         venue=venue,
+        live=live if live.enabled else None,
         flush_bars=sink.flush,
         bars_pending=lambda: sink.pending,
         bins=bins,
@@ -324,6 +353,7 @@ def main(argv: list[str] | None = None) -> int:
         )
 
     store = object_store_for(ingest.archive_uri, plane.storage)
+    live_bootstrap = bootstrap_from_env(os.environ)
     daemon = build_daemon(
         symbol=ingest.symbols[0],
         settings=ingest,
@@ -332,10 +362,12 @@ def main(argv: list[str] | None = None) -> int:
         warehouse=plane.warehouse,
         storage=plane.storage,
         venue=venue,
+        live_bootstrap=live_bootstrap,
     )
     print(
         f"ingesting {ingest.symbols[0]} at {ingest.timeframe_ns / 1e9:g}s bars for {venue}, "
-        f"archiving to {ingest.archive_uri}"
+        f"archiving to {ingest.archive_uri}; live feed "
+        f"{'to ' + live_bootstrap if live_bootstrap else 'off'}"
     )
     # The market this process ingests goes in the markets table, once, before it begins: the
     # overview lists what is in that table and nothing else ([[REQ-WP-081]]). Soft by construction:

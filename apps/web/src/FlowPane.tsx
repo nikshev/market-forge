@@ -32,6 +32,7 @@ export function FlowPane({
   failure = null,
   available,
   bars = [],
+  liveBars,
   barsLoaded = false,
   chart = null,
   scheme = "light",
@@ -40,6 +41,8 @@ export function FlowPane({
   points: readonly FeaturePointOut[];
   /** The loaded bars: Volume is drawn from these, not from `points` (REQ-WP-085). */
   bars?: readonly BarOut[];
+  /** The live feed's bars (REQ-WP-102), handed to the chart pane so its axis holds the bars the chart draws. */
+  liveBars?: readonly BarOut[];
   /** True once the bars have answered, including with none: what tells "no bars yet" from "no bars". */
   barsLoaded?: boolean;
   /**
@@ -127,6 +130,7 @@ export function FlowPane({
           <PaneChart
             chart={chart}
             bars={bars}
+            liveBars={liveBars}
             feature={feature}
             points={points}
             title={ROW.find((pane) => pane.feature === feature)?.label ?? feature}

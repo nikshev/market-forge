@@ -100,3 +100,39 @@ def test_the_okx_hype_ingest_reads_the_hype_swap_from_okx() -> None:
 
     assert environment["CHANNELFLOW_INGEST_VENUE"] == "okx"
     assert environment["CHANNELFLOW_INGEST_SYMBOLS"].endswith(":-HYPE-USDT-SWAP}")
+
+
+@pytest.mark.trace("REQ-WP-102")
+def test_every_ingest_service_and_the_api_are_handed_the_broker_for_the_live_feed() -> None:
+    """Compose forwards only the variables a service names; without this the chart's feed is
+    configured in the code and absent in the deployment."""
+    handed = {
+        name
+        for name, definition in services().items()
+        if "CHANNELFLOW_KAFKA_BOOTSTRAP" in definition.get("environment", {})
+    }
+    ingest = {name for name in services() if name.startswith("ingest-")}
+
+    assert ingest | {"api"} <= handed
+    assert services()["api"]["environment"]["CHANNELFLOW_KAFKA_BOOTSTRAP"].startswith("${")
+
+
+@pytest.mark.trace("REQ-WP-102")
+def test_no_ingest_waits_for_the_broker_because_the_feed_is_a_view_not_the_record() -> None:
+    for name, definition in services().items():
+        if name.startswith("ingest-") or name == "api":
+            assert "redpanda" not in (definition.get("depends_on") or {}), name
+
+
+@pytest.mark.trace("REQ-WP-102")
+def test_the_web_proxy_passes_the_websocket_upgrade_through_its_one_location() -> None:
+    from pathlib import Path
+
+    conf = (Path(__file__).resolve().parents[3] / "apps" / "web" / "nginx.conf").read_text()
+
+    assert conf.count("proxy_pass") == 1, "the live feed rides the one proxied location"
+    assert "proxy_set_header Upgrade $http_upgrade" in conf
+    assert "proxy_set_header Connection $connection_upgrade" in conf
+    assert "map $http_upgrade $connection_upgrade" in conf
+    assert "proxy_http_version 1.1" in conf
+    assert "proxy_read_timeout" in conf, "an idle socket must not be cut at nginx's default minute"

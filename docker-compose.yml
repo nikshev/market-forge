@@ -189,6 +189,8 @@ services:
       CHANNELFLOW_TELEGRAM_AUTH: ${CHANNELFLOW_TELEGRAM_AUTH:-off}
       CHANNELFLOW_TELEGRAM_MAX_AGE_SECONDS: ${CHANNELFLOW_TELEGRAM_MAX_AGE_SECONDS:-}
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      # The chart's real-time feed (REQ-WP-102): the broker the bars being built are published to. Empty turns it off.
+      CHANNELFLOW_KAFKA_BOOTSTRAP: ${CHANNELFLOW_KAFKA_BOOTSTRAP-redpanda:29092}
     ports:
       - "${CHANNELFLOW_BIND_ADDRESS:-127.0.0.1}:${API_PORT}:8000"
     depends_on:
@@ -246,6 +248,8 @@ services:
       # it rather than inside it: `raw/` and `warehouse/` are different zones.
       CHANNELFLOW_ARCHIVE_URI: s3://${MINIO_BUCKET}/raw/cex
       CHANNELFLOW_INGEST_VENUE: binance
+      # The chart's real-time feed (REQ-WP-102): the broker the bars being built are published to. Empty turns it off.
+      CHANNELFLOW_KAFKA_BOOTSTRAP: ${CHANNELFLOW_KAFKA_BOOTSTRAP-redpanda:29092}
     depends_on:
       postgres:
         condition: service_healthy
@@ -291,6 +295,8 @@ services:
       CHANNELFLOW_LOG_LEVEL: ${CHANNELFLOW_LOG_LEVEL:-}
       CHANNELFLOW_ARCHIVE_URI: s3://${MINIO_BUCKET}/raw/cex
       CHANNELFLOW_INGEST_VENUE: binance
+      # The chart's real-time feed (REQ-WP-102): the broker the bars being built are published to. Empty turns it off.
+      CHANNELFLOW_KAFKA_BOOTSTRAP: ${CHANNELFLOW_KAFKA_BOOTSTRAP-redpanda:29092}
     depends_on:
       postgres:
         condition: service_healthy
@@ -325,6 +331,8 @@ services:
       CHANNELFLOW_LOG_LEVEL: ${CHANNELFLOW_LOG_LEVEL:-}
       CHANNELFLOW_ARCHIVE_URI: s3://${MINIO_BUCKET}/raw/cex
       CHANNELFLOW_INGEST_VENUE: binance
+      # The chart's real-time feed (REQ-WP-102): the broker the bars being built are published to. Empty turns it off.
+      CHANNELFLOW_KAFKA_BOOTSTRAP: ${CHANNELFLOW_KAFKA_BOOTSTRAP-redpanda:29092}
     depends_on:
       postgres:
         condition: service_healthy
@@ -362,6 +370,8 @@ services:
       CHANNELFLOW_LOG_LEVEL: ${CHANNELFLOW_LOG_LEVEL:-}
       CHANNELFLOW_ARCHIVE_URI: s3://${MINIO_BUCKET}/raw/cex
       CHANNELFLOW_INGEST_VENUE: bybit
+      # The chart's real-time feed (REQ-WP-102): the broker the bars being built are published to. Empty turns it off.
+      CHANNELFLOW_KAFKA_BOOTSTRAP: ${CHANNELFLOW_KAFKA_BOOTSTRAP-redpanda:29092}
     depends_on:
       postgres:
         condition: service_healthy
@@ -396,6 +406,8 @@ services:
       CHANNELFLOW_LOG_LEVEL: ${CHANNELFLOW_LOG_LEVEL:-}
       CHANNELFLOW_ARCHIVE_URI: s3://${MINIO_BUCKET}/raw/cex
       CHANNELFLOW_INGEST_VENUE: bybit
+      # The chart's real-time feed (REQ-WP-102): the broker the bars being built are published to. Empty turns it off.
+      CHANNELFLOW_KAFKA_BOOTSTRAP: ${CHANNELFLOW_KAFKA_BOOTSTRAP-redpanda:29092}
     depends_on:
       postgres:
         condition: service_healthy
@@ -430,6 +442,8 @@ services:
       CHANNELFLOW_LOG_LEVEL: ${CHANNELFLOW_LOG_LEVEL:-}
       CHANNELFLOW_ARCHIVE_URI: s3://${MINIO_BUCKET}/raw/cex
       CHANNELFLOW_INGEST_VENUE: okx
+      # The chart's real-time feed (REQ-WP-102): the broker the bars being built are published to. Empty turns it off.
+      CHANNELFLOW_KAFKA_BOOTSTRAP: ${CHANNELFLOW_KAFKA_BOOTSTRAP-redpanda:29092}
     depends_on:
       postgres:
         condition: service_healthy
@@ -464,6 +478,8 @@ services:
       CHANNELFLOW_LOG_LEVEL: ${CHANNELFLOW_LOG_LEVEL:-}
       CHANNELFLOW_ARCHIVE_URI: s3://${MINIO_BUCKET}/raw/cex
       CHANNELFLOW_INGEST_VENUE: okx
+      # The chart's real-time feed (REQ-WP-102): the broker the bars being built are published to. Empty turns it off.
+      CHANNELFLOW_KAFKA_BOOTSTRAP: ${CHANNELFLOW_KAFKA_BOOTSTRAP-redpanda:29092}
     depends_on:
       postgres:
         condition: service_healthy
@@ -500,6 +516,8 @@ services:
       CHANNELFLOW_LOG_LEVEL: ${CHANNELFLOW_LOG_LEVEL:-}
       CHANNELFLOW_ARCHIVE_URI: s3://${MINIO_BUCKET}/raw/cex
       CHANNELFLOW_INGEST_VENUE: okx
+      # The chart's real-time feed (REQ-WP-102): the broker the bars being built are published to. Empty turns it off.
+      CHANNELFLOW_KAFKA_BOOTSTRAP: ${CHANNELFLOW_KAFKA_BOOTSTRAP-redpanda:29092}
     depends_on:
       postgres:
         condition: service_healthy
@@ -534,6 +552,8 @@ services:
       CHANNELFLOW_LOG_LEVEL: ${CHANNELFLOW_LOG_LEVEL:-}
       CHANNELFLOW_ARCHIVE_URI: s3://${MINIO_BUCKET}/raw/cex
       CHANNELFLOW_INGEST_VENUE: okx
+      # The chart's real-time feed (REQ-WP-102): the broker the bars being built are published to. Empty turns it off.
+      CHANNELFLOW_KAFKA_BOOTSTRAP: ${CHANNELFLOW_KAFKA_BOOTSTRAP-redpanda:29092}
     depends_on:
       postgres:
         condition: service_healthy
@@ -568,6 +588,8 @@ services:
       CHANNELFLOW_LOG_LEVEL: ${CHANNELFLOW_LOG_LEVEL:-}
       CHANNELFLOW_ARCHIVE_URI: s3://${MINIO_BUCKET}/raw/cex
       CHANNELFLOW_INGEST_VENUE: okx
+      # The chart's real-time feed (REQ-WP-102): the broker the bars being built are published to. Empty turns it off.
+      CHANNELFLOW_KAFKA_BOOTSTRAP: ${CHANNELFLOW_KAFKA_BOOTSTRAP-redpanda:29092}
     depends_on:
       postgres:
         condition: service_healthy

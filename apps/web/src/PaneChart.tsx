@@ -1,5 +1,6 @@
 // @trace: REQ-WP-101
 // @trace: REQ-WP-092
+// @trace: REQ-WP-102
 // @trace: REQ-WP-086
 //
 // The lower pane as a chart of the same library, under the main one, on its time axis (PRD section 27.3).
@@ -23,6 +24,7 @@ import {
 import { useEffect, useMemo, useRef } from "react";
 
 import { findGaps, gapMarkers } from "./gaps";
+import { liveAfter } from "./live";
 import {
   backbone,
   PANE_HEIGHT,
@@ -41,9 +43,12 @@ const ZERO_COLOUR = "rgba(128, 128, 128, 0.6)";
 const sameRange = (a: LogicalRange | null, b: LogicalRange | null): boolean =>
   a !== null && b !== null && Math.abs(a.from - b.from) < 1e-6 && Math.abs(a.to - b.to) < 1e-6;
 
+const NO_LIVE_BARS: readonly BarOut[] = [];
+
 export function PaneChart({
   chart,
-  bars,
+  bars: storedBars,
+  liveBars = NO_LIVE_BARS,
   feature,
   points,
   title,
@@ -52,6 +57,12 @@ export function PaneChart({
 }: {
   chart: ChartHandle;
   bars: readonly BarOut[];
+  /**
+   * The bars the live feed holds (REQ-WP-102). The pane's time axis is the chart's by index, so it holds the same
+   * bars the chart draws -- the stored ones and the live ones after them -- or the two would drift apart as bars
+   * arrive. A finished live bar draws its volume; a forming one, and every feature the worker computes, is whitespace.
+   */
+  liveBars?: readonly BarOut[];
   feature: string;
   points: readonly FeaturePointOut[];
   title: string;
@@ -63,6 +74,7 @@ export function PaneChart({
   const crosshairSeries = useRef<ISeriesApi<"Line" | "Histogram"> | null>(null);
   // True while the reader's pointer is on the pane: only then is a range change on the pane the reader's.
   const reader = useRef(false);
+  const bars = useMemo(() => [...storedBars, ...liveAfter(storedBars, liveBars)], [storedBars, liveBars]);
   const view = useMemo(() => paneView(bars, feature, points), [bars, feature, points]);
 
   // The chart itself: one per scheme and palette.

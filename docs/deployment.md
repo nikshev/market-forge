@@ -284,6 +284,7 @@ secret; `.env` is not committed and never should be.
 | `API_PORT`, `WEB_PORT` | where the application services are published |
 | `CHANNELFLOW_DATA_DIR` | the directory every stateful service writes into ([[REQ-WP-065]]) |
 | `CHANNELFLOW_DEX_RPC_URL`, `CONTEXT_HYPEREVM_PORT` | the HyperEVM JSON-RPC node the DEX collector reads (empty: the public one) and the port it serves `/healthz` on |
+| `CHANNELFLOW_KAFKA_BOOTSTRAP` | where the ingest daemons publish the bars they are building and the API reads them back, for the chart's live feed ([[REQ-WP-102]]); inside the compose network `redpanda:29092`, empty turns the feed off and the chart reloads on a timer |
 | `CHANNELFLOW_BIND_ADDRESS` | what every published port binds to; `127.0.0.1` by default ([[REQ-WP-072]]) |
 | `CHANNELFLOW_CORS_ORIGINS`, `CHANNELFLOW_RATE_LIMIT`, `CHANNELFLOW_RATE_WINDOW_SECONDS` | what the read API allows and refuses |
 | `GRAFANA_ADMIN_PASSWORD`, `GRAFANA_ANONYMOUS` | Grafana's credential; anonymous access is off unless enabled |
@@ -664,6 +665,26 @@ docker compose up -d --no-deps context-binance context-bybit context-okx context
 ```
 
 and read each one's log first (`docker logs channelflow-context-bybit-1`).
+
+## The live chart ([REQ-WP-102])
+
+The bars table is written fifteen bars at a time (fewer commits keep the file count, and so the read cost, down), so a
+one-minute chart read from it is up to fifteen minutes behind. The chart therefore has its own feed. Each ingest daemon
+publishes the 1m bar it is **building** (at most once a second) and every bar it **finishes** to Redpanda
+(`market.bar_live.v1`, thirty minutes' retention, created on first use); the API reads the topic from the start on every
+start, keeps the last thirty minutes of each series, and relays them on a WebSocket at `/api/v1/live` -- first the cached
+bars (the stretch the table has not caught up on), then every update. The page draws them after the last stored bar,
+updates the forming candle in place, and says **live** or **delayed**; it reconnects with backoff and keeps reloading on a
+timer while the socket is down.
+
+It is a view, not the record: publishing is best effort (a broker that is down is counted and the ingest carries on, and
+neither the ingest nor the API waits for it), a forming bar is marked `is_final: false` end to end, is never stored and no
+feature reads it, and a final bar is never replaced by a forming one. Only the 1m timeframe is live; the others reload.
+
+The socket is the one a browser may use, and it is **gated like everything under `/api/v1/`**: with Telegram
+authentication required it takes the launch data as a WebSocket subprotocol (`tma`, then the data base64url-encoded --
+a header cannot be set on a browser WebSocket and a URL is logged) and is closed (1008) without a valid one. The route
+PRD §28.7 names, `/ws/market`, stays closed to the browser in that mode, and the public proxy still has one location.
 
 ## The signal notary (Monad testnet)
 

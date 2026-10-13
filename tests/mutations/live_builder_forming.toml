@@ -1,0 +1,28 @@
+# REQ-WP-102: the builder's forming view. A forming bar must be marked so, must come out oldest first, and reading it must not
+# change what is published later.
+#
+# Patterns are TOML *literal* strings on purpose: the basic form treats a
+# trailing backslash as a line continuation and eats the next line's indentation.
+source = "src/channelflow/bars/builder.py"
+tests = ["tests/unit/bars/test_forming.py", "tests/unit/bars/test_finalization.py"]
+
+[[mutation]]
+name = "a forming bar says it is final"
+find = '''        return [self._to_bar(self._open[start], final=False) for start in sorted(self._open)]'''
+replace = '''        return [self._to_bar(self._open[start], final=True) for start in sorted(self._open)]'''
+
+[[mutation]]
+name = "the forming bars come newest first"
+find = '''for start in sorted(self._open)]'''
+replace = '''for start in sorted(self._open, reverse=True)]'''
+
+[[mutation]]
+name = "reading the forming bars finalises them"
+find = '''        return [self._to_bar(self._open[start], final=False) for start in sorted(self._open)]'''
+replace = '''        done = [self._to_bar(self._open.pop(start), final=False) for start in sorted(self._open)]
+        return done'''
+
+[[mutation]]
+name = "a final bar says it is not final"
+find = '''            is_final=final,'''
+replace = '''            is_final=False,'''

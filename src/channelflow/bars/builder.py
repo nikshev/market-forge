@@ -2,6 +2,7 @@
 Aggregate trades into event-time bars.
 
 # @trace: REQ-WP-005
+# @trace: REQ-WP-102
 # @trace: REQ-WP-078
 
 Two properties here are the whole point, and both are absences rather than
@@ -182,7 +183,17 @@ class BarBuilder:
             if self.on_final is not None:
                 self.on_final(bar)
 
-    def _to_bar(self, acc: _Accumulator) -> Bar:
+    def forming(self) -> list[Bar]:
+        """The windows still being built, as bars that say they are not final (REQ-WP-102).
+
+        For looking at: the live chart draws them. They are never stored, never published through
+        `on_final` and no feature reads them. Reading changes nothing -- the accumulators are only
+        read -- so the final bar of a window is the same whether or not anyone looked first.
+        Oldest window first.
+        """
+        return [self._to_bar(self._open[start], final=False) for start in sorted(self._open)]
+
+    def _to_bar(self, acc: _Accumulator, *, final: bool = True) -> Bar:
         # Decimal's default context rounds at 28 significant digits, which
         # silently truncates a venue price carrying more -- caught by a test
         # rather than by review. A wider context makes the division exact for
@@ -213,5 +224,5 @@ class BarBuilder:
             low_time_ns=acc.low_time_ns,
             first_trade_id=acc.first_trade_id,
             last_trade_id=acc.last_trade_id,
-            is_final=True,
+            is_final=final,
         )

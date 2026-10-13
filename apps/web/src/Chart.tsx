@@ -1,4 +1,5 @@
 // @trace: REQ-WP-101
+// @trace: REQ-WP-102
 // @trace: REQ-WP-080
 // @trace: REQ-WP-009
 // @trace: REQ-US-002
@@ -18,13 +19,22 @@
 // so a component test here would assert nothing about the picture -- which is
 // why the split exists.
 
-import { createChart, type IChartApi, type ISeriesApi } from "lightweight-charts";
+import { createChart, type IChartApi, type ISeriesApi, type Time } from "lightweight-charts";
 import { useEffect, useRef } from "react";
 
 import { extremumMarkers } from "./extrema";
 import { findGaps, gapMarkers } from "./gaps";
+import { liveAfter } from "./live";
 import { PLOT_MARGINS, PRICE_SCALE_WIDTH, READING_INTERACTION, type ChartHandle } from "./paneChart";
-import { buildSeries, markerFor, toSeconds, visibleRangeFor, CHANNEL_STYLE, visibleRangeForChannel } from "./series";
+import {
+  buildSeries,
+  markerFor,
+  toSeconds,
+  visibleRangeFor,
+  CHANNEL_STYLE,
+  visibleRangeForChannel,
+  type Candle,
+} from "./series";
 import { AS_SEEN_THEN, DEFAULT_OVERLAYS } from "./types";
 import type {
   BarOut,
@@ -51,6 +61,17 @@ const ZONE_COLOURS: Record<string, string> = {
 // setup's context, narrow enough that the bar the alert is about is obvious.
 const FOCUS_SPAN = 60;
 
+// Stable empties, so a chart given no live bars or no extrema does not see a new prop on every render -- which
+// re-ran the data effect, and with it every series and overlay, whenever the parent re-rendered.
+const NO_EXTREMA: ExtremaResponse = { confirmed: [], candidates: [] };
+const NO_LIVE_BARS: readonly BarOut[] = [];
+
+/** The candles as drawn: the stored ones, then the live bars after them (whitespace when the candles layer is off). */
+function drawn(stored: readonly BarOut[], live: readonly BarOut[], candlesOn: boolean): Candle[] | { time: Time }[] {
+  const all = [...buildSeries({ bars: [...stored], channel: null }).candles, ...buildSeries({ bars: liveAfter(stored, live), channel: null }).candles];
+  return candlesOn ? all : all.map((candle) => ({ time: candle.time }));
+}
+
 export function Chart({
   bars,
   channel,
@@ -60,13 +81,14 @@ export function Chart({
   consensus = null,
   overlays = DEFAULT_OVERLAYS,
   focusAtNs = null,
-  extrema = { confirmed: [], candidates: [] },
+  extrema = NO_EXTREMA,
   showCandidates = false,
   mode = AS_SEEN_THEN,
   scheme = schemeNow(),
   palette,
   onReady,
   isInitialLoad = true,
+  liveBars = NO_LIVE_BARS,
 }: {
   bars: BarOut[];
   channel: ChannelOut | null;
@@ -99,12 +121,21 @@ export function Chart({
   onReady?: (handle: ChartHandle | null) => void;
   /** True for initial load (mount or timeframe/mode change), false for timer refresh (REQ-WP-090). */
   isInitialLoad?: boolean;
+  /**
+   * The bars the live feed holds (REQ-WP-102): drawn after the last stored one, updated in place without
+   * recreating the chart or touching the reader's range. A stored bar supersedes the live one for its minute.
+   */
+  liveBars?: readonly BarOut[];
 }): JSX.Element {
   const container = useRef<HTMLDivElement>(null);
   const chart = useRef<IChartApi | null>(null);
   const candlesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
   const onReadyRef = useRef(onReady);
   onReadyRef.current = onReady;
+  // What the live effect needs of the data effect, which owns the series: the stored bars and whether candles are on.
+  const liveRef = useRef(liveBars);
+  liveRef.current = liveBars;
+  const storedRef = useRef<{ bars: BarOut[]; candlesOn: boolean }>({ bars: [], candlesOn: true });
 
   useEffect(() => {
     if (container.current === null) {
@@ -136,7 +167,7 @@ export function Chart({
     if (instance === null) {
       return;
     }
-    const { candles, channelLines, zones } = buildSeries({ bars, channel });
+    const { channelLines, zones } = buildSeries({ bars, channel });
     // Exactly the layers the link named (REQ-US-002). A chart that draws more
     // than the alert had on is showing a different picture from the one the
     // setup was judged against, and saying nothing about the difference.
@@ -151,7 +182,10 @@ export function Chart({
     candlesRef.current = candlestick;
     // With the candles layer off the series still holds every bar time, as whitespace: the pane under the chart
     // lines up by index, and its axis must not depend on which layers are on (REQ-WP-092).
-    candlestick.setData(on.has("candles") ? candles : candles.map((candle) => ({ time: candle.time })));
+    storedRef.current = { bars, candlesOn: on.has("candles") };
+    // The stored candles plus the live bars after them (REQ-WP-102): the live effect keeps them current, and
+    // this redraws them when the stored bars are reloaded.
+    candlestick.setData(drawn(bars, liveRef.current, on.has("candles")));
 
     // One `setMarkers` call: lightweight-charts replaces the whole set, so a
     // second call for the extrema would silently drop the signal's marker.
@@ -296,6 +330,16 @@ export function Chart({
       }
     };
   }, [bars, channel, signal, profile, volumeProfile, consensus, overlays, focusAtNs, extrema, showCandidates, mode]);
+
+  // REQ-WP-102: the live bars change the candle series' data in place. Not the data effect above: that one
+  // recreates every series, overlay and marker, and would reset what the reader has zoomed to on each tick.
+  useEffect(() => {
+    const series = candlesRef.current;
+    if (series === null) {
+      return;
+    }
+    series.setData(drawn(storedRef.current.bars, liveBars, storedRef.current.candlesOn));
+  }, [liveBars]);
 
   // REQ-WP-091 / FR-004: the gap in the line is not silent. The distinct reasons the consensus was
   // refused in the data on screen, said once each beside the chart -- only while the layer is on

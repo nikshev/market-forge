@@ -437,7 +437,9 @@ describe("US4: the control offers what the deployment reported", () => {
     // An absence, which no runtime assertion can see -- the same argument
     // REQ-WP-073's T034 makes for the producer. The default is the one allowed
     // literal, and it lives in timeframes.ts. The volume profile's windows are a different vocabulary -- how far back
-    // price bins are summed, not a bar width -- and live in profileWindows.ts (REQ-WP-089).
+    // price bins are summed, not a bar width -- and live in profileWindows.ts (REQ-WP-089). So does the live feed's one
+    // token (REQ-WP-102): the timeframe the ingest's own bars carry, a name in the socket's protocol and not a
+    // list the control offers from; it lives in live.ts.
     const sources = import.meta.glob("../**/*.{ts,tsx}", {
       query: "?raw",
       import: "default",
@@ -445,7 +447,7 @@ describe("US4: the control offers what the deployment reported", () => {
     }) as Record<string, string>;
 
     const offenders = Object.entries(sources)
-      .filter(([path]) => !/\.test\.tsx?$/.test(path) && !path.endsWith("timeframes.ts") && !path.endsWith("profileWindows.ts"))
+      .filter(([path]) => !/\.test\.tsx?$/.test(path) && !path.endsWith("timeframes.ts") && !path.endsWith("profileWindows.ts") && !path.endsWith("live.ts"))
       .filter(([, source]) => /["'](1m|5m|30m|1h|4h|1d|1w)["']/.test(source))
       .map(([path]) => path);
 

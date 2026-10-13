@@ -1,0 +1,63 @@
+# REQ-WP-102: the ingest's side. The mutations are the ways a view could cost the ingest a trade, flood the broker, or
+# lose the bar that ends a minute.
+#
+# Patterns are TOML *literal* strings on purpose: the basic form treats a
+# trailing backslash as a line continuation and eats the next line's indentation.
+source = "src/channelflow/live/publisher.py"
+tests = ["tests/unit/live/test_publisher.py", "tests/unit/pipeline/test_ingest_live.py"]
+
+[[mutation]]
+name = "a broker failure propagates into the ingest"
+find = '''        except Exception as exc:  # noqa: BLE001 -- the view must never cost the ingest a trade'''
+replace = '''        except KeyError as exc:  # noqa: BLE001 -- the view must never cost the ingest a trade'''
+
+[[mutation]]
+name = "forming bars are not throttled"
+find = '''            if last is not None and now - last < SECOND_NS:
+                continue'''
+replace = '''            if False:
+                continue'''
+
+[[mutation]]
+name = "the throttle is one tenth of a second"
+find = '''            if last is not None and now - last < SECOND_NS:'''
+replace = '''            if last is not None and now - last < SECOND_NS // 10:'''
+
+[[mutation]]
+name = "a failed publish still starts the throttle"
+find = '''            if self._send(bar, now):
+                self._last_forming[key] = now'''
+replace = '''            self._send(bar, now)
+            self._last_forming[key] = now'''
+
+[[mutation]]
+name = "the throttle is shared by every series"
+find = '''            key = key_for(bar.venue, bar.symbol)
+            last = self._last_forming.get(key)'''
+replace = '''            key = "all"
+            last = self._last_forming.get(key)'''
+
+[[mutation]]
+name = "a final bar is throttled like a forming one"
+find = '''        if self._broker is not None:
+            self._send(bar, self._now())'''
+replace = '''        if self._broker is not None and self._now() - self._last_forming.get(key_for(bar.venue, bar.symbol), -SECOND_NS) >= SECOND_NS:
+            self._send(bar, self._now())'''
+
+[[mutation]]
+name = "failures are not counted"
+find = '''            self.failures += 1
+            if self.failures == 1'''
+replace = '''            if self.failures == 1'''
+
+[[mutation]]
+name = "a publisher with no broker still counts publishes"
+find = '''        if self._broker is None or not bars:
+            return'''
+replace = '''        if not bars:
+            return'''
+
+[[mutation]]
+name = "the record carries the producer's clock as the ingest time of the first call"
+find = '''                    ingest_time_ns=now,'''
+replace = '''                    ingest_time_ns=0,'''

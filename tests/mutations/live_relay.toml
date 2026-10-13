@@ -1,0 +1,66 @@
+# REQ-WP-102: the API's cache of live bars. The mutations are the ways a view could show something that was not
+# so: a published bar amended, a stale bar over a newer one, a cache that grows for ever or forgets the edge.
+#
+# Patterns are TOML *literal* strings on purpose: the basic form treats a
+# trailing backslash as a line continuation and eats the next line's indentation.
+source = "src/channelflow/live/relay.py"
+tests = ["tests/unit/live/test_relay.py", "tests/unit/api/test_ws_live.py"]
+
+[[mutation]]
+name = "a forming bar replaces a final one"
+find = '''                if current.bar.is_final:
+                    return None'''
+replace = '''                if False:
+                    return None'''
+
+[[mutation]]
+name = "a second final bar amends the first"
+find = '''                if not bar.is_final and ingest_time_ns <= current.ingest_time_ns:
+                    return None'''
+replace = '''                if bar.is_final is False and ingest_time_ns <= current.ingest_time_ns:
+                    return None'''
+survives = '''Equivalent for the tests that matter: with the first guard intact a held final bar returns before this line, so what this line decides is only between two forming bars, and `bar.is_final is False` is the same test written differently.'''
+
+[[mutation]]
+name = "an older forming bar replaces a newer one"
+find = '''                if not bar.is_final and ingest_time_ns <= current.ingest_time_ns:'''
+replace = '''                if not bar.is_final and ingest_time_ns < current.ingest_time_ns:'''
+survives = '''Equivalent for distinct ingest times: the case it changes is an equal ingest time, where either bar is as good as the other.'''
+
+[[mutation]]
+name = "the window is not applied"
+find = '''            for stale in [start for start in held if start < newest - self._window_ns]:'''
+replace = '''            for stale in [start for start in held if start < newest - 10 * self._window_ns]:'''
+
+[[mutation]]
+name = "a bar at the edge of the window is dropped"
+find = '''            for stale in [start for start in held if start < newest - self._window_ns]:'''
+replace = '''            for stale in [start for start in held if start <= newest - self._window_ns]:'''
+
+[[mutation]]
+name = "the window is one hour"
+find = '''WINDOW_NS = 30 * MINUTE_NS'''
+replace = '''WINDOW_NS = 60 * MINUTE_NS'''
+
+[[mutation]]
+name = "the snapshot is newest first"
+find = '''            return [held[start].bar for start in sorted(held)]'''
+replace = '''            return [held[start].bar for start in sorted(held, reverse=True)]'''
+
+[[mutation]]
+name = "series share a cache"
+find = '''            held = self._series.get((venue, symbol), {})'''
+replace = '''            held = next(iter(self._series.values()), {})'''
+
+[[mutation]]
+name = "an unchanged bar is forwarded again"
+find = '''            news = self.cache.apply(bar, ingest_time_ns=record.ingest_time_ns)
+            if news is not None:
+                self._forward(news)'''
+replace = '''            self.cache.apply(bar, ingest_time_ns=record.ingest_time_ns)
+            self._forward(bar)'''
+
+[[mutation]]
+name = "an unreadable record is not counted"
+find = '''                self.unreadable += 1'''
+replace = '''                pass'''

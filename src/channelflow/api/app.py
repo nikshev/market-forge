@@ -22,6 +22,7 @@ from channelflow.api.routes import router
 from channelflow.api.security import FixedWindowLimiter, RateLimitMiddleware
 from channelflow.api.telegram_auth import TelegramAuthMiddleware, TelegramGate
 from channelflow.api.ws import register_websocket
+from channelflow.live.relay import LiveCache
 from channelflow.metrics import MetricRegistry
 from channelflow.settings import RateLimit
 from channelflow.timeframes import Timeframe
@@ -37,6 +38,7 @@ def create_app(
     timeframes: tuple[Timeframe, ...] = (),
     clock: Callable[[], float] = time.monotonic,
     telegram_gate: TelegramGate | None = None,
+    live_cache: LiveCache | None = None,
 ) -> FastAPI:
     """Build the app over a repository (ADR-019).
 
@@ -84,5 +86,5 @@ def create_app(
     app.state.readiness = readiness or always_ready()
     app.include_router(metrics_router)
     app.include_router(readiness_router)
-    register_websocket(app)
+    register_websocket(app, live_cache)
     return app

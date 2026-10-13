@@ -56,10 +56,12 @@ def _app(*, required: bool):  # type: ignore[no-untyped-def]
 
 
 def _data_routes() -> list[tuple[str, set[str]]]:
+    """The HTTP routes under `/api/v1`. The live websocket is under it too, carries no method and
+    has its own tests below: an HTTP request to it is not a data request."""
     return [
         (path, methods)
         for path, methods in all_routes(_app(required=False))
-        if path.startswith("/api/v1")
+        if path.startswith("/api/v1") and path != "/api/v1/live"
     ]
 
 
@@ -214,3 +216,109 @@ def test_another_scheme_is_malformed_and_not_a_bad_signature(scheme: str) -> Non
     response = client.get("/api/v1/timeframes", headers={"Authorization": f"{scheme} {_signed()}"})
 
     assert response.status_code == 401 and response.json() == {"reason": "malformed"}
+
+
+# --- the live feed's socket, the one websocket a browser may use (REQ-WP-102) --------------------
+
+import base64  # noqa: E402
+
+LIVE = "/api/v1/live"
+
+
+def _protocols(init_data: str) -> list[str]:
+    """Launch data as a subprotocol: a browser sets no header on a websocket; a URL is logged."""
+    token = base64.urlsafe_b64encode(init_data.encode()).decode().rstrip("=")
+    return ["tma", token]
+
+
+@pytest.mark.trace("REQ-WP-102")
+def test_the_live_socket_is_refused_without_launch_data_when_authentication_is_required() -> None:
+    with pytest.raises(WebSocketDisconnect) as refused:
+        with TestClient(_app(required=True)).websocket_connect(LIVE):
+            pass
+
+    assert refused.value.code == 1008
+
+
+@pytest.mark.trace("REQ-WP-102")
+@pytest.mark.parametrize(
+    "protocols",
+    [
+        ["tma"],
+        ["tma", "!!!not-base64!!!"],
+        ["tma", base64.urlsafe_b64encode(b"hash=00&auth_date=1").decode()],
+        ["other", "x"],
+    ],
+    ids=["no-token", "not-base64", "unsigned", "wrong-scheme"],
+)
+def test_the_live_socket_refuses_launch_data_that_does_not_verify(protocols: list[str]) -> None:
+    with pytest.raises(WebSocketDisconnect) as refused:
+        with TestClient(_app(required=True)).websocket_connect(LIVE, subprotocols=protocols):
+            pass
+
+    assert refused.value.code == 1008
+
+
+@pytest.mark.trace("REQ-WP-102")
+def test_the_live_socket_accepts_signed_launch_data_and_answers_with_the_scheme_only() -> None:
+    with TestClient(_app(required=True)).websocket_connect(
+        LIVE, subprotocols=_protocols(_signed())
+    ) as socket:
+        assert socket.accepted_subprotocol == "tma", (
+            "the launch data itself must not be echoed back"
+        )
+        socket.send_json(
+            {
+                "op": "subscribe",
+                "venue": "b",
+                "symbol": "S",
+                "timeframe": "1m",
+                "channels": ["bars"],
+            }
+        )
+        assert socket.receive_json()["ok"] is True
+
+
+@pytest.mark.trace("REQ-WP-102")
+def test_launch_data_that_is_too_old_is_refused_on_the_live_socket_too() -> None:
+    with pytest.raises(WebSocketDisconnect):
+        with TestClient(_app(required=True)).websocket_connect(
+            LIVE, subprotocols=_protocols(_signed(auth_date=NOW - MAX_AGE - 10))
+        ):
+            pass
+
+
+@pytest.mark.trace("REQ-WP-102")
+def test_the_live_socket_works_without_a_subprotocol_when_authentication_is_off() -> None:
+    with TestClient(_app(required=False)).websocket_connect(LIVE) as socket:
+        socket.send_json(
+            {
+                "op": "subscribe",
+                "venue": "b",
+                "symbol": "S",
+                "timeframe": "1m",
+                "channels": ["bars"],
+            }
+        )
+        assert socket.receive_json()["ok"] is True
+
+
+@pytest.mark.trace("REQ-WP-102")
+def test_the_original_socket_stays_closed_when_authentication_is_required() -> None:
+    """The route PRD section 28.7 names is not the browser's; signed launch data is no key."""
+    with pytest.raises(WebSocketDisconnect):
+        with TestClient(_app(required=True)).websocket_connect(
+            "/ws/market", subprotocols=_protocols(_signed())
+        ):
+            pass
+
+
+@pytest.mark.trace("REQ-WP-102")
+def test_signed_launch_data_under_another_scheme_name_is_not_accepted_on_the_live_socket() -> None:
+    wrong = ["other", _protocols(_signed())[1]]
+
+    with pytest.raises(WebSocketDisconnect) as refused:
+        with TestClient(_app(required=True)).websocket_connect(LIVE, subprotocols=wrong):
+            pass
+
+    assert refused.value.code == 1008
