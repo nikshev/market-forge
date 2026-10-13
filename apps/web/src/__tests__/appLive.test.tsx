@@ -101,7 +101,7 @@ afterEach(() => {
 const enabledCalls = () => seen.hook.filter((h) => h.enabled);
 
 describe("the live feed on the page", () => {
-  it("is asked for the 1m chart of this series, and for no other timeframe", async () => {
+  it("is asked for on every timeframe of this series, since the minutes build the longer windows too (REQ-WP-106)", async () => {
     open("?tf=1m");
     const { unmount } = render(<App />);
     await waitFor(() => expect(enabledCalls().length).toBeGreaterThan(0));
@@ -111,9 +111,8 @@ describe("the live feed on the page", () => {
     seen.hook.length = 0;
     open("?tf=5m");
     render(<App />);
-    await waitFor(() => expect(seen.hook.length).toBeGreaterThan(0));
-    await waitFor(() => expect(screen.getByTestId("chart")).toBeInTheDocument());
-    expect(enabledCalls()).toHaveLength(0);
+    await waitFor(() => expect(enabledCalls().length).toBeGreaterThan(0));
+    expect(enabledCalls().at(-1)).toMatchObject({ venue: "bybit", symbol: "BTCUSDT", enabled: true });
   });
 
   it("is not asked for when the view is pinned to an instant", async () => {
@@ -150,8 +149,8 @@ describe("the live feed on the page", () => {
     expect(chip).toHaveAttribute("title", expect.stringMatching(/reloads/i));
   });
 
-  it("says nothing about the feed on a timeframe that has none", async () => {
-    open("?tf=5m");
+  it("says nothing about the feed for a view pinned to an instant, which is history", async () => {
+    open("?tf=1m&at=2026-01-01T00:00:00Z");
     render(<App />);
     await waitFor(() => expect(screen.getByTestId("chart")).toBeInTheDocument());
 

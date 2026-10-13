@@ -1,5 +1,6 @@
 """Where the API reads from.
 
+# @trace: REQ-WP-107
 # @trace: REQ-API-001
 # @trace: REQ-US-001
 # @trace: REQ-US-004
@@ -26,6 +27,7 @@ below over rows rather than over whatever the store happens to hold now.
 from __future__ import annotations
 
 import uuid
+from bisect import bisect_left, bisect_right
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from decimal import Decimal
@@ -243,27 +245,33 @@ def select_consensus(
     return sorted(windowed, key=lambda row: as_int(row, "bar_close_ns"))
 
 
-def _mid_at_or_before(
-    rows: Sequence[dict[str, object]], *, venue: str, symbol: str, at_ns: int
-) -> Decimal | None:
-    """The newest quote of one venue at or before `at_ns`, or none.
+class _QuoteSeries:
+    """One venue's quotes for one symbol, ordered by exchange time, searched by bisection.
 
-    Newest by `ts_ns` -- exchange time, the event a point-in-time read filters
-    on. `ingest_ns` says when this process saw the quote and never decides what
-    was knowable then (Principle II), which is the whole difference between
-    "the venue's mid at the bar's close" and "the mid this path happened to
-    have by the time the chart was drawn". A quote taken exactly at the close
-    is available at it (`<=`), the spec's own edge case.
+    The newest quote at or before an instant, by `ts_ns` -- exchange time, the event a point-in-time
+    read filters on. `ingest_ns` says when this process saw the quote and never decides what was
+    knowable then (Principle II), which is the whole difference between "the venue's mid at the
+    bar's close" and "the mid this path happened to have by the time the chart was drawn". A quote
+    taken exactly at the close is available at it (`<=`), the spec's own edge case. Of two quotes
+    with the same exchange time the one stored **first** wins, as `max` over the rows in table
+    order always chose ([[REQ-WP-107]]).
+
+    Built once per request and bisected per bar, where the first version scanned every quote for
+    every bar: a day of one-minute bars against three days of quotes was tens of millions of
+    comparisons, 3 s of a request whose data took 0.75 s to read.
     """
-    eligible = [
-        row
-        for row in rows
-        if row["venue"] == venue and row["symbol"] == symbol and as_int(row, "ts_ns") <= at_ns
-    ]
-    if not eligible:
-        return None
-    latest = max(eligible, key=lambda row: as_int(row, "ts_ns"))
-    return _stored_price(latest, "mid")
+
+    def __init__(self, rows: Sequence[dict[str, object]], *, venue: str, symbol: str) -> None:
+        mine = [row for row in rows if row["venue"] == venue and row["symbol"] == symbol]
+        mine.sort(key=lambda row: as_int(row, "ts_ns"))  # stable: ties keep table order
+        self._rows = mine
+        self._times = [as_int(row, "ts_ns") for row in mine]
+
+    def mid_at_or_before(self, at_ns: int) -> Decimal | None:
+        index = bisect_right(self._times, at_ns) - 1
+        if index < 0:
+            return None
+        return _stored_price(self._rows[bisect_left(self._times, self._times[index])], "mid")
 
 
 def select_venue_basis(
@@ -301,6 +309,8 @@ def select_venue_basis(
     Ordered by the bar's close, the way the series is drawn.
     """
     points: list[dict[str, object]] = []
+    # The viewed venue's quotes under the asset (see below), searched by bisection.
+    quotes = _QuoteSeries(quote_rows, venue=venue, symbol=asset)
     for row in consensus_rows:
         if row["asset"] != asset or row["market_type"] != market_type:
             continue
@@ -314,7 +324,7 @@ def select_venue_basis(
         # the venue's symbol; for every market this API serves the two are the
         # same string (`BTCUSDT`), which is why the asset is what the viewed
         # venue's quote is looked up under.
-        mid = _mid_at_or_before(quote_rows, venue=venue, symbol=asset, at_ns=bar_close_ns)
+        mid = quotes.mid_at_or_before(bar_close_ns)
         if mid is None:
             continue
         points.append(

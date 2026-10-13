@@ -41,15 +41,43 @@ def test_the_page_gives_the_one_feed_to_the_chart_the_pane_and_the_chip() -> Non
     app = (WEB / "App.tsx").read_text()
 
     assert "useLiveBars(" in app
-    assert "liveBars={live.bars}" in app and app.count("liveBars={live.bars}") == 2
+    # The chart and the pane get the minutes as they are (1m) or the window built from them.
+    assert app.count("liveBars={liveBars}") == 2
     assert "<LiveChip status={live.status} />" in app
 
 
 @pytest.mark.trace("REQ-WP-102")
-def test_the_feed_is_asked_for_only_by_the_one_minute_unpinned_view() -> None:
+def test_the_feed_is_asked_for_only_by_an_unpinned_view() -> None:
     app = (WEB / "App.tsx").read_text()
 
-    assert "link.atNs === null" in app and "option.token === LIVE_TIMEFRAME" in app
+    assert "link.atNs === null" in app
+    assert "enabled: link !== null && link.atNs === null && option !== null" in app
+
+
+@pytest.mark.trace("REQ-WP-106")
+@pytest.mark.parametrize("module", ["live.ts", "App.tsx"])
+def test_the_forming_window_modules_name_the_requirement(module: str) -> None:
+    assert "@trace: REQ-WP-106" in (WEB / module).read_text()
+
+
+@pytest.mark.trace("REQ-WP-106")
+@pytest.mark.parametrize("name", ["liveForming.test.ts", "appForming.test.tsx"])
+def test_each_vitest_file_for_the_forming_window_exists_and_names_the_requirement(
+    name: str,
+) -> None:
+    path = WEB / "__tests__" / name
+
+    assert path.is_file() and "@trace: REQ-WP-106" in path.read_text()
+
+
+@pytest.mark.trace("REQ-WP-106")
+def test_a_longer_timeframe_is_built_from_the_minutes_and_handed_to_the_chart_and_the_pane() -> (
+    None
+):
+    app = (WEB / "App.tsx").read_text()
+
+    assert "formingBars(" in app and "mergeMinutes(minuteBars, live.bars)" in app
+    assert app.count("liveBars={liveBars}") == 2
 
 
 @pytest.mark.trace("REQ-WP-102")

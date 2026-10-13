@@ -102,12 +102,15 @@ export function fetchBars(params: {
   symbol: string;
   timeframeNs: number;
   limit?: number;
+  /** Bars that close at or after this instant (REQ-WP-106): the minutes of a window the table has not got a bar for. */
+  startNs?: bigint;
 }): Promise<Result<{ bars: BarOut[] }>> {
   return get("/api/v1/bars", {
     venue: params.venue,
     symbol: params.symbol,
     timeframe_ns: params.timeframeNs,
     ...(params.limit === undefined ? {} : { limit: params.limit }),
+    ...(params.startNs === undefined ? {} : { start_ns: params.startNs }),
   });
 }
 

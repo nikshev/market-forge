@@ -1,5 +1,6 @@
 """The API's reads, served from the canonical plane.
 
+# @trace: REQ-WP-107
 # @trace: REQ-WP-104
 # @trace: REQ-STORE-002
 # @trace: REQ-API-001
@@ -399,7 +400,11 @@ class LakehouseRepository:
         _ = timeframe_ns
         return select_venue_basis(
             narrow(self._consensus.read(), asset=asset, market_type=market_type).to_pylist(),
-            self._quotes.read().to_pylist(),
+            # Only this venue's quotes under the asset, none after the window's end: the rest are
+            # never looked at, and every quote of every venue was being made a Python dict.
+            narrow(
+                self._quotes.read(), venue=venue, symbol=asset, ts_ns=(None, end_ns)
+            ).to_pylist(),
             asset=asset,
             market_type=market_type,
             venue=venue,

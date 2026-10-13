@@ -41,8 +41,12 @@ function openAt(search: string): void {
   window.history.replaceState(null, "", `/chart/binance/BTCUSDT${search}`);
 }
 
+// The minutes a longer timeframe's window in progress is built from (REQ-WP-106) are asked for beside the series, at one minute and
+// with the largest limit; they are not "the chart's bars", which is what these tests count.
+const isMinuteBuild = (url: string): boolean => url.includes("timeframe_ns=60000000000") && url.includes("limit=10000");
+
 function seriesCalls(calls: string[], path: string): string[] {
-  return calls.filter((url) => url.includes(path));
+  return calls.filter((url) => url.includes(path) && !isMinuteBuild(url));
 }
 
 function lastSeriesCall(calls: string[], path: string): string | undefined {
@@ -206,6 +210,9 @@ describe("US1: overlapping ticks skipped (in-flight guard)", () => {
         calls.push(url);
         if (url.includes("/api/v1/timeframes")) {
           return respond(OFFERED, true);
+        }
+        if (isMinuteBuild(url)) {
+          return respond({ bars: [] }, true);
         }
         if (url.includes("/api/v1/bars")) {
           barsCalls += 1;

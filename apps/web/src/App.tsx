@@ -12,6 +12,7 @@
 // @trace: REQ-WP-091
 // @trace: REQ-WP-102
 // @trace: REQ-WP-103
+// @trace: REQ-WP-106
 //
 // The page an alert's deep link opens. PRD section 27.1's route, and section
 // 27.5's default: AS-SEEN-THEN, always, unless the link says otherwise in so
@@ -45,7 +46,7 @@ import { Chart } from "./Chart";
 import { GapNotice } from "./GapNotice";
 import { Busy } from "./Busy";
 import { LiveChip } from "./LiveChip";
-import { LIVE_TIMEFRAME } from "./live";
+import { LIVE_MINUTE_NS, formingBars, mergeMinutes } from "./live";
 import { useLiveBars } from "./useLiveBars";
 import type { ChartHandle } from "./paneChart";
 import { DexBands } from "./DexBands";
@@ -187,6 +188,8 @@ export function App(): JSX.Element {
   const [, setLastRefreshError] = useState<string | null>(null);
   // isInitialLoad: true for mount and timeframe/mode change, false for timer refresh
   const [isInitialLoad, setIsInitialLoad] = useState(true);
+  // The stored one-minute bars of the windows the table has no bar for yet (REQ-WP-106); empty on the one-minute chart.
+  const [minuteBars, setMinuteBars] = useState<BarOut[]>([]);
 
   // The offered set, read once. Until it arrives no series request goes out:
   // the duration each request needs is one of these options.
@@ -230,8 +233,49 @@ export function App(): JSX.Element {
   const live = useLiveBars({
     venue: link?.venue ?? "",
     symbol: link?.symbol ?? "",
-    enabled: link !== null && link.atNs === null && option !== null && option.token === LIVE_TIMEFRAME,
+    enabled: link !== null && link.atNs === null && option !== null,
   });
+  const longer = option !== null && option.timeframeNs !== LIVE_MINUTE_NS;
+
+  // A longer timeframe's table holds closed windows only: a 4h bar appears hours after it opened. The window in progress -- the
+  // chart's last candle, with the current price as its close -- is built from the minutes: the stored ones for the windows the
+  // table has not got a bar for, and the live ones after them (REQ-WP-106).
+  const lastStoredOpen = useMemo(
+    () => bars.reduce<bigint | null>((latest, bar) => (latest === null || bar.open_time_ns > latest ? bar.open_time_ns : latest), null),
+    [bars],
+  );
+  useEffect(() => {
+    if (link === null || !longer || option === null || !barsLoaded || link.atNs !== null) {
+      setMinuteBars([]);
+      return;
+    }
+    let current = true;
+    const tf = BigInt(option.timeframeNs);
+    const from = lastStoredOpen === null ? BigInt(Date.now()) * 1_000_000n - tf : lastStoredOpen + tf;
+    void (async () => {
+      const result = await fetchBars({
+        venue: link.venue,
+        symbol: link.symbol,
+        timeframeNs: LIVE_MINUTE_NS,
+        // Closing at or after the window's first minute has closed: the filter is on the close.
+        startNs: from + BigInt(LIVE_MINUTE_NS),
+        limit: 10_000,
+      });
+      if (current && result.ok) {
+        setMinuteBars(result.value.bars);
+      }
+    })();
+    return () => {
+      current = false;
+    };
+  }, [link, option, longer, barsLoaded, lastStoredOpen]);
+  const liveBars = useMemo(
+    () =>
+      longer && option !== null
+        ? formingBars({ stored: bars, minutes: mergeMinutes(minuteBars, live.bars), tfNs: BigInt(option.timeframeNs) })
+        : live.bars,
+    [longer, option, bars, minuteBars, live.bars],
+  );
 
   const load = useCallback(async (initial = false) => {
     if (link === null || option === null) {
@@ -649,7 +693,7 @@ export function App(): JSX.Element {
             palette={chartPalette}
             onReady={setMainChart}
             isInitialLoad={isInitialLoad}
-            liveBars={live.bars}
+            liveBars={liveBars}
           />
         </Paper>
       )}
@@ -696,7 +740,7 @@ export function App(): JSX.Element {
         failure={paneFailure}
         available={available}
         bars={bars}
-        liveBars={live.bars}
+        liveBars={liveBars}
         barsLoaded={barsLoaded}
         pointsLoaded={pointsLoaded}
         chart={mainChart}

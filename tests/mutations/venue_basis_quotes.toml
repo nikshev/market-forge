@@ -1,0 +1,39 @@
+# REQ-WP-107: the venue basis looks its quote up by bisection. The mutations are the ways that could pick a quote that was not
+# knowable at the close, one of another venue, or the wrong one of a tie.
+#
+# Patterns are TOML *literal* strings on purpose: the basic form treats a
+# trailing backslash as a line continuation and eats the next line's indentation.
+source = "src/channelflow/api/repositories.py"
+tests = ["tests/unit/api/test_venue_basis_cost.py", "tests/unit/crossvenue/test_consensus_write.py"]
+
+[[mutation]]
+name = "a quote taken exactly at the close is not available at it"
+find = '''        index = bisect_right(self._times, at_ns) - 1'''
+replace = '''        index = bisect_left(self._times, at_ns) - 1'''
+
+[[mutation]]
+name = "the last of two quotes with one time wins"
+find = '''        return _stored_price(self._rows[bisect_left(self._times, self._times[index])], "mid")'''
+replace = '''        return _stored_price(self._rows[index], "mid")'''
+
+[[mutation]]
+name = "the quotes are not ordered by exchange time"
+find = '''        mine.sort(key=lambda row: as_int(row, "ts_ns"))  # stable: ties keep table order'''
+replace = '''        pass'''
+
+[[mutation]]
+name = "another venue's quote is this venue's"
+find = '''        mine = [row for row in rows if row["venue"] == venue and row["symbol"] == symbol]'''
+replace = '''        mine = [row for row in rows if row["symbol"] == symbol]'''
+
+[[mutation]]
+name = "another symbol's quote is this symbol's"
+find = '''        mine = [row for row in rows if row["venue"] == venue and row["symbol"] == symbol]'''
+replace = '''        mine = [row for row in rows if row["venue"] == venue]'''
+
+[[mutation]]
+name = "a bar before every quote reads the first quote"
+find = '''        if index < 0:
+            return None'''
+replace = '''        if index < 0:
+            index = 0'''
