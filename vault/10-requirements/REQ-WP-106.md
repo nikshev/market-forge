@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "§27, §12; owner's direction 2026-10-13"
 prd_lines: "4423-4436"
 phase: null
-status: tested
+status: implemented
 depends_on: [REQ-WP-102, REQ-WP-073, REQ-WP-092]
 tags: [live, chart, timeframes]
 hard_gated: false
@@ -47,4 +47,17 @@ A forming window is never stored, never final and never an input to a feature (R
 ## Trace
 
 <!-- trace:begin -->
+- **Specs:** [[SPEC-158-forming-windows]]
+- **Tests:**
+    - `tests/unit/web/test_live_artifacts.py::test_a_longer_timeframe_is_built_from_the_minutes_and_handed_to_the_chart_and_the_pane`
+    - `tests/unit/web/test_live_artifacts.py::test_each_vitest_file_for_the_forming_window_exists_and_names_the_requirement[appForming.test.tsx]`
+    - `tests/unit/web/test_live_artifacts.py::test_each_vitest_file_for_the_forming_window_exists_and_names_the_requirement[liveForming.test.ts]`
+    - `tests/unit/web/test_live_artifacts.py::test_the_forming_window_modules_name_the_requirement[App.tsx]`
+    - `tests/unit/web/test_live_artifacts.py::test_the_forming_window_modules_name_the_requirement[live.ts]`
+- **Code:**
+    - `apps/web/src/App.tsx`
+    - `apps/web/src/__tests__/appForming.test.tsx`
+    - `apps/web/src/__tests__/liveForming.test.ts`
+    - `apps/web/src/live.ts`
+- **Outcomes:** [[OUT-2026-10-13-implement-forming-windows]]
 <!-- trace:end -->

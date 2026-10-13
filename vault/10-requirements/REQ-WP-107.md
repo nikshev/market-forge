@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "§36, §17.3; measured 2026-10-13"
 prd_lines: "6034-6052"
 phase: null
-status: tested
+status: implemented
 depends_on: [REQ-WP-091, REQ-WP-104]
 tags: [performance, api, consensus]
 hard_gated: false
@@ -32,4 +32,19 @@ rows that had each been made a Python dict first.
 ## Trace
 
 <!-- trace:begin -->
+- **Specs:** [[SPEC-159-venue-basis-cost]]
+- **Tests:**
+    - `tests/unit/api/test_venue_basis_cost.py::test_a_bar_with_no_quote_at_or_before_it_is_skipped_not_zero`
+    - `tests/unit/api/test_venue_basis_cost.py::test_a_day_of_bars_against_days_of_quotes_is_not_a_second_of_work`
+    - `tests/unit/api/test_venue_basis_cost.py::test_a_quote_exactly_at_the_close_is_available_at_it`
+    - `tests/unit/api/test_venue_basis_cost.py::test_a_refused_consensus_and_other_assets_are_skipped_as_before`
+    - `tests/unit/api/test_venue_basis_cost.py::test_another_venue_or_symbol_is_not_this_ones_quote`
+    - `tests/unit/api/test_venue_basis_cost.py::test_of_two_quotes_with_the_same_exchange_time_the_first_stored_wins`
+    - `tests/unit/api/test_venue_basis_cost.py::test_shuffled_quotes_give_the_answer_that_ordered_quotes_give`
+    - `tests/unit/api/test_venue_basis_cost.py::test_the_newest_quote_at_or_before_the_close_is_the_one_used`
+    - `tests/unit/api/test_venue_basis_cost.py::test_the_quotes_may_arrive_in_any_order`
+- **Code:**
+    - `src/channelflow/api/lakehouse_repository.py`
+    - `src/channelflow/api/repositories.py`
+- **Outcomes:** [[OUT-2026-10-13-implement-venue-basis-cost]]
 <!-- trace:end -->

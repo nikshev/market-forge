@@ -145,7 +145,7 @@ Timeframes above 1m keep the periodic reload in this requirement; their forming 
     - `tests/unit/web/test_live_artifacts.py::test_every_module_this_requirement_touches_names_it[PaneChart.tsx]`
     - `tests/unit/web/test_live_artifacts.py::test_every_module_this_requirement_touches_names_it[live.ts]`
     - `tests/unit/web/test_live_artifacts.py::test_every_module_this_requirement_touches_names_it[useLiveBars.ts]`
-    - `tests/unit/web/test_live_artifacts.py::test_the_feed_is_asked_for_only_by_the_one_minute_unpinned_view`
+    - `tests/unit/web/test_live_artifacts.py::test_the_feed_is_asked_for_only_by_an_unpinned_view`
     - `tests/unit/web/test_live_artifacts.py::test_the_page_gives_the_one_feed_to_the_chart_the_pane_and_the_chip`
     - `tests/unit/web/test_live_artifacts.py::test_the_socket_goes_to_the_gated_path_under_the_one_proxied_prefix`
 - **Code:**

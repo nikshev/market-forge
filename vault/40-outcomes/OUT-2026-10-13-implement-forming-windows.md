@@ -29,6 +29,12 @@ previous window's close).
 - A closed window the table has not got yet is built too, because the table lags by up to twenty minutes after a boundary.
 - Nothing is claimed final unless every minute of the window is present and final.
 
+## Measured after the deploy
+
+On the running 4h chart the page was free of spinners in 5.7 s; the chip read live; the last candle sat at the current 4h boundary and the
+chart's last-price line was the feed's price. (A 4h gap notice listed windows missing from the *stored* series -- real holes the resampler
+refused, not the live window.)
+
 ## What is still open
 
 - A week with more than 10,000 minutes since the last stored bar is built from the newest 10,000 (the route's limit).
