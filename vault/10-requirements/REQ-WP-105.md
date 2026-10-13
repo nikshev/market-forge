@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "§36, §29.0; measured 2026-10-13"
 prd_lines: "6034-6052"
 phase: null
-status: tested
+status: implemented
 depends_on: [REQ-WP-100, REQ-WP-104, REQ-WP-068]
 tags: [lakehouse, compaction, performance]
 hard_gated: false
@@ -35,4 +35,16 @@ one is never merged with files after it. One file is not worth a snapshot.
 ## Trace
 
 <!-- trace:begin -->
+- **Specs:** [[SPEC-157-compact-the-tail]]
+- **Tests:**
+    - `tests/unit/lakehouse/test_iceberg.py::test_a_large_file_is_left_alone_and_only_the_small_ones_after_it_are_merged`
+    - `tests/unit/lakehouse/test_iceberg.py::test_a_second_pass_merges_only_what_arrived_since_the_first`
+    - `tests/unit/lakehouse/test_iceberg.py::test_a_small_file_before_a_large_one_is_not_merged_across_it`
+    - `tests/unit/lakehouse/test_iceberg.py::test_a_table_whose_files_are_all_small_is_merged_whole_as_before`
+    - `tests/unit/lakehouse/test_iceberg.py::test_one_small_file_after_a_large_one_is_not_worth_a_snapshot`
+    - `tests/unit/lakehouse/test_iceberg.py::test_rows_come_back_in_the_same_order_when_only_the_tail_was_merged`
+    - `tests/unit/lakehouse/test_iceberg.py::test_the_default_leaves_a_table_of_a_hundred_thousand_rows_alone`
+- **Code:**
+    - `src/channelflow/lakehouse/iceberg.py`
+- **Outcomes:** [[OUT-2026-10-13-implement-compact-the-tail]]
 <!-- trace:end -->

@@ -27,6 +27,25 @@ not exist. **GREEN**: the same files, the tables/api/lakehouse/deploy/docs suite
 **What was left was the files**: `bars` 1,482 files (7.6 s to read), `volume_bins` 5,077 (23.2 s) -- and Python-side conversion was 0.15 s of
 it. That is what the maintenance list and the hourly interval address.
 
+## Deployed result (2026-10-13, 10:05-11:12 UTC)
+
+| request (bybit BTCUSDT 1m) | before | after |
+|---|---|---|
+| bars (limit 500) | 54 s | 1.3-2.2 s |
+| volume profile (24 h) | 82 s | 0.27-0.47 s |
+| consensus (24 h) | -- | 0.07-0.12 s |
+| features series (a day) | 5 s | 2.0-4.5 s |
+
+The resampler fix alone took the host's load average from 41 to 12 and MinIO from 250 % to 49 % CPU; compacting `bars` (1,487 files) and
+`volume_bins` (5,097 files) took the bars and profile requests the rest of the way. The features request is bounded by reading a table of 1.3
+million rows on every request (about 2 s) and is the slowest thing left; it is not addressed here.
+
+A whole page (chart, panes, profile, consensus) in a headless browser: no spinner left after **9 s**, against the minutes the same page took.
+
+The first hourly maintenance pass over the features table took **1,612 s** for 68 small files in front of 1.3 million rows: that is
+[[REQ-WP-105]] (compaction merges the tail, not the table). With it the whole pass over every table took about seven minutes and the features
+table 39 s.
+
 ## What was decided / found
 
 - The dict conversion was the least of the four causes (about 2 s of the features request); it is fixed because it is free, and the

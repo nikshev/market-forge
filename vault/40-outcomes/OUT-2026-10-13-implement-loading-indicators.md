@@ -27,6 +27,12 @@ from the test, a bars request took **54 s** and the volume profile **82 s**, wit
 MinIO at 250 %, the worker at 95 %, swap full). That is what the owner was looking at; it is not a bug in the page, and it is a real
 problem the spinners now make visible rather than hide.
 
+## Deployed check (2026-10-13)
+
+With the data requests held back in a headless browser against the rebuilt image the page showed, in turn, the boot spinner, "Loading
+timeframes", "Loading the chart", the profile's and the pane's spinners, and none was left once the requests completed. After
+[[REQ-WP-104]] the whole page is free of spinners in 9 s.
+
 ## What is still open
 
 - The slow API: a read competes with the resampler and the worker for the object store. Measured, not fixed here.

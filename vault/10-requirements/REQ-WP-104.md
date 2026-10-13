@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "§36 (chart historical load p95 < 2 s), §29.0; owner's report 2026-10-13"
 prd_lines: "6034-6052"
 phase: null
-status: tested
+status: implemented
 depends_on: [REQ-WP-068, REQ-WP-070, REQ-WP-073, REQ-WP-100]
 tags: [performance, resample, lakehouse, api]
 hard_gated: false
@@ -49,4 +49,35 @@ None of this changes what is computed or returned.
 ## Trace
 
 <!-- trace:begin -->
+- **Specs:** [[SPEC-156-read-cost]]
+- **Tests:**
+    - `tests/unit/pipeline/test_maintenance_covers_every_table.py::test_maintenance_names_a_factory_for_every_table_a_module_declares`
+    - `tests/unit/pipeline/test_maintenance_covers_every_table.py::test_the_walk_finds_the_tables_it_should`
+    - `tests/unit/pipeline/test_resample_pass.py::test_a_bar_that_the_table_already_holds_for_another_series_is_not_taken_for_this_ones`
+    - `tests/unit/pipeline/test_resample_pass.py::test_a_commit_that_fails_writes_nothing_says_so_and_the_next_pass_writes_it`
+    - `tests/unit/pipeline/test_resample_pass.py::test_a_pass_with_nothing_to_write_commits_nothing`
+    - `tests/unit/pipeline/test_resample_pass.py::test_a_second_pass_does_not_write_a_bar_twice`
+    - `tests/unit/pipeline/test_resample_pass.py::test_a_timeframe_added_later_is_built_from_the_minutes_and_not_from_the_bars_already_resampled`
+    - `tests/unit/pipeline/test_resample_pass.py::test_an_empty_table_is_a_pass_that_does_nothing`
+    - `tests/unit/pipeline/test_resample_pass.py::test_everything_the_pass_writes_is_one_commit`
+    - `tests/unit/pipeline/test_resample_pass.py::test_it_produces_what_one_series_at_a_time_produced`
+    - `tests/unit/pipeline/test_resample_pass.py::test_one_series_that_cannot_be_resampled_does_not_stop_the_others`
+    - `tests/unit/pipeline/test_resample_pass.py::test_the_table_is_read_once_whatever_the_number_of_series_and_timeframes`
+    - `tests/unit/tables/test_narrow.py::test_a_column_the_table_does_not_have_is_an_error_not_an_empty_answer`
+    - `tests/unit/tables/test_narrow.py::test_a_range_keeps_both_ends`
+    - `tests/unit/tables/test_narrow.py::test_a_range_may_be_open_at_either_end`
+    - `tests/unit/tables/test_narrow.py::test_a_value_nothing_holds_leaves_no_rows_and_keeps_the_columns`
+    - `tests/unit/tables/test_narrow.py::test_an_empty_table_is_narrowed_to_an_empty_table`
+    - `tests/unit/tables/test_narrow.py::test_equal_and_range_together`
+    - `tests/unit/tables/test_narrow.py::test_it_keeps_only_the_rows_equal_in_every_named_column`
+    - `tests/unit/tables/test_narrow.py::test_it_keeps_the_order_the_rows_had`
+    - `tests/unit/tables/test_narrow.py::test_naming_nothing_keeps_everything`
+    - `tests/unit/tables/test_narrow.py::test_none_means_do_not_filter_on_this_column`
+- **Code:**
+    - `src/channelflow/api/lakehouse_repository.py`
+    - `src/channelflow/pipeline/maintenance_main.py`
+    - `src/channelflow/pipeline/resample_main.py`
+    - `src/channelflow/tables/bars.py`
+    - `src/channelflow/tables/rows.py`
+- **Outcomes:** [[OUT-2026-10-13-implement-read-cost]]
 <!-- trace:end -->

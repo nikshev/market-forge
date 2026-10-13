@@ -5,7 +5,7 @@ type: work-package
 prd_ref: "§27, FR-015/FR-016 of REQ-WP-009; owner's report 2026-10-13"
 prd_lines: "4423-4436"
 phase: null
-status: tested
+status: implemented
 depends_on: [REQ-WP-009, REQ-WP-102, REQ-WP-092]
 tags: [web, loading, ux]
 hard_gated: false
@@ -46,4 +46,36 @@ A spinner is a `progressbar`, never a `status`: the page's statements about the 
 ## Trace
 
 <!-- trace:begin -->
+- **Specs:** [[SPEC-155-loading-indicators]]
+- **Tests:**
+    - `tests/unit/web/test_busy_artifacts.py::test_every_module_this_requirement_touches_names_it[App.tsx]`
+    - `tests/unit/web/test_busy_artifacts.py::test_every_module_this_requirement_touches_names_it[Busy.tsx]`
+    - `tests/unit/web/test_busy_artifacts.py::test_every_module_this_requirement_touches_names_it[FlowPane.tsx]`
+    - `tests/unit/web/test_busy_artifacts.py::test_every_module_this_requirement_touches_names_it[LiveChip.tsx]`
+    - `tests/unit/web/test_busy_artifacts.py::test_every_module_this_requirement_touches_names_it[Markets.tsx]`
+    - `tests/unit/web/test_busy_artifacts.py::test_every_module_this_requirement_touches_names_it[ProfileControls.tsx]`
+    - `tests/unit/web/test_busy_artifacts.py::test_every_place_the_page_waits_has_a_named_spinner[App.tsx-Loading the chart]`
+    - `tests/unit/web/test_busy_artifacts.py::test_every_place_the_page_waits_has_a_named_spinner[App.tsx-Loading the consensus]`
+    - `tests/unit/web/test_busy_artifacts.py::test_every_place_the_page_waits_has_a_named_spinner[App.tsx-Loading timeframes]`
+    - `tests/unit/web/test_busy_artifacts.py::test_every_place_the_page_waits_has_a_named_spinner[App.tsx-Updating the chart]`
+    - `tests/unit/web/test_busy_artifacts.py::test_every_place_the_page_waits_has_a_named_spinner[FlowPane.tsx-Loading the pane]`
+    - `tests/unit/web/test_busy_artifacts.py::test_every_place_the_page_waits_has_a_named_spinner[Markets.tsx-Loading markets]`
+    - `tests/unit/web/test_busy_artifacts.py::test_every_place_the_page_waits_has_a_named_spinner[Markets.tsx-Loading timeframes]`
+    - `tests/unit/web/test_busy_artifacts.py::test_every_place_the_page_waits_has_a_named_spinner[ProfileControls.tsx-Loading the volume profile]`
+    - `tests/unit/web/test_busy_artifacts.py::test_the_behaviour_is_covered_by_vitest_files_that_name_the_requirement`
+    - `tests/unit/web/test_busy_artifacts.py::test_the_live_chip_shows_a_spinner_while_it_connects_and_not_the_word_delayed`
+    - `tests/unit/web/test_busy_artifacts.py::test_the_page_shows_something_before_the_script_has_loaded`
+    - `tests/unit/web/test_busy_artifacts.py::test_the_spinner_is_a_progress_bar_and_never_a_status`
+- **Code:**
+    - `apps/web/src/App.tsx`
+    - `apps/web/src/Busy.tsx`
+    - `apps/web/src/FlowPane.tsx`
+    - `apps/web/src/LiveChip.tsx`
+    - `apps/web/src/Markets.tsx`
+    - `apps/web/src/ProfileControls.tsx`
+    - `apps/web/src/__tests__/appBusy.test.tsx`
+    - `apps/web/src/__tests__/busy.test.tsx`
+    - `apps/web/src/__tests__/useLiveBars.test.tsx`
+    - `apps/web/src/useLiveBars.ts`
+- **Outcomes:** [[OUT-2026-10-13-implement-loading-indicators]]
 <!-- trace:end -->

@@ -45,7 +45,7 @@ requirement is what the reader asked for, which is a chart they can scale:
     - `tests/unit/web/test_reading_interaction_artifacts.py::test_every_module_this_requirement_touches_names_it[PaneChart.tsx]`
     - `tests/unit/web/test_reading_interaction_artifacts.py::test_every_module_this_requirement_touches_names_it[paneChart.ts]`
     - `tests/unit/web/test_reading_interaction_artifacts.py::test_the_behaviour_is_covered_by_a_vitest_file_that_names_the_requirement`
-    - `tests/unit/web/test_reading_interaction_artifacts.py::test_the_constant_turns_the_wheel_and_the_price_axis_drag_off`
+    - `tests/unit/web/test_reading_interaction_artifacts.py::test_the_constant_lets_a_reader_scale_both_axes`
 - **Code:**
     - `apps/web/src/Chart.tsx`
     - `apps/web/src/PaneChart.tsx`
