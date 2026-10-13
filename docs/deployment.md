@@ -670,10 +670,14 @@ and read each one's log first (`docker logs channelflow-context-bybit-1`).
 
 The bars table is written fifteen bars at a time (fewer commits keep the file count, and so the read cost, down), so a
 one-minute chart read from it is up to fifteen minutes behind. The chart therefore has its own feed. Each ingest daemon
-publishes the 1m bar it is **building** (at most once a second) and every bar it **finishes** to Redpanda
-(`market.bar_live.v1`, thirty minutes' retention, created on first use); the API reads the topic from the start on every
-start, keeps the last thirty minutes of each series, and relays them on a WebSocket at `/api/v1/live` -- first the cached
-bars (the stretch the table has not caught up on), then every update. The page draws them after the last stored bar,
+publishes the 1m bar it is **building** (at most four times a second, and only when it changed) and every bar it
+**finishes** to Redpanda, on **two topics** because they are read differently: `market.bar_final.v1` (thirty minutes'
+retention; replayed from the start on every API start to rebuild the cache -- a few hundred records) and
+`market.bar_forming.v1` (five minutes; read only as it arrives, never replayed). The topics are created on first use and
+their retention is **enforced** -- a topic that already exists with another one is altered, since a seven-day default once
+made every API start replay days of bars. The API keeps the last thirty minutes of each series and relays them on a
+WebSocket at `/api/v1/live` -- first the cached bars (the stretch the table has not caught up on), then every update, the
+price moving as it trades. The page draws them after the last stored bar,
 updates the forming candle in place, and says **live** or **delayed**; it reconnects with backoff and keeps reloading on a
 timer while the socket is down.
 

@@ -8,7 +8,9 @@ import pytest
 
 from channelflow.bars import Bar
 from channelflow.live.messages import (
-    TOPIC,
+    DEFAULT_TOPICS,
+    TOPIC_FINAL,
+    TOPIC_FORMING,
     LiveBar,
     key_for,
     live_bar_from_bar,
@@ -48,9 +50,21 @@ def bar(*, final: bool, close: str = "101", volume: str = "3", open_time: int = 
     )
 
 
-def test_the_topic_is_versioned_and_the_key_is_venue_and_symbol() -> None:
-    assert TOPIC.endswith(".v1")
+def test_the_topics_are_versioned_and_the_key_is_venue_and_symbol() -> None:
+    assert TOPIC_FINAL.endswith(".v1") and TOPIC_FORMING.endswith(".v1")
+    assert TOPIC_FINAL != TOPIC_FORMING
     assert key_for("bybit", "BTCUSDT") == "bybit:BTCUSDT"
+    assert DEFAULT_TOPICS.final == TOPIC_FINAL and DEFAULT_TOPICS.forming == TOPIC_FORMING
+
+
+def test_a_final_bar_goes_to_the_final_topic_and_a_forming_one_to_the_forming_topic() -> None:
+    """Two topics because they are read differently: the finals are replayed from the start to
+    rebuild the API's cache (a few hundred records), the forming bars -- four a second per series --
+    are only ever read as they arrive."""
+    final = to_record(live_bar_from_bar(bar(final=True)), ingest_time_ns=1, producer="p")
+    forming = to_record(live_bar_from_bar(bar(final=False)), ingest_time_ns=1, producer="p")
+
+    assert (final.topic, forming.topic) == (TOPIC_FINAL, TOPIC_FORMING)
 
 
 def test_a_bar_is_carried_as_the_rest_bars_are_with_instants_as_strings() -> None:
@@ -76,7 +90,7 @@ def test_a_record_round_trips_field_for_field() -> None:
     record = to_record(original, ingest_time_ns=T0 + 5, producer="ingest-bybit")
     restored = parse_record(record)
 
-    assert record.topic == TOPIC and record.key == "bybit:BTCUSDT"
+    assert record.topic == TOPIC_FINAL and record.key == "bybit:BTCUSDT"
     assert record.producer == "ingest-bybit"
     assert record.event_time_ns == T0 + MINUTE
     assert record.ingest_time_ns == T0 + 5

@@ -1,5 +1,6 @@
 // @trace: REQ-WP-101
 // @trace: REQ-WP-102
+// @trace: REQ-WP-108
 // @trace: REQ-WP-080
 // @trace: REQ-WP-009
 // @trace: REQ-US-002
@@ -33,6 +34,10 @@ import {
   visibleRangeFor,
   CHANNEL_STYLE,
   visibleRangeForChannel,
+  followsLatest,
+  recentRange,
+  shiftedRange,
+  PROFILE_ROOM,
   type Candle,
 } from "./series";
 import { AS_SEEN_THEN, DEFAULT_OVERLAYS } from "./types";
@@ -136,6 +141,8 @@ export function Chart({
   const liveRef = useRef(liveBars);
   liveRef.current = liveBars;
   const storedRef = useRef<{ bars: BarOut[]; candlesOn: boolean }>({ bars: [], candlesOn: true });
+  // How many bars the candle series holds, so a live update that adds some can bring them into view (REQ-WP-108).
+  const shownRef = useRef(0);
 
   useEffect(() => {
     if (container.current === null) {
@@ -185,7 +192,9 @@ export function Chart({
     storedRef.current = { bars, candlesOn: on.has("candles") };
     // The stored candles plus the live bars after them (REQ-WP-102): the live effect keeps them current, and
     // this redraws them when the stored bars are reloaded.
-    candlestick.setData(drawn(bars, liveRef.current, on.has("candles")));
+    const initial = drawn(bars, liveRef.current, on.has("candles"));
+    candlestick.setData(initial);
+    shownRef.current = initial.length;
 
     // One `setMarkers` call: lightweight-charts replaces the whole set, so a
     // second call for the extrema would silently drop the signal's marker.
@@ -302,8 +311,15 @@ export function Chart({
       if (range === null) {
         // No instant named and a channel: open on its window so it fills the view (REQ-WP-082). Otherwise
         // fit everything, as before.
+        // Room on the right for the volume profile when it is on, so the newest bar is clear of it (REQ-WP-108).
+        const room = on.has("volume_profile") ? PROFILE_ROOM : 0.05;
+        const shown = bars.length + liveAfter(bars, liveRef.current).length;
         const recent =
-          focusAtNs === null && channel !== null ? visibleRangeForChannel(bars, channel.lookback) : null;
+          focusAtNs === null && channel !== null
+            ? visibleRangeForChannel(bars, channel.lookback, Math.ceil((2 * channel.lookback * room) / (1 - room)))
+            : focusAtNs === null
+              ? recentRange(shown, room)
+              : null;
         if (recent === null) {
           instance.timeScale().fitContent();
         } else {
@@ -338,7 +354,17 @@ export function Chart({
     if (series === null) {
       return;
     }
-    series.setData(drawn(storedRef.current.bars, liveBars, storedRef.current.candlesOn));
+    const next = drawn(storedRef.current.bars, liveBars, storedRef.current.candlesOn);
+    const scale = chart.current?.timeScale();
+    const before = scale?.getVisibleLogicalRange?.() ?? null;
+    series.setData(next);
+    // Bars that arrived at the right are brought into view if the reader was looking at the newest one: the chart follows the price,
+    // and a reader who has scrolled back into history is left where they are.
+    const arrived = next.length - shownRef.current;
+    if (scale !== undefined && before !== null && arrived > 0 && followsLatest(before, shownRef.current - 1)) {
+      scale.setVisibleLogicalRange(shiftedRange(before, arrived));
+    }
+    shownRef.current = next.length;
   }, [liveBars]);
 
   // REQ-WP-091 / FR-004: the gap in the line is not silent. The distinct reasons the consensus was

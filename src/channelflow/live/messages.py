@@ -1,6 +1,7 @@
 """What travels from the ingest to the chart (REQ-WP-102).
 
 # @trace: REQ-WP-102
+# @trace: REQ-WP-108
 
 The wire form is the REST bars' (`BarOut`): nanosecond instants as **strings** (a JSON number
 cannot hold one exactly), prices as decimal strings, and `is_final`. The venue and symbol are
@@ -10,13 +11,31 @@ added, because one topic carries every series.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import NamedTuple
 
 from channelflow.bars import Bar
 from channelflow.transport import Record
 
-#: Versioned, as section 6.4.3 requires of every topic; thirty minutes' retention is set where the
-#: topic is created.
-TOPIC = "market.bar_live.v1"
+#: Versioned, as section 6.4.3 requires of every topic. **Two**, because they are read differently
+# (REQ-WP-108): the : finished bars -- one a minute per series -- are replayed from the start to
+# rebuild the API's cache, a few hundred : records; the forming bars -- up to four a second per
+# series -- are only ever read as they arrive. On one topic every : start replayed hours of forming
+# bars, and the chart showed nothing moving for forty seconds.
+TOPIC_FINAL = "market.bar_final.v1"
+TOPIC_FORMING = "market.bar_forming.v1"
+
+
+class Topics(NamedTuple):
+    final: str
+    forming: str
+
+
+DEFAULT_TOPICS = Topics(final=TOPIC_FINAL, forming=TOPIC_FORMING)
+
+
+def topic_for(live: LiveBar, topics: Topics = DEFAULT_TOPICS) -> str:
+    return topics.final if live.is_final else topics.forming
+
 
 _FIELDS = (
     "venue",
@@ -68,9 +87,11 @@ def live_bar_from_bar(bar: Bar) -> LiveBar:
     )
 
 
-def to_record(live: LiveBar, *, ingest_time_ns: int, producer: str, topic: str = TOPIC) -> Record:
+def to_record(
+    live: LiveBar, *, ingest_time_ns: int, producer: str, topics: Topics = DEFAULT_TOPICS
+) -> Record:
     return Record(
-        topic=topic,
+        topic=topic_for(live, topics),
         key=key_for(live.venue, live.symbol),
         payload=live.as_wire(),
         # The window's end: the instant the bar is about, which the ingest time (when it was said)

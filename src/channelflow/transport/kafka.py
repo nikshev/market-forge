@@ -1,6 +1,7 @@
 """The Kafka-protocol half of PRD section 6.3's pair.
 
 # @trace: REQ-WP-042
+# @trace: REQ-WP-108
 
 The other implementation of the same interface. Nothing that publishes or
 consumes knows which one it holds -- that is section 6.3's whole request, and
@@ -28,6 +29,10 @@ from channelflow.transport import EventConsumer, EventPublisher, Record
 #: Errors that mean "nothing yet" rather than "something went wrong". The topic
 #: a consumer subscribed to may not have been produced to, and a partition may
 #: simply be caught up; neither is a fault, and both arrive as an error object.
+#: How long one `consume` call may wait. Short, because it does not return early when it has
+#: some messages but fewer than it asked for -- the poll's own deadline bounds the whole wait.
+CONSUME_WAIT_S = 0.05
+
 _NOT_YET = frozenset({KafkaError._PARTITION_EOF, KafkaError.UNKNOWN_TOPIC_OR_PART})
 
 #: Header names. Section 6.4.3 asks for event and ingestion time to stay apart,
@@ -106,8 +111,13 @@ class _Consumer:
         deadline = time.monotonic() + timeout
         found: list[Record] = []
         while not found and time.monotonic() < deadline:
+            # A short wait per call, and as many calls as the deadline allows: `consume` holds its
+            # messages until it has `limit` of them or the timeout runs out, so asking it to wait
+            # for the whole remaining time made a trickle arrive once a second, in bursts
+            # (REQ-WP-108). Anything that has arrived is returned at once.
             messages = self.client.consume(
-                num_messages=limit, timeout=max(0.1, deadline - time.monotonic())
+                num_messages=limit,
+                timeout=min(CONSUME_WAIT_S, max(0.01, deadline - time.monotonic())),
             )
             found.extend(self._decode(messages))
         return found

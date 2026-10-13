@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+import time
+
 import pytest
 
 from channelflow.live.messages import live_bar_from_bar, to_record
@@ -116,7 +118,7 @@ def test_a_bar_exactly_at_the_edge_of_the_window_is_kept() -> None:
 
 def test_the_relay_reads_the_topic_caches_and_forwards_only_what_changed() -> None:
     transport = InProcessTransport()
-    from channelflow.live.messages import TOPIC
+    from channelflow.live.messages import TOPIC_FINAL, TOPIC_FORMING
 
     publisher = transport.publisher()
     for n, (final, close) in enumerate(
@@ -126,24 +128,30 @@ def test_the_relay_reads_the_topic_caches_and_forwards_only_what_changed() -> No
             to_record(live(final=final, close=close), ingest_time_ns=n + 1, producer="p")
         )
     sent: list[str] = []
-    relay = LiveRelay(transport.consumer([TOPIC]), LiveCache(), lambda b: sent.append(b.close))
+    relay = LiveRelay(
+        transport.consumer([TOPIC_FINAL, TOPIC_FORMING]),
+        LiveCache(),
+        lambda b: sent.append(b.close),
+    )
 
     handled = relay.run_once()
 
     assert handled == 4
-    assert sent == ["101", "102", "103"]  # the late forming bar after the final is not forwarded
+    # The consumer reads the finals topic first, so the final is cached before any forming bar of
+    # its minute is read: none of them is news (a final is never replaced).
+    assert sent == ["103"]
     assert relay.cache.snapshot("bybit", "BTCUSDT")[0].close == "103"
 
 
 def test_the_relay_survives_a_record_it_cannot_read_and_counts_it() -> None:
     transport = InProcessTransport()
-    from channelflow.live.messages import TOPIC
+    from channelflow.live.messages import TOPIC_FINAL, TOPIC_FORMING
     from channelflow.transport import Record
 
     publisher = transport.publisher()
     publisher.publish(
         Record(
-            topic=TOPIC,
+            topic=TOPIC_FORMING,
             key="bybit:BTCUSDT",
             payload={"x": 1},
             event_time_ns=1,
@@ -152,9 +160,83 @@ def test_the_relay_survives_a_record_it_cannot_read_and_counts_it() -> None:
         )
     )
     publisher.publish(to_record(live(final=True), ingest_time_ns=2, producer="p"))
-    relay = LiveRelay(transport.consumer([TOPIC]), LiveCache(), lambda b: None)
+    relay = LiveRelay(transport.consumer([TOPIC_FINAL, TOPIC_FORMING]), LiveCache(), lambda b: None)
 
     relay.run_once()
 
     assert relay.unreadable == 1
     assert len(relay.cache.snapshot("bybit", "BTCUSDT")) == 1
+
+
+def test_what_was_published_before_the_relay_started_is_cached_but_not_forwarded() -> None:
+    """On every API start the topic is replayed to rebuild the cache; forwarding that replay sent
+    every subscriber hundreds of old bars as if they were live (REQ-WP-108)."""
+    import threading
+
+    from channelflow.live.messages import TOPIC_FINAL, TOPIC_FORMING
+
+    transport = InProcessTransport()
+    publisher = transport.publisher()
+    for n in range(5):
+        publisher.publish(to_record(live(final=True, minute=n), ingest_time_ns=n + 1, producer="p"))
+    sent: list[str] = []
+    relay = LiveRelay(
+        transport.consumer([TOPIC_FINAL, TOPIC_FORMING]),
+        LiveCache(),
+        lambda b: sent.append(b.open_time_ns),
+    )
+    stop = threading.Event()
+
+    thread = threading.Thread(target=relay.run, args=(stop,), daemon=True)
+    thread.start()
+    try:
+        assert relay.caught_up.wait(10), "the replay was never finished"
+        assert len(relay.cache.snapshot("bybit", "BTCUSDT")) == 5
+        assert sent == []
+
+        publisher.publish(to_record(live(final=False, minute=5), ingest_time_ns=99, producer="p"))
+        deadline = time.monotonic() + 5
+        while not sent and time.monotonic() < deadline:
+            time.sleep(0.01)
+    finally:
+        stop.set()
+        thread.join(timeout=5)
+
+    assert sent == [str(T0 + 5 * MINUTE)]
+
+
+def test_a_second_consumer_carries_the_forming_bars_and_is_forwarded_as_they_arrive() -> None:
+    import threading
+
+    from channelflow.live.messages import TOPIC_FINAL, TOPIC_FORMING
+
+    transport = InProcessTransport()
+    publisher = transport.publisher()
+    publisher.publish(to_record(live(final=True, minute=0), ingest_time_ns=1, producer="p"))
+    sent: list[tuple[str, bool]] = []
+    relay = LiveRelay(
+        transport.consumer([TOPIC_FINAL]),
+        LiveCache(),
+        lambda b: sent.append((b.close, b.is_final)),
+        tail=transport.consumer([TOPIC_FORMING]),
+    )
+    stop = threading.Event()
+    thread = threading.Thread(target=relay.run, args=(stop,), daemon=True)
+    thread.start()
+    try:
+        assert relay.caught_up.wait(10)
+        publisher.publish(
+            to_record(live(final=False, minute=1, close="150"), ingest_time_ns=5, producer="p")
+        )
+        publisher.publish(
+            to_record(live(final=True, minute=1, close="151"), ingest_time_ns=6, producer="p")
+        )
+        deadline = time.monotonic() + 5
+        while len(sent) < 2 and time.monotonic() < deadline:
+            time.sleep(0.01)
+    finally:
+        stop.set()
+        thread.join(timeout=5)
+
+    assert sorted(sent) == [("150", False), ("151", True)]
+    assert relay.cache.snapshot("bybit", "BTCUSDT")[-1].close == "151"

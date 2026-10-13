@@ -64,8 +64,10 @@ Timeframes above 1m keep the periodic reload in this requirement; their forming 
 <!-- trace:begin -->
 - **Specs:** [[SPEC-154-live-bars]]
 - **Tests:**
-    - `tests/integration/test_live_on_redpanda.py::test_a_bar_published_before_the_consumer_arrived_is_still_relayed`
-    - `tests/integration/test_live_on_redpanda.py::test_the_topic_is_created_with_the_cache_windows_retention`
+    - `tests/integration/test_live_on_redpanda.py::test_a_final_published_before_the_consumer_arrived_is_replayed_and_not_forwarded`
+    - `tests/integration/test_live_on_redpanda.py::test_a_forming_bar_published_after_the_consumer_started_is_delivered_promptly`
+    - `tests/integration/test_live_on_redpanda.py::test_a_topic_that_already_exists_with_another_retention_is_brought_to_the_asked_one`
+    - `tests/integration/test_live_on_redpanda.py::test_the_topics_are_created_with_their_retentions`
     - `tests/unit/api/test_telegram_gate.py::test_launch_data_that_is_too_old_is_refused_on_the_live_socket_too`
     - `tests/unit/api/test_telegram_gate.py::test_signed_launch_data_under_another_scheme_name_is_not_accepted_on_the_live_socket`
     - `tests/unit/api/test_telegram_gate.py::test_the_live_socket_accepts_signed_launch_data_and_answers_with_the_scheme_only`
@@ -103,24 +105,31 @@ Timeframes above 1m keep the periodic reload in this requirement; their forming 
     - `tests/unit/deploy/test_compose_logging.py::test_no_ingest_waits_for_the_broker_because_the_feed_is_a_view_not_the_record`
     - `tests/unit/deploy/test_compose_logging.py::test_the_web_proxy_passes_the_websocket_upgrade_through_its_one_location`
     - `tests/unit/live/test_messages.py::test_a_bar_is_carried_as_the_rest_bars_are_with_instants_as_strings`
+    - `tests/unit/live/test_messages.py::test_a_final_bar_goes_to_the_final_topic_and_a_forming_one_to_the_forming_topic`
     - `tests/unit/live/test_messages.py::test_a_live_bar_is_a_value_two_equal_ones_compare_equal`
     - `tests/unit/live/test_messages.py::test_a_record_round_trips_field_for_field`
     - `tests/unit/live/test_messages.py::test_a_record_that_is_not_a_live_bar_is_refused_not_guessed_at`
     - `tests/unit/live/test_messages.py::test_the_ingest_time_travels_on_the_record_so_the_later_forming_bar_can_win`
-    - `tests/unit/live/test_messages.py::test_the_topic_is_versioned_and_the_key_is_venue_and_symbol`
+    - `tests/unit/live/test_messages.py::test_the_topics_are_versioned_and_the_key_is_venue_and_symbol`
     - `tests/unit/live/test_publisher.py::test_a_broker_that_raises_stops_nothing_and_is_counted`
     - `tests/unit/live/test_publisher.py::test_a_failure_is_not_remembered_as_a_publish_for_the_throttle`
     - `tests/unit/live/test_publisher.py::test_a_final_bar_does_not_wait_for_the_forming_throttle_of_the_next_minute`
     - `tests/unit/live/test_publisher.py::test_a_final_bar_is_always_published_even_inside_the_second`
+    - `tests/unit/live/test_publisher.py::test_a_final_bar_is_published_to_the_final_topic`
     - `tests/unit/live/test_publisher.py::test_a_forming_bar_is_published_to_the_live_topic_keyed_by_series`
+    - `tests/unit/live/test_publisher.py::test_a_forming_bar_that_has_not_changed_is_not_published_again`
+    - `tests/unit/live/test_publisher.py::test_a_forming_bar_whose_volume_alone_changed_is_published`
     - `tests/unit/live/test_publisher.py::test_a_publisher_with_no_broker_publishes_nothing_and_says_so`
+    - `tests/unit/live/test_publisher.py::test_an_unchanged_bar_is_published_again_once_the_minute_has_a_new_one_between`
     - `tests/unit/live/test_publisher.py::test_each_series_is_throttled_on_its_own`
-    - `tests/unit/live/test_publisher.py::test_forming_bars_are_published_at_most_once_a_second`
+    - `tests/unit/live/test_publisher.py::test_forming_bars_are_published_at_most_four_times_a_second`
+    - `tests/unit/live/test_publisher.py::test_the_interval_is_a_quarter_of_a_second`
     - `tests/unit/live/test_relay.py::test_a_bar_exactly_at_the_edge_of_the_window_is_kept`
     - `tests/unit/live/test_relay.py::test_a_final_bar_replaces_a_forming_one`
     - `tests/unit/live/test_relay.py::test_a_first_bar_is_kept_and_forwarded`
     - `tests/unit/live/test_relay.py::test_a_forming_bar_never_replaces_a_final_one_however_late_it_was_ingested`
     - `tests/unit/live/test_relay.py::test_a_later_forming_bar_replaces_an_earlier_one_for_the_same_minute`
+    - `tests/unit/live/test_relay.py::test_a_second_consumer_carries_the_forming_bars_and_is_forwarded_as_they_arrive`
     - `tests/unit/live/test_relay.py::test_a_second_final_bar_for_a_minute_does_not_amend_the_first`
     - `tests/unit/live/test_relay.py::test_an_older_forming_bar_arriving_late_is_ignored_and_not_forwarded`
     - `tests/unit/live/test_relay.py::test_bars_older_than_the_window_behind_the_newest_are_dropped`
@@ -128,6 +137,7 @@ Timeframes above 1m keep the periodic reload in this requirement; their forming 
     - `tests/unit/live/test_relay.py::test_the_relay_survives_a_record_it_cannot_read_and_counts_it`
     - `tests/unit/live/test_relay.py::test_the_snapshot_is_oldest_first_and_per_series`
     - `tests/unit/live/test_relay.py::test_the_window_is_thirty_minutes`
+    - `tests/unit/live/test_relay.py::test_what_was_published_before_the_relay_started_is_cached_but_not_forwarded`
     - `tests/unit/pipeline/test_ingest_live.py::test_a_broker_that_fails_costs_the_ingest_no_trade`
     - `tests/unit/pipeline/test_ingest_live.py::test_a_daemon_without_a_live_feed_is_unchanged`
     - `tests/unit/pipeline/test_ingest_live.py::test_a_failing_live_feed_does_not_stop_the_bar_reaching_the_table`

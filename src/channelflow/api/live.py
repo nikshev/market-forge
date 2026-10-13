@@ -23,7 +23,11 @@ from channelflow.transport import EventConsumer
 logger = logging.getLogger(__name__)
 
 
-def attach_live(app: FastAPI, cache: LiveCache, make_consumer: Callable[[], EventConsumer]) -> None:
+def attach_live(
+    app: FastAPI,
+    cache: LiveCache,
+    make_consumers: Callable[[], tuple[EventConsumer, EventConsumer | None]],
+) -> None:
     """Run a relay for the lifetime of `app`, filling `cache` and forwarding to its hub."""
     state: dict[str, object] = {}
 
@@ -36,11 +40,13 @@ def attach_live(app: FastAPI, cache: LiveCache, make_consumer: Callable[[], Even
 
         def run() -> None:
             try:
-                relay = LiveRelay(make_consumer(), cache, forward)
+                finals, forming = make_consumers()
+                relay = LiveRelay(finals, cache, forward, tail=forming)
             except Exception:  # noqa: BLE001 -- no broker is not a reason not to serve
                 logger.exception("live feed: could not start; the chart will say it is delayed")
                 return
             state["relay"] = relay
+            app.state.live_relay = relay
             relay.run(stop)
 
         stop = threading.Event()

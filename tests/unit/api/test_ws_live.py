@@ -169,18 +169,23 @@ def test_a_record_on_the_topic_reaches_a_subscriber_through_the_relay(
     import time
 
     from channelflow.api.live import attach_live
-    from channelflow.live.messages import TOPIC, to_record
+    from channelflow.live.messages import TOPIC_FINAL, TOPIC_FORMING, to_record
     from channelflow.transport.inprocess import InProcessTransport
 
     transport = InProcessTransport()
     cache = LiveCache()
     app = create_app(repository=repository, live_cache=cache)
-    attach_live(app, cache, lambda: transport.consumer([TOPIC]))
+    attach_live(app, cache, lambda: (transport.consumer([TOPIC_FINAL, TOPIC_FORMING]), None))
 
     with TestClient(app) as client, client.websocket_connect("/ws/market") as socket:
         socket.send_json(SUBSCRIBE)
         socket.receive_json()
         assert socket.receive_json()["data"]["snapshot"] == []
+        # What is on the topic when the API starts is history; a bar published after it is news.
+        deadline = time.monotonic() + 10
+        while getattr(app.state, "live_relay", None) is None and time.monotonic() < deadline:
+            time.sleep(0.01)
+        assert app.state.live_relay.caught_up.wait(10)
 
         transport.publisher().publish(
             to_record(

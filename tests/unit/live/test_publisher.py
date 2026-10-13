@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 
 import pytest
 
-from channelflow.live.messages import TOPIC, parse_record
+from channelflow.live.messages import TOPIC_FINAL, TOPIC_FORMING, parse_record
 from channelflow.live.publisher import LivePublisher
 from channelflow.transport import Record
 from tests.unit.live.test_messages import MINUTE, T0, bar
@@ -41,24 +41,66 @@ def test_a_forming_bar_is_published_to_the_live_topic_keyed_by_series() -> None:
     publisher(broker, now).forming([bar(final=False)])
 
     (record,) = broker.records
-    assert (record.topic, record.key) == (TOPIC, "bybit:BTCUSDT")
+    assert (record.topic, record.key) == (TOPIC_FORMING, "bybit:BTCUSDT")
     assert parse_record(record).is_final is False
     assert record.ingest_time_ns == T0 + SECOND
 
 
-def test_forming_bars_are_published_at_most_once_a_second() -> None:
+def test_forming_bars_are_published_at_most_four_times_a_second() -> None:
     broker, now = Broker(), [T0]
     live = publisher(broker, now)
 
     live.forming([bar(final=False)])
-    now[0] += SECOND // 2
+    now[0] += SECOND // 8
     live.forming([bar(final=False, close="102")])
     assert len(broker.records) == 1
 
-    now[0] += SECOND // 2
+    now[0] += SECOND // 8
     live.forming([bar(final=False, close="103")])
     assert len(broker.records) == 2
     assert parse_record(broker.records[-1]).close == "103"
+
+
+def test_the_interval_is_a_quarter_of_a_second() -> None:
+    from channelflow.live.publisher import FORMING_INTERVAL_NS
+
+    assert FORMING_INTERVAL_NS == SECOND // 4
+
+
+def test_a_forming_bar_that_has_not_changed_is_not_published_again() -> None:
+    """A quiet minute would otherwise send the same bar four times a second for nothing."""
+    broker, now = Broker(), [T0]
+    live = publisher(broker, now)
+
+    live.forming([bar(final=False)])
+    now[0] += SECOND
+    live.forming([bar(final=False)])
+
+    assert len(broker.records) == 1
+
+
+def test_a_forming_bar_whose_volume_alone_changed_is_published() -> None:
+    broker, now = Broker(), [T0]
+    live = publisher(broker, now)
+
+    live.forming([bar(final=False, volume="3")])
+    now[0] += SECOND
+    live.forming([bar(final=False, volume="4")])
+
+    assert len(broker.records) == 2
+
+
+def test_an_unchanged_bar_is_published_again_once_the_minute_has_a_new_one_between() -> None:
+    broker, now = Broker(), [T0]
+    live = publisher(broker, now)
+    live.forming([bar(final=False, close="101")])
+    now[0] += SECOND
+    live.forming([bar(final=False, close="102")])
+    now[0] += SECOND
+
+    live.forming([bar(final=False, close="101")])
+
+    assert len(broker.records) == 3
 
 
 def test_a_final_bar_is_always_published_even_inside_the_second() -> None:
@@ -122,3 +164,12 @@ def test_each_series_is_throttled_on_its_own() -> None:
     live.forming([other])
 
     assert len(broker.records) == 2
+
+
+def test_a_final_bar_is_published_to_the_final_topic() -> None:
+    broker, now = Broker(), [T0]
+
+    publisher(broker, now).final(bar(final=True))
+
+    (record,) = broker.records
+    assert record.topic == TOPIC_FINAL

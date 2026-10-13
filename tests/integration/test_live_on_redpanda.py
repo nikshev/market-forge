@@ -1,9 +1,10 @@
-"""The live feed through a real broker: ingest publisher -> topic -> API relay (REQ-WP-102).
+"""The live feed through a real broker (REQ-WP-102, REQ-WP-108).
 
 The unit suite proves the cache, the precedence rules and the relay over the in-process transport;
-this proves the same path over Kafka's protocol -- the topic is created with its retention, a
-produced bar comes back as the same bar, and a late-joining consumer reads what was published
-before it arrived (which is how the API rebuilds its cache on every start).
+this proves the same path over Kafka's protocol: the topics get the retention they were asked for
+-- including a topic that already existed with a default one, which the first deployed run found
+keeping seven days of bars -- the finals published before a consumer arrived are replayed to it,
+and a forming bar published after it started is delivered at once, not a second later.
 """
 
 from __future__ import annotations
@@ -15,7 +16,15 @@ from contextlib import suppress
 
 import pytest
 
-from channelflow.live.broker import RETENTION_MS, broker_for, consumer_for, ensure_topic
+from channelflow.live.broker import (
+    FINAL_RETENTION_MS,
+    FORMING_RETENTION_MS,
+    broker_for,
+    consumers_for,
+    ensure_topic,
+    ensure_topics,
+)
+from channelflow.live.messages import Topics
 from channelflow.live.publisher import LivePublisher
 from channelflow.live.relay import LiveCache, LiveRelay
 from tests.integration.test_transport_on_redpanda import _env
@@ -37,50 +46,95 @@ def bootstrap() -> str:
 
 
 @pytest.fixture
-def topic(bootstrap: str) -> Iterator[str]:
-    name = f"market.bar_live_{uuid.uuid4().hex[:8]}.v1"
-    yield name
+def topics(bootstrap: str) -> Iterator[Topics]:
+    unique = uuid.uuid4().hex[:8]
+    names = Topics(final=f"market.bar_final_{unique}.v1", forming=f"market.bar_forming_{unique}.v1")
+    yield names
     from confluent_kafka.admin import AdminClient
 
-    for future in (
-        AdminClient({"bootstrap.servers": bootstrap})
-        .delete_topics([name], operation_timeout=10)
-        .values()
-    ):
+    # The client is held in a name until the deletes have finished: a temporary is collected at
+    # once, and the request with it -- which is how every run of this file left its topics behind.
+    admin = AdminClient({"bootstrap.servers": bootstrap})
+    for future in admin.delete_topics(list(names), operation_timeout=10).values():
         with suppress(Exception):
             future.result(timeout=10)
 
 
-def test_the_topic_is_created_with_the_cache_windows_retention(bootstrap: str, topic: str) -> None:
+def retention_of(bootstrap: str, topic: str) -> str:
     from confluent_kafka.admin import AdminClient, ConfigResource
-
-    assert ensure_topic(bootstrap, topic=topic) is True
-    assert ensure_topic(bootstrap, topic=topic) is True, "creating it twice is not an error"
 
     admin = AdminClient({"bootstrap.servers": bootstrap})
     resource = ConfigResource(ConfigResource.Type.TOPIC, topic)
     config = next(iter(admin.describe_configs([resource]).values())).result(timeout=10)
-    assert config["retention.ms"].value == str(RETENTION_MS)
+    return str(config["retention.ms"].value)
 
 
-def test_a_bar_published_before_the_consumer_arrived_is_still_relayed(
-    bootstrap: str, topic: str
+def test_the_topics_are_created_with_their_retentions(bootstrap: str, topics: Topics) -> None:
+    assert ensure_topics(bootstrap, topics) is True
+    assert ensure_topics(bootstrap, topics) is True, "creating them twice is not an error"
+
+    assert retention_of(bootstrap, topics.final) == str(FINAL_RETENTION_MS)
+    assert retention_of(bootstrap, topics.forming) == str(FORMING_RETENTION_MS)
+
+
+def test_a_topic_that_already_exists_with_another_retention_is_brought_to_the_asked_one(
+    bootstrap: str, topics: Topics
 ) -> None:
-    clock = [T0]
-    broker = broker_for(bootstrap, topic=topic)
-    live = LivePublisher(broker, producer="test", now_ns=lambda: clock[0], topic=topic)
+    """The first deployed run: a seven-day default on a topic meant for thirty minutes."""
+    from confluent_kafka.admin import AdminClient, NewTopic
+
+    admin = AdminClient({"bootstrap.servers": bootstrap})
+    for future in admin.create_topics([NewTopic(topics.final, 1, 1)]).values():
+        future.result(timeout=10)
+    assert retention_of(bootstrap, topics.final) != str(FINAL_RETENTION_MS)
+
+    assert ensure_topic(bootstrap, topic=topics.final, retention_ms=FINAL_RETENTION_MS) is True
+
+    assert retention_of(bootstrap, topics.final) == str(FINAL_RETENTION_MS)
+
+
+def test_a_final_published_before_the_consumer_arrived_is_replayed_and_not_forwarded(
+    bootstrap: str, topics: Topics
+) -> None:
+    broker = broker_for(bootstrap, topics=topics)
+    live = LivePublisher(broker, producer="test", now_ns=lambda: T0, topics=topics)
     live.final(bar(final=True, close="105", open_time=T0))
-    live.forming([bar(final=False, close="106", open_time=T0 + MINUTE)])
     broker._client.flush(10)  # noqa: SLF001 -- the test waits for delivery; the ingest never does
 
+    finals, forming = consumers_for(bootstrap, topics=topics)
     sent: list[str] = []
-    relay = LiveRelay(
-        consumer_for(bootstrap, topic=topic), LiveCache(), lambda b: sent.append(b.close)
-    )
+    relay = LiveRelay(finals, LiveCache(), lambda b: sent.append(b.close), tail=forming)
     deadline = time.monotonic() + 30
-    while len(sent) < 2 and time.monotonic() < deadline:
-        relay.run_once(timeout=2.0)
+    while not relay.cache.snapshot("bybit", "BTCUSDT") and time.monotonic() < deadline:
+        relay.run_once(timeout=2.0, forward=False)
 
-    assert sent == ["105", "106"]
-    assert [b.close for b in relay.cache.snapshot("bybit", "BTCUSDT")] == ["105", "106"]
-    assert live.published == 2 and live.failures == 0
+    assert [b.close for b in relay.cache.snapshot("bybit", "BTCUSDT")] == ["105"]
+    assert sent == []
+
+
+def test_a_forming_bar_published_after_the_consumer_started_is_delivered_promptly(
+    bootstrap: str, topics: Topics
+) -> None:
+    broker = broker_for(bootstrap, topics=topics)
+    finals, forming = consumers_for(bootstrap, topics=topics)
+    sent: list[tuple[str, float]] = []
+    relay = LiveRelay(
+        finals, LiveCache(), lambda b: sent.append((b.close, time.monotonic())), tail=forming
+    )
+    # Let the groups join before the bar is published: a "latest" consumer starts at the end.
+    for _ in range(40):
+        relay._take(forming, limit=10, timeout=0.25, forward=False)  # noqa: SLF001
+        if getattr(forming, "client", None) is not None and forming.client.assignment():  # type: ignore[attr-defined]
+            break
+
+    live = LivePublisher(broker, producer="test", now_ns=lambda: T0 + MINUTE, topics=topics)
+    published_at = time.monotonic()
+    live.forming([bar(final=False, close="106", open_time=T0 + MINUTE)])
+    deadline = time.monotonic() + 10
+    while not sent and time.monotonic() < deadline:
+        relay._take(forming, limit=500, timeout=0.1, forward=True)  # noqa: SLF001
+
+    assert [close for close, _ in sent] == ["106"]
+    assert sent[0][1] - published_at < 3.0, (
+        "a forming bar was held for seconds before it was delivered"
+    )

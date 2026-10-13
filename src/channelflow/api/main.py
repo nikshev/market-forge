@@ -36,7 +36,7 @@ from channelflow.api.readiness import catalog_probe
 from channelflow.api.telegram_auth import TelegramGate
 from channelflow.lakehouse import catalog as open_catalog
 from channelflow.lakehouse.iceberg import NAMESPACE
-from channelflow.live.broker import bootstrap_from_env, consumer_for
+from channelflow.live.broker import bootstrap_from_env, consumers_for
 from channelflow.live.relay import LiveCache
 from channelflow.settings import (
     CATALOG_URI,
@@ -67,7 +67,7 @@ def build_app(settings: Settings) -> FastAPI:
     if bootstrap and cache is not None:
         # The chart's real-time feed ([[REQ-WP-102]]): read from the broker, cached, relayed on
         # `/ws/market`.
-        attach_live(app, cache, lambda: consumer_for(bootstrap))
+        attach_live(app, cache, lambda: consumers_for(bootstrap))
     return app
 
 

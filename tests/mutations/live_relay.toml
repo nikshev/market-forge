@@ -55,12 +55,23 @@ replace = '''            held = next(iter(self._series.values()), {})'''
 [[mutation]]
 name = "an unchanged bar is forwarded again"
 find = '''            news = self.cache.apply(bar, ingest_time_ns=record.ingest_time_ns)
-            if news is not None:
+            if news is not None and forward:
                 self._forward(news)'''
 replace = '''            self.cache.apply(bar, ingest_time_ns=record.ingest_time_ns)
-            self._forward(bar)'''
+            if forward:
+                self._forward(bar)'''
 
 [[mutation]]
 name = "an unreadable record is not counted"
 find = '''                self.unreadable += 1'''
 replace = '''                pass'''
+
+[[mutation]]
+name = "the replay on start is forwarded as if it were news"
+find = '''            handled = self.run_once(timeout=0.5, forward=False)'''
+replace = '''            handled = self.run_once(timeout=0.5, forward=True)'''
+
+[[mutation]]
+name = "the relay forwards nothing once it has caught up"
+find = '''            if news is not None and forward:'''
+replace = '''            if False:'''

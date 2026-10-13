@@ -13,6 +13,9 @@ const world = vi.hoisted(() => ({
   series: [] as { kind: string; data: any[]; sets: number }[],
   fits: 0,
   ranges: 0,
+  // What the chart reports as the visible logical range, and every range it is asked to show.
+  visible: null as null | { from: number; to: number },
+  set: [] as { from: number; to: number }[],
 }));
 
 vi.mock("lightweight-charts", () => {
@@ -49,12 +52,13 @@ vi.mock("lightweight-charts", () => {
         fitContent: () => {
           world.fits += 1;
         },
-        setVisibleLogicalRange: () => {
+        setVisibleLogicalRange: (range: { from: number; to: number }) => {
           world.ranges += 1;
+          world.set.push(range);
         },
         subscribeVisibleLogicalRangeChange: () => undefined,
         unsubscribeVisibleLogicalRangeChange: () => undefined,
-        getVisibleLogicalRange: () => null,
+        getVisibleLogicalRange: () => world.visible,
       }),
       remove: () => undefined,
     }),
@@ -217,5 +221,60 @@ describe("a pane with live bars", () => {
     render(<PaneChart chart={handle()} bars={STORED} feature="volume" points={[]} title="Volume" scheme="light" />);
 
     expect(world.series.find((s) => s.kind === "histogram")!.data).toHaveLength(3);
+  });
+});
+
+
+describe("the main chart's view with live bars (REQ-WP-108)", () => {
+  const many = (n: number) => Array.from({ length: n }, (_, i) => bar(i));
+
+  it("opens on the newest bars with room on the right, not on the whole history", () => {
+    world.series.length = 0;
+    world.fits = 0;
+    world.set.length = 0;
+
+    render(<Chart bars={many(400)} channel={null} signal={null} />);
+
+    expect(world.fits).toBe(0);
+    const range = world.set.at(-1)!;
+    expect(range.from).toBe(400 - 150);
+    expect(range.to).toBeGreaterThan(399);
+  });
+
+  it("follows the newest bar: live bars that arrive beyond the stored ones are brought into view", () => {
+    world.series.length = 0;
+    world.set.length = 0;
+    const stored = many(400);
+    const { rerender } = render(<Chart bars={stored} channel={null} signal={null} liveBars={[]} isInitialLoad={false} />);
+    world.visible = { from: 250, to: 470 }; // the reader is at the newest bar
+    world.set.length = 0;
+
+    rerender(<Chart bars={stored} channel={null} signal={null} liveBars={[bar(400), bar(401), bar(402)]} isInitialLoad={false} />);
+
+    expect(world.set.at(-1)).toEqual({ from: 253, to: 473 });
+  });
+
+  it("does not move a reader who has scrolled back to look at history", () => {
+    world.series.length = 0;
+    const stored = many(400);
+    const { rerender } = render(<Chart bars={stored} channel={null} signal={null} liveBars={[]} isInitialLoad={false} />);
+    world.visible = { from: 50, to: 200 };
+    world.set.length = 0;
+
+    rerender(<Chart bars={stored} channel={null} signal={null} liveBars={[bar(400), bar(401)]} isInitialLoad={false} />);
+
+    expect(world.set).toEqual([]);
+  });
+
+  it("does not move the range when the same number of bars is only redrawn (the forming bar's price changed)", () => {
+    world.series.length = 0;
+    const stored = many(400);
+    const { rerender } = render(<Chart bars={stored} channel={null} signal={null} liveBars={[bar(400)]} isInitialLoad={false} />);
+    world.visible = { from: 250, to: 470 };
+    world.set.length = 0;
+
+    rerender(<Chart bars={stored} channel={null} signal={null} liveBars={[bar(400, { close: "107" })]} isInitialLoad={false} />);
+
+    expect(world.set).toEqual([]);
   });
 });

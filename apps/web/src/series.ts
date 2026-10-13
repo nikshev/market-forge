@@ -1,6 +1,7 @@
 // @trace: REQ-WP-083
 // @trace: REQ-WP-009
 // @trace: REQ-WP-082
+// @trace: REQ-WP-108
 //
 // What the chart draws, decided here rather than inside a component.
 //
@@ -196,4 +197,41 @@ export function visibleRangeForChannel(
   }
   const last = bars.length - 1;
   return { from: Math.max(0, last - 2 * lookback), to: last + margin };
+}
+
+// --- where a chart opens, and whether it follows the newest bar (REQ-WP-108) ------------------------------------------------------------
+//
+// Compared with Investing's, the chart did not look live: the last bar was a few pixels wide under the volume profile, the visible range
+// ended at the last *stored* bar so live bars beyond it were off the right edge, and the price axis spanned the whole history, so a move
+// of ten dollars was a pixel. A chart opens on the newest bars, with room on the right, and follows the newest bar while the reader is
+// looking at it.
+
+/** How many bars a chart opens on: enough to read the trend, few enough that the newest bar is wide and the price axis is local. */
+export const RECENT_BARS = 150;
+
+/** The share of the plot kept clear on the right: the volume profile covers a quarter of it, and the newest bar must sit left of that. */
+export const PROFILE_ROOM = 0.3;
+
+/** The range a chart opens on: the newest `RECENT_BARS` and room on the right. `null` for no bars. */
+export function recentRange(
+  count: number,
+  room: number,
+  visible = RECENT_BARS,
+): { from: number; to: number } | null {
+  if (count === 0) {
+    return null;
+  }
+  const span = Math.min(count, visible);
+  const from = Math.max(0, count - visible);
+  return { from, to: count - 1 + Math.ceil((span * room) / (1 - room)) };
+}
+
+/** Whether the reader is looking at the newest bar: the range reaches it. Scrolled back into history, it does not. */
+export function followsLatest(range: { from: number; to: number } | null, lastIndex: number): boolean {
+  return range !== null && range.to >= lastIndex - 0.5;
+}
+
+/** The range after `delta` bars arrived at the right: moved with them, so the newest bar stays where it was on screen. */
+export function shiftedRange(range: { from: number; to: number }, delta: number): { from: number; to: number } {
+  return { from: range.from + delta, to: range.to + delta };
 }

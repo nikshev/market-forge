@@ -13,22 +13,24 @@ replace = '''        except KeyError as exc:  # noqa: BLE001 -- the view must ne
 
 [[mutation]]
 name = "forming bars are not throttled"
-find = '''            if last is not None and now - last < SECOND_NS:
+find = '''            if last is not None and now - last < FORMING_INTERVAL_NS:
                 continue'''
 replace = '''            if False:
                 continue'''
 
 [[mutation]]
 name = "the throttle is one tenth of a second"
-find = '''            if last is not None and now - last < SECOND_NS:'''
-replace = '''            if last is not None and now - last < SECOND_NS // 10:'''
+find = '''            if last is not None and now - last < FORMING_INTERVAL_NS:'''
+replace = '''            if last is not None and now - last < FORMING_INTERVAL_NS // 10:'''
 
 [[mutation]]
 name = "a failed publish still starts the throttle"
 find = '''            if self._send(bar, now):
-                self._last_forming[key] = now'''
+                self._last_forming[key] = now
+                self._last_shape[key] = shape'''
 replace = '''            self._send(bar, now)
-            self._last_forming[key] = now'''
+            self._last_forming[key] = now
+            self._last_shape[key] = shape'''
 
 [[mutation]]
 name = "the throttle is shared by every series"
@@ -61,3 +63,18 @@ replace = '''        if not bars:
 name = "the record carries the producer's clock as the ingest time of the first call"
 find = '''                    ingest_time_ns=now,'''
 replace = '''                    ingest_time_ns=0,'''
+
+[[mutation]]
+name = "an unchanged forming bar is published again"
+find = '''            if self._last_shape.get(key) == shape:'''
+replace = '''            if False:'''
+
+[[mutation]]
+name = "a change in volume alone is not a change"
+find = '''            shape = (bar.open_time_ns, bar.open, bar.high, bar.low, bar.close, bar.volume_base)'''
+replace = '''            shape = (bar.open_time_ns, bar.open, bar.high, bar.low, bar.close)'''
+
+[[mutation]]
+name = "the interval is a second again"
+find = '''FORMING_INTERVAL_NS = SECOND_NS // 4'''
+replace = '''FORMING_INTERVAL_NS = SECOND_NS'''
