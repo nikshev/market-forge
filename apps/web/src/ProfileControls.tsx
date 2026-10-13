@@ -1,4 +1,5 @@
 // @trace: REQ-WP-089
+// @trace: REQ-WP-103
 //
 // The volume profile's own controls: which window it covers, and a line saying what it covers. A profile built from
 // three hours of blocks says "covers 3 h 20 m of 24 h" rather than reading as a 24-hour profile; a market with no
@@ -9,6 +10,7 @@ import ToggleButton from "@mui/material/ToggleButton";
 import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
 import Typography from "@mui/material/Typography";
 
+import { Busy } from "./Busy";
 import { coverageLine } from "./profileView";
 import { PROFILE_WINDOWS } from "./profileWindows";
 import type { ProfileWindow } from "./profileWindows";
@@ -60,6 +62,7 @@ export function ProfileControls({
           </ToggleButton>
         ))}
       </ToggleButtonGroup>
+      {state === "loading" ? <Busy label="Loading the volume profile" inline /> : null}
       <Typography variant="body2" color="text.secondary" role="status" aria-label="Volume profile">
         {line}
       </Typography>

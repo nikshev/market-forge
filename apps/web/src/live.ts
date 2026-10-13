@@ -20,7 +20,7 @@ export const LIVE_TIMEFRAME = "1m";
 /** How many live bars are kept: the API's cache is thirty minutes, so sixty is a margin and not a history. */
 export const KEEP = 60;
 
-export type LiveStatus = "live" | "delayed" | "off";
+export type LiveStatus = "connecting" | "live" | "delayed" | "off";
 
 /** A bar as the socket sends it: the REST bar, with the series it belongs to. */
 export interface WireBar {

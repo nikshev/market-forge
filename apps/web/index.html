@@ -6,9 +6,16 @@
     <meta name="color-scheme" content="light dark" />
     <link rel="icon" type="image/svg+xml" href="/logo.svg" />
     <title>Market Forge</title>
+    <!-- Before the script has loaded and React has mounted the page is blank, which looks like a broken page rather than a slow
+         one (REQ-WP-103). This is replaced by React's first render; it needs no script and no stylesheet of its own. -->
+    <style>
+      #boot { display: flex; align-items: center; justify-content: center; min-height: 60vh; font: 14px system-ui, sans-serif; opacity: 0.7; }
+      #boot i { width: 22px; height: 22px; margin-right: 10px; border: 3px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: boot-spin 0.8s linear infinite; }
+      @keyframes boot-spin { to { transform: rotate(360deg); } }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root"><div id="boot" role="progressbar" aria-label="Loading Market Forge"><i></i>Loading Market Forge…</div></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

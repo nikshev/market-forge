@@ -4,6 +4,7 @@
 // @trace: REQ-WP-085
 // @trace: REQ-WP-088
 // @trace: REQ-WP-092
+// @trace: REQ-WP-103
 //
 // PRD section 27.3's lower pane, attached to the page.
 //
@@ -15,6 +16,7 @@ import Box from "@mui/material/Box";
 import ToggleButton from "@mui/material/ToggleButton";
 import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
 import Typography from "@mui/material/Typography";
+import { Busy } from "./Busy";
 import { PaneChart } from "./PaneChart";
 import type { ChartHandle } from "./paneChart";
 import { isBarPane, paneSeries, ROW, segments, volumeSeries } from "./panes";
@@ -34,6 +36,7 @@ export function FlowPane({
   bars = [],
   liveBars,
   barsLoaded = false,
+  pointsLoaded = true,
   chart = null,
   scheme = "light",
   palette,
@@ -45,6 +48,11 @@ export function FlowPane({
   liveBars?: readonly BarOut[];
   /** True once the bars have answered, including with none: what tells "no bars yet" from "no bars". */
   barsLoaded?: boolean;
+  /**
+   * False from the start of a load until the feature series has answered, ok or failed (REQ-WP-103): the pane shows a
+   * spinner and makes no claim about the data. `true` by default -- a caller that does not say is not waiting.
+   */
+  pointsLoaded?: boolean;
   /**
    * The main chart's handle (REQ-WP-092). With it the pane is a chart on the main chart's own time axis; without
    * it -- before the chart exists, or in a test -- it is the SVG it always was, so a missing chart is never an
@@ -73,6 +81,8 @@ export function FlowPane({
   const volumeEmpty = barsLoaded && volumeSeries(bars).state !== "ok";
   // Before the bars have answered Volume says nothing: "no finished bars" would be a claim about bars nobody has seen.
   const unknownBars = onBars && !barsLoaded;
+  // Waiting for the answer this pane is made of: the bars for Volume, the series for the rest. A failure is an answer.
+  const waiting = !failed && (onBars ? !barsLoaded : !pointsLoaded);
 
   return (
     <Box component="section" aria-label="Lower pane" sx={{ mt: 2 }}>
@@ -113,12 +123,13 @@ export function FlowPane({
           Could not load this pane: {failure}
         </Typography>
       )}
+      {waiting ? <Busy label="Loading the pane" /> : null}
       {!failed && feature === null && known && available.size === 0 ? (
         <Typography role="status" aria-label="Pane contents" color="text.secondary" sx={{ mt: 1 }}>
           No pane has data for this view
         </Typography>
       ) : null}
-      {!failed && !unknownBars && feature !== null && series.state !== "ok" ? (
+      {!failed && !unknownBars && !waiting && feature !== null && series.state !== "ok" ? (
         <Typography role="status" aria-label="Pane contents" color="text.secondary" sx={{ mt: 1 }}>
           {series.note}
         </Typography>

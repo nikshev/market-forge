@@ -1,4 +1,5 @@
 // @trace: REQ-WP-102
+// @trace: REQ-WP-103
 //
 // The socket's lifecycle: it opens only for the 1m chart, subscribes, takes the snapshot and then the updates, says whether it is
 // live, coalesces a burst of updates, reconnects with back-off, and closes when the page moves on.
@@ -107,11 +108,12 @@ describe("useLiveBars", () => {
     expect(last().protocols).toBeUndefined();
   });
 
-  it("is delayed until the snapshot has arrived, then live with the cached bars", () => {
+  it("says connecting until the snapshot has arrived -- nothing has failed yet -- then live with the cached bars", () => {
     const { result } = renderHook(() => useLiveBars(props));
+    expect(result.current.status).toBe("connecting");
     act(() => last().open());
     act(() => last().receive({ ok: true, live: true }));
-    expect(result.current.status).toBe("delayed");
+    expect(result.current.status).toBe("connecting");
 
     act(() => last().receive(snapshot(wire(0, { is_final: true }), wire(1))));
 

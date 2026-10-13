@@ -1,4 +1,5 @@
 // @trace: REQ-WP-102
+// @trace: REQ-WP-103
 //
 // The chart's socket (REQ-WP-102): open only while the timeframe is the live one, subscribe to the series' 1m bars, keep the
 // bars it hears, and say whether the chart is **live** or **delayed**. What the messages mean is `live.ts`'s.
@@ -37,7 +38,7 @@ export function useLiveBars({
   apiBase?: string;
 }): LiveBars {
   const [bars, setBars] = useState<BarOut[]>([]);
-  const [status, setStatus] = useState<LiveStatus>(enabled ? "delayed" : "off");
+  const [status, setStatus] = useState<LiveStatus>(enabled ? "connecting" : "off");
   // What the socket has heard, outside render: updates land here at once and reach the page on a timer.
   const heard = useRef<BarOut[]>([]);
 
@@ -48,7 +49,7 @@ export function useLiveBars({
       setStatus("off");
       return undefined;
     }
-    setStatus("delayed");
+    setStatus("connecting");
 
     let disposed = false;
     let socket: WebSocket | null = null;
@@ -85,7 +86,10 @@ export function useLiveBars({
         if (message === null) {
           return;
         }
-        if (message.kind === "snapshot") {
+        if ((message.kind === "ack" && !message.live) || message.kind === "error") {
+          // The server will not send this series' bars: not a connection that is still being made.
+          setStatus("delayed");
+        } else if (message.kind === "snapshot") {
           for (const bar of message.bars) {
             heard.current = applyBar(heard.current, bar);
           }

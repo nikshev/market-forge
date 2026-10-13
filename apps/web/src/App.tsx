@@ -11,6 +11,7 @@
 // @trace: REQ-WP-090
 // @trace: REQ-WP-091
 // @trace: REQ-WP-102
+// @trace: REQ-WP-103
 //
 // The page an alert's deep link opens. PRD section 27.1's route, and section
 // 27.5's default: AS-SEEN-THEN, always, unless the link says otherwise in so
@@ -21,6 +22,7 @@
 // list written here would be the second list REQ-WP-073's FR-002 forbids.
 
 import Alert from "@mui/material/Alert";
+import Box from "@mui/material/Box";
 import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
 import { useTheme } from "@mui/material/styles";
@@ -41,6 +43,7 @@ import { AppShell } from "./AppShell";
 import { CandidateSwitch } from "./CandidateSwitch";
 import { Chart } from "./Chart";
 import { GapNotice } from "./GapNotice";
+import { Busy } from "./Busy";
 import { LiveChip } from "./LiveChip";
 import { LIVE_TIMEFRAME } from "./live";
 import { useLiveBars } from "./useLiveBars";
@@ -168,6 +171,8 @@ export function App(): JSX.Element {
   // Why there is no consensus when one was asked for: null while there is one, or when nothing was
   // asked. The per-bar refusals are `Chart`'s to say; this is the whole request's answer.
   const [consensusFailure, setConsensusFailure] = useState<string | null>(null);
+  // True from the request until it has answered, ok, nothing or failed (REQ-WP-103).
+  const [consensusLoading, setConsensusLoading] = useState(false);
 
   // Live refresh (REQ-WP-090): timer, in-flight guard, visibility, failure state
   const refreshIntervalMs = (() => {
@@ -214,6 +219,11 @@ export function App(): JSX.Element {
 
   const option = offered === null ? null : matchTimeframe(offered, timeframe);
   const refused = offered !== null && option === null;
+
+  // Waiting, said out loud (REQ-WP-103). The first load is the chart with nothing to draw yet: `bars` empty and the answer
+  // outstanding. A reload is the same wait with a chart already on screen, so it is a small mark by the title instead.
+  const firstLoad = !refused && !barsLoaded && bars.length === 0 && state !== "failed";
+  const refreshing = !refused && (!barsLoaded || !pointsLoaded) && bars.length > 0;
 
   // The chart's real-time feed (REQ-WP-102): only for the live 1m chart -- not a view pinned to an instant, which is
   // history and must not grow -- and for no timeframe the ingest does not build bars at.
@@ -395,6 +405,7 @@ export function App(): JSX.Element {
     if (link === null || !wantsConsensus) {
       setConsensus(null);
       setConsensusFailure(null);
+      setConsensusLoading(false);
       return;
     }
     if (option === null) {
@@ -405,6 +416,7 @@ export function App(): JSX.Element {
     let live = true;
     setConsensus(null);
     setConsensusFailure(null);
+    setConsensusLoading(true);
     void (async () => {
       try {
         const result = await fetchConsensus({
@@ -431,6 +443,10 @@ export function App(): JSX.Element {
         if (live) {
           setConsensus(null);
           setConsensusFailure(cause instanceof Error ? cause.message : String(cause));
+        }
+      } finally {
+        if (live) {
+          setConsensusLoading(false);
         }
       }
     })();
@@ -564,9 +580,12 @@ export function App(): JSX.Element {
       <Typography variant="h5" component="h2" sx={{ mb: 1.5, overflowWrap: "anywhere" }}>
         {link.symbol} · {link.venue} · {timeframe}
         <LiveChip status={live.status} />
+        {refreshing ? <Busy label="Updating the chart" inline /> : null}
       </Typography>
       <Stack spacing={1.5} sx={{ mb: 1.5 }}>
-        {offered === null ? null : (
+        {offered === null ? (
+          <Busy label="Loading timeframes" />
+        ) : (
           <TimeframeControl offered={offered} selected={timeframe} onSelect={selectTimeframe} />
         )}
         <ChannelModeControl mode={mode} onChange={selectMode} />
@@ -593,7 +612,25 @@ export function App(): JSX.Element {
       {refused ? null : <CandidateSwitch pressed={showCandidates} onChange={setShowCandidates} />}
       {refused ? null : (
         // The chart sits on the theme's surface and draws in its palette (REQ-WP-083).
-        <Paper variant="outlined" sx={{ p: 1, overflow: "hidden" }}>
+        <Paper variant="outlined" sx={{ p: 1, overflow: "hidden", position: "relative" }}>
+          {firstLoad ? (
+            // Over the chart, which is mounted underneath so it can draw the moment the bars arrive: an empty chart is what
+            // a quiet market and a slow load both look like (REQ-WP-103).
+            <Box
+              sx={{
+                position: "absolute",
+                inset: 0,
+                zIndex: 2,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                bgcolor: "background.paper",
+                opacity: 0.85,
+              }}
+            >
+              <Busy label="Loading the chart" />
+            </Box>
+          ) : null}
           <Chart
             bars={bars}
             channel={channel}
@@ -616,6 +653,7 @@ export function App(): JSX.Element {
           />
         </Paper>
       )}
+      {refused || !wantsConsensus || !consensusLoading ? null : <Busy label="Loading the consensus" />}
       {refused || !wantsConsensus || consensusFailure === null ? null : (
         // Said above the panes, never left as a gap: with no consensus at all the chart would look
         // exactly like a layer nobody switched on (FR-016).
@@ -660,6 +698,7 @@ export function App(): JSX.Element {
         bars={bars}
         liveBars={live.bars}
         barsLoaded={barsLoaded}
+        pointsLoaded={pointsLoaded}
         chart={mainChart}
         scheme={theme.palette.mode}
         palette={chartPalette}

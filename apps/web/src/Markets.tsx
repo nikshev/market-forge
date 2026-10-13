@@ -1,5 +1,6 @@
 // @trace: REQ-WP-083
 // @trace: REQ-WP-075
+// @trace: REQ-WP-103
 //
 // PRD §27.1's overview route. The list is the state: one row per market from
 // §28.1's read, in §43's order, with no aggregate invented here and no
@@ -17,6 +18,8 @@ import Chip from "@mui/material/Chip";
 import Link from "@mui/material/Link";
 import Typography from "@mui/material/Typography";
 import { useEffect, useState } from "react";
+
+import { Busy } from "./Busy";
 
 import { AppShell } from "./AppShell";
 import { MarketTypeChip } from "./MarketTypeChip";
@@ -85,12 +88,14 @@ export function Markets(): JSX.Element {
         Markets
       </Typography>
       {offeredFailure === null ? null : <LoadState state="failed" detail={offeredFailure} />}
+      {offered === null && offeredFailure === null ? <Busy label="Loading timeframes" /> : null}
       {offered === null ? null : (
         <Box sx={{ mb: 2 }}>
           <TimeframeControl offered={offered} selected={timeframe} onSelect={setTimeframe} />
         </Box>
       )}
       {failed ? <LoadState state="failed" detail={marketsFailure} /> : null}
+      {markets === null && !failed ? <Busy label="Loading markets" /> : null}
       {empty ? (
         <Alert severity="info" role="status">
           No markets are configured on this deployment.
