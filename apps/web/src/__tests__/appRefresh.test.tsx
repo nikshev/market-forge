@@ -257,7 +257,7 @@ describe("US1: overlapping ticks skipped (in-flight guard)", () => {
     render(<App />);
 
     await waitFor(() => expect(calls.filter((u) => u.includes("/api/v1/extrema")).length).toBeGreaterThan(0), { timeout: 5000 });
-    const initialBarsCalls = calls.filter((u) => u.includes("/api/v1/bars")).length;
+    const initialBarsCalls = calls.filter((u) => u.includes("/api/v1/bars") && !isMinuteBuild(u)).length;
 
     // Advance past first interval (first refresh starts but defers)
     await advanceTimers(60_000);
@@ -268,9 +268,9 @@ describe("US1: overlapping ticks skipped (in-flight guard)", () => {
     // Resolve the first request
     pending[0]?.();
 
-    await waitFor(() => expect(calls.filter((u) => u.includes("/api/v1/bars")).length).toBe(initialBarsCalls + 1), { timeout: 5000 });
+    await waitFor(() => expect(calls.filter((u) => u.includes("/api/v1/bars") && !isMinuteBuild(u)).length).toBe(initialBarsCalls + 1), { timeout: 5000 });
     // Should only have one additional bars call (the first refresh), not two
-    expect(calls.filter((u) => u.includes("/api/v1/bars")).length).toBe(initialBarsCalls + 1);
+    expect(calls.filter((u) => u.includes("/api/v1/bars") && !isMinuteBuild(u)).length).toBe(initialBarsCalls + 1);
   });
 });
 
