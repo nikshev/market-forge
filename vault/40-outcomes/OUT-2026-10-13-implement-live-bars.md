@@ -38,7 +38,24 @@ test against the real Redpanda (a bar produced before the consumer existed is re
 - The chart's data effect re-ran on every parent render in tests because `extrema` had an inline default; it is a constant now.
 - A transport signature (`poll`) gained an optional timeout so one relay loop runs over both transports.
 
+## Deployed run (2026-10-13, 06:28-06:42 UTC)
+
+The API and web were rebuilt, then the ten ingest daemons (`up -d --no-deps --build`, each flushing its buffered bars on the way
+down); Redpanda was already running. The ingests' own log says `live feed to redpanda:29092`; the topic's high watermark rose.
+
+- **Through the public proxy** (`ws://127.0.0.1:8081/api/v1/live`): acknowledged `live: true`, a snapshot, then one update a second;
+  a minute's bar went forming -> final at 67 s after it opened and the next minute's forming bar followed at once.
+- **In a headless browser** on the 1m chart: the page opened `/api/v1/live`, the chip read **live**, six frames arrived in six
+  seconds, and the last candle was the current minute's. The same chart read from the table was **sixteen minutes behind** (the last
+  stored bar opened at 06:26 when it was 06:42).
+- Fourteen minutes after the restart the cache held 14 contiguous bars for each of five series checked (bybit BTC, binance BTC and
+  ETH, okx BTC swap, bybit HYPE) -- no gaps inside it.
+- **A transient from deploying**: the cache starts when the ingest does, so for a quarter of an hour after the restart there is a
+  hole between the last stored bar (06:26) and the first live one (06:28); the restart also lost the trades of the minute in between.
+  It closes as the cache fills, and it does not recur in steady state.
+
 ## What is still open
 
-- Deployment and the measurement of the last bar's age from a browser.
+- A forming bar is re-published every second even when nothing traded; skipping an unchanged bar would halve the traffic and
+  is not done.
 - Timeframes above 1m are not live (a forming bucket needs the stored 1m bars of the bucket).
