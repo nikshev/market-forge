@@ -30,3 +30,19 @@ The web image was rebuilt; in a headless browser against it the same six wheel t
 ## What is still open
 
 - Nothing in the repository: the deployed check was made.
+
+## Correction (2026-10-13)
+
+The owner reported after the live feed shipped: "now it does not scale at all, neither horizontally nor vertically." That was this
+requirement's doing: it had turned the wheel and the price-axis drag off to stop the page being captured by the chart, and the chart
+could no longer be scaled. The constant is now `CHART_INTERACTION` and gives the reader the scaling (wheel zoom, price-axis drag, double
+click to reset, pinch); the vitest file and the pytest artifact test assert that instead.
+
+Measured in a headless browser on the rebuilt web image: five wheel ticks zoomed the time axis from ~7 h to ~5 h of 1m candles and the
+price axis rescaled with it (80750-84250 for the candles shown); a drag on the price axis changed its range (81200-83800); a double click
+restored the auto-fit. The page does not scroll while the pointer is over a chart -- the usual trade of a chart that zooms with the wheel --
+and scrolls everywhere else.
+
+The lesson, for the next requirement of this kind: the owner's report was of a symptom (the axis moved by itself); the first fix removed
+the capability instead of the cause. What did squeeze the axis unasked was never isolated; if it recurs it will be with the wheel enabled,
+which is what to reproduce.

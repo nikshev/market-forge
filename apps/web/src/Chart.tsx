@@ -25,7 +25,7 @@ import { useEffect, useRef } from "react";
 import { extremumMarkers } from "./extrema";
 import { findGaps, gapMarkers } from "./gaps";
 import { liveAfter } from "./live";
-import { PLOT_MARGINS, PRICE_SCALE_WIDTH, READING_INTERACTION, type ChartHandle } from "./paneChart";
+import { PLOT_MARGINS, PRICE_SCALE_WIDTH, CHART_INTERACTION, type ChartHandle } from "./paneChart";
 import {
   buildSeries,
   markerFor,
@@ -149,8 +149,8 @@ export function Chart({
       // The same minimum width as the pane under it, so the two plot areas begin and end together.
       rightPriceScale: { minimumWidth: PRICE_SCALE_WIDTH, autoScale: true, scaleMargins: PLOT_MARGINS },
       // Read, not operated (REQ-WP-101): the wheel scrolls the page, and the price axis stays on its auto-fit.
-      handleScroll: READING_INTERACTION.handleScroll,
-      handleScale: READING_INTERACTION.handleScale,
+      handleScroll: CHART_INTERACTION.handleScroll,
+      handleScale: CHART_INTERACTION.handleScale,
       ...chartLayout(scheme, palette),
     });
     chart.current = instance;

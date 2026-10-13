@@ -1,10 +1,9 @@
 // @trace: REQ-WP-101
 //
-// A chart is read, not operated: scrolling the page with the pointer over it must scroll the page, and the price
-// axis must stay on its own auto-fit. lightweight-charts' defaults zoom the time axis on every wheel tick -- which
-// stopped the page scrolling over the chart and squeezed and stretched the time axis under a reader who was only
-// moving down to the panes -- and let a drag on the price axis switch the auto-fit off for good. The library cannot be
-// drawn in jsdom, so what is asserted is the options each chart is created with.
+// A reader scales a chart: the wheel zooms the time axis, a drag on the price axis scales the price, and a double click on
+// an axis puts it back on its auto-fit. (The first version of this requirement turned all of that off to stop the page being
+// captured by the wheel, and left a chart nobody could scale -- the owner said so the next day.) The library cannot be drawn
+// in jsdom, so what is asserted is the options each chart is created with.
 
 import { render } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
@@ -49,7 +48,7 @@ vi.mock("lightweight-charts", () => {
 });
 
 import { Chart } from "../Chart";
-import { READING_INTERACTION, PLOT_MARGINS } from "../paneChart";
+import { CHART_INTERACTION, PLOT_MARGINS } from "../paneChart";
 import { PaneChart } from "../PaneChart";
 
 const STEP = 60_000_000_000n;
@@ -83,19 +82,22 @@ function handle() {
 }
 
 describe("what a reader may do to a chart", () => {
-  it("does not zoom or scroll the time axis on the mouse wheel, so the page scrolls over the chart", () => {
-    expect(READING_INTERACTION.handleScale.mouseWheel).toBe(false);
-    expect(READING_INTERACTION.handleScroll.mouseWheel).toBe(false);
+  it("zooms the time axis with the mouse wheel, and does not also scroll it", () => {
+    expect(CHART_INTERACTION.handleScale.mouseWheel).toBe(true);
+    expect(CHART_INTERACTION.handleScroll.mouseWheel).toBe(false);
   });
 
-  it("leaves the price axis to its auto-fit: no drag on it, no vertical touch drag", () => {
-    expect(READING_INTERACTION.handleScale.axisPressedMouseMove.price).toBe(false);
-    expect(READING_INTERACTION.handleScroll.vertTouchDrag).toBe(false);
+  it("scales the price axis by dragging it, and resets either axis with a double click", () => {
+    expect(CHART_INTERACTION.handleScale.axisPressedMouseMove.price).toBe(true);
+    expect(CHART_INTERACTION.handleScale.axisPressedMouseMove.time).toBe(true);
+    expect(CHART_INTERACTION.handleScale.axisDoubleClickReset.price).toBe(true);
+    expect(CHART_INTERACTION.handleScale.axisDoubleClickReset.time).toBe(true);
   });
 
-  it("keeps what a reader does want: pinch, and dragging along the time axis", () => {
-    expect(READING_INTERACTION.handleScale.axisPressedMouseMove.time).toBe(true);
-    expect(READING_INTERACTION.handleScroll.pressedMouseMove).toBe(true);
+  it("keeps pinch and dragging the plot, and leaves a vertical touch to scroll the page", () => {
+    expect(CHART_INTERACTION.handleScale.pinch).toBe(true);
+    expect(CHART_INTERACTION.handleScroll.pressedMouseMove).toBe(true);
+    expect(CHART_INTERACTION.handleScroll.vertTouchDrag).toBe(false);
   });
 
   it("is what the main chart is created with, with margins that let the candles fill the plot", () => {
@@ -103,8 +105,8 @@ describe("what a reader may do to a chart", () => {
     render(<Chart bars={BARS} channel={null} signal={null} profile={null} />);
 
     const options = world.created[0]!;
-    expect(options.handleScale).toEqual(READING_INTERACTION.handleScale);
-    expect(options.handleScroll).toEqual(READING_INTERACTION.handleScroll);
+    expect(options.handleScale).toEqual(CHART_INTERACTION.handleScale);
+    expect(options.handleScroll).toEqual(CHART_INTERACTION.handleScroll);
     expect(options.rightPriceScale.scaleMargins).toEqual(PLOT_MARGINS);
     expect(PLOT_MARGINS.top).toBeLessThanOrEqual(0.1);
     expect(PLOT_MARGINS.bottom).toBeLessThanOrEqual(0.1);
@@ -115,7 +117,7 @@ describe("what a reader may do to a chart", () => {
     render(<PaneChart bars={BARS} feature="cvd_base" points={[]} chart={handle()} title="CVD" scheme="light" />);
 
     const options = world.created[0]!;
-    expect(options.handleScale).toEqual(READING_INTERACTION.handleScale);
-    expect(options.handleScroll).toEqual(READING_INTERACTION.handleScroll);
+    expect(options.handleScale).toEqual(CHART_INTERACTION.handleScale);
+    expect(options.handleScroll).toEqual(CHART_INTERACTION.handleScroll);
   });
 });

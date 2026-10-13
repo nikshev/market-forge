@@ -5,7 +5,8 @@
 The behaviour is tested by vitest (`make web-test`), which runs only in CI (ADR-021): a vitest test
 cannot carry a pytest marker, so this is the part the fast gate can see for itself -- the modules
 carry their `@trace`, the two charts take their interaction options from the one constant, and that
-constant switches the wheel off, which is what stopped the page scrolling over a chart.
+constant lets a reader scale both axes (the first version switched that off and left a chart that
+could not be scaled).
 """
 
 from __future__ import annotations
@@ -29,19 +30,20 @@ def test_every_module_this_requirement_touches_names_it(module: str) -> None:
 def test_both_charts_are_created_with_the_one_interaction_constant(module: str) -> None:
     source = (WEB / module).read_text()
 
-    assert "handleScroll: READING_INTERACTION.handleScroll" in source
-    assert "handleScale: READING_INTERACTION.handleScale" in source
+    assert "handleScroll: CHART_INTERACTION.handleScroll" in source
+    assert "handleScale: CHART_INTERACTION.handleScale" in source
 
 
 @pytest.mark.trace("REQ-WP-101")
-def test_the_constant_turns_the_wheel_and_the_price_axis_drag_off() -> None:
+def test_the_constant_lets_a_reader_scale_both_axes() -> None:
     source = (WEB / "paneChart.ts").read_text()
-    block = source[source.index("export const READING_INTERACTION") :]
+    block = source[source.index("export const CHART_INTERACTION") :]
     block = block[: block.index("as const")]
 
-    assert re.search(r"handleScroll:\s*{[^}]*mouseWheel:\s*false", block)
-    assert re.search(r"handleScale:\s*{[^}]*mouseWheel:\s*false", block, re.S)
-    assert re.search(r"price:\s*false", block)
+    assert re.search(r"handleScale:\s*{[^}]*mouseWheel:\s*true", block, re.S)
+    assert re.search(r"axisPressedMouseMove:\s*{[^}]*price:\s*true", block)
+    assert re.search(r"axisDoubleClickReset:\s*{[^}]*price:\s*true", block)
+    assert "mouseWheel: false" in block, "the wheel zooms; it does not also scroll the plot"
 
 
 @pytest.mark.trace("REQ-WP-101")

@@ -21,17 +21,21 @@ export const PRICE_SCALE_WIDTH = 88;
 export const PANE_HEIGHT = 160;
 
 /**
- * What a reader may do to a chart (REQ-WP-101). A chart here is read, not operated: with the library's defaults the
- * mouse wheel zooms the time axis, so scrolling the page with the pointer over a chart stopped the page and squeezed and
- * stretched the chart instead; and a drag on the price axis switches its auto-fit off, leaving a scale nobody chose.
- * Dragging along the time axis, dragging the plot and pinching stay.
+ * What a reader may do to a chart (REQ-WP-101): scale it. The wheel zooms the time axis (and only zooms: a horizontal
+ * scroll gesture is the plot's drag), a drag on the price axis scales the price, a double click on either axis puts it
+ * back on its auto-fit, and pinch works on a touch screen. A vertical touch drag is left to scroll the page.
+ *
+ * The first version of this turned the wheel and the price-axis drag off, to stop a reader scrolling the page being
+ * captured by the chart; the result was a chart that could not be scaled at all. The page scrolls with the pointer
+ * anywhere but over a chart.
  */
-export const READING_INTERACTION = {
+export const CHART_INTERACTION = {
   handleScroll: { mouseWheel: false, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: false },
   handleScale: {
-    mouseWheel: false,
+    mouseWheel: true,
     pinch: true,
-    axisPressedMouseMove: { time: true, price: false },
+    axisPressedMouseMove: { time: true, price: true },
+    axisDoubleClickReset: { time: true, price: true },
   },
 } as const;
 

@@ -13,22 +13,26 @@ hard_gated: false
 
 ## Requirement
 
-The owner reported on 2026-10-12 that the chart's X axis "squeezes and stretches" and that the Y scale is wrong.
-Reproduced in a browser against the running stack: with the pointer over the chart, **the mouse wheel zoomed the time axis
-and the page did not scroll** (`scrollY` stayed 0 after six wheel ticks), so a reader moving down to the panes squeezed and
-stretched the candles instead -- and the pane under the chart, kept on the same range, moved with it. The price scale
-stayed at the range of the data while the candles used a part of the plot's height, and a drag on the price axis, which
-the library lets switch its auto-fit off, left a scale nobody chose.
+The owner reported on 2026-10-12 that the chart's X axis "squeezes and stretches" and that the Y scale is wrong. Reproduced in a
+browser: with the pointer over the chart the mouse wheel zoomed the time axis and the page did not scroll, the price scale kept
+the range of all the data while the candles used a part of the plot's height, and a drag on the price axis, which the library lets
+switch its auto-fit off, left a scale nobody chose.
 
-1. The main chart and every pane are created **without wheel zoom or wheel scroll**, without dragging the price axis and
-   without vertical touch drag; pinch, dragging the plot and dragging along the time axis remain.
-2. The main chart's price scale is explicitly on auto-fit, with margins (8 % above and below) that let the candles fill
-   the plot.
+**The first answer was wrong, and the owner said so the next day** ("now it does not scale at all, neither horizontally nor
+vertically"): it turned the wheel and the price-axis drag off, which stopped the squeezing by stopping all scaling. The
+requirement is what the reader asked for, which is a chart they can scale:
+
+1. The main chart and every pane let a reader **scale**: the wheel zooms the time axis (and only zooms), a drag on the price axis
+   scales the price, a double click on either axis puts it back on its auto-fit, pinch works on touch, and the plot can be dragged.
+   A vertical touch drag is left to scroll the page.
+2. The price scale **follows what is visible**: it is on auto-fit with margins (8 % above and below) that let the candles fill the
+   plot, so zooming in on the time axis rescales the price to the candles shown.
 
 ## Acceptance
 
 - The options each chart is created with carry the above (tests on what the library is handed; it cannot be drawn in jsdom).
-- In a browser against the running stack the wheel over the chart scrolls the page, and the chart's range does not change.
+- In a browser against the running stack: a wheel turn over the chart zooms the time axis and the price axis rescales to the visible
+  candles; a drag on the price axis scales it; a double click on the axis restores the auto-fit.
 
 ## Trace
 
